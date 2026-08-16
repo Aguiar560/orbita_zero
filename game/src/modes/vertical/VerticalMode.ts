@@ -164,6 +164,12 @@ export class VerticalMode {
       this.setBanner(e.boss.name.toUpperCase());
     } else if (e.kind === 'elite') {
       this.setBanner('GUARDA DE ELITE');
+    } else {
+      // O perfil da onda vira aviso porque senão a variedade não é percebida:
+      // um enxame de trinta naves fracas e uma vanguarda de duas que atiram o
+      // triplo gastam o mesmo orçamento de vida, e sem o nome o jogador só vê
+      // "a onda de sempre com números diferentes".
+      this.setBanner(e.perfil.toUpperCase());
     }
 
     // Cada galáxia tem seu próprio pano de fundo E seu próprio par de campos de
@@ -685,7 +691,9 @@ export class VerticalMode {
 
     e.fireTimer -= dt;
     if (e.fireTimer > 0) return;
-    e.fireTimer = 1 / Math.max(0.05, def.fireRate);
+    // A pressão do perfil da onda entra aqui: é o eixo "quantos tiros", que
+    // deixa a tela mais perigosa sem inflar nenhum número da ficha.
+    e.fireTimer = 1 / Math.max(0.05, def.fireRate * e.pressao);
     this.emitPattern(e, def.attack, def.shots, def.bulletSpeed, def.bulletSprite, def.bulletColor, 1);
   }
 

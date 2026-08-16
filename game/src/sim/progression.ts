@@ -2,9 +2,11 @@ import { Rng } from '@core/math';
 import { bossForSector, isBossSector, type BossDef } from '@data/bosses';
 import { enemiesForSector, type EnemyDef } from '@data/enemies';
 import {
-  CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_ONDAS, ELITE_ONDAS, RECOMPENSA_FRACAO,
-  WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
+  CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
+  RECOMPENSA_FRACAO, WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
+  densidadeAlvo, pressaoAlvo,
 } from '@data/balance/curvas';
+import { INIMIGOS_POR_GRUPO_MAX, INIMIGOS_POR_ONDA_MAX } from '@data/balance/limites';
 import type { EncounterKind, GameState } from './types';
 
 /**
@@ -30,6 +32,10 @@ export interface Encounter {
   boss: BossDef | null;
   /** Dano de um golpe inimigo neste encontro, em valor absoluto. */
   damage: number;
+  /** Multiplicador de cadência dos inimigos — o eixo de "quantos tiros". */
+  pressao: number;
+  /** Nome do perfil da onda, para o aviso na tela. */
+  perfil: string;
   bounty: number;
   ilvl: number;
 }
@@ -66,6 +72,9 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
       hpPool,
       squad: [],
       damage: baseDamage * boss.dano,
+      // O chefe tem cadência própria por fase; a pressão do setor não se aplica.
+      pressao: 1,
+      perfil: 'Chefe',
       // Proporcional à vida que o chefe realmente tem, mais um bônus pelo feito.
       // Antes era `bounty × boss.reward`, com reward de 30 a 200 — números que
       // vinham de quando a recompensa era uma exponencial própria.
@@ -79,8 +88,13 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
   const fallback = enemiesForSector(sector, false);
   const usable = pool.length ? pool : fallback;
 
-  // Ondas normais: 2–3 tipos. Elites: 1 tipo forte + escolta.
-  const typeCount = elite ? 1 : Math.min(usable.length, rng.int(2, 3));
+  // O perfil decide a CARA da onda: enxame, pelotão, vanguarda ou fuzilaria.
+  // Elites têm perfil próprio — poucos, duros e agressivos, por definição.
+  const perfil = elite
+    ? { id: 'elite', nome: 'Elite', densidade: 0.3, pressao: 1.3, tipos: [1, 2] as const, peso: 0 }
+    : rng.weighted(PERFIS_DE_ONDA, (p) => p.peso);
+
+  const typeCount = Math.min(usable.length, rng.int(perfil.tipos[0], perfil.tipos[1]));
   const chosen: EnemyDef[] = [];
   for (let i = 0; i < typeCount; i++) {
     const pick = rng.weighted(
@@ -92,15 +106,26 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
   if (elite && fallback.length) chosen.push(rng.weighted(fallback, (e) => e.weight));
 
   const waveHp = baseHp * (elite ? ELITE_ONDAS : 1) * (0.85 + wave * 0.06);
+
+  /**
+   * A contagem é ALVO e a vida por unidade é derivada — inversão igual à da
+   * dificuldade. Antes era o contrário: a vida por unidade era fixa em
+   * `baseHp × def.hp × 0,16` e a contagem saía da divisão. Como as duas
+   * parcelas escalavam com `baseHp`, ela se cancelava e TODA onda do jogo tinha
+   * o mesmo número de inimigos, do setor 1 ao 300.
+   */
+  const alvo = Math.min(
+    INIMIGOS_POR_ONDA_MAX,
+    Math.max(1, Math.round(densidadeAlvo(sector) * perfil.densidade)),
+  );
   const totalWeight = chosen.reduce((s, e) => s + e.hp, 0) || 1;
 
-  const squad = chosen.map((def, i) => {
+  const squad = chosen.map((def) => {
+    // Um inimigo "pesado" ocupa mais do orçamento de contagem que um leve, para
+    // uma onda de encouraçados não virar um enxame de encouraçados.
     const share = def.hp / totalWeight;
-    const budget = waveHp * share;
-    const perUnit = baseHp * def.hp * 0.16;
-    const count = Math.max(1, Math.round(budget / Math.max(1, perUnit)));
-    // Elites nunca vêm em bando; o slot de escolta pode.
-    return { def, count: elite && i === 0 ? Math.min(count, 3) : Math.min(count, 26) };
+    const count = Math.max(1, Math.round(alvo * share));
+    return { def, count: Math.min(INIMIGOS_POR_GRUPO_MAX, count) };
   });
 
   return {
@@ -108,6 +133,10 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     hpPool: waveHp,
     squad,
     damage: baseDamage,
+    // A pressão do setor, temperada pelo perfil, é o que faz uma onda de poucos
+    // inimigos ser tão perigosa quanto uma de muitos.
+    pressao: pressaoAlvo(sector) * perfil.pressao,
+    perfil: perfil.nome,
     bounty: RECOMPENSA_FRACAO * waveHp,
     ilvl: elite ? ilvl + 2 : ilvl,
   };

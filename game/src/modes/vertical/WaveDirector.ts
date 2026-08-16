@@ -164,6 +164,7 @@ export class WaveDirector {
       const e = spawn(group.def, x, y, hp, damage);
       if (!e) break;
       e.share = 1 / Math.max(1, totalUnits(enc));
+      e.pressao = enc.pressao;
       // Deslocamento vertical do índice vira atraso de entrada, sem timer extra.
       e.time = -i * group.gap;
       born++;

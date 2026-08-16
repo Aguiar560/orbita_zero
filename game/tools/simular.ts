@@ -17,6 +17,7 @@
 import { Rng } from '@core/math';
 import { RARITIES } from '@data/rarity';
 import { rollItem, rollRarity } from '@sim/loot';
+import { WAVES_PER_SECTOR, buildEncounter } from '@sim/progression';
 import { powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import type { GameState } from '@sim/types';
@@ -192,6 +193,37 @@ function comandoAjustar(tentativas: number): void {
   console.log('é por isso que a curva exponencial do inimigo a ultrapassa sempre.');
 }
 
+/**
+ * Composição das ondas de um setor.
+ *
+ * Serve para ver a VARIEDADE, que é dificuldade tanto quanto vida e dano: antes
+ * a contagem de inimigos se cancelava na conta e toda onda do jogo tinha o
+ * mesmo número de naves, do setor 1 ao 300.
+ */
+function comandoOndas(de: number, ate: number): void {
+  const linhas: string[][] = [];
+  const estado = createState(20260816);
+
+  for (let setor = de; setor <= ate; setor++) {
+    for (let onda = 1; onda <= WAVES_PER_SECTOR + 1; onda++) {
+      const e = buildEncounter(estado, setor, onda);
+      const total = e.squad.reduce((s, g) => s + g.count, 0);
+      linhas.push([
+        String(setor),
+        String(onda),
+        e.perfil,
+        e.boss ? '—' : String(total),
+        `${e.pressao.toFixed(2)}×`,
+        n(e.hpPool),
+        e.boss ? e.boss.name : e.squad.map((g) => `${g.def.id}×${g.count}`).join(' + '),
+      ]);
+    }
+  }
+
+  tabela(['setor', 'onda', 'perfil', 'naves', 'cadência', 'vida', 'composição'], linhas);
+  console.log('\nA vida total da onda é a mesma em qualquer perfil — muda como ela é repartida.');
+}
+
 // ── entrada ─────────────────────────────────────────────────────────────────
 
 const [comando, ...args] = process.argv.slice(2);
@@ -208,6 +240,9 @@ switch (comando) {
     break;
   case 'ajustar':
     comandoAjustar(Number(args[0] ?? 12));
+    break;
+  case 'ondas':
+    comandoOndas(Number(args[0] ?? 1), Number(args[1] ?? 3));
     break;
   default:
     console.log(`Arnês de simulação do Órbita Zero.

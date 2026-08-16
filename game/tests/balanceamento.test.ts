@@ -9,8 +9,9 @@ import { rollItem, rollRarity } from '@sim/loot';
 import { resistance, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import { DANO_STAT, RES_STAT, SLOT_IDS, STAT_IDS, type GameState } from '@sim/types';
-import { sectorHp } from '@sim/progression';
+import { buildEncounter, sectorHp } from '@sim/progression';
 import { golpesAlvo, tempoAlvo } from '@data/balance/curvas';
+import { INIMIGOS_POR_ONDA_MAX } from '@data/balance/limites';
 import { divergencia, medirSetor } from '../tools/lib/balanco';
 
 /**
@@ -349,6 +350,70 @@ describe('ritmo do jogo (§2)', () => {
     for (let s = 2; s <= 300; s++) {
       expect(tempoAlvo(s), `tempo em ${s}`).toBeGreaterThanOrEqual(tempoAlvo(s - 1));
       expect(golpesAlvo(s), `golpes em ${s}`).toBeLessThanOrEqual(golpesAlvo(s - 1));
+    }
+  });
+});
+
+/**
+ * Densidade e pressão como eixos de dificuldade.
+ *
+ * A falha que estes testes existem para impedir passou despercebida por muito
+ * tempo: a contagem de inimigos saía de `orçamento ÷ vida por unidade`, e como
+ * as duas parcelas escalavam com a mesma base, ela se cancelava. Toda onda do
+ * jogo tinha o mesmo número de naves, do setor 1 ao 300 — só a barra de vida
+ * mudava. Nada quebrava, nenhum teste falhava, e o sintoma era um jogo que
+ * parecia sempre igual.
+ */
+describe('composição das ondas (§16)', () => {
+  const estado = createState(20260816);
+  const ondasDe = (setor: number) =>
+    Array.from({ length: 5 }, (_, i) => buildEncounter(estado, setor, i + 1));
+  const naves = (e: ReturnType<typeof buildEncounter>) =>
+    e.squad.reduce((s, g) => s + g.count, 0);
+
+  it('a quantidade de inimigos cresce com o setor', () => {
+    const medio = (setor: number) => {
+      const o = ondasDe(setor);
+      return o.reduce((s, e) => s + naves(e), 0) / o.length;
+    };
+    expect(medio(120)).toBeGreaterThan(medio(40));
+    expect(medio(40)).toBeGreaterThan(medio(1));
+  });
+
+  it('a cadência dos inimigos cresce com o setor', () => {
+    const medio = (setor: number) => {
+      const o = ondasDe(setor);
+      return o.reduce((s, e) => s + e.pressao, 0) / o.length;
+    };
+    expect(medio(200)).toBeGreaterThan(medio(1));
+  });
+
+  it('um mesmo setor mistura ondas cheias e ondas vazias', () => {
+    for (const setor of [1, 30, 120, 300]) {
+      const contagens = ondasDe(setor).map(naves);
+      const razao = Math.max(...contagens) / Math.min(...contagens);
+      expect(razao, `setor ${setor}: ${contagens.join(', ')}`).toBeGreaterThan(1.5);
+    }
+  });
+
+  /**
+   * O invariante que mantém a calibragem de pé: o perfil redistribui o
+   * orçamento, nunca o aumenta. Se um perfil pudesse inflar a vida total, o
+   * tempo-alvo por onda deixaria de valer.
+   */
+  it('o perfil muda a repartição mas nunca a vida total da onda', () => {
+    for (const setor of [1, 50, 300]) {
+      for (const e of ondasDe(setor)) {
+        expect(e.hpPool).toBeCloseTo(sectorHp(setor) * (0.85 + e.wave * 0.06), 5);
+      }
+    }
+  });
+
+  it('nenhuma onda passa do teto de entidades', () => {
+    for (const setor of [1, 60, 150, 300]) {
+      for (const e of ondasDe(setor)) {
+        expect(naves(e), `setor ${setor} onda ${e.wave}`).toBeLessThanOrEqual(INIMIGOS_POR_ONDA_MAX);
+      }
     }
   });
 });

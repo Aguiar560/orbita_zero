@@ -82,6 +82,13 @@ export interface Enemy {
 
   time: number;
   fireTimer: number;
+  /**
+   * Multiplicador de cadência vindo do perfil da onda.
+   *
+   * Fica no inimigo e não no encontro porque os lacaios que um chefe invoca não
+   * herdam a pressão da onda — eles têm a cadência do próprio arquétipo.
+   */
+  pressao: number;
   hitFlash: number;
   /** Ângulo acumulado dos padrões em espiral. */
   spin: number;
@@ -174,14 +181,14 @@ export function createEnemyPool(capacity = 200): Pool<Enemy> {
     () => ({
       alive: false, id: 0, def: null as unknown as EnemyDef, boss: null,
       x: 0, y: 0, vx: 0, vy: 0, hp: 1, maxHp: 1, radius: 16, scale: 1, damage: 1, share: 0, counts: true,
-      time: 0, fireTimer: 0, hitFlash: 0, spin: 0, anchorX: 0, anchorY: 0,
+      time: 0, fireTimer: 0, pressao: 1, hitFlash: 0, spin: 0, anchorX: 0, anchorY: 0,
       entering: true, phase: 0, summonTimer: 0, wobble: 0, facing: 0,
     }),
     (e) => {
       e.id = nextId++;
       e.boss = null; e.time = 0; e.hitFlash = 0; e.spin = 0; e.entering = true;
       e.phase = 0; e.summonTimer = 0; e.wobble = 0; e.facing = 0; e.vx = 0; e.vy = 0;
-      e.counts = true;
+      e.counts = true; e.pressao = 1;
     },
     capacity,
   );

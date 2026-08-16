@@ -195,6 +195,70 @@ export const CHEFE_CICLO = 1.25;
 /** Recompensa extra do chefe, sobre a parte proporcional à vida dele. */
 export const CHEFE_BONUS_RECOMPENSA = 1.5;
 
+// ── densidade e pressão: dificuldade que não é só número ────────────────────
+
+/**
+ * Quantos inimigos a onda coloca na tela.
+ *
+ * Isto não existia. A contagem saía de `orçamento ÷ vida por unidade`, e como
+ * as duas parcelas escalavam com a mesma base, ela se cancelava: **o setor 1 e
+ * o setor 300 tinham o mesmo número de inimigos**. Só a barra de vida mudava.
+ *
+ * Agora a contagem é ALVO e a vida por unidade é derivada — a mesma inversão
+ * que se fez com a dificuldade. O total continua sendo `curvaHp`, então o
+ * tempo-alvo da onda não muda; o que muda é a cara dela.
+ */
+export const DENSIDADE_INICIO = 5;
+export const DENSIDADE_FIM = 20;
+export const DENSIDADE_K = 110;
+
+export const densidadeAlvo = (setor: number): number =>
+  DENSIDADE_INICIO + (DENSIDADE_FIM - DENSIDADE_INICIO) * (1 - Math.exp(-setor / DENSIDADE_K));
+
+/**
+ * Cadência de tiro dos inimigos, como multiplicador.
+ *
+ * Sobe devagar e tem teto: é o eixo que faz a tela ficar mais perigosa sem
+ * inflar nenhum número da ficha. Passar disto vira parede de projétil, que num
+ * jogo pilotado por IA é frustração e não desafio.
+ */
+export const PRESSAO_INICIO = 0.8;
+export const PRESSAO_FIM = 1.6;
+export const PRESSAO_K = 120;
+
+export const pressaoAlvo = (setor: number): number =>
+  PRESSAO_INICIO + (PRESSAO_FIM - PRESSAO_INICIO) * (1 - Math.exp(-setor / PRESSAO_K));
+
+export interface PerfilDeOnda {
+  id: string;
+  nome: string;
+  /** Multiplicador na CONTAGEM. A vida por unidade recebe o inverso. */
+  densidade: number;
+  /** Multiplicador na cadência de tiro dos inimigos. */
+  pressao: number;
+  /** Quantos tipos diferentes de inimigo a onda mistura. */
+  tipos: readonly [number, number];
+  peso: number;
+}
+
+/**
+ * Perfis de onda — a variedade que o jogador percebe.
+ *
+ * Todos gastam o MESMO orçamento de vida, então nenhum quebra a calibragem de
+ * tempo. O que muda é como esse orçamento é repartido: muitos inimigos fracos
+ * que atiram pouco, poucos duros que atiram muito, ou algo no meio.
+ *
+ * O produto `densidade × pressão` fica entre 0,86 e 1,26 de propósito: dá para
+ * uma onda ser mais tensa que a outra sem que nenhuma saia da faixa em que a
+ * curva foi calibrada.
+ */
+export const PERFIS_DE_ONDA: readonly PerfilDeOnda[] = [
+  { id: 'enxame', nome: 'Enxame', densidade: 2.4, pressao: 0.5, tipos: [1, 2], peso: 22 },
+  { id: 'pelotao', nome: 'Pelotão', densidade: 1, pressao: 1, tipos: [2, 3], peso: 38 },
+  { id: 'vanguarda', nome: 'Vanguarda', densidade: 0.45, pressao: 1.9, tipos: [1, 2], peso: 20 },
+  { id: 'fuzilaria', nome: 'Fuzilaria', densidade: 1.2, pressao: 1.05, tipos: [2, 4], peso: 20 },
+];
+
 // ── progressão do jogador ───────────────────────────────────────────────────
 
 /**
