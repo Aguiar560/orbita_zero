@@ -60,9 +60,11 @@ Regras de camada, em ordem de importância:
 - **Identificadores internos são estáveis e não-visuais.** `weapon_plasma_mk3`,
   nunca `Canhão de Plasma MK.III`. Vale para itens, naves, inimigos, recursos,
   elementos, galáxias, chefes e sets.
-- **Save nunca é rejeitado por ser antigo.** Campo novo nasce com padrão seguro;
-  migração apara o que não existe mais. Perder progresso do jogador é o pior
-  defeito possível deste projeto.
+- **Save malformado não pode travar o boot.** Migração apara o que não existe
+  mais e preenche o que falta. *Durante o desenvolvimento*, compatibilidade
+  entre versões NÃO é restrição: o esquema muda muito e o save é zerado junto,
+  de propósito. Isso volta a valer antes do lançamento — e aí o
+  `save-migration-reviewer`, hoje dormente, entra em cena.
 - **Dano normal e dano elemental são componentes separados.** `Dano total =
   normal + Σ elementais`. Não transformar todo o dano da nave em elemental.
 - **Limites de sanidade em toda fórmula**: crítico, cadência, cooldown,
@@ -71,6 +73,12 @@ Regras de camada, em ordem de importância:
   contagem absurda de entidades.
 - **Nenhuma nave e nenhum atributo pode dominar todo o conteúdo.** Progressão é
   horizontal tanto quanto vertical.
+- **A nave evolui por item, craft e Matriz. Só.** Não existe sistema paralelo de
+  upgrade — o menu Melhorias foi removido justamente por ser um. A Loja
+  sobrevive porque vende logística e rendimento (carga, ímã, reparo,
+  multiplicador de ganho, baús), nunca atributo de combate. Contrato de dano,
+  vida, escudo ou cadência na loja recria o sistema removido e deve ser
+  recusado.
 
 ## Política de modelos (§49 da especificação)
 

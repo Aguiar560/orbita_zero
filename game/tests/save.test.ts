@@ -5,106 +5,87 @@ import { SAVE_VERSION, createState, exportSave, importSave, migrate } from '@sim
 import type { GameState } from '@sim/types';
 
 /**
- * A regra que não pode ser quebrada em nenhuma versão.
+ * ESCOPO DESTA SUÍTE, durante o desenvolvimento.
  *
- * Num idle, invalidar um save é apagar dias de progresso do jogador. O contrato
- * é: `migrate` APARA o que não existe mais e PREENCHE o que falta — nunca
- * devolve `null` por um save ser velho. A única recusa legítima é um save do
- * FUTURO, porque aí não há como adivinhar o significado dos campos.
+ * Compatibilidade entre versões de save NÃO é restrição agora: o esquema vai
+ * mudar muitas vezes até a Fase 4 e o save será zerado junto, de propósito.
+ * Testar migração v1→v4 hoje só criaria atrito — cada mudança de campo
+ * quebraria testes que ninguém quer manter.
  *
- * A Fase 1 vai mexer em atributos, raridades e níveis. Estes testes existem
- * para que essa mudança não passe por cima do progresso de ninguém.
+ * O que continua valendo é mais estreito e mais importante: **um save
+ * malformado não pode travar o boot**. Isso vale em qualquer fase, porque o
+ * sintoma é o jogo não abrir, e o custo de garantir é quase zero.
+ *
+ * Antes do lançamento isto volta a crescer, e aí o `save-migration-reviewer`
+ * entra em cena. Até lá ele fica dormente.
  */
-describe('migração nunca rejeita save antigo (§38)', () => {
-  it('aceita save da versão 1, descartando o equipamento incompatível', () => {
-    const antigo = { version: 1, resources: { sucata: 500 }, run: { sector: 12 } };
-    const s = migrate(antigo);
-    expect(s).not.toBeNull();
-    expect(s!.version).toBe(SAVE_VERSION);
-    expect(s!.resources.sucata).toBe(500);
-    expect(s!.run.sector).toBe(12);
-    // Os slots de v1 não existem mais; traduzir errado seria pior que descartar.
-    expect(s!.inventory).toEqual([]);
+
+describe('o boot sobrevive a qualquer entrada', () => {
+  it('recusa entrada que não é save, sem lançar exceção', () => {
+    expect(migrate(null)).toBeNull();
+    expect(migrate(undefined)).toBeNull();
+    expect(migrate('lixo')).toBeNull();
+    expect(migrate(42)).toBeNull();
+    expect(migrate([])).toBeNull();
+    expect(migrate({})).toBeNull();
   });
 
-  it('aceita save da versão 2 preservando itens', () => {
-    const item = rollItem(new Rng(3), 20, 0, 0);
-    const s = migrate({ version: 2, inventory: [item], resources: { nucleo: 42 } });
-    expect(s).not.toBeNull();
-    expect(s!.inventory).toHaveLength(1);
-    expect(s!.resources.nucleo).toBe(42);
-  });
-
-  it('aceita save da versão corrente sem alterar nada de essencial', () => {
-    const original = createState(555);
-    original.run.sector = 33;
-    original.resources.cristal = 999;
-    const s = migrate(JSON.parse(JSON.stringify(original)));
-    expect(s!.run.sector).toBe(33);
-    expect(s!.resources.cristal).toBe(999);
-  });
-
-  it('recusa apenas save de versão FUTURA', () => {
+  it('recusa save de versão futura — não há como adivinhar os campos', () => {
     expect(migrate({ version: SAVE_VERSION + 1 })).toBeNull();
   });
 
-  it('recusa entrada que não é save', () => {
-    expect(migrate(null)).toBeNull();
-    expect(migrate('lixo')).toBeNull();
-    expect(migrate({})).toBeNull();
-  });
-});
-
-/** Campos novos precisam nascer com padrão seguro, não quebrar o boot. */
-describe('padrões seguros em campos ausentes', () => {
-  const magro = () => migrate({ version: SAVE_VERSION })!;
-
-  it('preenche todos os blocos obrigatórios', () => {
-    const s = magro();
+  it('aceita um save mínimo e preenche o resto', () => {
+    const s = migrate({ version: SAVE_VERSION });
+    expect(s).not.toBeNull();
     for (const chave of [
-      'resources', 'lifetime', 'run', 'bar', 'universe', 'stats',
-      'settings', 'upgrades', 'shop', 'command', 'chests', 'equipped',
+      'resources', 'lifetime', 'run', 'bar', 'universe',
+      'stats', 'settings', 'shop', 'command', 'chests', 'equipped',
     ] as const) {
-      expect(s[chave], chave).toBeDefined();
+      expect(s![chave], chave).toBeDefined();
     }
-    expect(Array.isArray(s.inventory)).toBe(true);
-    expect(Array.isArray(s.fleet)).toBe(true);
-    expect(Array.isArray(s.codex)).toBe(true);
+    expect(Array.isArray(s!.inventory)).toBe(true);
+    expect(Array.isArray(s!.fleet)).toBe(true);
+    expect(Array.isArray(s!.codex)).toBe(true);
   });
 
-  it('garante ao menos um casco e que o casco ativo está na frota', () => {
-    const s = magro();
-    expect(s.fleet.length).toBeGreaterThan(0);
-    expect(s.fleet).toContain(s.hull);
-  });
-
-  it('conserta um casco ativo que não está na frota', () => {
-    const s = migrate({ version: SAVE_VERSION, hull: 'casco_que_nao_existe' })!;
-    expect(s.fleet).toContain(s.hull);
+  it('ignora campos de sistemas removidos sem quebrar', () => {
+    // `upgrades` era o sistema de Melhorias (§31). Saves antigos ainda o
+    // carregam; o carregamento não pode se importar com isso.
+    const s = migrate({ version: SAVE_VERSION, upgrades: { dano: 50, vida: 30 } });
+    expect(s).not.toBeNull();
+    expect(s!.run.sector).toBeGreaterThanOrEqual(1);
   });
 });
 
-/** Um save adulterado não pode travar o boot — só ser normalizado. */
-describe('resistência a save corrompido', () => {
-  it('normaliza setor e onda fora de faixa', () => {
+describe('normalização de save adulterado', () => {
+  it('conserta setor e onda fora de faixa', () => {
     const s = migrate({ version: SAVE_VERSION, run: { sector: -50, wave: 9999 } })!;
     expect(s.run.sector).toBeGreaterThanOrEqual(1);
     expect(s.run.wave).toBeGreaterThanOrEqual(1);
     expect(s.run.wave).toBeLessThanOrEqual(6);
   });
 
-  it('normaliza nível de comando fracionário ou negativo', () => {
-    const s = migrate({ version: SAVE_VERSION, command: { level: -3.7, xp: 0, allocated: [], refunds: 0 } })!;
+  it('conserta nível de comando fracionário ou negativo', () => {
+    const s = migrate({
+      version: SAVE_VERSION,
+      command: { level: -3.7, xp: 0, allocated: [], refunds: 0 },
+    })!;
     expect(Number.isInteger(s.command.level)).toBe(true);
     expect(s.command.level).toBeGreaterThanOrEqual(1);
   });
 
-  it('descarta nós alocados que não são texto', () => {
+  it('descarta nós de matriz que não são texto', () => {
     const s = migrate({
       version: SAVE_VERSION,
       command: { level: 5, xp: 0, allocated: ['no_valido', 42, null, { a: 1 }], refunds: 0 },
     } as unknown)!;
     expect(s.command.allocated).toEqual(['no_valido']);
+  });
+
+  it('conserta casco ativo que não está na frota', () => {
+    const s = migrate({ version: SAVE_VERSION, hull: 'casco_que_nao_existe' })!;
+    expect(s.fleet).toContain(s.hull);
+    expect(s.fleet.length).toBeGreaterThan(0);
   });
 
   it('o recorde de setor nunca fica abaixo do setor atual', () => {
@@ -118,7 +99,10 @@ describe('resistência a save corrompido', () => {
   });
 });
 
-/** Exportar e importar tem que ser reversível, senão o backup do jogador mente. */
+/**
+ * Exportar e importar precisa ser reversível mesmo em desenvolvimento: é como
+ * um estado de teste é levado de uma máquina para outra.
+ */
 describe('exportar e importar', () => {
   it('a viagem de ida e volta preserva o progresso', () => {
     const original = createState(2024);
@@ -139,18 +123,6 @@ describe('exportar e importar', () => {
   it('importar texto inválido devolve null em vez de explodir', () => {
     expect(importSave('não é save')).toBeNull();
     expect(importSave('')).toBeNull();
+    expect(importSave('{"version":999}')).toBeNull();
   });
-});
-
-/**
- * PENDENTES DA FASE 1.
- *
- * Falham de propósito quando a etapa for marcada como pronta sem a migração
- * correspondente — que é exatamente o momento em que o progresso corre risco.
- */
-describe('pendentes da Fase 1', () => {
-  it.todo('save v3 → v4 preserva recursos, itens, cascos, Matriz e setor');
-  it.todo('remover Melhorias reembolsa o que foi gasto (§31)');
-  it.todo('nível de personagem inicial deriva da patente de comando (§17)');
-  it.todo('itens sem `element` viram distribuição 100% normal (§3)');
 });

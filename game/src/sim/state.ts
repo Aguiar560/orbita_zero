@@ -31,7 +31,6 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     // Casa com a grade 7×10 do painel de inventário.
     inventorySize: 70,
 
-    upgrades: {},
     shop: {},
     command: { level: 1, xp: 0, allocated: [], refunds: 3 },
 
@@ -83,7 +82,6 @@ export function migrate(raw: unknown): GameState | null {
     universe: { ...fresh.universe, ...data.universe },
     stats: { ...fresh.stats, ...data.stats },
     settings: { ...fresh.settings, ...data.settings },
-    upgrades: { ...data.upgrades },
     shop: { ...data.shop },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
@@ -109,6 +107,11 @@ export function migrate(raw: unknown): GameState | null {
     // Éter e os nós de Legado deixaram de existir; o campo some do save sozinho
     // porque `createState` não o declara mais.
   }
+
+  // O sistema de Melhorias saiu (§31). Saves gravados antes disso ainda trazem
+  // a chave, e o espalhamento de `...data` acima a repassaria adiante — ela
+  // seria regravada para sempre, confundindo quem for inspecionar um save.
+  delete (state as unknown as Record<string, unknown>).upgrades;
 
   // Consertos de integridade — um save adulterado não deve travar o boot.
   if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;

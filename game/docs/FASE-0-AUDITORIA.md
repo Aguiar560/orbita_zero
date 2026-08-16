@@ -591,7 +591,7 @@ de fechar. Nada de "implementar a Fase 1 inteira".
 | 1.7 | `data/balance/pesos.ts` — orçamento de poder | balance-designer |
 | 1.8 | Nível de personagem 1–300 | implementer |
 | 1.9 | Nível de nave 1–300 | implementer |
-| 1.10 | Save v4 + migração | save-migration-reviewer + implementer |
+| 1.10 | ~~Save v4 + migração~~ — **cancelado**: o save é descartável durante o desenvolvimento | — |
 
 ### Fase 2 — Combate
 
@@ -618,7 +618,6 @@ de fechar. Nada de "implementar a Fase 1 inteira".
 | 3.6 | Décima categoria (Upgrades Gerais) |
 | 3.7 | Filtros e ordenação do inventário (§28) |
 | 3.8 | Separar itens de recursos (§29) |
-| 3.9 | Remover Melhorias (§31), com reembolso |
 
 ### Fase 4 — Progressão
 
@@ -659,8 +658,9 @@ chefes. É aqui que o `content-data-agent` trabalha em volume.
   independentemente de quais afixos rolaram.
 - **1.8 + 1.9** — Nível 300 é atingível; a curva não tem degrau. Trocar de nave
   não transfere nível.
-- **1.10** — Um save v3 real carrega em v4 sem perda: recursos, itens, cascos,
-  Matriz e setor preservados. O reembolso das Melhorias credita o valor gasto.
+- **Save** — não há critério de compatibilidade entre versões nesta fase. O que
+  vale é: nenhuma entrada (`null`, texto, objeto vazio, save adulterado, save de
+  versão futura) trava o boot.
 
 ### Fase 2
 
@@ -703,14 +703,22 @@ chefes. É aqui que o `content-data-agent` trabalha em volume.
 
 ---
 
-## 8. O QUE PRECISA DE DECISÃO SUA ANTES DA FASE 1
+## 8. DECISÕES
 
-1. **`git init` agora?** Recomendo fortemente, antes de qualquer coisa.
-2. **Reembolso das Melhorias** — devolver sucata/núcleos, ou converter em pontos
-   de Matriz? A segunda opção preserva mais a sensação de investimento.
-3. **Recalibrar o setor do save existente** (§4.2, opção 1) ou aceitar o degrau?
-4. **Décima categoria "Upgrades Gerais"** — o §11 a lista como categoria de item
-   e o §31 manda remover o *menu* Melhorias. Confirmo que são coisas diferentes:
-   uma categoria de equipamento nova, não o sistema removido.
-5. **Anel elemental** — confirma a correção proposta em §3.4 (Normal ignora
-   resistência elemental) como identidade do dano Normal?
+### Já resolvidas
+
+| # | Decisão | Efeito |
+|---|---|---|
+| 1 | **`git init`** | Feito. Repositório na raiz `D:\bbb`, `.gitignore` de lista branca |
+| 2 | **Melhorias removidas por completo** | Sem reembolso: o save é descartável durante o desenvolvimento |
+| 3 | **Save não é restrição agora** | Migração entre versões sai dos testes; só fica a garantia de que save malformado não trava o boot |
+| 4 | **Nave evolui só por item, craft e Matriz** | Nenhum sistema paralelo de upgrade. A Loja fica, restrita a logística e rendimento |
+| 5 | **"Upgrades Gerais"** | Décima **categoria de item equipável**, não sistema de upgrade — porque é "via itens" |
+
+### Ainda em aberto
+
+| # | Decisão | Por que importa |
+|---|---|---|
+| A | **Anel elemental**: Normal ignora resistência elemental? | Sem isso o dano elemental domina o Normal e o §3 perde sentido (ver §3.4) |
+| B | **Valores do anel**: 1,25 / 0,80 da especificação? | O protótipo usa 1,5 / 0,7, cujo produto é 1,05 — há deriva de 5% num par de elementos |
+| C | **Power Ups (§30)** | Irmão das Melhorias, ainda de pé. Remoção toca código de combate, agendada para a Fase 2 |

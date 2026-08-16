@@ -446,7 +446,7 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .shop-progress { display: flex; align-items: center; gap: 8px; }
 .shop-progress .bar { flex: 1; }
 
-/* ── painel: melhorias ───────────────────────────────────────────────────── */
+/* ── contratos da loja (o painel de melhorias foi removido, §31) ─────────── */
 .upgrade-list { display: grid; gap: 7px; }
 .upgrade {
   display: flex; align-items: center; gap: 11px; padding: 9px 11px;

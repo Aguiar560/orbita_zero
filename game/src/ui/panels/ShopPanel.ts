@@ -35,7 +35,7 @@ export class ShopPanel implements Panel {
     return h('.panel-body', {},
       h('p.muted.hint', { text: 'Tudo aqui também se consegue jogando. A loja encurta caminho, não abre atalho exclusivo.' }),
 
-      h('h3.section', { text: 'Melhorias permanentes' }),
+      h('h3.section', { text: 'Contratos permanentes' }),
       h('.shop-list', {}, ...permanentes.map((item) => this.card(sim, item))),
 
       h('h3.section', { text: 'Compra avulsa' }),

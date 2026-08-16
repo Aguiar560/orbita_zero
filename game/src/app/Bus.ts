@@ -19,7 +19,6 @@ export interface GameEvents {
   'chest:opened': { tier: string; items: Item[] };
 
   'universe:ascended': { from: number; to: number; aether: number };
-  'upgrade:bought': { id: string; level: number };
 
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; icon?: string };
   'panel:open': { id: string };

@@ -1,6 +1,5 @@
 import { DANO_STAT, RES_STAT, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
-import { UPGRADE_BY_ID } from '@data/upgrades';
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
@@ -105,7 +104,7 @@ export function resistance(stats: Stats, element: ElementId): number {
 /**
  * Resolve os atributos efetivos do jogador.
  *
- * Ordem: base → casco → melhorias → equipamento → conjuntos → matriz → patente.
+ * Ordem: base → casco → equipamento → conjuntos → matriz → loja → patente.
  * A fórmula final é `(base + Σadd) × (1 + Σmul)`, deliberadamente aditiva no
  * multiplicador: fontes multiplicativas empilhadas explodem cedo demais e
  * transformam qualquer item novo em "ou é o melhor de todos, ou é lixo".
@@ -116,13 +115,6 @@ export function resolveStats(state: GameState): Stats {
 
   for (const [stat, value] of Object.entries(hull.stats)) {
     acc.add[stat as StatId] += value ?? 0;
-  }
-
-  for (const [id, level] of Object.entries(state.upgrades)) {
-    if (!level) continue;
-    const def = UPGRADE_BY_ID.get(id);
-    if (!def) continue;
-    acc[def.kind][def.stat] += def.per * level;
   }
 
   for (const item of Object.values(state.equipped)) {

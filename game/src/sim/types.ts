@@ -232,8 +232,6 @@ export interface GameState {
   inventory: Item[];
   inventorySize: number;
 
-  /** id da melhoria → nível comprado. */
-  upgrades: Record<string, number>;
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;
 

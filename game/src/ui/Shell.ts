@@ -12,7 +12,6 @@ import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
 import { InventoryPanel } from './panels/InventoryPanel';
 import { TreePanel } from './panels/TreePanel';
-import { UpgradesPanel } from './panels/UpgradesPanel';
 import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
 import { CodexPanel } from './panels/CodexPanel';
@@ -44,7 +43,6 @@ export class Shell {
     new GalaxyPanel(),
     new InventoryPanel(),
     new TreePanel(),
-    new UpgradesPanel(),
     new FleetPanel(),
     new ChestsPanel(),
     new ShopPanel(),

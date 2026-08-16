@@ -4,7 +4,6 @@ import { getBiome, unlockedBiomes } from '@data/biomes';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
 import { RESOURCE_IDS, type ElementId, type GameState, type Item, type ResourceId, type SlotId, type Stats } from './types';
-import { UPGRADE_BY_ID, upgradeBulkCost, upgradeCost } from '@data/upgrades';
 import { CARGO_PER_LEVEL, MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
@@ -610,44 +609,6 @@ export class Sim {
     const def = CHEST_BY_ID.get(tier);
     if (!def || def.buy <= 0 || !this.spend('cristal', def.buy)) return false;
     this.grantChest(tier, 1, 'loja');
-    return true;
-  }
-
-  // ── melhorias ─────────────────────────────────────────────────────────────
-
-  upgradeLevel(id: string): number {
-    return this.state.upgrades[id] ?? 0;
-  }
-
-  /** Quantos níveis dá para pagar agora, até `max`. */
-  affordableLevels(id: string, max = 100): number {
-    const def = UPGRADE_BY_ID.get(id);
-    if (!def) return 0;
-    const level = this.upgradeLevel(id);
-    let budget = this.state.resources[def.currency];
-    let n = 0;
-    while (n < max && level + n < def.maxLevel) {
-      const cost = upgradeCost(def, level + n);
-      if (cost > budget) break;
-      budget -= cost;
-      n++;
-    }
-    return n;
-  }
-
-  buyUpgrade(id: string, count = 1): boolean {
-    const def = UPGRADE_BY_ID.get(id);
-    if (!def) return false;
-    const level = this.upgradeLevel(id);
-    const n = Math.min(count, def.maxLevel - level);
-    if (n <= 0) return false;
-
-    const cost = upgradeBulkCost(def, level, n);
-    if (!this.spend(def.currency, cost)) return false;
-
-    this.state.upgrades[id] = level + n;
-    this.touch();
-    bus.emit('upgrade:bought', { id, level: level + n });
     return true;
   }
 

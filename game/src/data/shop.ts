@@ -3,7 +3,7 @@ import type { ResourceId, StatId } from '@sim/types';
 export type ShopKind =
   /** Compra repetível que some ao usar (baús). */
   | 'consumivel'
-  /** Melhoria permanente com níveis e custo crescente. */
+  /** Contrato permanente, com níveis e custo crescente. */
   | 'permanente';
 
 export interface ShopItem {
@@ -37,6 +37,12 @@ export interface ShopItem {
  *
  * Nada aqui é exclusivo — tudo pode ser obtido jogando. A loja compra TEMPO,
  * não poder que o jogo não dê de outra forma.
+ *
+ * É por isso que ela sobreviveu à remoção das Melhorias: nenhum contrato daqui
+ * toca dano, vida, escudo ou cadência. O poder da nave vem de item, craft e
+ * Matriz — a loja mexe em logística e rendimento. Se algum dia entrar aqui um
+ * contrato de atributo de combate, ele recria o sistema paralelo que foi
+ * removido e deve ser recusado.
  */
 export const SHOP: readonly ShopItem[] = [
   // ── logística ─────────────────────────────────────────────────────────────
