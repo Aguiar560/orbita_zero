@@ -528,7 +528,8 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 }
 .elem-chip-text { display: grid; min-width: 0; line-height: 1.15; }
 .elem-dica { font-size: 10.5px; padding: 3px 0; }
-.elem-res { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+/* Cinco colunas, não seis: dano normal não é resistível. */
+.elem-res { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
 .elem-pip {
   display: grid; place-items: center; gap: 0; padding: 3px 0;
   border: 1px solid; border-radius: 6px; background: rgba(0, 0, 0, 0.22);

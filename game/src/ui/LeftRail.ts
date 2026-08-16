@@ -3,7 +3,7 @@ import { fmt, duration, pct } from '@core/format';
 import { clamp, clamp01 } from '@core/math';
 import { ITEM_SETS, SLOTS, SLOT_BY_ID } from '@data/items';
 import { rarityInfo } from '@data/rarity';
-import { ELEMENTS, counterOf, getElement, matchup } from '@data/elements';
+import { ELEMENTOS_RESISTIVEIS, counterOf, getElement, matchup } from '@data/elements';
 import { dps, effectiveHp, setCounts } from '@sim/stats';
 import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Item, SlotId } from '@sim/types';
@@ -207,7 +207,7 @@ export class LeftRail {
         ? [h('.elem-dica', { style: { color: getElement(contra).color } },
             `Contra ${alvo.name.toLowerCase()}: leve ${getElement(contra).name.toLowerCase()}.`)]
         : []),
-      h('.elem-res', {}, ...ELEMENTS.map((e) => {
+      h('.elem-res', {}, ...ELEMENTOS_RESISTIVEIS.map((e) => {
         const v = sim.resistance(e.id);
         return h('.elem-pip', {
           title: `Resistência a ${e.name.toLowerCase()}: ${pct(v)}`,

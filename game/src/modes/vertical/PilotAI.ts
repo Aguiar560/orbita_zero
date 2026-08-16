@@ -220,14 +220,16 @@ export class PilotAI {
     // ── 4. coleta ─────────────────────────────────────────────────────────
     let gx = 0;
     let gy = 0;
-    const hurt = 1 - player.hp / Math.max(1, player.hpMax);
     pickups.each((p) => {
       const dx = p.x - player.x;
       const dy = p.y - player.y;
       const d = Math.hypot(dx, dy);
       if (d > 320 || d < 0.001) return;
-      // Reparo vale muito mais quando a nave está machucada.
-      const need = p.kind === 'reparo' ? 0.5 + hurt * 2.5 : 1;
+      // Cápsula de item pesa mais que a de moeda: o item é poder permanente e,
+      // se escapar pela base da tela, é perdido para sempre — moeda o jogador
+      // recupera farmando. Antes desta linha o desempate era o power-up de
+      // reparo, que deixou de existir (§30).
+      const need = p.kind === 'item' ? 2.2 : 1;
       const w = ((320 - d) / 320) * need;
       gx += (dx / d) * w;
       gy += (dy / d) * w;

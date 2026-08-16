@@ -1,5 +1,5 @@
 import { DANO_STAT, RES_STAT, type ElementId, type SlotId, type StatId } from '@sim/types';
-import { ELEMENTS } from './elements';
+import { ELEMENTOS_RESISTIVEIS, ELEMENTS } from './elements';
 
 // ── Slots ───────────────────────────────────────────────────────────────────
 
@@ -206,10 +206,12 @@ export interface AffixDef {
  * vez de escritos à mão — assim nome, cor e atributo nunca saem de sincronia
  * com `elements.ts`.
  */
-const ELEMENTAL_AFFIXES: readonly AffixDef[] = ELEMENTS.flatMap((e) => [
-  {
+const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
+  // Potência: existe para os seis, inclusive o normal — "+% de dano normal" é
+  // afixo legítimo, e é o que dá o que investir a quem escolheu o dano neutro.
+  ...ELEMENTS.map((e) => ({
     id: `pot_${e.id}`,
-    label: `Dano de ${e.name.toLowerCase()}`,
+    label: e.id === 'padrao' ? 'Dano normal' : `Dano de ${e.name.toLowerCase()}`,
     stat: DANO_STAT[e.id],
     kind: 'mul' as const,
     min: 0.07, max: 0.26,
@@ -217,8 +219,11 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = ELEMENTS.flatMap((e) => [
     weight: 70,
     minIlvl: 3,
     element: e.id,
-  },
-  {
+  })),
+  // Resistência: só para os cinco elementais. Dano normal vai direto no escudo,
+  // no casco e na vida — um afixo de "resistência a normal" prometeria uma
+  // redução que a fórmula de dano nunca aplicaria.
+  ...ELEMENTOS_RESISTIVEIS.map((e) => ({
     id: `res_${e.id}`,
     label: `Resistência a ${e.name.toLowerCase()}`,
     stat: RES_STAT[e.id],
@@ -228,8 +233,8 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = ELEMENTS.flatMap((e) => [
     weight: 65,
     minIlvl: 3,
     element: e.id,
-  },
-]);
+  })),
+];
 
 /**
  * `add` escala com o nível de item (é um valor bruto); `mul` não escala,

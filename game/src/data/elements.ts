@@ -1,4 +1,7 @@
-import { DANO_STAT, ELEMENT_IDS, RES_STAT, type ElementId, type StatId } from '@sim/types';
+import {
+  DANO_STAT, ELEMENT_IDS, RES_STAT,
+  type ElementId, type ElementoResistivel, type StatId,
+} from '@sim/types';
 
 export interface ElementInfo {
   id: ElementId;
@@ -105,10 +108,22 @@ export function matchupLabel(mul: number): string {
 // ── Atributos derivados ─────────────────────────────────────────────────────
 
 export const danoStat = (e: ElementId): StatId => DANO_STAT[e];
-export const resStat = (e: ElementId): StatId => RES_STAT[e];
+
+/** Atributo de resistência. `padrao` não tem: dano normal não é resistível. */
+export const resStat = (e: ElementoResistivel): StatId => RES_STAT[e];
 
 /** Todos os ids de elemento, para varreduras de UI. */
 export const ALL_ELEMENTS = ELEMENT_IDS;
+
+/**
+ * Elementos que aparecem no painel de resistências.
+ *
+ * Cinco, não seis: não existe resistir a dano normal, então uma barra de
+ * "resistência a padrão" seria uma linha que nunca sai de zero.
+ */
+export const ELEMENTOS_RESISTIVEIS = ELEMENTS.filter(
+  (e): e is ElementInfo & { id: ElementoResistivel } => e.id !== 'padrao',
+);
 
 /**
  * Teto de resistência.

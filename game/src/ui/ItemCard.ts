@@ -3,7 +3,7 @@ import { SET_BY_ID, SLOT_LABEL } from '@data/items';
 import { rarityInfo } from '@data/rarity';
 import { affixText, itemName, itemStats, salvageValue } from '@sim/loot';
 import { setCounts } from '@sim/stats';
-import { ELEMENTS, getElement } from '@data/elements';
+import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
 import { DANO_STAT, RES_STAT, STAT_IDS, type Item, type StatId, type Stats } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from './dom';
@@ -13,16 +13,16 @@ const COMPARE_ORDER: StatId[] = [
   'dano', 'cadencia', 'projeteis', 'perfuracao', 'critChance', 'critDano', 'explosao',
   'vida', 'escudo', 'regen', 'velocidade', 'iaSkill', 'sorte', 'sucataGanho', 'nucleoGanho', 'xpGanho',
   ...ELEMENTS.map((e) => DANO_STAT[e.id]),
-  ...ELEMENTS.map((e) => RES_STAT[e.id]),
+  ...ELEMENTOS_RESISTIVEIS.map((e) => RES_STAT[e.id]),
 ];
 
 const STAT_LABEL: Record<StatId, string> = {
   // Rótulos elementais nascem da tabela de elementos, para não duplicar nomes.
   // Vêm primeiro para as entradas escritas à mão abaixo terem a última palavra.
-  ...(Object.fromEntries(ELEMENTS.flatMap((e) => [
-    [DANO_STAT[e.id], `Dano ${e.name.toLowerCase()}`],
-    [RES_STAT[e.id], `Res. ${e.name.toLowerCase()}`],
-  ])) as Record<StatId, string>),
+  ...(Object.fromEntries([
+    ...ELEMENTS.map((e) => [DANO_STAT[e.id], `Dano ${e.name.toLowerCase()}`]),
+    ...ELEMENTOS_RESISTIVEIS.map((e) => [RES_STAT[e.id], `Res. ${e.name.toLowerCase()}`]),
+  ]) as Record<StatId, string>),
   dano: 'Dano', cadencia: 'Cadência', projeteis: 'Projéteis', perfuracao: 'Perfuração',
   critChance: 'Crítico', critDano: 'Dano crít.', explosao: 'Explosão', vida: 'Casco',
   escudo: 'Escudo', regen: 'Regeneração', velocidade: 'Manobra', iaSkill: 'Sincronia',
@@ -33,7 +33,7 @@ const STAT_LABEL: Record<StatId, string> = {
 const AS_PERCENT = new Set<StatId>([
   'critChance', 'critDano', 'sorte', 'iaSkill', 'sucataGanho', 'nucleoGanho', 'xpGanho',
   ...ELEMENTS.map((e) => DANO_STAT[e.id]),
-  ...ELEMENTS.map((e) => RES_STAT[e.id]),
+  ...ELEMENTOS_RESISTIVEIS.map((e) => RES_STAT[e.id]),
 ]);
 
 function showStat(stat: StatId, value: number): string {

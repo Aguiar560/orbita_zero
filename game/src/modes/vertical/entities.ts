@@ -98,7 +98,15 @@ export interface Enemy {
   facing: number;
 }
 
-export type PickupKind = 'reparo' | 'escudo' | 'dano' | 'recompensa' | 'item';
+/**
+ * O que uma cápsula pode conter.
+ *
+ * Os power-ups de reparo, escudo e dano saíram (§30): melhoria temporária e
+ * aleatória não pode ser fonte de poder. Sobraram os dois tipos que não são
+ * melhoria — moeda e item —, e é por isso que a máquina de coletáveis continua
+ * de pé apesar de o sistema de power-up ter sido removido.
+ */
+export type PickupKind = 'recompensa' | 'item';
 
 export interface Pickup {
   alive: boolean;
@@ -141,9 +149,6 @@ export interface Player {
   invuln: number;
   /** Inclinação visual, -1..1. */
   bank: number;
-  /** Buffs temporários de power-up. */
-  buffDamage: number;
-  buffRate: number;
   alive: boolean;
   deathTimer: number;
 }
@@ -184,7 +189,7 @@ export function createEnemyPool(capacity = 200): Pool<Enemy> {
 
 export function createPickupPool(capacity = 80): Pool<Pickup> {
   return new Pool<Pickup>(
-    () => ({ alive: false, kind: 'reparo', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
+    () => ({ alive: false, kind: 'recompensa', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
     (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.icon = ''; p.color = '#fff'; },
     capacity,
   );
@@ -192,26 +197,17 @@ export function createPickupPool(capacity = 80): Pool<Pickup> {
 
 /** Clipe animado de cada coletável, vindo da folha `Bonuses`. */
 export const PICKUP_CLIP: Record<PickupKind, string> = {
-  reparo: 'pick/reparo',
-  escudo: 'pick/escudo',
-  dano: 'pick/dano',
   recompensa: 'pick/bonus',
   item: '',
 };
 
 /** Fallback estático, caso a folha arcade não tenha sido gerada. */
 export const PICKUP_SPRITE: Record<PickupKind, string> = {
-  reparo: 'powerup/drop_rapid',
-  escudo: 'powerup/drop_shield',
-  dano: 'powerup/drop_damage',
   recompensa: 'powerup/drop_bounty',
   item: '',
 };
 
 export const PICKUP_COLOR: Record<PickupKind, string> = {
-  reparo: '#5ce08a',
-  escudo: '#4db8ff',
-  dano: '#ff7a4d',
   recompensa: '#ffb638',
   // Cápsulas de item usam a cor da raridade, guardada no próprio pickup.
   item: '#ffffff',

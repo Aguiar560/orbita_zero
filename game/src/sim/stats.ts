@@ -98,6 +98,8 @@ export function defenseElement(state: GameState): ElementId {
 
 /** Resistência efetiva contra um elemento, já com o teto aplicado. */
 export function resistance(stats: Stats, element: ElementId): number {
+  // Dano normal não é resistível: ele vai direto no escudo, no casco e na vida.
+  if (element === 'padrao') return 0;
   return Math.min(0.75, stats[RES_STAT[element]]);
 }
 

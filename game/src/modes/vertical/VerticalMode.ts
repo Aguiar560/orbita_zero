@@ -121,7 +121,7 @@ export class VerticalMode {
     x: VIEW.w / 2, y: VIEW.h * 0.75, vx: 0, vy: 0,
     hp: 1, hpMax: 1, shield: 0, shieldMax: 0, shieldLock: 0,
     radius: 15, fireTimer: 0, invuln: 1.2, bank: 0,
-    buffDamage: 0, buffRate: 0, alive: true, deathTimer: 0,
+    alive: true, deathTimer: 0,
   };
 
   constructor(
@@ -333,8 +333,6 @@ export class VerticalMode {
 
     p.invuln = Math.max(0, p.invuln - dt);
     p.shieldLock = Math.max(0, p.shieldLock - dt);
-    p.buffDamage = Math.max(0, p.buffDamage - dt);
-    p.buffRate = Math.max(0, p.buffRate - dt);
 
     if (p.shieldLock <= 0 && p.shield < p.shieldMax) {
       p.shield = Math.min(p.shieldMax, p.shield + stats.regen * dt);
@@ -375,7 +373,7 @@ export class VerticalMode {
 
     p.fireTimer -= dt;
     if (cmd.fire && p.fireTimer <= 0) {
-      const rate = stats.cadencia * (p.buffRate > 0 ? 1.7 : 1);
+      const rate = stats.cadencia;
       p.fireTimer = 1 / Math.max(0.2, rate);
       this.firePlayer();
     }
@@ -386,7 +384,6 @@ export class VerticalMode {
     const stats = this.sim.stats;
     const style = this.sim.hull.shot;
     const count = stats.projeteis;
-    const damageMul = p.buffDamage > 0 ? 1.6 : 1;
 
     // A arte do tiro segue o ELEMENTO quando ele não é o nativo do casco: se o
     // jogador equipou um canhão de gelo numa nave de fogo, o que sai da nave
@@ -413,7 +410,7 @@ export class VerticalMode {
       b.vx = Math.cos(angle) * style.speed;
       b.vy = Math.sin(angle) * style.speed;
       b.radius = 7;
-      b.damage = stats.dano * damageMul * (crit ? 1 + stats.critDano : 1);
+      b.damage = stats.dano * (crit ? 1 + stats.critDano : 1);
       b.crit = crit;
       b.element = element;
       b.sprite = sprite;
@@ -773,9 +770,11 @@ export class VerticalMode {
     // O pool já foi debitado a cada golpe (`applyDamage`); aqui só a recompensa.
     this.sim.rewardKill(e.boss ? 1 : Math.max(e.share, 0.02));
 
-    // Drops visuais: uma fração dos abates deixa um power-up para a IA coletar.
+    // Cápsula de moeda: uma fração dos abates deixa recompensa para a IA
+    // coletar. Não é melhoria — os power-ups de reparo, escudo e dano saíram
+    // com o §30, e o que restou aqui é economia, não poder.
     if (e.boss || this.rng.chance(0.07 + this.sim.stats.sorte * 0.05)) {
-      this.spawnPickup(e.x, e.y, e.boss ? 'recompensa' : this.rng.pick(['reparo', 'escudo', 'dano', 'recompensa'] as PickupKind[]));
+      this.spawnPickup(e.x, e.y, 'recompensa');
     }
 
     // Loot físico: o item é rolado agora e vira uma cápsula na tela. Só entra
@@ -959,21 +958,9 @@ export class VerticalMode {
     const p = this.player;
     const stats = this.sim.stats;
 
-    switch (kind) {
-      case 'reparo':
-        p.hp = Math.min(p.hpMax, p.hp + p.hpMax * 0.22);
-        break;
-      case 'escudo':
-        p.shield = Math.min(p.shieldMax, p.shield + p.shieldMax * 0.4);
-        p.shieldLock = 0;
-        break;
-      case 'dano':
-        p.buffDamage = 8;
-        break;
-      case 'recompensa':
-        this.sim.grant('nucleo', this.sim.encounter.bounty * 0.25 * (1 + stats.nucleoGanho));
-        this.sim.grant('sucata', this.sim.encounter.bounty * 1.2 * (1 + stats.sucataGanho));
-        break;
+    if (kind === 'recompensa') {
+      this.sim.grant('nucleo', this.sim.encounter.bounty * 0.25 * (1 + stats.nucleoGanho));
+      this.sim.grant('sucata', this.sim.encounter.bounty * 1.2 * (1 + stats.sucataGanho));
     }
     this.particles.shockwave(p.x, p.y, 36, PICKUP_COLOR[kind], 0.3);
   }

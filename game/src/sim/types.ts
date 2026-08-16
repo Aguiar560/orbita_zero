@@ -54,7 +54,10 @@ export type StatId =
   // elemento. Vale a pena investir no elemento da arma que se usa.
   | 'danoPadrao' | 'danoFogo' | 'danoRaio' | 'danoQuimico' | 'danoCosmico' | 'danoGelo'
   // Resistência elemental: fração descontada do dano RECEBIDO daquele elemento.
-  | 'resPadrao' | 'resFogo' | 'resRaio' | 'resQuimico' | 'resCosmico' | 'resGelo';
+  // Não existe resistência a dano normal: ele vai direto no escudo, no casco e
+  // na vida. É essa imunidade a mitigação que dá identidade ao dano neutro —
+  // ele nunca ganha vantagem, mas também nunca é reduzido.
+  | 'resFogo' | 'resRaio' | 'resQuimico' | 'resCosmico' | 'resGelo';
 
 /** Atributo de potência de cada elemento. */
 export const DANO_STAT: Record<ElementId, StatId> = {
@@ -62,9 +65,16 @@ export const DANO_STAT: Record<ElementId, StatId> = {
   quimico: 'danoQuimico', cosmico: 'danoCosmico', gelo: 'danoGelo',
 };
 
+/** Elementos que aceitam resistência — `padrao` fica de fora de propósito. */
+export type ElementoResistivel = Exclude<ElementId, 'padrao'>;
+
+export const RESISTIVEIS: readonly ElementoResistivel[] = ELEMENT_IDS.filter(
+  (e): e is ElementoResistivel => e !== 'padrao',
+);
+
 /** Atributo de resistência a cada elemento. */
-export const RES_STAT: Record<ElementId, StatId> = {
-  padrao: 'resPadrao', fogo: 'resFogo', raio: 'resRaio',
+export const RES_STAT: Record<ElementoResistivel, StatId> = {
+  fogo: 'resFogo', raio: 'resRaio',
   quimico: 'resQuimico', cosmico: 'resCosmico', gelo: 'resGelo',
 };
 
@@ -72,7 +82,7 @@ export const STAT_IDS: readonly StatId[] = [
   'dano', 'cadencia', 'projeteis', 'perfuracao', 'critChance', 'critDano', 'explosao',
   'vida', 'escudo', 'regen', 'velocidade', 'iaSkill', 'sorte', 'sucataGanho', 'nucleoGanho', 'xpGanho',
   ...ELEMENT_IDS.map((e) => DANO_STAT[e]),
-  ...ELEMENT_IDS.map((e) => RES_STAT[e]),
+  ...RESISTIVEIS.map((e) => RES_STAT[e]),
 ];
 
 export type StatMap = Partial<Record<StatId, number>>;

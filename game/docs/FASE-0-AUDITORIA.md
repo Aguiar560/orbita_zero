@@ -604,7 +604,6 @@ de fechar. Nada de "implementar a Fase 1 inteira".
 | 2.5 | Resistência e penetração elemental |
 | 2.6 | Pipeline de `tiros e explosoes.png` |
 | 2.7 | Projéteis, impactos e explosões por elemento |
-| 2.8 | Remover Power Ups (§30) |
 
 ### Fase 3 — Itemização
 
@@ -714,11 +713,12 @@ chefes. É aqui que o `content-data-agent` trabalha em volume.
 | 3 | **Save não é restrição agora** | Migração entre versões sai dos testes; só fica a garantia de que save malformado não trava o boot |
 | 4 | **Nave evolui só por item, craft e Matriz** | Nenhum sistema paralelo de upgrade. A Loja fica, restrita a logística e rendimento |
 | 5 | **"Upgrades Gerais"** | Décima **categoria de item equipável**, não sistema de upgrade — porque é "via itens" |
+| 6 | **Power Ups removidos (§30)** | Reparo, escudo e dano saíram. A cápsula de moeda ficou: é economia, não melhoria |
+| 7 | **Dano normal não é resistível** | Vai direto no escudo, casco e vida. `resPadrao` deixou de existir; sobraram cinco resistências |
+| 8 | **Loja será reformulada** | Não serve de base para nenhuma decisão de design até lá |
 
 ### Ainda em aberto
 
-| # | Decisão | Por que importa |
+| # | Decisão | Situação |
 |---|---|---|
-| A | **Anel elemental**: Normal ignora resistência elemental? | Sem isso o dano elemental domina o Normal e o §3 perde sentido (ver §3.4) |
-| B | **Valores do anel**: 1,25 / 0,80 da especificação? | O protótipo usa 1,5 / 0,7, cujo produto é 1,05 — há deriva de 5% num par de elementos |
-| C | **Power Ups (§30)** | Irmão das Melhorias, ainda de pé. Remoção toca código de combate, agendada para a Fase 2 |
+| A | **Valores do anel**: 1,25 / 0,80 da especificação? | **Adiada** — mantidos 1,5 / 0,7 por enquanto, com a deriva de 5% registrada em teste de linha de base |

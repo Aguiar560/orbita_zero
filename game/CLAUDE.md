@@ -67,6 +67,12 @@ Regras de camada, em ordem de importância:
   `save-migration-reviewer`, hoje dormente, entra em cena.
 - **Dano normal e dano elemental são componentes separados.** `Dano total =
   normal + Σ elementais`. Não transformar todo o dano da nave em elemental.
+- **Dano normal não é resistível.** Vai direto no escudo, no casco e na vida:
+  nenhuma resistência o reduz, e não existe atributo de "resistência a normal".
+  É essa imunidade a mitigação que dá identidade ao dano neutro — ele nunca
+  ganha vantagem, mas também nunca é reduzido. Sem isso o elemental dominaria
+  sempre, porque quem escolhe o elemento por encontro leva 1,25 fixo em vez da
+  média de 1,01.
 - **Limites de sanidade em toda fórmula**: crítico, cadência, cooldown,
   projéteis, regeneração, resistência e multiplicadores precisam de teto. Nada
   de divisão por zero, cooldown negativo, invulnerabilidade permanente ou
@@ -74,11 +80,11 @@ Regras de camada, em ordem de importância:
 - **Nenhuma nave e nenhum atributo pode dominar todo o conteúdo.** Progressão é
   horizontal tanto quanto vertical.
 - **A nave evolui por item, craft e Matriz. Só.** Não existe sistema paralelo de
-  upgrade — o menu Melhorias foi removido justamente por ser um. A Loja
-  sobrevive porque vende logística e rendimento (carga, ímã, reparo,
-  multiplicador de ganho, baús), nunca atributo de combate. Contrato de dano,
-  vida, escudo ou cadência na loja recria o sistema removido e deve ser
-  recusado.
+  upgrade. Já foram removidos por serem um: o menu **Melhorias** (§31) e os
+  **Power Ups** de batalha (§30). Qualquer proposta de nova fonte de poder fora
+  dessas três deve ser recusada. A **Loja** ainda existe mas será **totalmente
+  reformulada** — não a use como base para nada nem trate seus contratos atuais
+  como decisão de design.
 
 ## Política de modelos (§49 da especificação)
 

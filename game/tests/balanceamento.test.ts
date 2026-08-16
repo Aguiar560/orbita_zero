@@ -5,7 +5,7 @@ import { ELEMENTS, matchup } from '@data/elements';
 import { AFFIXES } from '@data/items';
 import { HULLS } from '@data/hulls';
 import { rollItem, rollRarity } from '@sim/loot';
-import { resolveStats } from '@sim/stats';
+import { resistance, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import { SLOT_IDS, type GameState } from '@sim/types';
 import { medirSetor } from '../tools/lib/balanco';
@@ -165,6 +165,29 @@ describe('matriz elemental (§5)', () => {
       expect(matchup('padrao', e.id)).toBe(1);
       expect(matchup(e.id, 'padrao')).toBe(1);
     }
+  });
+
+  /**
+   * A identidade do dano normal.
+   *
+   * Ele nunca ganha vantagem, mas em troca vai direto no escudo, no casco e na
+   * vida: nenhuma resistência o reduz. Sem isso o elemental dominaria sempre,
+   * porque quem escolhe o elemento por encontro leva 1,25 fixo em vez da média.
+   */
+  it('resistência a dano normal é sempre zero, com qualquer equipamento', () => {
+    const st = createState(31337);
+    const rng = new Rng(31337);
+    for (const slot of SLOT_IDS) st.equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
+    expect(resistance(resolveStats(st), 'padrao')).toBe(0);
+  });
+
+  it('nenhum afixo concede resistência a dano normal', () => {
+    expect(AFFIXES.filter((a) => a.id === 'res_padrao')).toHaveLength(0);
+    expect(AFFIXES.filter((a) => a.stat === ('resPadrao' as never))).toHaveLength(0);
+  });
+
+  it('existem exatamente cinco resistências — uma por elemento do anel', () => {
+    expect(AFFIXES.filter((a) => a.id.startsWith('res_'))).toHaveLength(5);
   });
 
   /**

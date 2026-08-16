@@ -46,15 +46,15 @@ export function registerClips(): void {
   // Cada casco jogável referencia seu clipe de escape pelo prefixo declarado.
   for (const hull of HULLS) defineClip(`hull/${hull.id}/exhaust`, hull.barExhaust, 16, true);
 
-  // Cintilação de power-up: alterna ícone e brilho.
-  defineClipFrames('powerup/rapid', ['powerup/drop_rapid'], 1, true);
-  defineClipFrames('powerup/shield', ['powerup/drop_shield'], 1, true);
-  defineClipFrames('powerup/damage', ['powerup/drop_damage'], 1, true);
+  // Cintilação da cápsula de moeda. Os clipes de reparo, escudo e cadência
+  // saíram junto com o sistema de power-up (§30) — a arte continua no atlas,
+  // sem clipe declarado, porque quem manda no que existe é a tabela e não a
+  // folha de sprites.
   defineClipFrames('powerup/bounty', ['powerup/drop_bounty'], 1, true);
 
   // ── folhas arcade ────────────────────────────────────────────────────────
   // Coletáveis com giro próprio: cinco quadros cada.
-  for (const kind of ['reparo', 'escudo', 'dano', 'cadencia', 'bonus']) {
+  for (const kind of ['bonus']) {
     defineClip(`pick/${kind}`, `pick/${kind}_`, 10, true);
   }
 
