@@ -584,66 +584,9 @@ Antes de qualquer mudança de save: **`git init` e commit do estado atual**. É 
 
 ## 5. ROADMAP
 
-Cada etapa é pequena, tem critério de aceite e passa pelo `code-reviewer` antes
-de fechar. Nada de "implementar a Fase 1 inteira".
-
-### Etapa 0 — Rede de segurança *(bloqueia todas as outras)*
-
-| # | Tarefa | Agente |
-|---|---|---|
-| 0.1 | `git init`, `.gitignore`, commit do estado atual | implementer |
-| 0.2 | Test runner (`vitest`) + primeiro teste de fumaça | implementer |
-| 0.3 | Arnês de simulação: rodar `sim/` puro em Node, sem navegador | implementer |
-
-### Fase 1 — Fundação de dados
-
-| # | Tarefa | Agente |
-|---|---|---|
-| 1.1 | ✅ `data/balance/limites.ts` — tetos do §40 aplicados em `resolveStats` | feito |
-| 1.2 | ✅ `data/balance/curvas.ts` — 7 constantes centralizadas, curva idêntica | feito |
-| 1.3 | ✅ Inverter a dependência: `hpDaOnda = poderEsperado × tempoAlvo` | feito |
-| 1.4 | ✅ Calibrar por simulação, com corrida do zero como prova | feito |
-| 1.5 | `data/balance/raridades.ts` — 7 raridades | implementer |
-| 1.6 | `data/balance/tiers.ts` — T1–T10 | balance-designer + implementer |
-| 1.7 | `data/balance/pesos.ts` — orçamento de poder | balance-designer |
-| 1.8 | Nível de personagem 1–300 | implementer |
-| 1.9 | Nível de nave 1–300 | implementer |
-| 1.10 | ~~Save v4 + migração~~ — **cancelado**: o save é descartável durante o desenvolvimento | — |
-
-### Fase 2 — Combate
-
-| # | Tarefa |
-|---|---|
-| 2.1 | `DamagePacket` — separar normal de elemental (§3) |
-| 2.2 | Refatorar o protótipo elemental para o novo modelo |
-| 2.3 | Matriz elemental gerada a partir do anel, configurável |
-| 2.4 | Crítico normal × crítico elemental separados |
-| 2.5 | Resistência e penetração elemental |
-| 2.6 | Pipeline de `tiros e explosoes.png` |
-| 2.7 | Projéteis, impactos e explosões por elemento |
-
-### Fase 3 — Itemização
-
-| # | Tarefa |
-|---|---|
-| 3.1 | Pipeline de `novos itens.png` — 10 categorias × 7 raridades |
-| 3.2 | `AffixDef` com tier, pesos e restrições |
-| 3.3 | Gerador de item com orçamento de poder |
-| 3.4 | `+N projéteis` com as novas restrições |
-| 3.5 | Tabelas de drop por galáxia / inimigo / chefe / exclusivo |
-| 3.6 | Décima categoria (Upgrades Gerais) |
-| 3.7 | Filtros e ordenação do inventário (§28) |
-| 3.8 | Separar itens de recursos (§29) |
-
-### Fase 4 — Progressão
-
-Integração da Matriz com o nível de personagem, curvas de XP calibradas,
-requisitos de nível, balanceamento das galáxias contra as metas do §2.
-
-### Fase 5 — Conteúdo
-
-Naves, inimigos, chefes, recursos por galáxia, crafting, missões, modo de
-chefes. É aqui que o `content-data-agent` trabalha em volume.
+Mudou-se para [`ROADMAP.md`](ROADMAP.md), que é documento **vivo** e mostra o
+estado atual de cada etapa. Este arquivo aqui é o diagnóstico de um momento — o
+ponto de partida — e não se reescreve.
 
 ---
 

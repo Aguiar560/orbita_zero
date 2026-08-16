@@ -3,9 +3,18 @@
 Idle/progression shooter espacial. Camada vertical de combate pilotada por IA,
 progressão de longo prazo por itens, naves, Matriz e elementos.
 
-A fonte de verdade de design é [`docs/ESPECIFICACAO-MESTRE.md`](docs/ESPECIFICACAO-MESTRE.md).
+| Documento | O quê |
+|---|---|
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | **Onde estamos e o que vem agora.** Vivo, atualizado a cada etapa |
+| [`docs/ESPECIFICACAO-MESTRE.md`](docs/ESPECIFICACAO-MESTRE.md) | Fonte de verdade de design |
+| [`docs/FASE-0-AUDITORIA.md`](docs/FASE-0-AUDITORIA.md) | Diagnóstico do ponto de partida. Não se reescreve |
+| [`docs/HANDOFF-FASE-0.md`](docs/HANDOFF-FASE-0.md) | Inventário do repositório quando a especificação chegou |
+
 Quando este arquivo e a especificação divergirem, a especificação vence — e a
 divergência deve ser corrigida aqui.
+
+**Ao concluir uma etapa, atualize o `ROADMAP.md`.** É o único documento que
+precisa acompanhar o código; os outros são registros de momento.
 
 ## Como rodar
 
