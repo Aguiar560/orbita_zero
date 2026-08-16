@@ -21,35 +21,179 @@
 /** Ondas por setor antes do encontro final. */
 export const WAVES_PER_SECTOR = 5;
 
-// ── dificuldade ─────────────────────────────────────────────────────────────
-
-/**
- * Vida do encontro por setor.
- *
- * 1,235 por setor dobra a cada ~3,3 setores. É o expoente mais agressivo do
- * jogo, e é ele que descola da curva do jogador (medida em 1,096).
- */
-export const HP_BASE = 34;
-export const HP_RAZAO = 1.235;
-
-/**
- * Dano de um golpe inimigo.
- *
- * Cresce mais devagar que a vida de propósito: a ameaça precisa acompanhar o
- * casco sem transformar cada projétil perdido em morte instantânea, já que quem
- * pilota é a IA e não o jogador. A base 9 é alta o bastante para o piloto cru
- * sentir cada tiro que não desviou — com 3,4 o começo era inofensivo e a curva
- * de pilotagem não tinha como se provar.
- */
-export const DANO_BASE = 9;
-export const DANO_RAZAO = 1.1;
-
-/** Recompensa base do setor, antes dos multiplicadores do jogador. */
-export const RECOMPENSA_BASE = 7;
-export const RECOMPENSA_RAZAO = 1.19;
-
 /** Nível de item que cai no setor. */
 export const ILVL_POR_SETOR = 0.9;
+
+// ── poder esperado do jogador (MEDIDO) ──────────────────────────────────────
+
+/**
+ * A curva de poder do jogador não é exponencial — é polinomial no nível de item.
+ *
+ * O afixo aditivo escala com `1 + ilvl × 0,32` e o nível de item cresce
+ * linearmente com o setor, então o poder cresce como POLINÔMIO em ilvl. A curva
+ * de dificuldade antiga era exponencial pura (1,235 por setor), e uma
+ * exponencial sempre ultrapassa um polinômio: não existia constante capaz de
+ * consertar aquilo, só mudar a forma.
+ *
+ * Estes números saíram de medição, não de palpite. `npm run simular -- ajustar`
+ * monta um jogador em 34 setores de 1 a 300, tira a mediana de sete sementes
+ * por setor e ajusta a lei de potência por mínimos quadrados em log-log.
+ *
+ *   DPS      = 0,329 × (ilvl + 3,5) ^ 3,7043    R² 0,9937
+ *   vida ef. = 114,7 × (ilvl + 2)   ^ 1,1011    R² 0,9941
+ *
+ * O deslocamento existe por causa do começo: no nível de item 1 o poder vem
+ * quase todo do CASCO, e uma lei de potência pura previa 14 de dano onde a
+ * medição dava 296.
+ *
+ * A medição modela o grau de OTIMIZAÇÃO subindo com o setor — poucas peças por
+ * slot no começo, muitas no fim. Medir tudo com o jogador otimizado fazia o
+ * setor 1 parecer trivial (2,3 s por onda) quando na prática é o trecho mais
+ * apertado do jogo.
+ *
+ * ► Repita a medição sempre que mexer em afixos, cascos ou Matriz. Estes
+ *   expoentes DESCREVEM o jogo; se o jogo mudar e eles não, o ritmo desanda em
+ *   silêncio.
+ */
+export const PODER_A = 0.368;
+export const PODER_P = 3.6954;
+
+export const DEFESA_A = 91.591;
+export const DEFESA_P = 1.1552;
+
+export const PODER_C = 2;
+export const DEFESA_C = 0.5;
+
+/**
+ * O primeiro trecho do jogo tem curva própria, e isso não é fudge — é o
+ * reconhecimento de que uma lei de potência só não descreve as duas pontas.
+ *
+ * Medido: no setor 5 o ajuste prevê 276 de dano por segundo e o jogador tem 95;
+ * no setor 15 prevê 8,2 mil e ele tem 10,1 mil. O erro é SISTEMÁTICO, não
+ * ruído — o começo é dominado por QUANTOS slots estão preenchidos, e o resto
+ * pela qualidade do que está neles. São dois regimes.
+ *
+ * Ignorar isso custou caro na primeira tentativa: o jogo travava no setor 5 com
+ * 150 mortes e o jogador nunca coletava item suficiente para sair.
+ *
+ * `INICIO_BASE` é o dano por segundo da nave nua, medido. `INICIO_RAZAO` é o
+ * crescimento por setor observado entre os setores 1 e 15. A lei de potência
+ * assume o comando por volta do setor 19, quando passa a ser a menor das duas.
+ */
+export const INICIO_BASE = 24;
+export const INICIO_RAZAO = 1.42;
+export const INICIO_DEFESA_BASE = 227;
+export const INICIO_DEFESA_RAZAO = 1.1;
+
+/**
+ * A assimetria que a Fase 3 precisa atacar: **3,70 contra 1,10**.
+ *
+ * A ofensiva do jogador cresce três vezes e meia mais rápido que a defensiva,
+ * porque os afixos ofensivos são multiplicativos e os defensivos são aditivos.
+ * As curvas abaixo acomodam essa assimetria; corrigi-la é trabalho de orçamento
+ * de item (§7), não de curva de dificuldade.
+ */
+export const poderEsperado = (setor: number): number => Math.min(
+  PODER_A * Math.pow(curvaIlvl(setor) + PODER_C, PODER_P),
+  INICIO_BASE * Math.pow(INICIO_RAZAO, setor - 1),
+);
+
+export const defesaEsperada = (setor: number): number => Math.min(
+  DEFESA_A * Math.pow(curvaIlvl(setor) + DEFESA_C, DEFESA_P),
+  INICIO_DEFESA_BASE * Math.pow(INICIO_DEFESA_RAZAO, setor - 1),
+);
+
+// ── ritmo: o jogo escrito em segundos e em golpes ───────────────────────────
+
+/**
+ * Quantos segundos uma onda comum DEVE durar.
+ *
+ * Este é o botão do ritmo de combate, e é deliberadamente uma grandeza que se
+ * pode discutir sem abrir o código: "a onda do setor 200 leva 40 segundos" é
+ * uma frase de design, "a vida vale 34 × 1,235^199" não é.
+ *
+ * Sobe devagar porque o encontro precisa ganhar peso conforme a nave fica
+ * poderosa — mas nunca vira espera: 45 s é o teto assintótico.
+ */
+/**
+ * 4 e não 8: o ajuste de poder foi medido num jogador que JÁ TEM equipamento, e
+ * no setor 1 ninguém tem. A nave crua faz 24 de dano por segundo contra os 86
+ * que a curva pressupõe — 28% do esperado —, então uma onda dimensionada para
+ * 8 s levava 30 s e o piloto morria antes de fechá-la. Medido: 25 minutos preso
+ * na onda 1 com 16 mortes.
+ */
+export const TEMPO_INICIO = 4;
+/**
+ * 34 e não 45: o ajuste de poder tem resíduo de ±35%, então o tempo real de uma
+ * onda oscila nessa faixa em torno do alvo. Com teto em 45 os setores do fim
+ * batiam em 60–70 s. O resíduo vem da dispersão de poder entre itens da mesma
+ * raridade — medida em 135× no §2.4 —, que é problema de orçamento de item e
+ * cabe à Fase 3. Quando ela apertar essa dispersão, dá para subir este teto.
+ */
+export const TEMPO_FIM = 34;
+export const TEMPO_K = 90;
+
+export const tempoAlvo = (setor: number): number =>
+  TEMPO_INICIO + (TEMPO_FIM - TEMPO_INICIO) * (1 - Math.exp(-setor / TEMPO_K));
+
+/**
+ * Quantos golpes o jogador DEVE aguentar.
+ *
+ * Cai ao longo do jogo: no começo o piloto de IA é cru de propósito e precisa
+ * de margem para aprender; no fim a tensão vem de o erro custar caro. Dez
+ * golpes é o piso — abaixo disso um único descuido mata e a camada idle vira
+ * loteria.
+ */
+/**
+ * 40 no começo pelo mesmo motivo do tempo: a nave crua tem 227 de vida efetiva
+ * contra os 381 que a curva pressupõe. Além disso o piloto de IA nasce
+ * incompetente de propósito (§30 da auditoria), e precisa de margem para
+ * aprender. `K` menor faz essa generosidade se dissolver rápido — no setor 60
+ * já sobrou pouca.
+ */
+export const GOLPES_INICIO = 40;
+export const GOLPES_FIM = 10;
+export const GOLPES_K = 60;
+
+export const golpesAlvo = (setor: number): number =>
+  GOLPES_FIM + (GOLPES_INICIO - GOLPES_FIM) * Math.exp(-setor / GOLPES_K);
+
+/**
+ * Fração da vida do encontro que vira recompensa.
+ *
+ * Amarrada à vida e não a uma exponencial própria: com `7 × 1,19^setor` a
+ * recompensa chegava a 2,7 × 10²³ no setor 300 enquanto a vida ficava em
+ * 6,9 × 10⁹ — o jogador afogado em moeda sem nada proporcional para comprar.
+ * O valor preserva os 7 de recompensa do setor 1.
+ */
+export const RECOMPENSA_FRACAO = 0.0033;
+
+/**
+ * Encontros especiais, medidos em ONDAS COMUNS.
+ *
+ * Antes o chefe multiplicava a vida base por 26 a 260, números que faziam
+ * sentido quando a base era minúscula perto do poder do jogador. Com a curva
+ * amarrada ao tempo-alvo, quem escala com o setor é a própria base — e aquele
+ * multiplicador passaria a somar duas escaladas, levando o chefe do setor 100 a
+ * doze minutos de tiro.
+ *
+ * Aqui o número diz o que se quer dizer: um chefe vale três ondas e meia, uma
+ * elite vale duas e pouco. `BossDef.hp` continua existindo para diferenciar um
+ * chefe do outro, mas numa faixa estreita de identidade (1,0 a 2,0).
+ */
+export const CHEFE_ONDAS = 3.5;
+export const ELITE_ONDAS = 2.2;
+
+/**
+ * Quanto um chefe fica mais duro a cada volta na lista.
+ *
+ * Era 2,6, também herdado de quando a base não escalava direito. Com a curva
+ * corrigida, 1,25 basta para a repetição pesar sem virar muro.
+ */
+export const CHEFE_CICLO = 1.25;
+
+/** Recompensa extra do chefe, sobre a parte proporcional à vida dele. */
+export const CHEFE_BONUS_RECOMPENSA = 1.5;
 
 // ── progressão do jogador ───────────────────────────────────────────────────
 
@@ -93,12 +237,22 @@ export const DROP_TETO = 0.75;
 const geometrica = (base: number, razao: number, n: number): number =>
   base * Math.pow(razao, n - 1);
 
-export const curvaHp = (setor: number): number => geometrica(HP_BASE, HP_RAZAO, setor);
-export const curvaDano = (setor: number): number => geometrica(DANO_BASE, DANO_RAZAO, setor);
-export const curvaRecompensa = (setor: number): number =>
-  geometrica(RECOMPENSA_BASE, RECOMPENSA_RAZAO, setor);
 export const curvaIlvl = (setor: number): number =>
   Math.max(1, Math.floor(setor * ILVL_POR_SETOR));
+
+/**
+ * A inversão que a FASE 0 propôs.
+ *
+ * A dificuldade deixou de ser um número absoluto e passou a ser DERIVADA do
+ * poder esperado e do ritmo desejado. O efeito é que a magnitude dos números
+ * vira consequência auditável em vez de acidente: antes ninguém havia calculado
+ * a razão entre as duas curvas, e ela valia 1,129 por setor — 131 mil vezes
+ * acumuladas em 99 setores, o que tornava o jogo trivial até o setor 40 e
+ * impossível depois do 80.
+ */
+export const curvaHp = (setor: number): number => poderEsperado(setor) * tempoAlvo(setor);
+export const curvaDano = (setor: number): number => defesaEsperada(setor) / golpesAlvo(setor);
+export const curvaRecompensa = (setor: number): number => RECOMPENSA_FRACAO * curvaHp(setor);
 
 export const curvaXpComando = (nivel: number): number =>
   Math.ceil(geometrica(COMANDO_XP_BASE, COMANDO_XP_RAZAO, nivel));

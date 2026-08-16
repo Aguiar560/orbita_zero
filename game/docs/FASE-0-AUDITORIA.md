@@ -82,6 +82,23 @@ sem navegador.
 
 ## 2. PROBLEMAS ENCONTRADOS
 
+> **Estado em 16/08/2026.** As seções 2.1, 2.2 e 2.8 foram RESOLVIDAS pelas
+> etapas 1.1 a 1.4. A divergência ofensiva caiu de 1,129 para 1,010 por setor
+> (131 500× → 23× acumulados), a vida do setor 300 saiu de 8,7 × 10²⁸ para
+> 1,2 × 10¹⁰, e as constantes estão em `data/balance/`. O diagnóstico abaixo
+> fica como registro do ponto de partida.
+>
+> Duas descobertas da calibragem não estavam previstas aqui e viraram trabalho
+> para a Fase 3:
+>
+> - **A ofensiva do jogador cresce com expoente 3,70 e a defensiva com 1,10.**
+>   A itemização é torta na origem: afixos ofensivos são multiplicativos e
+>   defensivos são aditivos.
+> - **O poder tem dois regimes.** Até cerca do setor 45 quem manda é QUANTOS
+>   slots estão preenchidos; depois, a qualidade do que está neles. Uma lei de
+>   potência só não descreve os dois, e ignorar isso travava o jogo no setor 5
+>   com 150 mortes.
+
 ### 2.1. O problema central: as duas curvas divergem 12,9% por setor
 
 Este é o achado que subordina todos os outros. Medi o DPS de um jogador **bem
@@ -584,8 +601,8 @@ de fechar. Nada de "implementar a Fase 1 inteira".
 |---|---|---|
 | 1.1 | ✅ `data/balance/limites.ts` — tetos do §40 aplicados em `resolveStats` | feito |
 | 1.2 | ✅ `data/balance/curvas.ts` — 7 constantes centralizadas, curva idêntica | feito |
-| 1.3 | Inverter a dependência: `hpDaOnda = poderEsperado × tempoAlvo` | balance-designer + implementer |
-| 1.4 | Calibrar `r₀`, `r∞`, `k`, `t₀`, `t₁` por simulação | balance-designer |
+| 1.3 | ✅ Inverter a dependência: `hpDaOnda = poderEsperado × tempoAlvo` | feito |
+| 1.4 | ✅ Calibrar por simulação, com corrida do zero como prova | feito |
 | 1.5 | `data/balance/raridades.ts` — 7 raridades | implementer |
 | 1.6 | `data/balance/tiers.ts` — T1–T10 | balance-designer + implementer |
 | 1.7 | `data/balance/pesos.ts` — orçamento de poder | balance-designer |

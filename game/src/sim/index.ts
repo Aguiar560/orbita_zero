@@ -360,13 +360,21 @@ export class Sim {
   }
 
   /**
-   * A nave caiu. Recua a onda (nunca o setor) e reinicia o encontro — perder
-   * progresso de setor num idle é punitivo demais e desestimula sair da aba.
+   * A nave caiu. Reinicia o encontro atual e nada mais.
+   *
+   * A penalidade é o TEMPO perdido, não progresso desfeito. Antes a morte
+   * recuava uma onda, o que fazia sentido quando uma onda durava um instante;
+   * com as ondas dimensionadas por tempo-alvo, virou trava: medido, um piloto
+   * cru passava quarenta minutos oscilando entre a onda 1 e a 6 do setor 4,
+   * porque avançava e recuava no mesmo ritmo.
+   *
+   * Um idle não pode ter esse tipo de empate. O jogador que está pouco abaixo
+   * do necessário precisa continuar subindo devagar — e é a IA melhorando e o
+   * equipamento caindo que rompem o impasse.
    */
   failEncounter(): void {
     const run = this.state.run;
     this.state.stats.deaths++;
-    run.wave = Math.max(1, run.wave - 1);
     bus.emit('sector:failed', { sector: run.sector });
     this.refreshEncounter();
     this.touch();

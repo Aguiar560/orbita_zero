@@ -44,7 +44,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Núcleo Ferrugem',
     title: 'Reator abandonado que nunca parou de bombear',
     sprite: 'prop/reactor_tower',
-    scale: 1.35, radius: 58, hp: 26, dano: 1.6, reward: 30,
+    scale: 1.35, radius: 58, hp: 1.00, dano: 1.6, reward: 30,
     bulletSprite: 'shot/pyro_light', bulletColor: '#ff9a4d', blast: 'blast/fire',
     phases: [
       { at: 1.0, attack: 'direto', fireRate: 1.2, shots: 3, bulletSpeed: 210, strafe: 40 },
@@ -58,7 +58,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Anel de Kessler',
     title: 'Estação em cascata de colisões há mil anos',
     sprite: 'prop/ring_station',
-    scale: 1.4, radius: 62, hp: 34, dano: 1.5, reward: 36,
+    scale: 1.4, radius: 62, hp: 1.03, dano: 1.5, reward: 36,
     bulletSprite: 'shot/void_light', bulletColor: '#c07dff', blast: 'blast/void',
     phases: [
       { at: 1.0, attack: 'espiral', fireRate: 1.6, shots: 4, bulletSpeed: 190, strafe: 55 },
@@ -72,7 +72,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Titã Rochoso',
     title: 'Um asteroide que acordou com fome',
     sprite: 'prop/spike_rock',
-    scale: 1.5, radius: 66, hp: 48, dano: 1.9, reward: 44,
+    scale: 1.5, radius: 66, hp: 1.09, dano: 1.9, reward: 44,
     bulletSprite: 'shot/pyro_heavy', bulletColor: '#ffb056', blast: 'blast/fire',
     phases: [
       { at: 1.0, attack: 'mirado', fireRate: 0.9, shots: 2, bulletSpeed: 240, strafe: 35 },
@@ -86,7 +86,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Sentinela Vazia',
     title: 'Guardiã sem tripulação, sem ordens e sem trégua',
     sprite: 'enemy/wraith_c',
-    scale: 1.6, radius: 56, hp: 62, dano: 2.0, reward: 54,
+    scale: 1.6, radius: 56, hp: 1.15, dano: 2.0, reward: 54,
     bulletSprite: 'shot/void_heavy', bulletColor: '#c07dff', blast: 'blast/void',
     phases: [
       { at: 1.0, attack: 'mirado', fireRate: 1.6, shots: 3, bulletSpeed: 265, strafe: 90 },
@@ -100,7 +100,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Colmeia Verdante',
     title: 'Não é uma nave. É um ninho.',
     sprite: 'enemy/verdant_c',
-    scale: 1.7, radius: 60, hp: 78, dano: 1.8, reward: 66,
+    scale: 1.7, radius: 60, hp: 1.22, dano: 1.8, reward: 66,
     bulletSprite: 'shot/bio_orb', bulletColor: '#8dff5c', blast: 'blast/void',
     phases: [
       { at: 1.0, attack: 'leque', fireRate: 1.0, shots: 6, bulletSpeed: 195, strafe: 70, summon: { enemy: 'enxame', every: 3, count: 4 } },
@@ -114,7 +114,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Destroço Vivo',
     title: 'Uma frota inteira fundida num só casco',
     sprite: 'prop/wreck_beam',
-    scale: 1.3, radius: 78, hp: 96, dano: 2.2, reward: 80,
+    scale: 1.3, radius: 78, hp: 1.30, dano: 2.2, reward: 80,
     bulletSprite: 'shot/void_light', bulletColor: '#c07dff', blast: 'blast/fire',
     phases: [
       { at: 1.0, attack: 'direto', fireRate: 2.2, shots: 5, bulletSpeed: 225, strafe: 130 },
@@ -128,7 +128,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Mina Prima',
     title: 'A primeira que colocaram aqui. Ainda armada.',
     sprite: 'prop/mine_spike',
-    scale: 1.8, radius: 62, hp: 120, dano: 2.6, reward: 96,
+    scale: 1.8, radius: 62, hp: 1.40, dano: 2.6, reward: 96,
     bulletSprite: 'shot/pyro_light', bulletColor: '#ff7a3d', blast: 'blast/fire',
     phases: [
       { at: 1.0, attack: 'espiral', fireRate: 2.6, shots: 8, bulletSpeed: 185, strafe: 45 },
@@ -142,7 +142,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Obelisco Partido',
     title: 'Um marco de fronteira de uma civilização que já era',
     sprite: 'prop/pillar_broken',
-    scale: 1.5, radius: 58, hp: 150, dano: 2.4, reward: 118,
+    scale: 1.5, radius: 58, hp: 1.53, dano: 2.4, reward: 118,
     bulletSprite: 'beam/void', bulletColor: '#c07dff', blast: 'blast/void',
     phases: [
       { at: 1.0, attack: 'mirado', fireRate: 2.4, shots: 3, bulletSpeed: 300, strafe: 100 },
@@ -156,7 +156,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'Cometa Devorador',
     title: 'Puxa tudo para dentro e nunca devolve',
     sprite: 'hazard/comet_ice',
-    scale: 1.6, radius: 70, hp: 190, dano: 3.0, reward: 145,
+    scale: 1.6, radius: 70, hp: 1.70, dano: 3.0, reward: 145,
     bulletSprite: 'shot/ion_light', bulletColor: '#66d9ff', blast: 'blast/void',
     phases: [
       { at: 1.0, attack: 'leque', fireRate: 1.6, shots: 9, bulletSpeed: 260, strafe: 175 },
@@ -170,7 +170,7 @@ export const BOSSES: readonly BossDef[] = [
     name: 'O Arquiteto',
     title: 'Desenhou este universo. Não gosta de visitas.',
     sprite: 'ship/ignis_d',
-    scale: 1.9, radius: 64, hp: 260, dano: 3.4, reward: 200,
+    scale: 1.9, radius: 64, hp: 2.00, dano: 3.4, reward: 200,
     bulletSprite: 'beam/chain', bulletColor: '#ffcf7a', blast: 'blast/fire',
     phases: [
       { at: 1.0, attack: 'mirado', fireRate: 3.0, shots: 4, bulletSpeed: 320, strafe: 190 },

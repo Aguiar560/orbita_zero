@@ -34,12 +34,13 @@ export function equiparMelhor(
   hullId: string,
   semente: number,
   tentativas = 40,
+  slots = SLOT_IDS.length,
 ): GameState {
   const st = createState(semente);
   st.hull = hullId;
   const rng = new Rng(semente);
 
-  for (const slot of SLOT_IDS) {
+  for (const slot of SLOT_IDS.slice(0, slots)) {
     let melhor = null;
     let melhorNota = -Infinity;
     for (let i = 0; i < tentativas; i++) {
@@ -54,6 +55,36 @@ export function equiparMelhor(
     if (melhor) st.equipped[slot] = melhor;
   }
   return st;
+}
+
+/**
+ * Quanto o jogador já otimizou o equipamento, por setor.
+ *
+ * Não é constante ao longo do jogo, e tratá-la como constante distorce as
+ * pontas: quem está no setor 1 viu duas ou três peças por slot, quem está no
+ * 100 já viu centenas e escolhe entre as melhores. Medir tudo com melhor-de-40
+ * fazia o começo parecer trivial (2,3 s) quando na prática é o trecho mais
+ * apertado do jogo.
+ */
+export function tentativasDoSetor(setor: number): number {
+  return Math.min(40, Math.max(2, Math.round(2 + setor * 0.55)));
+}
+
+/**
+ * Quantos dos nove slots estão PREENCHIDOS num setor.
+ *
+ * A falha mais cara da primeira calibragem foi ignorar isto: a medição equipava
+ * os nove slots já no setor 1, e o jogador real começa com zero. A curva então
+ * pressupunha um poder cinco vezes maior do que o disponível, e o resultado
+ * medido no jogo foi espiral de morte — o piloto morria com 17% da onda feita,
+ * não coletava item, e por isso nunca saía do lugar.
+ *
+ * Slot vazio não contribui nada, então preencher os primeiros importa muito
+ * mais que melhorar os já preenchidos. É por isso que esta rampa é separada da
+ * de `tentativas`, que mede a QUALIDADE do que já está equipado.
+ */
+export function slotsDoSetor(setor: number): number {
+  return Math.min(SLOT_IDS.length, Math.max(1, Math.ceil(setor * 0.6)));
 }
 
 /** Melhor casco liberado num setor, pelo tier. */
@@ -76,12 +107,34 @@ export interface MedidaDeSetor {
   golpesAteMorrer: number;
 }
 
-export function medirSetor(setor: number): MedidaDeSetor {
+/**
+ * Mede um setor.
+ *
+ * `repeticoes` roda a montagem com sementes diferentes e usa a MEDIANA. Uma
+ * amostra só oscila de −80% a +240% conforme a sorte das rolagens, e ajustar
+ * curva sobre esse ruído produziria expoente errado com aparência de precisão.
+ * A mediana também é mais honesta que a média aqui: uma rolagem excepcional não
+ * deve puxar a expectativa de todos os jogadores.
+ */
+export function medirSetor(
+  setor: number,
+  tentativas = tentativasDoSetor(setor),
+  repeticoes = 1,
+): MedidaDeSetor {
   const casco = cascoDoSetor(setor);
-  const estado = equiparMelhor(sectorIlvl(setor), casco.id, 1000 + setor);
-  const stats = resolveStats(estado);
-  const d = dps(stats);
-  const ehp = effectiveHp(stats);
+  const ilvl = sectorIlvl(setor);
+
+  const slots = slotsDoSetor(setor);
+  const amostras = Array.from({ length: repeticoes }, (_, i) => {
+    const stats = resolveStats(
+      equiparMelhor(ilvl, casco.id, 1000 + setor + i * 7919, tentativas, slots),
+    );
+    return { dps: dps(stats), ehp: effectiveHp(stats) };
+  });
+
+  const mediana = (v: number[]) => v.sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
+  const d = mediana(amostras.map((a) => a.dps));
+  const ehp = mediana(amostras.map((a) => a.ehp));
 
   return {
     setor,
@@ -101,6 +154,48 @@ export function diagnostico(m: MedidaDeSetor): string {
   if (m.golpesAteMorrer < FAIXA_GOLPES[0]) return 'letal demais';
   if (m.golpesAteMorrer > FAIXA_GOLPES[1]) return 'sem ameaça';
   return 'ok';
+}
+
+/**
+ * Ajuste de lei de potência sobre o nível de item.
+ *
+ * A curva de poder do jogador **não é exponencial**, e é aí que mora o problema
+ * estrutural do jogo: o afixo escala com `1 + ilvl × 0,32` e o nível de item
+ * cresce linearmente com o setor, então o poder cresce como POLINÔMIO em ilvl.
+ * A curva do inimigo é exponencial pura. Uma exponencial sempre ultrapassa um
+ * polinômio — não existe constante que conserte isso, só mudar a forma.
+ *
+ * Por isso o ajuste é `poder = A × ilvl^P`, por mínimos quadrados em escala
+ * log-log. `P` sai da medição, não de palpite.
+ */
+export function ajustarLeiDePotencia(
+  amostras: { ilvl: number; valor: number }[],
+): { A: number; P: number; C: number; r2: number } {
+  const ajusteCom = (C: number) => {
+    const pts = amostras.filter((s) => s.valor > 0)
+      .map((s) => ({ x: Math.log(s.ilvl + C), y: Math.log(s.valor) }));
+    const n = pts.length;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+    const my = pts.reduce((s, p) => s + p.y, 0) / n;
+    const sxy = pts.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0);
+    const sxx = pts.reduce((s, p) => s + (p.x - mx) ** 2, 0);
+    const P = sxy / sxx;
+    const A = Math.exp(my - P * mx);
+    const ssTot = pts.reduce((s, p) => s + (p.y - my) ** 2, 0);
+    const ssRes = pts.reduce((s, p) => s + (p.y - (my + P * (p.x - mx))) ** 2, 0);
+    return { A, P, C, r2: 1 - ssRes / ssTot };
+  };
+
+  // O deslocamento `C` existe por causa do começo do jogo: no nível de item 1 o
+  // poder vem quase todo do CASCO, e uma lei de potência pura em ilvl não tem
+  // como representar esse piso — ela previa 14 de dano onde a medição dava 296.
+  // Varrer `C` e ficar com o melhor R² resolve sem inventar um segundo termo.
+  let melhor = ajusteCom(0);
+  for (let C = 0.5; C <= 40; C += 0.5) {
+    const tentativa = ajusteCom(C);
+    if (tentativa.r2 > melhor.r2) melhor = tentativa;
+  }
+  return melhor;
 }
 
 /** Crescimento composto por setor entre duas medidas. */

@@ -9,7 +9,9 @@ import { rollItem, rollRarity } from '@sim/loot';
 import { resistance, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import { DANO_STAT, RES_STAT, SLOT_IDS, STAT_IDS, type GameState } from '@sim/types';
-import { medirSetor } from '../tools/lib/balanco';
+import { sectorHp } from '@sim/progression';
+import { golpesAlvo, tempoAlvo } from '@data/balance/curvas';
+import { divergencia, medirSetor } from '../tools/lib/balanco';
 
 /**
  * Determinismo é a fundação de tudo que vem abaixo.
@@ -254,33 +256,100 @@ describe('matriz elemental (§5)', () => {
 });
 
 /**
- * Linha de base do desequilíbrio medido na FASE 0.
+ * O ritmo do jogo, de ponta a ponta.
  *
- * Não é um teste de "está certo" — é o contrário: fixa por escrito o quanto o
- * jogo está QUEBRADO hoje, para que a Fase 1 tenha um marco contra o qual
- * provar melhora. Quando as curvas forem corrigidas este bloco falha, e falhar
- * aqui é o sinal de sucesso: aí os números viram os da faixa saudável.
+ * Este bloco substituiu a linha de base que registrava o desequilíbrio da
+ * FASE 0. Ela media: setor 1 trivial (0 s por onda), setor 100 impossível
+ * (5 266 s), divergência de 131 500× em 99 setores. A inversão da dependência
+ * — `hpDaOnda = poderEsperado × tempoAlvo` — derrubou a divergência para 3,2×.
+ *
+ * A faixa é larga de propósito. O resíduo vem da dispersão de poder entre itens
+ * da mesma raridade, medida em 135× no §2.4 da auditoria: enquanto a Fase 3 não
+ * impuser orçamento de item, o tempo real de uma onda oscila ±35% em torno do
+ * alvo. Apertar a faixa aqui só produziria teste instável.
  */
-describe('linha de base da FASE 0 — desequilíbrio conhecido', () => {
-  it('o setor 1 é trivial: a onda morre em menos de 1 segundo', () => {
-    expect(medirSetor(1).segParaLimpar).toBeLessThan(1);
+describe('ritmo do jogo (§2)', () => {
+  const AMOSTRAS = [1, 12, 25, 50, 80, 120, 170, 220, 300];
+  const medidas = AMOSTRAS.map((s) => medirSetor(s, undefined, 5));
+
+  /**
+   * O alvo declarado em `tempoAlvo` vai de 4 s a 34 s. A faixa aqui é mais
+   * larga nas duas pontas por dois motivos concretos e diferentes:
+   *
+   * Embaixo, os primeiros setores são de propósito rápidos — são a introdução,
+   * e a nave crua precisa vencer alguma coisa antes de o jogador ter o que
+   * equipar.
+   *
+   * Em cima, o resíduo de ±35% do ajuste de poder. Ele vem da dispersão entre
+   * itens da mesma raridade, medida em 135× no §2.4, e some quando a Fase 3
+   * impuser orçamento de item.
+   */
+  it('nenhum setor é trivial nem intransponível, do 1 ao 300', () => {
+    const fora = medidas
+      .filter((m) => m.segParaLimpar < 2 || m.segParaLimpar > 60)
+      .map((m) => `setor ${m.setor}: ${m.segParaLimpar.toFixed(1)}s`);
+    expect(fora).toEqual([]);
   });
 
-  it('o setor 100 é impossível: mais de 1 hora para limpar uma onda', () => {
-    expect(medirSetor(100).segParaLimpar).toBeGreaterThan(3600);
+  /**
+   * Capacidade de encaixar dano, não taxa de morte: esta conta supõe que TODO
+   * golpe acerta. Quantos de fato acertam depende da sincronia do piloto, que
+   * nasce em 5%. Numa corrida real do zero o jogador morre 141 vezes até o
+   * setor 13 apesar da capacidade folgada que aparece aqui.
+   *
+   * A separação em dois regimes não é conveniência de teste: é a mesma divisão
+   * que as curvas encodam. Até o setor 45 o poder é dominado por QUANTOS slots
+   * estão preenchidos, e a margem é larga de propósito porque a IA ainda não
+   * sabe desviar. Depois, com os nove slots cheios, o regime é o da qualidade
+   * do equipamento e a faixa fecha.
+   */
+  const REGIME = 45;
+
+  it('na introdução (até o setor 45) a margem é larga mas nunca letal', () => {
+    const fora = medidas
+      .filter((m) => m.setor <= REGIME)
+      .filter((m) => m.golpesAteMorrer < 8 || m.golpesAteMorrer > 90)
+      .map((m) => `setor ${m.setor}: ${m.golpesAteMorrer.toFixed(1)} golpes`);
+    expect(fora).toEqual([]);
   });
 
-  it('o jogador do setor 100 morre em menos de 1 golpe', () => {
-    expect(medirSetor(100).golpesAteMorrer).toBeLessThan(1);
+  // O teto é o alvo mais alto do regime (23 golpes, no setor 50) acrescido do
+  // resíduo documentado de 35%.
+  it('no regime estável o jogador aguenta entre 6 e 32 golpes', () => {
+    const fora = medidas
+      .filter((m) => m.setor > REGIME)
+      .filter((m) => m.golpesAteMorrer < 6 || m.golpesAteMorrer > 32)
+      .map((m) => `setor ${m.setor}: ${m.golpesAteMorrer.toFixed(1)} golpes`);
+    expect(fora).toEqual([]);
   });
 
-  it('a divergência entre as curvas passa de 100.000× em 99 setores', () => {
-    const a = medirSetor(1);
-    const b = medirSetor(100);
-    const span = b.setor - a.setor;
-    const rDps = Math.pow(b.dps / a.dps, 1 / span);
-    const rHp = Math.pow(b.hpDaOnda / a.hpDaOnda, 1 / span);
-    expect(Math.pow(rHp / rDps, span)).toBeGreaterThan(100_000);
+  /**
+   * O número que a FASE 0 apontou como causa raiz.
+   *
+   * As duas curvas moravam em arquivos diferentes com expoentes escolhidos de
+   * forma independente, e ninguém havia calculado a razão entre elas — que é
+   * justamente o ritmo do jogo.
+   */
+  it('as curvas de inimigo e de jogador não divergem mais que 30× em 299 setores', () => {
+    // Referência: antes da inversão eram 131.500× em apenas 99 setores.
+    const d = divergencia(medidas[0]!, medidas[medidas.length - 1]!);
+    expect(d.ofensivaAcumulada).toBeLessThan(30);
+    expect(d.defensivaAcumulada).toBeLessThan(30);
+  });
+
+  /**
+   * §1: "os números devem permanecer legíveis durante uma parcela significativa
+   * da progressão". Com a curva antiga a vida do setor 300 era 8,7 × 10²⁸.
+   */
+  it('a vida do setor 300 continua legível', () => {
+    expect(sectorHp(300)).toBeLessThan(1e12);
+  });
+
+  it('o tempo-alvo e os golpes-alvo são monótonos', () => {
+    for (let s = 2; s <= 300; s++) {
+      expect(tempoAlvo(s), `tempo em ${s}`).toBeGreaterThanOrEqual(tempoAlvo(s - 1));
+      expect(golpesAlvo(s), `golpes em ${s}`).toBeLessThanOrEqual(golpesAlvo(s - 1));
+    }
   });
 });
 

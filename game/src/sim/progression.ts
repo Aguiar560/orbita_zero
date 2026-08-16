@@ -2,6 +2,7 @@ import { Rng } from '@core/math';
 import { bossForSector, isBossSector, type BossDef } from '@data/bosses';
 import { enemiesForSector, type EnemyDef } from '@data/enemies';
 import {
+  CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_ONDAS, ELITE_ONDAS, RECOMPENSA_FRACAO,
   WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
 } from '@data/balance/curvas';
 import type { EncounterKind, GameState } from './types';
@@ -51,19 +52,24 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
   const kind: EncounterKind = boss ? 'chefe' : isFinal ? 'elite' : 'onda';
 
   const baseHp = sectorHp(sector);
-  const bounty = sectorBounty(sector);
   const ilvl = sectorIlvl(sector);
 
   if (boss) {
-    // Chefes ciclam a lista; a cada volta ficam substancialmente mais duros.
+    // Chefes ciclam a lista; a cada volta ficam mais duros.
     const cycle = Math.floor((sector / 10 - 1) / 10);
-    const cycleMult = Math.pow(2.6, cycle);
+    const cycleMult = Math.pow(CHEFE_CICLO, cycle);
+    // `boss.hp` é identidade (1,0 a 2,0), não escalada: quem escala com o setor
+    // é `baseHp`, que já embute o tempo-alvo.
+    const hpPool = baseHp * CHEFE_ONDAS * boss.hp * cycleMult;
     return {
       sector, wave, kind, boss,
-      hpPool: baseHp * boss.hp * cycleMult,
+      hpPool,
       squad: [],
       damage: baseDamage * boss.dano,
-      bounty: bounty * boss.reward,
+      // Proporcional à vida que o chefe realmente tem, mais um bônus pelo feito.
+      // Antes era `bounty × boss.reward`, com reward de 30 a 200 — números que
+      // vinham de quando a recompensa era uma exponencial própria.
+      bounty: RECOMPENSA_FRACAO * hpPool * CHEFE_BONUS_RECOMPENSA,
       ilvl: ilvl + 6,
     };
   }
@@ -85,7 +91,7 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
   }
   if (elite && fallback.length) chosen.push(rng.weighted(fallback, (e) => e.weight));
 
-  const waveHp = baseHp * (elite ? 3.2 : 1) * (0.85 + wave * 0.06);
+  const waveHp = baseHp * (elite ? ELITE_ONDAS : 1) * (0.85 + wave * 0.06);
   const totalWeight = chosen.reduce((s, e) => s + e.hp, 0) || 1;
 
   const squad = chosen.map((def, i) => {
@@ -102,7 +108,7 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     hpPool: waveHp,
     squad,
     damage: baseDamage,
-    bounty: bounty * (elite ? 3.2 : 1),
+    bounty: RECOMPENSA_FRACAO * waveHp,
     ilvl: elite ? ilvl + 2 : ilvl,
   };
 }

@@ -20,7 +20,9 @@ import { rollItem, rollRarity } from '@sim/loot';
 import { powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import type { GameState } from '@sim/types';
-import { diagnostico, divergencia, medirSetor } from './lib/balanco';
+import {
+  ajustarLeiDePotencia, diagnostico, divergencia, medirSetor, tentativasDoSetor,
+} from './lib/balanco';
 
 // ── formatação ──────────────────────────────────────────────────────────────
 
@@ -57,7 +59,11 @@ function comandoCurva(de: number, ate: number): void {
   for (let s = de; s <= ate; s += passo) setores.push(s);
   if (setores[setores.length - 1] !== ate) setores.push(ate);
 
-  const medidas = setores.map(medirSetor);
+  // `map(medirSetor)` passaria índice e array como 2º e 3º argumentos — que
+  // agora são `tentativas` e `repeticoes`. A seta explícita evita isso.
+  // `tentativas` fica no padrão, que sobe com o setor: é o que representa um
+  // jogador real, com poucas opções no começo e muitas no fim.
+  const medidas = setores.map((s) => medirSetor(s, tentativasDoSetor(s), 5));
 
   tabela(
     ['setor', 'casco', 'DPS', 'vida ef.', 'HP da onda', 'dano ini.', 'seg', 'golpes', ''],
@@ -136,6 +142,56 @@ function comandoItem(ilvl: number, amostras: number): void {
   console.log('máx/mín é a dispersão dentro da MESMA raridade — o §7 quer isso sob controle.');
 }
 
+/**
+ * Mede a curva REAL de poder do jogador e ajusta a lei de potência.
+ *
+ * É a entrada da calibragem (§45): os expoentes que vão para
+ * `data/balance/curvas.ts` saem daqui, não de palpite.
+ *
+ * `tentativas` modela quanto o jogador otimizou o equipamento. Um jogador do
+ * setor 1 tem duas ou três peças por slot; um do setor 100 já viu centenas de
+ * drops. Medir com os dois extremos mostra a faixa dentro da qual o ritmo
+ * precisa se sustentar.
+ */
+function comandoAjustar(tentativas: number): void {
+  const setores: number[] = [];
+  for (let s = 1; s <= 300; s += s < 20 ? 2 : s < 60 ? 5 : 15) setores.push(s);
+
+  const REPETICOES = 7;
+  // `tentativas = 0` significa "usar a rampa realista"; qualquer outro valor
+  // fixa o grau de otimização, o que serve para medir os extremos.
+  const medidas = setores.map((s) => medirSetor(s, tentativas || tentativasDoSetor(s), REPETICOES));
+  const ilvlDe = (s: number) => Math.max(1, Math.floor(s * 0.9));
+
+  const dps = ajustarLeiDePotencia(medidas.map((m) => ({ ilvl: ilvlDe(m.setor), valor: m.dps })));
+  const ehp = ajustarLeiDePotencia(medidas.map((m) => ({ ilvl: ilvlDe(m.setor), valor: m.ehp })));
+
+  console.log(`Ajuste com ${tentativas} tentativas por slot, mediana de ${REPETICOES} sementes,`);
+  console.log(`${medidas.length} setores de 1 a 300.\n`);
+  console.log(`  DPS       = ${dps.A.toFixed(3)} × (ilvl + ${dps.C}) ^ ${dps.P.toFixed(4)}   R² ${dps.r2.toFixed(4)}`);
+  console.log(`  vida ef.  = ${ehp.A.toFixed(3)} × (ilvl + ${ehp.C}) ^ ${ehp.P.toFixed(4)}   R² ${ehp.r2.toFixed(4)}\n`);
+
+  const erros: number[] = [];
+  tabela(
+    ['setor', 'ilvl', 'DPS medido', 'DPS ajuste', 'erro', 'ehp medido', 'ehp ajuste', 'erro'],
+    medidas.map((m) => {
+      const il = ilvlDe(m.setor);
+      const pd = dps.A * Math.pow(il + dps.C, dps.P);
+      const pe = ehp.A * Math.pow(il + ehp.C, ehp.P);
+      erros.push(Math.abs(m.dps / pd - 1));
+      return [
+        String(m.setor), String(il), n(m.dps), n(pd), `${((m.dps / pd - 1) * 100).toFixed(0)}%`,
+        n(m.ehp), n(pe), `${((m.ehp / pe - 1) * 100).toFixed(0)}%`,
+      ];
+    }),
+  );
+  erros.sort((a, b) => a - b);
+  console.log(`\nErro do ajuste de DPS: mediana ${(erros[Math.floor(erros.length / 2)]! * 100).toFixed(0)}%, `
+    + `pior ${(erros[erros.length - 1]! * 100).toFixed(0)}%.`);
+  console.log('\nA curva do jogador é POLINOMIAL em ilvl, não exponencial —');
+  console.log('é por isso que a curva exponencial do inimigo a ultrapassa sempre.');
+}
+
 // ── entrada ─────────────────────────────────────────────────────────────────
 
 const [comando, ...args] = process.argv.slice(2);
@@ -149,6 +205,9 @@ switch (comando) {
     break;
   case 'item':
     comandoItem(Number(args[0] ?? 30), Number(args[1] ?? 5000));
+    break;
+  case 'ajustar':
+    comandoAjustar(Number(args[0] ?? 12));
     break;
   default:
     console.log(`Arnês de simulação do Órbita Zero.
