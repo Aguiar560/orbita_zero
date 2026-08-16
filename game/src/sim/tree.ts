@@ -1,4 +1,5 @@
 import { NODE_BY_ID, TREE_ADJACENCY, TREE_NODES, type TreeNode } from '@data/tree';
+import { curvaXpComando } from '@data/balance/curvas';
 import type { GameState, StatModifier } from './types';
 
 /** O nó central já vem alocado e não custa ponto. */
@@ -16,9 +17,7 @@ export function pointsForLevel(level: number): number {
  * nos primeiros minutos, senão a matriz fica trancada justamente quando ela é
  * a coisa mais interessante para o jogador novo mexer.
  */
-export function xpForLevel(level: number): number {
-  return Math.ceil(140 * Math.pow(1.155, level - 1));
-}
+export const xpForLevel = curvaXpComando;
 
 export function allocatedSet(state: GameState): Set<string> {
   const set = new Set(state.command.allocated);

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/math';
 import { RARITIES } from '@data/rarity';
-import { ELEMENTS, matchup } from '@data/elements';
+import { ELEMENTOS_RESISTIVEIS, ELEMENTS, matchup } from '@data/elements';
+import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN } from '@data/balance/limites';
 import { AFFIXES } from '@data/items';
 import { HULLS } from '@data/hulls';
 import { rollItem, rollRarity } from '@sim/loot';
 import { resistance, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
-import { SLOT_IDS, type GameState } from '@sim/types';
+import { DANO_STAT, RES_STAT, SLOT_IDS, STAT_IDS, type GameState } from '@sim/types';
 import { medirSetor } from '../tools/lib/balanco';
 
 /**
@@ -105,14 +106,55 @@ describe('limites de sanidade (§40)', () => {
     expect(s.velocidade).toBeGreaterThanOrEqual(60);
   });
 
+  it('projéteis não passam do teto', () => {
+    const s = resolveStats(extremo());
+    expect(s.projeteis).toBeLessThanOrEqual(LIMITES.projeteis!.max!);
+  });
+
+  it('cadência não passa do teto', () => {
+    const s = resolveStats(extremo());
+    expect(s.cadencia).toBeLessThanOrEqual(LIMITES.cadencia!.max!);
+  });
+
   /**
-   * PENDENTE DA FASE 1. Hoje não existe teto de projéteis: o §40 pede um, e o
-   * §8 mostra por quê — cada projétil extra vale +100% de dano. Deixado como
-   * `todo` para falhar de propósito quando alguém marcar a etapa como pronta
-   * sem ter implementado o teto.
+   * O teto que impede a nave imortal.
+   *
+   * Se a regeneração superar o dano recebido, o combate deixa de ter desfecho.
+   * Por isso ela é limitada em FRAÇÃO da vida máxima e não em valor absoluto —
+   * um teto fixo seria generoso demais no começo e inútil no fim.
    */
-  it.todo('projéteis não passam do teto de 12 (§40)');
-  it.todo('resistência elemental não passa de 80% (§40)');
+  it('regeneração não passa de uma fração da vida máxima', () => {
+    const s = resolveStats(extremo());
+    expect(s.regen).toBeLessThanOrEqual(s.vida * REGEN_MAX_FRACAO + 1e-9);
+  });
+
+  it('resistência elemental respeita o teto, com qualquer equipamento', () => {
+    const s = resolveStats(extremo());
+    for (const e of ELEMENTOS_RESISTIVEIS) {
+      expect(resistance(s, e.id), e.id).toBeLessThanOrEqual(RES_MAX);
+      expect(resistance(s, e.id), e.id).toBeGreaterThanOrEqual(RES_MIN);
+    }
+  });
+
+  /**
+   * Todo atributo empilhável precisa de entrada na tabela de limites.
+   *
+   * É o teste que pega o buraco ANTES de ele virar bug: quem adicionar um
+   * atributo novo e esquecer de limitá-lo descobre aqui, e não meses depois
+   * como invulnerabilidade permanente.
+   */
+  it('nenhum atributo empilhável ficou sem limite declarado', () => {
+    const semLimite = STAT_IDS.filter((id) => !LIMITES[id]);
+    // Os ganhos percentuais e as potências elementais são multiplicadores puros
+    // sem teto próprio: quem os contém é o teto do produto elemental e a curva
+    // de progressão, não um clamp por atributo.
+    const isentos = new Set<string>([
+      'dano', 'sucataGanho', 'nucleoGanho', 'xpGanho',
+      ...ELEMENTS.map((e) => DANO_STAT[e.id]),
+      ...ELEMENTOS_RESISTIVEIS.map((e) => RES_STAT[e.id]),
+    ]);
+    expect(semLimite.filter((id) => !isentos.has(id))).toEqual([]);
+  });
 });
 
 /**

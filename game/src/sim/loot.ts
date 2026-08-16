@@ -3,6 +3,7 @@ import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, type AffixDef } from '@da
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
 import { ELEMENTS } from '@data/elements';
+import { AFIXO_ESCALA_POR_ILVL, DROP_BASE, DROP_SORTE_PESO, DROP_TETO } from '@data/balance/curvas';
 import type { Affix, ElementId, GameState, Item, Rarity, SlotId, Stats } from './types';
 import { resolveStats, powerScore } from './stats';
 
@@ -99,7 +100,7 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, power: number): Affix 
   // Resistência é aditiva na forma mas fração no significado: escalada pelo
   // nível, +4% de resistência a fogo viraria +130% no setor 30 — imunidade.
   const escalavel = def.kind === 'add' && !def.element;
-  const scaled = escalavel ? raw * (1 + ilvl * 0.32) : raw;
+  const scaled = escalavel ? raw * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : raw;
   const value = def.id === 'proj_f' || def.id === 'perf_f' ? Math.round(raw) : scaled * power;
   return { id: def.id, stat: def.stat, kind: def.kind, value, quality };
 }
@@ -131,8 +132,8 @@ export function openChest(
 export function dropChance(kind: 'onda' | 'elite' | 'chefe', luck: number): number {
   // Mais generoso que num ARPG comum porque o drop agora é físico: a cápsula
   // pode escapar pela base da tela, então nem toda rolagem vira item.
-  const base = kind === 'chefe' ? 1 : kind === 'elite' ? 0.5 : 0.06;
-  return clamp(base * (1 + luck * 0.8), 0, kind === 'chefe' ? 1 : 0.75);
+  const base = DROP_BASE[kind];
+  return clamp(base * (1 + luck * DROP_SORTE_PESO), 0, kind === 'chefe' ? 1 : DROP_TETO);
 }
 
 // ── Avaliação ───────────────────────────────────────────────────────────────

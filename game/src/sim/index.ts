@@ -5,6 +5,7 @@ import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
 import { RESOURCE_IDS, type ElementId, type GameState, type Item, type ResourceId, type SlotId, type Stats } from './types';
 import { CARGO_PER_LEVEL, MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
+import { curvaXpPatrulha } from '@data/balance/curvas';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
 import { dropChance, openChest, rollItem, salvageValue, scoreItem } from './loot';
@@ -275,7 +276,7 @@ export class Sim {
   }
 
   patrolXpNeeded(): number {
-    return Math.ceil(120 * Math.pow(1.24, this.state.bar.patrol - 1));
+    return curvaXpPatrulha(this.state.bar.patrol);
   }
 
   // ── camada vertical (combate) ─────────────────────────────────────────────

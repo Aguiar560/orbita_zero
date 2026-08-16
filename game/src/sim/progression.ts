@@ -1,45 +1,22 @@
 import { Rng } from '@core/math';
 import { bossForSector, isBossSector, type BossDef } from '@data/bosses';
 import { enemiesForSector, type EnemyDef } from '@data/enemies';
+import {
+  WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
+} from '@data/balance/curvas';
 import type { EncounterKind, GameState } from './types';
 
-/** Ondas por setor antes do encontro final. */
-export const WAVES_PER_SECTOR = 5;
-
 /**
- * Curva de vida por setor.
- *
- * 1.235^setor dobra a cada ~3.3 setores. É agressivo o suficiente para que
- * melhorias importem, mas suave o bastante para o jogador nunca ficar preso
- * mais que alguns minutos num único setor com progressão saudável.
+ * As curvas moram em `data/balance/curvas.ts`; aqui ficam só os apelidos que o
+ * resto do jogo já usava. A indireção não é cerimônia: é o que permite mexer no
+ * ritmo do jogo num arquivo só, em vez de caçar expoentes por sete.
  */
-export function sectorHp(sector: number): number {
-  return 34 * Math.pow(1.235, sector - 1);
-}
+export { WAVES_PER_SECTOR };
 
-/**
- * Dano de um golpe inimigo no setor, em valor absoluto.
- *
- * Cresce mais devagar que a vida (1.105 contra 1.235) de propósito: a ameaça
- * precisa acompanhar o casco do jogador sem transformar cada projétil perdido
- * em morte instantânea, já que quem pilota é a IA e não o jogador.
- */
-export function sectorDamage(sector: number): number {
-  // A base é alta o bastante para o piloto cru sentir cada tiro que não
-  // desviou. Com 3.4 o começo era inofensivo e a curva de pilotagem não tinha
-  // como se provar — a nave simplesmente não morria.
-  return 9 * Math.pow(1.1, sector - 1);
-}
-
-/** Recompensa base de um setor, antes dos multiplicadores do jogador. */
-export function sectorBounty(sector: number): number {
-  return 7 * Math.pow(1.19, sector - 1);
-}
-
-/** Nível de item que cai neste setor. */
-export function sectorIlvl(sector: number): number {
-  return Math.max(1, Math.floor(sector * 0.9));
-}
+export const sectorHp = curvaHp;
+export const sectorDamage = curvaDano;
+export const sectorBounty = curvaRecompensa;
+export const sectorIlvl = curvaIlvl;
 
 export interface Encounter {
   sector: number;

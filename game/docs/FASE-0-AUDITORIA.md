@@ -582,8 +582,8 @@ de fechar. Nada de "implementar a Fase 1 inteira".
 
 | # | Tarefa | Agente |
 |---|---|---|
-| 1.1 | `data/balance/limites.ts` — todos os tetos do §40, aplicados em `resolveStats` | implementer |
-| 1.2 | `data/balance/curvas.ts` — mover as 7 constantes espalhadas, sem mudar valor | implementer |
+| 1.1 | ✅ `data/balance/limites.ts` — tetos do §40 aplicados em `resolveStats` | feito |
+| 1.2 | ✅ `data/balance/curvas.ts` — 7 constantes centralizadas, curva idêntica | feito |
 | 1.3 | Inverter a dependência: `hpDaOnda = poderEsperado × tempoAlvo` | balance-designer + implementer |
 | 1.4 | Calibrar `r₀`, `r∞`, `k`, `t₀`, `t₁` por simulação | balance-designer |
 | 1.5 | `data/balance/raridades.ts` — 7 raridades | implementer |

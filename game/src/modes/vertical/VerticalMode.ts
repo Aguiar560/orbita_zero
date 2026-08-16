@@ -10,6 +10,7 @@ import { SKY_COMETS, SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
 import { WAVES_PER_SECTOR } from '@sim/progression';
 import { rarityInfo } from '@data/rarity';
 import { getElement, matchup } from '@data/elements';
+import { MULT_ELEMENTAL_MAX } from '@data/balance/limites';
 import type { EnemyDef } from '@data/enemies';
 import type { ElementId, Item } from '@sim/types';
 import type { Sim } from '@sim/index';
@@ -434,7 +435,11 @@ export class VerticalMode {
     const p = this.player;
     if (!p.alive || p.invuln > 0) return;
 
-    amount *= matchup(element, this.sim.defenseElement) * (1 - this.sim.resistance(element));
+    const mitigacao = Math.min(
+      MULT_ELEMENTAL_MAX,
+      matchup(element, this.sim.defenseElement) * (1 - this.sim.resistance(element)),
+    );
+    amount *= mitigacao;
     // No modo de teste o dano ainda dá feedback visual, mas não mata: o ponto
     // é inspecionar conteúdo, não sobreviver a ele.
     if (this.sim.testMode) {
@@ -850,7 +855,10 @@ export class VerticalMode {
     // O confronto entra AQUI, e não no dano do projétil, porque depende de quem
     // levou o tiro: a mesma salva pode ser vantagem contra um caça e resistida
     // contra o elite ao lado.
-    const mul = matchup(b.element, e.boss?.element ?? e.def.element);
+    const mul = Math.min(
+      MULT_ELEMENTAL_MAX,
+      matchup(b.element, e.boss?.element ?? e.def.element),
+    );
     const dano = b.damage * mul;
 
     this.applyDamage(e, dano);

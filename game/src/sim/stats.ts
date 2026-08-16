@@ -1,5 +1,7 @@
 import { DANO_STAT, RES_STAT, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
+import { RES_MAX, RES_MIN, aplicarLimites } from '@data/balance/limites';
+import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL } from '@data/balance/curvas';
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
@@ -100,7 +102,7 @@ export function defenseElement(state: GameState): ElementId {
 export function resistance(stats: Stats, element: ElementId): number {
   // Dano normal não é resistível: ele vai direto no escudo, no casco e na vida.
   if (element === 'padrao') return 0;
-  return Math.min(0.75, stats[RES_STAT[element]]);
+  return Math.min(RES_MAX, Math.max(RES_MIN, stats[RES_STAT[element]]));
 }
 
 /**
@@ -146,7 +148,7 @@ export function resolveStats(state: GameState): Stats {
   // A patente de comando dá uma base de sincronia que cresce só de jogar.
   // Sem isso o piloto ficaria refém de encontrar os itens certos, e o começo
   // — onde ele é deliberadamente ruim — nunca melhoraria sozinho.
-  acc.add.iaSkill += Math.min(0.4, state.command.level * 0.011);
+  acc.add.iaSkill += Math.min(COMANDO_IA_MAX, state.command.level * COMANDO_IA_POR_NIVEL);
 
   const out = {} as Stats;
   for (const id of STAT_IDS) {
@@ -159,16 +161,8 @@ export function resolveStats(state: GameState): Stats {
   // de fora, porque depende de quem está do outro lado da tela.
   out.dano *= 1 + out[DANO_STAT[activeElement(state)]];
 
-  // Pisos e tetos de sanidade.
-  out.projeteis = Math.max(1, Math.round(out.projeteis));
-  out.perfuracao = Math.max(0, Math.round(out.perfuracao));
-  out.cadencia = Math.max(0.2, out.cadencia);
-  out.velocidade = Math.max(60, out.velocidade);
-  out.vida = Math.max(1, out.vida);
-  out.escudo = Math.max(0, out.escudo);
-  out.critChance = Math.min(0.95, Math.max(0, out.critChance));
-  out.iaSkill = Math.min(1, Math.max(0, out.iaSkill));
-  out.sorte = Math.max(0, out.sorte);
+  // Pisos e tetos de sanidade (§40), declarados em `data/balance/limites.ts`.
+  aplicarLimites(out);
 
   return out;
 }
