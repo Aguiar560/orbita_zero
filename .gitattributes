@@ -1,0 +1,14 @@
+# Fim de linha normalizado para LF no repositório, independente do sistema.
+#
+# Sem isto, o Windows grava CRLF e o repositório guarda o que estiver na hora do
+# commit: basta a próxima máquina ter outra configuração de `core.autocrlf` para
+# um arquivo intocado aparecer como reescrito por inteiro no diff. Fixar aqui
+# tira a decisão da configuração local de cada um.
+* text=auto eol=lf
+
+# Binários não recebem tratamento de texto.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

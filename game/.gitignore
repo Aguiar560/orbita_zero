@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.snapshots/
+
+# Registro de proveniência gravado pelo pipeline (entrada da auditoria)
+.assets/
+
+# Gerado por `npm run assets` a partir dos packs de arte em ../
+public/assets/

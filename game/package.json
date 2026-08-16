@@ -1,0 +1,21 @@
+{
+  "name": "orbita-zero",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Órbita Zero — idle de naves espaciais com camada horizontal (farm fino) e camada vertical (combate pilotado por IA).",
+  "scripts": {
+    "assets": "node tools/build-assets.mjs",
+    "assets:organizar": "node tools/build-assets.mjs && node tools/organize-assets.mjs",
+    "assets:folha": "node tools/contact-sheet.mjs",
+    "dev": "vite",
+    "build": "npm run assets && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.1"
+  }
+}

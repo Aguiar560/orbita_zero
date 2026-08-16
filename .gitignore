@@ -1,0 +1,24 @@
+# Lista BRANCA, não lista negra.
+#
+# `D:\bbb` é depósito de arte crua com o projeto dentro: ~700 MB de packs
+# binários ao lado de ~600 KB de código. E a pasta recebe pack novo com
+# frequência — quatro PNGs chegaram só na sessão em que este arquivo foi
+# escrito.
+#
+# Com lista negra, cada pack novo entraria no repositório por omissão e alguém
+# só perceberia meses depois, com o histórico já pesando centenas de megabytes
+# e sem forma barata de desfazer. Invertendo a regra, arte nova é ignorada por
+# padrão e entrar no versionamento passa a ser um ato deliberado.
+
+# ── ignora tudo na raiz ──────────────────────────────────────────────────────
+/*
+
+# ── libera só o que é fonte ──────────────────────────────────────────────────
+!/.gitignore
+!/.gitattributes
+!/CLAUDE.md
+!/.claude/
+!/game/
+
+# Dentro de `game/` valem as regras do próprio `game/.gitignore`, que já exclui
+# node_modules, dist, .snapshots, .assets e public/assets — tudo gerado.
