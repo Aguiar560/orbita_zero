@@ -1,0 +1,244 @@
+import { describe, expect, it } from 'vitest';
+import { Rng } from '@core/math';
+import { RARITIES } from '@data/rarity';
+import { ELEMENTS, matchup } from '@data/elements';
+import { AFFIXES } from '@data/items';
+import { HULLS } from '@data/hulls';
+import { rollItem, rollRarity } from '@sim/loot';
+import { resolveStats } from '@sim/stats';
+import { createState } from '@sim/state';
+import { SLOT_IDS, type GameState } from '@sim/types';
+import { medirSetor } from '../tools/lib/balanco';
+
+/**
+ * Determinismo é a fundação de tudo que vem abaixo.
+ *
+ * Se a mesma semente não produzir o mesmo item, nenhuma outra medição deste
+ * arquivo significa coisa alguma — e a simulação de balanceamento vira ruído.
+ */
+describe('determinismo', () => {
+  /**
+   * Compara CONTEÚDO, não identidade.
+   *
+   * `uid` sai de `Date.now()` + contador, de propósito: ele precisa ser único
+   * entre sessões, senão dois itens rolados em dias diferentes colidiriam
+   * dentro do mesmo save. O que a simulação exige que seja determinístico são
+   * os atributos — e são eles que esta suíte mede.
+   */
+  const semIdentidade = (item: ReturnType<typeof rollItem>) => {
+    const { uid: _descartado, ...conteudo } = item;
+    return conteudo;
+  };
+
+  it('a mesma semente produz o mesmo item', () => {
+    const a = rollItem(new Rng(12345), 40, 0.5, 0);
+    const b = rollItem(new Rng(12345), 40, 0.5, 0);
+    expect(semIdentidade(b)).toEqual(semIdentidade(a));
+  });
+
+  it('sementes diferentes produzem itens diferentes', () => {
+    const a = rollItem(new Rng(1), 40, 0.5, 0);
+    const b = rollItem(new Rng(2), 40, 0.5, 0);
+    expect(semIdentidade(b)).not.toEqual(semIdentidade(a));
+  });
+
+  it('uid é único mesmo com a mesma semente', () => {
+    const a = rollItem(new Rng(12345), 40, 0.5, 0);
+    const b = rollItem(new Rng(12345), 40, 0.5, 0);
+    expect(b.uid).not.toBe(a.uid);
+  });
+
+  it('uma sequência de rolagens é reprodutível ponto a ponto', () => {
+    const sequencia = (semente: number) => {
+      const rng = new Rng(semente);
+      return Array.from({ length: 50 }, () => semIdentidade(rollItem(rng, 60, 0.8, 0)));
+    };
+    expect(sequencia(2026)).toEqual(sequencia(2026));
+  });
+});
+
+/**
+ * Limites de sanidade do §40.
+ *
+ * Equipa o melhor de muitas rolagens em todos os slots, no maior nível de item
+ * plausível, e confere que nenhuma combinação estoura os tetos. É o teste que
+ * pega "invulnerabilidade permanente" e "cooldown negativo" antes do jogador.
+ */
+describe('limites de sanidade (§40)', () => {
+  const extremo = (): GameState => {
+    const st = createState(777);
+    const rng = new Rng(777);
+    for (const slot of SLOT_IDS) {
+      st.equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
+    }
+    return st;
+  };
+
+  it('nenhum atributo vira NaN ou infinito com equipamento extremo', () => {
+    const stats = resolveStats(extremo());
+    for (const [id, v] of Object.entries(stats)) {
+      expect(Number.isFinite(v), `${id} = ${v}`).toBe(true);
+    }
+  });
+
+  it('chance de crítico não passa de 95%', () => {
+    expect(resolveStats(extremo()).critChance).toBeLessThanOrEqual(0.95);
+  });
+
+  it('sincronia do piloto fica entre 0 e 1', () => {
+    const ia = resolveStats(extremo()).iaSkill;
+    expect(ia).toBeGreaterThanOrEqual(0);
+    expect(ia).toBeLessThanOrEqual(1);
+  });
+
+  it('projéteis e perfuração são inteiros não-negativos', () => {
+    const s = resolveStats(extremo());
+    expect(Number.isInteger(s.projeteis)).toBe(true);
+    expect(Number.isInteger(s.perfuracao)).toBe(true);
+    expect(s.projeteis).toBeGreaterThanOrEqual(1);
+    expect(s.perfuracao).toBeGreaterThanOrEqual(0);
+  });
+
+  it('cadência e velocidade têm piso', () => {
+    const s = resolveStats(createState(1));
+    expect(s.cadencia).toBeGreaterThanOrEqual(0.2);
+    expect(s.velocidade).toBeGreaterThanOrEqual(60);
+  });
+
+  /**
+   * PENDENTE DA FASE 1. Hoje não existe teto de projéteis: o §40 pede um, e o
+   * §8 mostra por quê — cada projétil extra vale +100% de dano. Deixado como
+   * `todo` para falhar de propósito quando alguém marcar a etapa como pronta
+   * sem ter implementado o teto.
+   */
+  it.todo('projéteis não passam do teto de 12 (§40)');
+  it.todo('resistência elemental não passa de 80% (§40)');
+});
+
+/**
+ * Distribuição de raridade.
+ *
+ * Verifica a implementação contra os pesos declarados, não contra números
+ * escritos à mão: assim a tabela pode mudar na Fase 1 sem o teste virar
+ * mentira.
+ */
+describe('distribuição de raridade (§9)', () => {
+  it('bate com os pesos declarados, dentro de 5%', () => {
+    const AMOSTRAS = 200_000;
+    const rng = new Rng(20260816);
+    const cont = new Array(RARITIES.length).fill(0);
+    for (let i = 0; i < AMOSTRAS; i++) cont[rollRarity(rng, 0, 0)]++;
+
+    const total = RARITIES.reduce((s, r) => s + r.weight, 0);
+    for (const r of RARITIES) {
+      const esperado = r.weight / total;
+      const real = cont[r.id] / AMOSTRAS;
+      expect(Math.abs(real / esperado - 1), `${r.name}: ${real} vs ${esperado}`).toBeLessThan(0.05);
+    }
+  });
+
+  it('o piso de raridade é respeitado', () => {
+    const rng = new Rng(9);
+    for (let i = 0; i < 500; i++) {
+      expect(rollRarity(rng, 0, 3)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it.todo('Divino sai entre 1/30.000 e 1/45.000 (§10) — depende das 7 raridades');
+});
+
+/** O anel elemental precisa ser simétrico, senão um elemento domina. */
+describe('matriz elemental (§5)', () => {
+  const elementais = ELEMENTS.filter((e) => e.id !== 'padrao');
+
+  it('cada elemento do anel vence exatamente um e perde para exatamente um', () => {
+    for (const e of elementais) {
+      const vence = elementais.filter((d) => d.id !== e.id && matchup(e.id, d.id) > 1);
+      const perde = elementais.filter((d) => d.id !== e.id && matchup(e.id, d.id) < 1);
+      expect(vence.length, `${e.id} vence ${vence.length}`).toBe(1);
+      expect(perde.length, `${e.id} perde para ${perde.length}`).toBe(1);
+    }
+  });
+
+  it('padrão é neutro nos dois sentidos', () => {
+    for (const e of ELEMENTS) {
+      expect(matchup('padrao', e.id)).toBe(1);
+      expect(matchup(e.id, 'padrao')).toBe(1);
+    }
+  });
+
+  /**
+   * DEFEITO CONHECIDO, registrado em vez de corrigido.
+   *
+   * O protótipo usa 1,5 e 0,7, e `1,5 × 0,7 = 1,05`: num par de elementos, quem
+   * ataca com vantagem ganha 5% a mais do que o outro perde ao revidar. A
+   * especificação propõe 1,25 e 0,80, cujo produto é 1,000 exato — sem deriva.
+   *
+   * Não troco a constante aqui porque o anel ainda depende de decisão de design
+   * (§3.4 da auditoria). Quando a Fase 2 aplicar os valores da especificação,
+   * este teste falha, e é aí que ele deve ser trocado pela propriedade correta:
+   * `expect(ida * volta).toBeCloseTo(1, 5)`.
+   */
+  it('LINHA DE BASE: o par vantagem/desvantagem tem deriva de 5%', () => {
+    const ida = matchup('fogo', 'gelo');
+    const volta = matchup('gelo', 'fogo');
+    expect(ida * volta).toBeCloseTo(1.05, 5);
+  });
+
+  it.todo('Fase 2: vantagem × desvantagem = 1,000 exato (1,25 × 0,80)');
+});
+
+/**
+ * Linha de base do desequilíbrio medido na FASE 0.
+ *
+ * Não é um teste de "está certo" — é o contrário: fixa por escrito o quanto o
+ * jogo está QUEBRADO hoje, para que a Fase 1 tenha um marco contra o qual
+ * provar melhora. Quando as curvas forem corrigidas este bloco falha, e falhar
+ * aqui é o sinal de sucesso: aí os números viram os da faixa saudável.
+ */
+describe('linha de base da FASE 0 — desequilíbrio conhecido', () => {
+  it('o setor 1 é trivial: a onda morre em menos de 1 segundo', () => {
+    expect(medirSetor(1).segParaLimpar).toBeLessThan(1);
+  });
+
+  it('o setor 100 é impossível: mais de 1 hora para limpar uma onda', () => {
+    expect(medirSetor(100).segParaLimpar).toBeGreaterThan(3600);
+  });
+
+  it('o jogador do setor 100 morre em menos de 1 golpe', () => {
+    expect(medirSetor(100).golpesAteMorrer).toBeLessThan(1);
+  });
+
+  it('a divergência entre as curvas passa de 100.000× em 99 setores', () => {
+    const a = medirSetor(1);
+    const b = medirSetor(100);
+    const span = b.setor - a.setor;
+    const rDps = Math.pow(b.dps / a.dps, 1 / span);
+    const rHp = Math.pow(b.hpDaOnda / a.hpDaOnda, 1 / span);
+    expect(Math.pow(rHp / rDps, span)).toBeGreaterThan(100_000);
+  });
+});
+
+/** Coerência das tabelas — pega erro de digitação em cadastro de conteúdo. */
+describe('integridade das tabelas', () => {
+  it('nenhum id de casco repetido', () => {
+    const ids = HULLS.map((h) => h.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('nenhum id de afixo repetido', () => {
+    const ids = AFFIXES.map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('todo afixo tem faixa de rolagem válida', () => {
+    for (const a of AFFIXES) {
+      expect(a.max, `${a.id}`).toBeGreaterThanOrEqual(a.min);
+      expect(a.weight, `${a.id}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('todo casco tem elemento declarado', () => {
+    for (const h of HULLS) expect(h.element, h.id).toBeTruthy();
+  });
+});

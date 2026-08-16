@@ -21,6 +21,10 @@ npm run assets && npm run dev
 | `npm run dev` | Vite em `localhost:5180` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | assets + typecheck + build |
+| `npm test` | suíte do Vitest |
+| `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
+| `npm run simular -- drops 200000` | distribuição real de raridade |
+| `npm run simular -- item 30` | dispersão de poder entre itens do mesmo nível |
 
 Os packs crus em `D:\bbb\*` são **somente leitura**. O pipeline nunca escreve neles.
 
@@ -118,6 +122,29 @@ Todo retorno informa: arquivos alterados · resumo · testes executados e
 resultados · decisões tomadas · bloqueios · riscos restantes.
 
 ## Verificação
+
+### Balanceamento — em Node, sem navegador
+
+O jogo é do navegador; a régua é do Node. `sim/` e `data/` são TypeScript puro,
+sem DOM e sem canvas, então o **mesmo arquivo** que o navegador importa para
+jogar o Node importa para medir — não existe cópia da fórmula, e por isso a
+medição não pode divergir do jogo real.
+
+`tools/lib/balanco.ts` tem a medição, `tools/simular.ts` é a linha de comando, e
+`tools/run-ts.mjs` carrega TypeScript em Node com os aliases do Vite (o Vitest 4
+deixou de publicar o binário `vite-node`, e a API do próprio Vite resolve isso
+em dez linhas sem pacote novo).
+
+Existe porque os critérios de aceite não cabem no navegador: 200 000 rolagens
+travam a aba, e 300 medições de setor precisam ser reprodutíveis por alguém que
+não seja quem as escreveu.
+
+Os testes em `tests/` incluem um bloco **linha de base** que fixa por escrito o
+quanto o balanceamento está quebrado hoje. Ele falhar é sinal de sucesso: quer
+dizer que a Fase 1 mexeu nas curvas. Ao corrigir, troque a asserção pela faixa
+saudável em vez de apagar o teste.
+
+### Render — no navegador
 
 O painel de navegador do ambiente não compõe quadros, então screenshot direto do
 jogo não funciona. Existe um caminho próprio:
