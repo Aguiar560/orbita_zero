@@ -535,7 +535,16 @@ Favorito nunca entra. Fundir é destrutivo, e a marca existe para proteger disso
 O sistema se chama **Fabricação** (§25 pede um nome que não seja "Forja").
 
 **A câmara de síntese**, em três colunas: inventário à esquerda, anel no meio,
-tipos de fabricação à direita.
+tipos de fabricação à direita — aberta como CAMADA por cima da tela.
+
+O trilho tem ~350 px: basta para uma lista, não para três colunas. A primeira
+tentativa foi alargar a coluna direita, e ela esbarrou numa briga de cascata com
+as media queries que não consegui explicar — a regra estava na folha, a media
+casava, a classe estava no pai, e mesmo assim adicionar e remover a classe não
+mudava o `grid-template-columns` computado. A camada não depende da grade do
+layout, então some com o problema em vez de contorná-lo.
+
+Medido: a caixa abre em 1180 px e o anel em 460, contra 348 e 107 no trilho.
 
 O jogador escolhe as peças UMA A UMA. Duas versões anteriores selecionavam
 sozinhas as piores, o que era cômodo e errado: fundir é destrutivo e

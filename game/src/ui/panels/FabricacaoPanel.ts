@@ -25,6 +25,8 @@ export class FabricacaoPanel implements Panel {
   id = 'fabricacao';
   title = 'Fabricação';
   icon = 'cat/reator';
+  /** Três colunas próprias não cabem no trilho. */
+  overlay = true;
 
   private selecionada: Rarity = 0;
   /** Uids nos encaixes do anel. `null` = vazio. */

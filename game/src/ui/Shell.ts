@@ -53,6 +53,9 @@ export class Shell {
   private active = this.panels[0]!;
   private panelTimer = 0;
   private dirty = true;
+  /** Camada do painel em tela cheia, quando há um aberto. */
+  private camadaHost: HTMLElement | null = null;
+  private aoTeclar: ((e: KeyboardEvent) => void) | null = null;
 
   private readonly resourceNodes = new Map<ResourceId, HTMLElement>();
   private leftRail!: LeftRail;
@@ -179,11 +182,68 @@ export class Shell {
   }
 
   private renderPanel(): void {
+    // Painel de camada: sai da grade do layout e cobre a tela. O trilho mostra
+    // um aviso no lugar, para a aba não parecer vazia enquanto a camada está
+    // aberta.
+    if (this.active.overlay) {
+      clear(this.panelHost).append(
+        h('.panel-head', {}, h('h1', { text: this.active.title })),
+        h('p.muted.tiny', { text: 'Aberto em tela cheia.' }),
+      );
+      this.abrirCamada();
+      return;
+    }
+
+    this.fecharCamada();
     const content = this.active.render(this.sim);
     clear(this.panelHost).append(
       h('.panel-head', {}, h('h1', { text: this.active.title })),
       content,
     );
+  }
+
+  /** Monta (ou re-renderiza) a camada do painel ativo. */
+  private abrirCamada(): void {
+    const painel = this.active;
+    if (!this.camadaHost) {
+      this.camadaHost = h('.camada');
+      // Clicar o fundo fecha. O conteúdo para a propagação, senão qualquer
+      // clique dentro dele — pôr uma peça no anel, por exemplo — fecharia junto.
+      this.camadaHost.addEventListener('click', (e) => {
+        if (e.target === this.camadaHost) this.voltarDaCamada();
+      });
+      this.root.append(this.camadaHost);
+      // Esc fecha, que é o que todo mundo tenta primeiro.
+      this.aoTeclar = (e: KeyboardEvent) => { if (e.key === 'Escape') this.voltarDaCamada(); };
+      window.addEventListener('keydown', this.aoTeclar);
+    }
+
+    clear(this.camadaHost).append(
+      h('.camada-caixa', {},
+        h('.camada-topo', {},
+          h('h1', { text: painel.title }),
+          h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', onclick: () => this.voltarDaCamada() }),
+        ),
+        painel.render(this.sim),
+      ),
+    );
+  }
+
+  private fecharCamada(): void {
+    if (!this.camadaHost) return;
+    this.camadaHost.remove();
+    this.camadaHost = null;
+    if (this.aoTeclar) window.removeEventListener('keydown', this.aoTeclar);
+    this.aoTeclar = null;
+  }
+
+  /** Fecha a camada e volta para o primeiro painel que não é de camada. */
+  private voltarDaCamada(): void {
+    this.fecharCamada();
+    const anterior = this.panels.find((p) => !p.overlay);
+    if (anterior) this.active = anterior;
+    this.buildTabs();
+    this.renderPanel();
   }
 
   private updateResources(): void {

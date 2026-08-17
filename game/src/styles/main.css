@@ -871,3 +871,47 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .fab-tipo-pct { font-size: 13px; font-variant-numeric: tabular-nums; flex: 1; }
 .fab-tipo-rec { display: grid; place-items: center; }
 .fab-gema { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+/* ── painel em camada ────────────────────────────────────────────────────── */
+/*
+ * Painel de TRABALHO por cima da tela, fora da grade do layout.
+ *
+ * O trilho tem ~350 px: basta para uma lista, não para três colunas. A
+ * alternativa — alargar a coluna direita — esbarrou numa briga de cascata com
+ * as media queries que eu não consegui explicar; a camada não depende da grade
+ * de jeito nenhum, então some com o problema em vez de contorná-lo.
+ */
+.camada {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(2, 4, 10, 0.82);
+  backdrop-filter: blur(3px);
+  animation: camada-entra 0.16s ease;
+}
+@keyframes camada-entra { from { opacity: 0; } to { opacity: 1; } }
+
+.camada-caixa {
+  width: min(1180px, 96vw); max-height: 92vh; overflow: auto;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px;
+  padding: 16px 20px 20px;
+  background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(6, 10, 20, 0.98));
+  border: 1px solid var(--line-strong); border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.camada-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.camada-topo h1 { font-size: 20px; letter-spacing: 2px; color: var(--accent); }
+.camada-x {
+  width: 32px; height: 32px; border-radius: 8px; font-size: 15px;
+  background: rgba(8, 14, 28, 0.9); border: 1px solid var(--line); color: var(--muted);
+}
+.camada-x:hover { border-color: var(--bad); color: var(--bad); }
+
+/* Com espaço de verdade, as colunas da Fabricação podem respirar. */
+.camada .fab { grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 18px; }
+.camada .fab-grade { grid-template-columns: repeat(5, 1fr); }
+.camada .fab-anel { max-width: 460px; }
+.camada .fab-encaixe { width: 62px; height: 62px; }
+.camada .fab-acao { max-width: 460px; }
