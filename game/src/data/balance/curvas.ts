@@ -407,3 +407,24 @@ export const curvaXpPersonagem = (nivel: number): number =>
 /** XP para sair do nível `n` de uma nave. */
 export const curvaXpNave = (nivel: number): number =>
   Math.ceil(NAVE_XP_BASE * Math.pow(Math.max(1, nivel), NAVE_XP_EXPO));
+
+/**
+ * Nível de personagem exigido para desbloquear algo que pede um SETOR (§17).
+ *
+ * Derivado do setor, e não escrito item a item: são 72 bases, dezenas de itens
+ * de loja e a frota inteira, e uma coluna de nível à mão divergiria da coluna de
+ * setor no primeiro ajuste de ritmo.
+ *
+ * O papel dele não é ser uma segunda parede. Quem chegou ao setor JOGANDO tem
+ * folga de sobra — o fator 0,55 fica bem abaixo do nível típico de quem
+ * atravessa aquele trecho. O que ele barra é o acesso RUSHADO: alguém que pulou
+ * setores por um caminho lateral, ou que voltou de um universo avançado, chega
+ * ao conteúdo com nível de personagem que não sustenta o que ele compra.
+ *
+ * É o que dá ao nível de personagem um segundo significado além dos pontos da
+ * Matriz — sem ele, subir de nível só abastecia a Matriz e nada mais.
+ */
+export const NIVEL_POR_SETOR_EXIGIDO = 0.55;
+
+export const nivelExigido = (setor: number): number =>
+  Math.max(1, Math.floor(setor * NIVEL_POR_SETOR_EXIGIDO));

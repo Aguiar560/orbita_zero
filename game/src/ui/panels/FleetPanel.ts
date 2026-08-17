@@ -4,6 +4,7 @@ import { getElement } from '@data/elements';
 import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
+import { nivelExigido } from '@data/balance/curvas';
 import type { Panel } from './types';
 
 export class FleetPanel implements Panel {
@@ -15,6 +16,7 @@ export class FleetPanel implements Panel {
     return HULLS.filter(
       (hull) => !sim.state.fleet.includes(hull.id)
         && sim.state.universe.bestSectorEver >= hull.requiresSector
+        && sim.state.command.nivel >= nivelExigido(hull.requiresSector)
         && sim.can('cristal', hull.cost),
     ).length;
   }
@@ -34,7 +36,13 @@ export class FleetPanel implements Panel {
           return h('.fleet-card.locked', {},
             h('.fleet-art', {}, spriteIcon(hull.sprite, 64, 'silhouette')),
             h('strong', { text: '???' }),
-            h('span.muted', { text: `Alcance o setor ${hull.requiresSector}` }),
+            h('span.muted', {
+              // Diz QUAL requisito falta, não só que falta algum: um botão
+              // cinza sem motivo manda o jogador adivinhar.
+              text: sim.state.universe.bestSectorEver < hull.requiresSector
+                ? `Alcance o setor ${hull.requiresSector}`
+                : `Requer nível ${nivelExigido(hull.requiresSector)} de comando`,
+            }),
           );
         }
 

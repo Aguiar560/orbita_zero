@@ -3,6 +3,7 @@ import { CARGO_PER_LEVEL, SHOP, shopCost, type ShopItem } from '@data/shop';
 import type { ResourceId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
+import { nivelExigido } from '@data/balance/curvas';
 import type { Panel } from './types';
 
 const MOEDA: Record<ResourceId, { nome: string; cor: string }> = {
@@ -44,7 +45,8 @@ export class ShopPanel implements Panel {
   }
 
   private visivel(sim: Sim, item: ShopItem): boolean {
-    return sim.state.universe.bestSectorEver >= (item.requiresSector ?? 0);
+    return sim.state.universe.bestSectorEver >= (item.requiresSector ?? 0)
+      && sim.state.command.nivel >= nivelExigido(item.requiresSector ?? 0);
   }
 
   private pagavel(sim: Sim, item: ShopItem): boolean {

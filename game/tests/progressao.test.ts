@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TREE_NODES, custoDoNo } from '@data/tree';
 import { allocatePath, pointsAvailable, pointsForLevel } from '@sim/tree';
-import { NIVEL_MAX } from '@data/balance/curvas';
+import { NIVEL_MAX, nivelExigido } from '@data/balance/curvas';
+import { HULLS } from '@data/hulls';
 import { Sim } from '@sim/index';
 import { buildEncounter } from '@sim/progression';
 import { createState } from '@sim/state';
@@ -202,5 +203,55 @@ describe('a Matriz acompanha os 300 níveis', () => {
     )[0]!;
     expect(allocatePath(s, alvo.id)).toBe(0);
     expect(s.command.allocated).toHaveLength(0);
+  });
+});
+
+/**
+ * Requisito de nível de personagem (§17).
+ *
+ * Antes, tudo era liberado só por SETOR — e subir de nível só abastecia a
+ * Matriz. Com ela saturando, o nível deixava de significar qualquer coisa.
+ */
+describe('nível exigido, além do setor', () => {
+  /**
+   * A promessa que faz este requisito não ser uma segunda parede: quem chegou
+   * ao setor JOGANDO passa com folga. Se essa margem sumir, o jogador fica
+   * preso olhando uma nave que alcançou e não pode comprar.
+   */
+  it('quem chega jogando tem folga sobre o exigido', () => {
+    // Medido: por volta do setor 10 o jogador está no nível 11; no 20, acima
+    // de 30. O exigido no setor 10 é 5, e no 20 é 11.
+    expect(nivelExigido(10)).toBeLessThan(11);
+    expect(nivelExigido(20)).toBeLessThan(30);
+  });
+
+  it('cresce com o setor e nunca é menor que 1', () => {
+    expect(nivelExigido(0)).toBe(1);
+    expect(nivelExigido(1)).toBe(1);
+    for (const s of [10, 50, 150, 300]) {
+      expect(nivelExigido(s)).toBeGreaterThan(nivelExigido(s - 5));
+    }
+  });
+
+  it('no fim do jogo continua abaixo do teto de nível', () => {
+    expect(nivelExigido(300)).toBeLessThan(NIVEL_MAX);
+  });
+
+  /**
+   * O caso que o requisito existe para barrar: alcance sem progressão. Um
+   * jogador que pulou setores tem o SETOR mas não o nível.
+   */
+  it('barra quem tem o setor mas não o nível', () => {
+    const s = createState(2);
+    const nave = HULLS.find((h) => h.requiresSector > 20)!;
+    s.universe.bestSectorEver = nave.requiresSector;
+    s.resources.cristal = 1e9;
+
+    const sim = new Sim(s);
+    s.command.nivel = 1;
+    expect(sim.buyHull(nave.id), 'nível 1 não deveria comprar').toBe(false);
+
+    s.command.nivel = nivelExigido(nave.requiresSector);
+    expect(sim.buyHull(nave.id)).toBe(true);
   });
 });

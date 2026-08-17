@@ -30,7 +30,7 @@ import {
   type NivelProgresso, type SlotId, type Stats,
 } from './types';
 import { MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
-import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem } from '@data/balance/curvas';
+import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
@@ -983,6 +983,9 @@ export class Sim {
     const owned = this.shopOwned(id);
     if (def.max > 0 && owned >= def.max) return false;
     if (this.state.universe.bestSectorEver < (def.requiresSector ?? 0)) return false;
+    // Requisito de NÍVEL além do de setor (§17). Ver `nivelExigido`: quem
+    // chegou jogando passa com folga; quem pulou, não.
+    if (this.state.command.nivel < nivelExigido(def.requiresSector ?? 0)) return false;
     if (!this.spend(def.currency, shopCost(def, def.kind === 'consumivel' ? 0 : owned))) return false;
 
     // Consumíveis não acumulam nível: entregam o efeito e pronto.
@@ -1007,6 +1010,7 @@ export class Sim {
     const hull = HULLS.find((h) => h.id === id);
     if (!hull || this.state.fleet.includes(id)) return false;
     if (this.state.universe.bestSectorEver < hull.requiresSector) return false;
+    if (this.state.command.nivel < nivelExigido(hull.requiresSector)) return false;
     if (!this.spend('cristal', hull.cost)) return false;
     this.state.fleet.push(id);
     this.touch();
