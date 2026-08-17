@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3.3 — gerador de item com orçamento de poder.
+**Próxima:** Fase 3.4 — `+N projéteis` com as restrições do §8.
 
 
 
@@ -396,7 +396,7 @@ como ser dimensionado.
 |---|---|
 | 3.1 | ✅ Pipeline de `novos itens.png` — atlas `itens-novos`, 140 ícones |
 | 3.2 | ✅ Afinidade de slot: cada categoria puxa a própria família de afixo |
-| 3.3 | Gerador de item com orçamento de poder |
+| 3.3 | ✅ `calibre` por afixo, medido — dispersão 22,1× → 10,0× |
 | 3.4 | `+N projéteis` com as restrições do §8 |
 | 3.5 | Tabelas de drop por galáxia, inimigo, chefe e exclusivo (§10) |
 | 3.6 | Décima categoria: Upgrades Gerais (§11) |

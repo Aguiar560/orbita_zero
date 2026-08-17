@@ -226,6 +226,24 @@ export interface AffixDef {
   label: string;
   /** Eixo do jogo a que pertence — decide a afinidade com cada slot. */
   familia: FamiliaDeAfixo;
+  /**
+   * Correção de VALOR da linha, medida (§7).
+   *
+   * Duas linhas do mesmo tier num item da mesma raridade deveriam valer
+   * aproximadamente o mesmo, e não valiam: medido em nave montada, o melhor
+   * afixo do núcleo rendia 2,7× a mediana e o pior 0,7×. A faixa `min`/`max`
+   * de cada afixo é escrita em UNIDADES DO ATRIBUTO — "+3 de dano" e "+0,2 de
+   * regeneração" não são comparáveis a olho, e o desequilíbrio se acumulou sem
+   * ninguém notar.
+   *
+   * `calibre` multiplica o valor rolado para fechar essa diferença. Sai de
+   * `npm run simular -- calibrar`, que mede o ganho marginal de cada afixo e
+   * devolve o inverso normalizado — não é escolha de design, é a correção que a
+   * medição pede.
+   *
+   * Ausente = 1, ou seja, sem correção.
+   */
+  calibre?: number;
   stat: StatId;
   kind: 'add' | 'mul';
   /** Faixa de rolagem por nível de item. */
@@ -258,6 +276,7 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
   ...ELEMENTS.map((e) => ({
     id: `pot_${e.id}`,
     familia: 'ofensiva' as const,
+    calibre: 0.417,
     label: e.id === 'padrao' ? 'Dano normal' : `Dano de ${e.name.toLowerCase()}`,
     stat: DANO_STAT[e.id],
     // `add`, não `mul`. Estes atributos são consumidos como `1 + x` — em
@@ -310,11 +329,11 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
  * porque uma porcentagem já é relativa — senão +10% viraria +1000% no fim.
  */
 export const AFFIXES: readonly AffixDef[] = [
-  { id: 'dano_f',      label: 'Dano',                familia: 'ofensiva', stat: 'dano',        kind: 'add', min: 1.4, max: 3.2, weight: 100 },
-  { id: 'dano_p',      label: 'Dano',                familia: 'ofensiva', stat: 'dano',        kind: 'mul', min: 0.04, max: 0.14, weight: 80 },
+  { id: 'dano_f',      label: 'Dano',                familia: 'ofensiva', calibre: 0.472, stat: 'dano',        kind: 'add', min: 1.4, max: 3.2, weight: 100 },
+  { id: 'dano_p',      label: 'Dano',                familia: 'ofensiva', calibre: 1.173, stat: 'dano',        kind: 'mul', min: 0.04, max: 0.14, weight: 80 },
   { id: 'cadencia_p',  label: 'Cadência',            familia: 'ofensiva', stat: 'cadencia',    kind: 'mul', min: 0.03, max: 0.12, weight: 75 },
   { id: 'crit_c',      label: 'Chance de crítico',   familia: 'ofensiva', stat: 'critChance',  kind: 'add', min: 0.012, max: 0.045, weight: 60, minIlvl: 4 },
-  { id: 'crit_d',      label: 'Dano crítico',        familia: 'ofensiva', stat: 'critDano',    kind: 'add', min: 0.06, max: 0.24, weight: 55, minIlvl: 4 },
+  { id: 'crit_d',      label: 'Dano crítico',        familia: 'ofensiva', calibre: 0.576, stat: 'critDano',    kind: 'add', min: 0.06, max: 0.24, weight: 55, minIlvl: 4 },
   // Crítico ELEMENTAL, separado do normal (§4). Faixas iguais às do normal de
   // propósito: quem escolhe um dos dois está escolhendo em qual componente
   // investiu, não pegando o número maior.
@@ -329,20 +348,20 @@ export const AFFIXES: readonly AffixDef[] = [
    * `PENETRACAO_MAX` garante que o pior confronto chegue a 0,94 e não a 1,0.
    */
   { id: 'pen_f',       label: 'Penetração',          familia: 'ofensiva', stat: 'penetracao',  kind: 'add', min: 0.02, max: 0.07, weight: 30, minIlvl: 20 },
-  { id: 'vida_f',      label: 'Casco',               familia: 'defensiva', stat: 'vida',        kind: 'add', min: 9, max: 22, weight: 95 },
-  { id: 'vida_p',      label: 'Casco',               familia: 'defensiva', stat: 'vida',        kind: 'mul', min: 0.04, max: 0.13, weight: 70 },
-  { id: 'escudo_f',    label: 'Escudo',              familia: 'defensiva', stat: 'escudo',      kind: 'add', min: 7, max: 19, weight: 90 },
-  { id: 'escudo_p',    label: 'Escudo',              familia: 'defensiva', stat: 'escudo',      kind: 'mul', min: 0.05, max: 0.16, weight: 65 },
-  { id: 'regen_f',     label: 'Regeneração',         familia: 'defensiva', stat: 'regen',       kind: 'add', min: 0.4, max: 1.6, weight: 60 },
-  { id: 'veloc_p',     label: 'Velocidade',          familia: 'defensiva', stat: 'velocidade',  kind: 'mul', min: 0.03, max: 0.11, weight: 60, slots: ['motor', 'asas', 'blindagem'] },
+  { id: 'vida_f',      label: 'Casco',               familia: 'defensiva', calibre: 0.716, stat: 'vida',        kind: 'add', min: 9, max: 22, weight: 95 },
+  { id: 'vida_p',      label: 'Casco',               familia: 'defensiva', calibre: 0.735, stat: 'vida',        kind: 'mul', min: 0.04, max: 0.13, weight: 70 },
+  { id: 'escudo_f',    label: 'Escudo',              familia: 'defensiva', calibre: 0.744, stat: 'escudo',      kind: 'add', min: 7, max: 19, weight: 90 },
+  { id: 'escudo_p',    label: 'Escudo',              familia: 'defensiva', calibre: 0.852, stat: 'escudo',      kind: 'mul', min: 0.05, max: 0.16, weight: 65 },
+  { id: 'regen_f',     label: 'Regeneração',         familia: 'defensiva', calibre: 0.654, stat: 'regen',       kind: 'add', min: 0.4, max: 1.6, weight: 60 },
+  { id: 'veloc_p',     label: 'Velocidade',          familia: 'defensiva', calibre: 1.276, stat: 'velocidade',  kind: 'mul', min: 0.03, max: 0.11, weight: 60, slots: ['motor', 'asas', 'blindagem'] },
   { id: 'proj_f',      label: 'Projéteis',           familia: 'ofensiva', stat: 'projeteis',   kind: 'add', min: 1, max: 1, weight: 9, slots: ['principal', 'secundaria'], minIlvl: 12 },
   { id: 'perf_f',      label: 'Perfuração',          familia: 'ofensiva', stat: 'perfuracao',  kind: 'add', min: 1, max: 1, weight: 14, slots: ['principal', 'secundaria'], minIlvl: 8 },
   { id: 'expl_f',      label: 'Raio de explosão',    familia: 'ofensiva', stat: 'explosao',    kind: 'add', min: 3, max: 11, weight: 35, slots: ['principal', 'secundaria', 'reator'], minIlvl: 6 },
   { id: 'sorte_f',     label: 'Sorte',               familia: 'utilidade', stat: 'sorte',       kind: 'add', min: 0.02, max: 0.09, weight: 45 },
-  { id: 'sucata_p',    label: 'Ganho de sucata',     familia: 'utilidade', stat: 'sucataGanho', kind: 'add', min: 0.06, max: 0.22, weight: 55 },
-  { id: 'nucleo_p',    label: 'Ganho de núcleos',    familia: 'utilidade', stat: 'nucleoGanho', kind: 'add', min: 0.05, max: 0.18, weight: 50 },
-  { id: 'xp_p',        label: 'Ganho de XP',         familia: 'utilidade', stat: 'xpGanho',     kind: 'add', min: 0.05, max: 0.2, weight: 40 },
-  { id: 'ia_f',        label: 'Sincronia do piloto', familia: 'utilidade', stat: 'iaSkill',     kind: 'add', min: 0.015, max: 0.06, weight: 22, slots: ['controle', 'motor', 'reator'], minIlvl: 10 },
+  { id: 'sucata_p',    label: 'Ganho de sucata',     familia: 'utilidade', calibre: 1.8, stat: 'sucataGanho', kind: 'add', min: 0.06, max: 0.22, weight: 55 },
+  { id: 'nucleo_p',    label: 'Ganho de núcleos',    familia: 'utilidade', calibre: 2.026, stat: 'nucleoGanho', kind: 'add', min: 0.05, max: 0.18, weight: 50 },
+  { id: 'xp_p',        label: 'Ganho de XP',         familia: 'utilidade', calibre: 1.927, stat: 'xpGanho',     kind: 'add', min: 0.05, max: 0.2, weight: 40 },
+  { id: 'ia_f',        label: 'Sincronia do piloto', familia: 'utilidade', calibre: 0.667, stat: 'iaSkill',     kind: 'add', min: 0.015, max: 0.06, weight: 22, slots: ['controle', 'motor', 'reator'], minIlvl: 10 },
   ...ELEMENTAL_AFFIXES,
 ];
 

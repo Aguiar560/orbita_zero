@@ -239,7 +239,14 @@ function comandoOndas(de: number, ate: number): void {
  * Mede o afixo isolado, na MEDIANA da sua faixa e num tier fixo, para o número
  * refletir o afixo e não a sorte da rolagem.
  */
-function comandoAfixos(ilvl: number, tier: number): void {
+/**
+ * Ganho marginal de cada afixo, sobre uma nave montada no nível.
+ *
+ * Separado de `comandoAfixos` porque a calibragem precisa do MESMO número em
+ * dois níveis de item, e reimplementar a sonda seria duas medições que podem
+ * divergir — o tipo de divergência que não aparece em teste.
+ */
+export function medirAfixos(ilvl: number, tier: number): { def: typeof AFFIXES[number]; ganho: number }[] {
   /**
    * A base é uma nave MONTADA no nível, não uma nave nua.
    *
@@ -266,7 +273,13 @@ function comandoAfixos(ilvl: number, tier: number): void {
     const escalavel = def.kind === 'add' && !def.element && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
     const escalado = escalavel ? bruto * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : bruto;
     const contagem = def.id === 'proj_f' || def.id === 'perf_f';
-    const value = contagem ? Math.round(bruto) : escalado * fatorDoTier(tier);
+    // ESPELHA `rollAffix`, `calibre` incluído. Sem ele, a sonda media o item
+    // que o gerador NÃO produz: a calibragem entrava no jogo e não na medição,
+    // então medir depois de calibrar não mostrava efeito nenhum — e a leitura
+    // era "a calibragem não funcionou", quando o que não funcionava era a régua.
+    const value = contagem
+      ? Math.round(bruto)
+      : escalado * fatorDoTier(tier) * (def.calibre ?? 1);
 
     const comLinha: Item = {
       ...alvo,
@@ -281,6 +294,12 @@ function comandoAfixos(ilvl: number, tier: number): void {
     return { def, ganho: powerScore(resolveStats(sonda)) - notaBase };
   }).sort((a, b) => b.ganho - a.ganho);
 
+  return linhas;
+}
+
+/** Tabela legível do ganho marginal — o comando `afixos`. */
+function comandoAfixos(ilvl: number, tier: number): void {
+  const linhas = medirAfixos(ilvl, tier);
   const valores = linhas.map((l) => l.ganho).filter((g) => g > 0);
   const mediana = valores.sort((a, b) => a - b)[Math.floor(valores.length / 2)] ?? 1;
 
@@ -320,6 +339,9 @@ switch (comando) {
   case 'ondas':
     comandoOndas(Number(args[0] ?? 1), Number(args[1] ?? 3));
     break;
+  case 'calibrar':
+    comandoCalibrar(Number(args[0] ?? 0.6));
+    break;
   case 'afixos':
     comandoAfixos(Number(args[0] ?? 30), Number(args[1] ?? 5));
     break;
@@ -331,4 +353,70 @@ switch (comando) {
   npm run simular -- item <ilvl> [amostras]     dispersão de poder por item
 
 Não roda o jogo: só importa sim/ e data/, que são TypeScript puro.`);
+}
+
+/**
+ * Calcula o `calibre` de cada afixo a partir de medição (§7).
+ *
+ * O ganho marginal é medido em DOIS níveis de item e a razão usada é a MÉDIA
+ * geométrica dos dois. Medir num só ponto calibraria o jogo para aquele ponto:
+ * afixo de valor bruto ganha força com o nível e afixo fracionário não, então
+ * uma correção tirada do ilvl 270 estragaria o começo do jogo.
+ *
+ * A correção é AMORTECIDA por `FORCA`. Igualar tudo a 1,00 tornaria os afixos
+ * intercambiáveis e apagaria a escolha — em ARPG alguns afixos são melhores, e
+ * é isso que faz uma peça ser boa. O objetivo é limitar a dispersão, não zerá-la.
+ */
+function comandoCalibrar(forca: number): void {
+  const PONTOS: [number, number][] = [[40, 5], [250, 9]];
+  const soma = new Map<string, number[]>();
+
+  for (const [ilvl, tier] of PONTOS) {
+    for (const l of medirAfixos(ilvl, tier)) {
+      if (!soma.has(l.def.id)) soma.set(l.def.id, []);
+      soma.get(l.def.id)!.push(l.ganho);
+    }
+  }
+
+  // A referência é a MEDIANA dos ganhos, não a média: um punhado de afixos
+  // muito fortes puxaria a média e empurraria todo o resto para cima.
+  const razoes = new Map<string, number>();
+  for (const [id, ganhos] of soma) {
+    const geo = Math.exp(ganhos.reduce((s, g) => s + Math.log(Math.max(g, 1e-9)), 0) / ganhos.length);
+    razoes.set(id, geo);
+  }
+  const ordenadas = [...razoes.values()].filter((v) => v > 1e-6).sort((a, b) => a - b);
+  const mediana = ordenadas[Math.floor(ordenadas.length / 2)] ?? 1;
+
+  const linhas: string[][] = [];
+  const saturados: string[] = [];
+  for (const [id, geo] of razoes) {
+    const atual = AFFIXES.find((a) => a.id === id)?.calibre ?? 1;
+
+    /**
+     * Ganho zero NÃO é calibrável, e tratá-lo como tal é o erro que este bloco
+     * existe para impedir.
+     *
+     * Um afixo mede zero quando a nave já está no TETO daquele atributo (§40) —
+     * cadência 20, crítico 95%, explosão 260, sorte 5. O problema dele é
+     * saturação, não magnitude: multiplicar o valor por mil continua dando zero,
+     * porque `aplicarLimites` apara depois. Sem esta guarda a fórmula sugeria
+     * calibre 73.000 para `pen_f`.
+     *
+     * O teste é sobre CADA amostra, não sobre a média geométrica: a média de
+     * (0, positivo) não é zero, é só pequena — foi assim que a primeira versão
+     * desta guarda passou reto e imprimiu os 73.000 mesmo assim.
+     */
+    if ((soma.get(id) ?? []).some((g) => g <= 1e-6)) { saturados.push(id); continue; }
+
+    // Contagem não é calibrável por outro motivo: "+1,4 projéteis" não existe.
+    const contagem = id === 'proj_f' || id === 'perf_f';
+    const novo = contagem ? 1 : atual * Math.pow(mediana / geo, forca);
+    linhas.push([id, n(geo), `${(geo / mediana).toFixed(2)}×`, atual.toFixed(2), novo.toFixed(3)]);
+  }
+
+  linhas.sort((a, b) => Number(b[4]) - Number(a[4]));
+  tabela(['afixo', 'ganho', 'x mediana', 'calibre', 'sugerido'], linhas);
+  console.log(`\namortecimento ${forca} · mediana ${n(mediana)}`);
+  console.log('Cole os `sugerido` em `calibre` nos afixos de `data/items.ts` e remeça.');
 }

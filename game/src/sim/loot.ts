@@ -126,7 +126,10 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affi
   // Projéteis e perfuração são CONTAGEM: escalar por tier daria "+3,7 projéteis".
   // O tier já se expressa neles por outra via — o teto de raridade que os libera.
   const contagem = def.id === 'proj_f' || def.id === 'perf_f';
-  const value = contagem ? Math.round(raw) : scaled * fatorDoTier(tier);
+  // `calibre` iguala o VALOR das linhas entre afixos (§7). Não se aplica à
+  // contagem: "+1,4 projéteis" não existe, e o valor desses dois já é gerido
+  // pelo peso baixo e pelo nível mínimo.
+  const value = contagem ? Math.round(raw) : scaled * fatorDoTier(tier) * (def.calibre ?? 1);
   return { id: def.id, stat: def.stat, kind: def.kind, value, quality, tier };
 }
 
