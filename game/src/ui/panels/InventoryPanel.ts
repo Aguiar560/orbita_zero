@@ -4,6 +4,13 @@ import { clamp } from '@core/math';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
 import { colunasDaGrade } from '@data/balance/capacidade';
+import { ELEMENTS } from '@data/elements';
+import type { ElementId } from '@sim/types';
+
+/** O tier mais alto entre as linhas da peça. Afixo de save antigo conta como T1. */
+function melhorTier(item: Item): number {
+  return item.affixes.reduce((m, a) => Math.max(m, a.tier ?? 1), 0);
+}
 
 import { scoreItem } from '@sim/loot';
 import type { Item, Rarity } from '@sim/types';
@@ -49,7 +56,15 @@ export class InventoryPanel implements Panel {
   icon = 'aba/inventario';
 
   private filter: Rarity | -1 = -1;
-  private sort: 'poder' | 'raridade' | 'slot' = 'poder';
+  /**
+   * Filtro por ELEMENTO. Passou a fazer falta com a Fase 2: escolher escudo
+   * virou leitura do inimigo, e "achar meu escudo de gelo" era rolar a grade
+   * inteira olhando os pips.
+   */
+  private elemento: ElementId | 'todos' = 'todos';
+  /** Só favoritos — o inventário nasce com 15 espaços, então marcar importa. */
+  private soFavoritos = false;
+  private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
   private readonly tip = h('.inv-tip.hidden');
 
   badge(sim: Sim): number {
@@ -80,7 +95,30 @@ export class InventoryPanel implements Panel {
           h('option', { value: 'poder', text: 'Ganho de poder', selected: this.sort === 'poder' }),
           h('option', { value: 'raridade', text: 'Raridade', selected: this.sort === 'raridade' }),
           h('option', { value: 'slot', text: 'Slot', selected: this.sort === 'slot' }),
+          h('option', { value: 'nivel', text: 'Nível de item', selected: this.sort === 'nivel' }),
+          h('option', { value: 'tier', text: 'Melhor tier', selected: this.sort === 'tier' }),
         ),
+
+        // Filtro por elemento, ao lado da ordenação e não junto das raridades:
+        // são dois eixos independentes, e empilhar tudo numa fileira de chips
+        // faria vinte botões numa barra de 378px.
+        h('select.select', {
+          onchange: (e: Event) => {
+            this.elemento = (e.target as HTMLSelectElement).value as ElementId | 'todos';
+            sim.touch();
+          },
+        },
+          h('option', { value: 'todos', text: 'Todos os elementos', selected: this.elemento === 'todos' }),
+          ...ELEMENTS.map((el) => h('option', {
+            value: el.id, text: el.name, selected: this.elemento === el.id,
+          })),
+        ),
+
+        h(`button.mini${this.soFavoritos ? '.ativa' : ''}`, {
+          text: this.soFavoritos ? '★ Favoritos' : '☆ Favoritos',
+          title: 'Mostra só o que está marcado. Com 15 espaços no começo, marcar é o que protege uma peça do desmanche automático.',
+          onclick: () => { this.soFavoritos = !this.soFavoritos; sim.touch(); },
+        }),
         h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
         h('button.mini.danger', {
           text: 'Desmanchar ≤ incomum',
@@ -100,12 +138,22 @@ export class InventoryPanel implements Panel {
   }
 
   private sorted(sim: Sim): Item[] {
-    const list = sim.state.inventory.filter((i) => this.filter < 0 || i.rarity === this.filter);
+    const list = sim.state.inventory.filter((i) =>
+      (this.filter < 0 || i.rarity === this.filter)
+      && (this.elemento === 'todos' || (i.element ?? 'padrao') === this.elemento)
+      && (!this.soFavoritos || i.favorite));
+
     switch (this.sort) {
       case 'raridade':
         return list.sort((a, b) => b.rarity - a.rarity || b.ilvl - a.ilvl);
       case 'slot':
         return list.sort((a, b) => a.slot.localeCompare(b.slot) || b.rarity - a.rarity);
+      case 'nivel':
+        return list.sort((a, b) => b.ilvl - a.ilvl || b.rarity - a.rarity);
+      case 'tier':
+        // Pelo MELHOR tier da peça, não pela média: uma linha T10 é o que faz
+        // um item valer a pena guardar, e a média a diluiria entre as outras.
+        return list.sort((a, b) => melhorTier(b) - melhorTier(a) || b.rarity - a.rarity);
       default:
         return list.sort((a, b) => scoreItem(sim.state, b) - scoreItem(sim.state, a));
     }

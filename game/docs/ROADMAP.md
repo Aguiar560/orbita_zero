@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** fechar a 3.7 (o painel não remonta sozinho ao ganhar espaço; filtros e ordenação) e 3.8 (§29).
+**Próxima:** Fase 3.8 — separar o inventário de itens do armazém de recursos (§29).
 
 
 
@@ -400,7 +400,7 @@ como ser dimensionado.
 | 3.4 | ✅ Três degraus de projétil, com portão de raridade e exclusão mútua |
 | 3.5 | ✅ Drop por REGRA — casa por padrão, aceita conteúdo futuro sem cadastro |
 | 3.6 | ✅ Upgrades Gerais como SLOT — décima categoria, com implícito multiplicativo |
-| 3.7 | 🟡 Capacidade de carga 15 → 70 por conquista. Falta: filtros e ordenação |
+| 3.7 | ✅ Carga 15 → 70 por conquista, filtro por elemento e favoritos, cinco ordens |
 | 3.8 | Separar inventário de itens do armazém de recursos (§29) |
 
 ---
@@ -432,7 +432,6 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
 | **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
 | **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |
-| **O painel de inventário não remonta ao ganhar espaço** | `concederCarga` emite `state:changed`, mas a grade só refaz ao trocar de aba | Fase 3.7 |
 | **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | Fase 3 |
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |
