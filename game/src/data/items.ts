@@ -244,6 +244,25 @@ export interface AffixDef {
    * Ausente = 1, ou seja, sem correção.
    */
   calibre?: number;
+  /**
+   * Raridade mínima do item para este afixo poder sair (§8).
+   *
+   * Diferente de `minIlvl`, que é sobre PROGRESSO: o jogador chega lá só de
+   * jogar. Isto é sobre SORTE — nem o jogador do setor 300 vê a linha se o item
+   * não saiu raro o bastante. É o único mecanismo que torna um afixo realmente
+   * excepcional, porque peso baixo sozinho só o adia.
+   */
+  raridadeMin?: Rarity;
+  /**
+   * Grupo de EXCLUSÃO MÚTUA.
+   *
+   * Dois afixos do mesmo grupo nunca saem no mesmo item. Existe para os
+   * projéteis: sem isto, um Divino podia rolar `+1`, `+2` e `+3` na mesma peça
+   * e entregar seis projéteis numa linha só — a "multiplicação quebrada" que o
+   * §8 manda evitar. Empilhar entre PEÇAS continua valendo; o que o grupo
+   * impede é o acúmulo dentro de uma.
+   */
+  grupo?: string;
   stat: StatId;
   kind: 'add' | 'mul';
   /** Faixa de rolagem por nível de item. */
@@ -354,7 +373,22 @@ export const AFFIXES: readonly AffixDef[] = [
   { id: 'escudo_p',    label: 'Escudo',              familia: 'defensiva', calibre: 0.852, stat: 'escudo',      kind: 'mul', min: 0.05, max: 0.16, weight: 65 },
   { id: 'regen_f',     label: 'Regeneração',         familia: 'defensiva', calibre: 0.654, stat: 'regen',       kind: 'add', min: 0.4, max: 1.6, weight: 60 },
   { id: 'veloc_p',     label: 'Velocidade',          familia: 'defensiva', calibre: 1.276, stat: 'velocidade',  kind: 'mul', min: 0.03, max: 0.11, weight: 60, slots: ['motor', 'asas', 'blindagem'] },
-  { id: 'proj_f',      label: 'Projéteis',           familia: 'ofensiva', stat: 'projeteis',   kind: 'add', min: 1, max: 1, weight: 9, slots: ['principal', 'secundaria'], minIlvl: 12 },
+  /**
+   * Projéteis, em três degraus (§8).
+   *
+   * "Não tratar +1 projétil como equivalente a um pequeno aumento percentual de
+   * dano" — e de fato não é: medido, `proj_f` valia 5,3× a mediana dos outros
+   * afixos, o maior número do jogo depois da perfuração. Um multiplicador
+   * direto no dano por segundo não cabe na mesma faixa de peso que "+8% de
+   * escudo".
+   *
+   * A raridade mínima é o freio que peso baixo sozinho não dá: sem ela, o
+   * jogador do setor 300 acabaria vendo `+3` só por rolar muito. Com ela, `+3`
+   * exige um Divino — que sai uma vez em 36 mil — E a rolagem dentro dele.
+   */
+  { id: 'proj_1', label: '+1 projétil',  familia: 'ofensiva', stat: 'projeteis', kind: 'add', min: 1, max: 1, weight: 9,   slots: ['principal', 'secundaria'], minIlvl: 12, grupo: 'projeteis' },
+  { id: 'proj_2', label: '+2 projéteis', familia: 'ofensiva', stat: 'projeteis', kind: 'add', min: 2, max: 2, weight: 2.5, slots: ['principal', 'secundaria'], minIlvl: 45, raridadeMin: 4, grupo: 'projeteis' },
+  { id: 'proj_3', label: '+3 projéteis', familia: 'ofensiva', stat: 'projeteis', kind: 'add', min: 3, max: 3, weight: 0.6, slots: ['principal', 'secundaria'], minIlvl: 110, raridadeMin: 6, grupo: 'projeteis' },
   { id: 'perf_f',      label: 'Perfuração',          familia: 'ofensiva', stat: 'perfuracao',  kind: 'add', min: 1, max: 1, weight: 14, slots: ['principal', 'secundaria'], minIlvl: 8 },
   { id: 'expl_f',      label: 'Raio de explosão',    familia: 'ofensiva', stat: 'explosao',    kind: 'add', min: 3, max: 11, weight: 35, slots: ['principal', 'secundaria', 'reator'], minIlvl: 6 },
   { id: 'sorte_f',     label: 'Sorte',               familia: 'utilidade', stat: 'sorte',       kind: 'add', min: 0.02, max: 0.09, weight: 45 },

@@ -55,19 +55,33 @@ export function rollItem(
   const eligible = AFFIXES.filter(
     (a) => (!a.slots || a.slots.includes(base.slot))
       && ilvl >= (a.minIlvl ?? 0)
+      // Raridade mínima (§8): o freio que peso baixo sozinho não dá. Sem ele o
+      // jogador do fim do jogo veria `+3 projéteis` só por rolar muito.
+      && rarity >= (a.raridadeMin ?? 0)
       && (!a.element || a.element === element),
   );
 
   const affixes: Affix[] = [];
   const used = new Set<string>();
+  // Grupos de exclusão mútua já representados neste item (§8). Sem isto um
+  // Divino podia rolar `+1`, `+2` e `+3` projéteis na mesma peça e entregar seis
+  // numa linha só — a "multiplicação quebrada" que o §8 manda evitar. Medido
+  // antes da correção: 23 peças em 89 mil com mais de um degrau. Empilhar entre
+  // PEÇAS continua valendo; o que o grupo impede é o acúmulo dentro de uma.
+  const grupos = new Set<string>();
   for (let i = 0; i < info.afixos && used.size < eligible.length; i++) {
     // O peso é o do afixo NAQUELE slot, não o global. É o que dá identidade às
     // nove categorias: sem isso, medido, uma blindagem tinha 41,8% de linhas
     // defensivas e um suporte 18% de utilidade — nove peças que eram a mesma
     // peça com nomes diferentes.
-    const def = rng.weighted(eligible.filter((a) => !used.has(a.id)), (a) => pesoNoSlot(a, base.slot));
+    const disponiveis = eligible.filter(
+      (a) => !used.has(a.id) && !(a.grupo && grupos.has(a.grupo)),
+    );
+    if (!disponiveis.length) break;
+    const def = rng.weighted(disponiveis, (a) => pesoNoSlot(a, base.slot));
     if (!def) break;
     used.add(def.id);
+    if (def.grupo) grupos.add(def.grupo);
     affixes.push(rollAffix(rng, def, ilvl, info.tierMax));
   }
 
@@ -125,7 +139,10 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affi
   const scaled = escalavel ? raw * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : raw;
   // Projéteis e perfuração são CONTAGEM: escalar por tier daria "+3,7 projéteis".
   // O tier já se expressa neles por outra via — o teto de raridade que os libera.
-  const contagem = def.id === 'proj_f' || def.id === 'perf_f';
+  // Por ATRIBUTO e não por id: a checagem era `def.id === 'proj_f'` e quebrou
+  // em silêncio quando o §8 dividiu os projéteis em três degraus. O que faz
+  // um afixo ser contagem é o atributo ser inteiro, não como ele se chama.
+  const contagem = def.stat === 'projeteis' || def.stat === 'perfuracao';
   // `calibre` iguala o VALOR das linhas entre afixos (§7). Não se aplica à
   // contagem: "+1,4 projéteis" não existe, e o valor desses dois já é gerido
   // pelo peso baixo e pelo nível mínimo.

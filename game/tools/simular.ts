@@ -272,7 +272,10 @@ export function medirAfixos(ilvl: number, tier: number): { def: typeof AFFIXES[n
     const bruto = (def.min + def.max) / 2;
     const escalavel = def.kind === 'add' && !def.element && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
     const escalado = escalavel ? bruto * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : bruto;
-    const contagem = def.id === 'proj_f' || def.id === 'perf_f';
+    // Por ATRIBUTO e não por id: a checagem era `def.id === 'proj_f'` e quebrou
+    // em silêncio quando o §8 dividiu os projéteis em três degraus. O que faz
+    // um afixo ser contagem é o atributo ser inteiro, não como ele se chama.
+    const contagem = def.stat === 'projeteis' || def.stat === 'perfuracao';
     // ESPELHA `rollAffix`, `calibre` incluído. Sem ele, a sonda media o item
     // que o gerador NÃO produz: a calibragem entrava no jogo e não na medição,
     // então medir depois de calibrar não mostrava efeito nenhum — e a leitura
@@ -393,6 +396,7 @@ function comandoCalibrar(forca: number): void {
   for (const [id, geo] of razoes) {
     const atual = AFFIXES.find((a) => a.id === id)?.calibre ?? 1;
 
+
     /**
      * Ganho zero NÃO é calibrável, e tratá-lo como tal é o erro que este bloco
      * existe para impedir.
@@ -410,7 +414,8 @@ function comandoCalibrar(forca: number): void {
     if ((soma.get(id) ?? []).some((g) => g <= 1e-6)) { saturados.push(id); continue; }
 
     // Contagem não é calibrável por outro motivo: "+1,4 projéteis" não existe.
-    const contagem = id === 'proj_f' || id === 'perf_f';
+    const def = AFFIXES.find((a) => a.id === id);
+    const contagem = def?.stat === 'projeteis' || def?.stat === 'perfuracao';
     const novo = contagem ? 1 : atual * Math.pow(mediana / geo, forca);
     linhas.push([id, n(geo), `${(geo / mediana).toFixed(2)}×`, atual.toFixed(2), novo.toFixed(3)]);
   }

@@ -238,3 +238,59 @@ describe('a potência elemental não pode dominar o canal', () => {
     for (const def of potencia) expect(def.kind, def.id).toBe('add');
   });
 });
+
+/**
+ * Projéteis adicionais (§8).
+ *
+ * "Não tratar +1 projétil como equivalente a um pequeno aumento percentual de
+ * dano" — e de fato não é: medido, valia 5,3× a mediana dos outros afixos. É o
+ * atributo com maior potencial multiplicativo do jogo, e o §8 pede restrições
+ * específicas em vez de só um peso baixo.
+ */
+describe('os três degraus de projétil', () => {
+  const degraus = AFFIXES.filter((a) => a.stat === 'projeteis');
+
+  it('são três, cada um mais raro que o anterior', () => {
+    expect(degraus).toHaveLength(3);
+    const pesos = degraus.map((d) => d.weight);
+    for (let i = 1; i < pesos.length; i++) expect(pesos[i]!).toBeLessThan(pesos[i - 1]!);
+  });
+
+  /**
+   * O freio que peso baixo sozinho NÃO dá. Sem portão de raridade, o jogador do
+   * setor 300 acaba vendo `+3` só por rolar muito — raro vira questão de tempo,
+   * e tempo é justamente o que um idle tem de sobra.
+   */
+  it('os degraus altos exigem raridade, não só nível', () => {
+    const porValor = [...degraus].sort((a, b) => a.min - b.min);
+    expect(porValor[0]!.raridadeMin ?? 0).toBe(0);
+    expect(porValor[1]!.raridadeMin).toBeGreaterThanOrEqual(4);
+    expect(porValor[2]!.raridadeMin).toBe(6);
+  });
+
+  it('nenhum item rola mais de um degrau', () => {
+    const rng = new Rng(8080);
+    let pior = 0;
+    for (let i = 0; i < 60_000; i++) {
+      const it = rollItem(rng, 250, 3, 0);
+      pior = Math.max(pior, it.affixes.filter((a) => a.stat === 'projeteis').length);
+    }
+    // Medido antes do grupo de exclusão: 23 peças em 89 mil com dois degraus.
+    expect(pior).toBeLessThanOrEqual(1);
+  });
+
+  it('o portão de raridade vale na prática, não só na tabela', () => {
+    const rng = new Rng(1234);
+    const violacoes: string[] = [];
+    for (let i = 0; i < 60_000; i++) {
+      const it = rollItem(rng, 250, 6, 0);
+      for (const a of it.affixes) {
+        const def = AFFIXES.find((d) => d.id === a.id);
+        if (def?.raridadeMin !== undefined && it.rarity < def.raridadeMin) {
+          violacoes.push(`${a.id} em raridade ${it.rarity}`);
+        }
+      }
+    }
+    expect(violacoes).toEqual([]);
+  });
+});
