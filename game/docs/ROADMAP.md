@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 17/08/2026 · 183 testes passando · typecheck e build limpos.
+**Última atualização:** 17/08/2026 · 190 testes passando · typecheck e build limpos.
 
 ---
 
@@ -19,12 +19,12 @@ Etapa 0  ██████████  concluída
 Fase 1   ██████████  concluída
 Fase 1B  ██████████  concluída — morte, progresso e permanência
 Fase 2   ██████████  concluída — combate elemental
-Fase 3   ░░░░░░░░░░
+Fase 3   ██████████  concluída — itemização
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3.8 — separar o inventário de itens do armazém de recursos (§29).
+**Próxima:** Fase 4 — progressão: Matriz × nível, XP calibrado, e o ritmo das galáxias contra a meta do §2.
 
 
 
@@ -401,7 +401,7 @@ como ser dimensionado.
 | 3.5 | ✅ Drop por REGRA — casa por padrão, aceita conteúdo futuro sem cadastro |
 | 3.6 | ✅ Upgrades Gerais como SLOT — décima categoria, com implícito multiplicativo |
 | 3.7 | ✅ Carga 15 → 70 por conquista, filtro por elemento e favoritos, cinco ordens |
-| 3.8 | Separar inventário de itens do armazém de recursos (§29) |
+| 3.8 | ✅ Armazém de materiais, separado do inventário e da moeda |
 
 ---
 

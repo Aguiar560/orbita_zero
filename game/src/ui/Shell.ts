@@ -11,6 +11,7 @@ import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
 import { InventoryPanel } from './panels/InventoryPanel';
+import { ArmazemPanel } from './panels/ArmazemPanel';
 import { TreePanel } from './panels/TreePanel';
 import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
@@ -37,6 +38,7 @@ export class Shell {
   private readonly panels: Panel[] = [
     new GalaxyPanel(),
     new InventoryPanel(),
+    new ArmazemPanel(),
     new TreePanel(),
     new FleetPanel(),
     new ChestsPanel(),

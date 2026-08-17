@@ -3,6 +3,18 @@ import { bus, toast } from '@app/Bus';
 import { getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
+import { MATERIAL_POR_ID } from '@data/materiais';
+
+/**
+ * Sufixo do id de essência por elemento.
+ *
+ * Tabela e não interpolação direta porque "químico" vira `essencia_quimica` e
+ * "cósmico" vira `essencia_cosmica` — o gênero muda a palavra, e um
+ * `essencia_${elemento}` daria ids que não existem no catálogo.
+ */
+const ESSENCIA: Record<string, string> = {
+  fogo: 'fogo', gelo: 'gelo', raio: 'raio', quimico: 'quimica', cosmico: 'cosmica',
+};
 import { galaxyOfSector } from '@data/galaxies';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
@@ -375,6 +387,8 @@ export class Sim {
       // de novo.
       const g = galaxyOfSector(e.sector) + 1;
       if (g === 1 || g === 5 || g === 10) this.concederCarga(`chefe_g${g}`);
+      // Fragmento de chefe: o gargalo previsto para os craft de fim de jogo.
+      this.guardarMaterial('fragmento_de_chefe', 1);
       const first = !this.state.codex.includes(e.boss.id);
       if (first) {
         this.state.codex.push(e.boss.id);
@@ -652,6 +666,47 @@ export class Sim {
     return out;
   }
 
+  /** Tipos de material distintos guardados hoje. */
+  get materiaisGuardados(): number {
+    return Object.keys(this.state.armazem).length;
+  }
+
+  /**
+   * Guarda material (§29).
+   *
+   * O Armazém limita quantos TIPOS se acompanha, não a quantidade de cada um: a
+   * decisão interessante é "que materiais eu mantenho", não "quantos cabem".
+   * Material que já está guardado sempre aceita mais; só abrir um tipo NOVO
+   * consome espaço, e é isso que dá peso a ampliar o depósito.
+   *
+   * Devolve quanto de fato entrou — zero quando o armazém está cheio e o tipo
+   * é novo, para quem chamou poder avisar em vez de perder o material calado.
+   */
+  guardarMaterial(id: string, quantidade: number): number {
+    const def = MATERIAL_POR_ID.get(id);
+    if (!def || !(quantidade > 0)) return 0;
+
+    const atual = this.state.armazem[id] ?? 0;
+    if (atual === 0 && this.materiaisGuardados >= this.resourceSlots) return 0;
+
+    const cabe = Math.max(0, Math.min(quantidade, def.pilhaMax - atual));
+    if (cabe <= 0) return 0;
+    this.state.armazem[id] = atual + cabe;
+    this.touch();
+    return cabe;
+  }
+
+  /** Consome material. Zera a chave em vez de deixá-la em 0. */
+  gastarMaterial(id: string, quantidade: number): boolean {
+    const atual = this.state.armazem[id] ?? 0;
+    if (atual < quantidade) return false;
+    const resto = atual - quantidade;
+    if (resto > 0) this.state.armazem[id] = resto;
+    else delete this.state.armazem[id];
+    this.touch();
+    return true;
+  }
+
   /** Capacidade do depósito de RECURSOS (§29), separada da de itens. */
   get resourceSlots(): number {
     return capacidadeDeRecursos(this.state.cargaLiberada);
@@ -735,7 +790,30 @@ export class Sim {
     const idx = this.state.inventory.findIndex((i) => i.uid === uid);
     if (idx < 0) return;
     const [item] = this.state.inventory.splice(idx, 1);
-    if (item) this.grant('nucleo', salvageValue(item));
+    if (item) {
+      this.grant('nucleo', salvageValue(item));
+      this.materialDeDesmanche(item);
+    }
+  }
+
+  /**
+   * Desmanchar rende MATERIAL, não só moeda (§29).
+   *
+   * É o que liga o inventário apertado ao craft: uma peça que não serve deixa
+   * de ser lixo e vira insumo. Sem isto, o Armazém só encheria com o que cai
+   * pronto, e desmanchar continuaria sendo apenas "converter em núcleo".
+   */
+  private materialDeDesmanche(item: Item): void {
+    // A quantidade acompanha nível e raridade — desmanchar um Divino de nível
+    // alto tem de valer mais que dez Comuns de nível baixo.
+    const base = Math.max(1, Math.round(item.ilvl * 0.4 * (1 + item.rarity * 0.5)));
+    this.guardarMaterial('liga_bruta', base);
+    if (item.rarity >= 2) this.guardarMaterial('placa_composta', Math.max(1, Math.round(base * 0.25)));
+    // A essência sai do ELEMENTO da peça: quem quiser essência de gelo desmancha
+    // peça de gelo, o que dá destino ao equipamento elemental que não serve.
+    if (item.element && item.element !== 'padrao' && item.rarity >= 3) {
+      this.guardarMaterial(`essencia_${ESSENCIA[item.element]}`, 1);
+    }
   }
 
   /** Desmancha tudo abaixo de uma raridade, exceto favoritos. Devolve o total. */

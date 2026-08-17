@@ -755,3 +755,22 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
   .brand-text { display: none; }
   .toasts { right: 12px; }
 }
+
+/* ── painel: armazém (§29) ───────────────────────────────────────────────── */
+.armazem-grupo { display: grid; gap: 4px; margin-bottom: 10px; }
+.armazem-linha {
+  display: flex; align-items: center; gap: 9px; padding: 6px 9px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+}
+/* O que ainda não caiu fica apagado mas VISÍVEL: metade do valor de um armazém
+   é saber o que existe para caçar. */
+.armazem-linha.vazia { opacity: 0.45; }
+.armazem-gema { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.armazem-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.armazem-texto strong { font-size: 13px; }
+.armazem-qtd { font-variant-numeric: tabular-nums; font-size: 14px; flex: none; }
+.aviso {
+  padding: 8px 11px; margin-bottom: 10px; font-size: 12.5px;
+  background: rgba(255, 93, 122, 0.1); border: 1px solid var(--bad);
+  border-radius: 8px; color: #ffb0c0;
+}

@@ -336,6 +336,15 @@ export interface GameState {
    * espaço.
    */
   cargaLiberada: string[];
+  /**
+   * O Armazém: material → quantidade (§29).
+   *
+   * Só os tipos que o jogador REALMENTE tem aparecem aqui — um material zerado
+   * é removido em vez de guardado como 0, senão o save cresceria com o catálogo
+   * e a contagem de tipos guardados (que é o que a capacidade limita) contaria
+   * material que ninguém tem.
+   */
+  armazem: Record<string, number>;
 
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;

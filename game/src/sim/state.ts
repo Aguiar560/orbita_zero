@@ -3,6 +3,7 @@ import { BIOMES } from '@data/biomes';
 import type { GameState } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
+import { MATERIAL_POR_ID } from '@data/materiais';
 
 export const SAVE_KEY = 'orbita-zero:save';
 /**
@@ -30,6 +31,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     equipped: {},
     inventory: [],
     cargaLiberada: [],
+    armazem: {},
 
     shop: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
@@ -127,6 +129,12 @@ export function migrate(raw: unknown): GameState | null {
     }
   }
   state.cargaLiberada = (state.cargaLiberada ?? []).filter((id) => CONCESSAO_POR_ID.has(id));
+
+  // Material que saiu do catálogo é descartado, não mantido como chave órfã: o
+  // painel não saberia desenhá-lo e a capacidade contaria um tipo fantasma.
+  state.armazem = Object.fromEntries(
+    Object.entries(state.armazem ?? {}).filter(([id, n]) => MATERIAL_POR_ID.has(id) && n > 0),
+  );
   delete (state as unknown as Record<string, unknown>).inventorySize;
 
   // O sistema de Melhorias saiu (§31). Saves gravados antes disso ainda trazem

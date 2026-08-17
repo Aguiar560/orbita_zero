@@ -9,6 +9,8 @@ import {
 } from '@data/balance/capacidade';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
+import { MATERIAIS } from '@data/materiais';
+import { RESISTIVEIS } from '@sim/types';
 
 /**
  * Tabelas de drop por regra (§10).
@@ -194,5 +196,95 @@ describe('a carga começa pequena e cresce por conquista', () => {
     expect(sim.resourceSlots).toBe(RECURSO_INICIAL);
     sim.concederCarga('universo_2');
     expect(sim.resourceSlots).toBeGreaterThan(RECURSO_INICIAL);
+  });
+});
+
+/**
+ * O Armazém (§29).
+ *
+ * A separação de itens não é arrumação, é natureza: equipamento é escolha que
+ * compete por espaço, material é acúmulo que vira outra coisa no craft.
+ */
+describe('o armazém guarda TIPOS, não unidades', () => {
+  it('material já guardado sempre aceita mais, mesmo com o depósito cheio', () => {
+    const sim = new Sim(createState(11));
+    // Enche o depósito de tipos até o limite inicial.
+    const ids = MATERIAIS.map((m) => m.id).slice(0, sim.resourceSlots);
+    for (const id of ids) expect(sim.guardarMaterial(id, 10)).toBe(10);
+    expect(sim.materiaisGuardados).toBe(ids.length);
+
+    // Mais do MESMO entra; é a quantidade que não é limitada.
+    expect(sim.guardarMaterial(ids[0]!, 500)).toBe(500);
+  });
+
+  it('tipo novo é recusado quando não há espaço, e devolve zero', () => {
+    const sim = new Sim(createState(12));
+    // Força o depósito a caber um tipo só.
+    sim.state.armazem = {};
+    const todos = MATERIAIS.map((m) => m.id);
+    for (const id of todos.slice(0, sim.resourceSlots)) sim.guardarMaterial(id, 1);
+
+    const excedente = todos[sim.resourceSlots];
+    if (excedente) {
+      // Zero e não uma exceção: quem chamou precisa poder AVISAR o jogador em
+      // vez de o material sumir calado.
+      expect(sim.guardarMaterial(excedente, 5)).toBe(0);
+      expect(sim.state.armazem[excedente]).toBeUndefined();
+    }
+  });
+
+  it('gastar até o fim remove a chave em vez de deixá-la em zero', () => {
+    const sim = new Sim(createState(13));
+    sim.guardarMaterial('liga_bruta', 10);
+    expect(sim.gastarMaterial('liga_bruta', 4)).toBe(true);
+    expect(sim.state.armazem.liga_bruta).toBe(6);
+    expect(sim.gastarMaterial('liga_bruta', 6)).toBe(true);
+    // Chave zerada contaria como tipo guardado e comeria capacidade à toa.
+    expect('liga_bruta' in sim.state.armazem).toBe(false);
+    expect(sim.materiaisGuardados).toBe(0);
+  });
+
+  it('gastar mais do que se tem falha sem alterar nada', () => {
+    const sim = new Sim(createState(14));
+    sim.guardarMaterial('liga_bruta', 3);
+    expect(sim.gastarMaterial('liga_bruta', 4)).toBe(false);
+    expect(sim.state.armazem.liga_bruta).toBe(3);
+  });
+
+  it('material fora do catálogo é recusado', () => {
+    const sim = new Sim(createState(15));
+    expect(sim.guardarMaterial('material_inventado', 9)).toBe(0);
+  });
+
+  /**
+   * O elo entre o inventário apertado (§28) e o craft: uma peça que não serve
+   * deixa de ser lixo e vira insumo.
+   */
+  it('desmanchar rende material, e peça elemental rende essência', () => {
+    const sim = new Sim(createState(16));
+    const rng = new Rng(2024);
+    let peca = null;
+    for (let i = 0; i < 4000 && !peca; i++) {
+      const it = rollItem(rng, 120, 8, 0);
+      if (it.rarity >= 3 && it.element === 'gelo') peca = it;
+    }
+    expect(peca, 'nenhuma peça de gelo rara em 4000 rolagens').toBeTruthy();
+
+    sim.state.inventory = [peca!];
+    sim.salvage(peca!.uid);
+    expect(sim.state.armazem.liga_bruta ?? 0).toBeGreaterThan(0);
+    expect(sim.state.armazem.essencia_gelo ?? 0).toBeGreaterThan(0);
+  });
+
+  /**
+   * Os ids de essência são tabelados e não interpolados: "químico" vira
+   * `essencia_quimica` e "cósmico" vira `essencia_cosmica` — o gênero muda a
+   * palavra, e `essencia_${elemento}` daria ids inexistentes.
+   */
+  it('existe uma essência para cada elemento resistível, com id válido', () => {
+    for (const el of RESISTIVEIS) {
+      const achou = MATERIAIS.some((m) => m.categoria === 'essencia' && m.origem.toLowerCase().includes(el === 'quimico' ? 'químic' : el === 'cosmico' ? 'cósmic' : el));
+      expect(achou, el).toBe(true);
+    }
   });
 });
