@@ -41,6 +41,19 @@ import {
   pointsAvailable, pointsSpent, respec, xpForLevel,
 } from './tree';
 
+/**
+ * Fração das cápsulas que a nave REALMENTE alcança, no caminho abstrato.
+ *
+ * Ao vivo, o item cai como cápsula física e a IA precisa chegar nela antes que
+ * escape pela base da tela — com o piloto cru do começo, boa parte se perde. O
+ * caminho abstrato não tem cena, então essa perda precisa ser modelada, senão
+ * jogar de janela fechada rende mais que jogar.
+ *
+ * 0,55 e não 1,0; e não é palpite de conveniência: é a ordem de grandeza que
+ * põe o offline abaixo do ao vivo em itens, que é a relação que o §2 pede.
+ */
+const COLETA_ABSTRATA = 0.55;
+
 /** Teto de progresso offline, em segundos (4h). */
 const OFFLINE_BASE_CAP = 4 * 3600;
 /** O offline rende menos que jogar ativamente — de propósito. */
@@ -413,8 +426,18 @@ export class Sim {
       for (const item of this.rollDrops(e.kind === 'chefe' ? 'chefe' : e.kind === 'elite' ? 'elite' : 'onda')) {
         this.acquire(item);
       }
-      const kills = Math.max(3, Math.round(e.hpPool / Math.max(1, e.bounty)));
-      for (let i = 0; i < Math.min(kills, 40); i++) {
+
+      /**
+       * Uma rolagem por inimigo REAL, e não por vida do encontro.
+       *
+       * Era `hpPool / bounty`, resquício de quando o progresso era medido em
+       * dano: dava até 40 rolagens numa onda de doze inimigos. Somado a não
+       * modelar cápsula perdida, o caminho abstrato entregava 1.822 itens em
+       * duas horas contra 44 do jogo ao vivo — 41×. Fechar o jogo era
+       * estritamente melhor que jogá-lo, o oposto do pretendido.
+       */
+      const coletados = Math.round(e.unidades * COLETA_ABSTRATA);
+      for (let i = 0; i < coletados; i++) {
         for (const item of this.rollDrops('onda')) this.acquire(item);
       }
     }

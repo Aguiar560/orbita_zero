@@ -436,7 +436,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |
 | **Nave nua trava em onda de elite** | setor 4: 90 min, 67 mortes, 0 itens — inimigos escapam pela base e a onda é reposta com vida cheia | Fase 1B.1 |
-| **Offline rende ~20× mais que jogar** | 2 h fechado = 18 setores e 8.211 abates; ao vivo, o mesmo jogador leva 90 min para sair do setor 4. `abstractTick` usa `dps` puro: não erra tiro, não morre, não perde cápsula | Fase 1B.3 — ao modelar morte, o caminho abstrato precisa modelá-la também |
+| **Offline ainda rende mais itens que jogar** | remedido na Fase 4: setor 10 contra 8 e **368 itens contra 44**. Era 1.822 antes da correção. O caminho abstrato JÁ modela morte (133 contra 24) e já não banca recurso nenhum — o que resta é só o item | Fase 4 — precisa de uma corrida AO VIVO nova para comparar; os 44 são de antes da Fase 2 e da Fase 3 |
 | **Escala de afixo fracionário** | crítico, sorte e sincronia escalavam com ilvl; sorte chegava a 3699% e o baú soltava Divino em metade dos itens | ✅ resolvido em `1.5` |
 | **`sharp` com CVE de libvips** | `npm audit`; é ferramenta de build, não entra no bundle | etapa própria |
 
