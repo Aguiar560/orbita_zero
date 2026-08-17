@@ -68,16 +68,16 @@ describe('normalização de save adulterado', () => {
   it('conserta nível de comando fracionário ou negativo', () => {
     const s = migrate({
       version: SAVE_VERSION,
-      command: { level: -3.7, xp: 0, allocated: [], refunds: 0 },
+      command: { nivel: -3.7, xp: 0, allocated: [], refunds: 0 },
     })!;
-    expect(Number.isInteger(s.command.level)).toBe(true);
-    expect(s.command.level).toBeGreaterThanOrEqual(1);
+    expect(Number.isInteger(s.command.nivel)).toBe(true);
+    expect(s.command.nivel).toBeGreaterThanOrEqual(1);
   });
 
   it('descarta nós de matriz que não são texto', () => {
     const s = migrate({
       version: SAVE_VERSION,
-      command: { level: 5, xp: 0, allocated: ['no_valido', 42, null, { a: 1 }], refunds: 0 },
+      command: { nivel: 5, xp: 0, allocated: ['no_valido', 42, null, { a: 1 }], refunds: 0 },
     } as unknown)!;
     expect(s.command.allocated).toEqual(['no_valido']);
   });
@@ -108,14 +108,14 @@ describe('exportar e importar', () => {
     const original = createState(2024);
     original.run.sector = 47;
     original.resources.sucata = 123456;
-    original.command.level = 18;
+    original.command.nivel = 18;
     original.inventory = [rollItem(new Rng(8), 30, 0.4, 0)];
 
     const voltou = importSave(exportSave(original)) as GameState;
     expect(voltou).not.toBeNull();
     expect(voltou.run.sector).toBe(47);
     expect(voltou.resources.sucata).toBe(123456);
-    expect(voltou.command.level).toBe(18);
+    expect(voltou.command.nivel).toBe(18);
     expect(voltou.inventory).toHaveLength(1);
     expect(voltou.inventory[0]!.uid).toBe(original.inventory[0]!.uid);
   });

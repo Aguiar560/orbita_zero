@@ -1,4 +1,5 @@
 import type { Item, Resources } from '@sim/types';
+import type { ResumoDaMorte } from '@sim/morte';
 
 /** Todos os eventos entre simulação, modos e UI. Um lugar só, tipado. */
 export interface GameEvents {
@@ -9,7 +10,7 @@ export interface GameEvents {
   'resources:changed': void;
 
   'sector:advanced': { universe: number; sector: number };
-  'sector:failed': { sector: number; perdido: Resources };
+  'sector:failed': { sector: number; perdido: Resources; resumo: ResumoDaMorte };
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };

@@ -263,14 +263,31 @@ export const PERFIS_DE_ONDA: readonly PerfilDeOnda[] = [
 // ── progressão do jogador ───────────────────────────────────────────────────
 
 /**
- * XP para subir de patente de comando.
+ * XP para subir um nível de personagem.
  *
- * Base baixa e crescimento moderado: os primeiros pontos precisam chegar nos
- * primeiros minutos, senão a Matriz fica trancada justamente quando ela é a
- * coisa mais interessante para quem está começando.
+ * POLINOMIAL, não exponencial, e a diferença decide se o nível 300 existe: com
+ * `140 × 1,155^n` o último nível custaria 7 × 10²⁰ de XP — o teto de 300 do §17
+ * seria decorativo. Uma potência de `n` cresce rápido o bastante para os níveis
+ * altos serem conquista e devagar o bastante para serem alcançáveis.
+ *
+ * ► Primeira passada. Precisa de simulação contra as metas de tempo do §2.
  */
-export const COMANDO_XP_BASE = 140;
-export const COMANDO_XP_RAZAO = 1.155;
+export const NIVEL_MAX = 300;
+export const PERSONAGEM_XP_BASE = 90;
+export const PERSONAGEM_XP_EXPO = 1.75;
+
+/**
+ * XP para subir um nível de NAVE.
+ *
+ * Mais rasa que a do personagem de propósito: subir a segunda nave precisa ser
+ * viável, senão o §18 — trocar de nave conforme o conteúdo — não acontece, e a
+ * frota vira uma nave só com dezenove enfeites.
+ */
+export const NAVE_XP_BASE = 60;
+export const NAVE_XP_EXPO = 1.55;
+
+/** Quanto cada nível de nave soma aos atributos base dela. */
+export const NAVE_GANHO_POR_NIVEL = 0.012;
 
 /** Sincronia do piloto concedida por patente, e o teto dessa fonte. */
 export const COMANDO_IA_POR_NIVEL = 0.011;
@@ -336,7 +353,13 @@ export const curvaHp = (setor: number): number => poderEsperado(setor) * tempoAl
 export const curvaDano = (setor: number): number => defesaEsperada(setor) / golpesAlvo(setor);
 export const curvaRecompensa = (setor: number): number => RECOMPENSA_FRACAO * curvaHp(setor);
 
-export const curvaXpComando = (nivel: number): number =>
-  Math.ceil(geometrica(COMANDO_XP_BASE, COMANDO_XP_RAZAO, nivel));
 export const curvaXpPatrulha = (nivel: number): number =>
   Math.ceil(geometrica(PATRULHA_XP_BASE, PATRULHA_XP_RAZAO, nivel));
+
+/** XP para sair do nível `n` do personagem — o tamanho da faixa desse nível. */
+export const curvaXpPersonagem = (nivel: number): number =>
+  Math.ceil(PERSONAGEM_XP_BASE * Math.pow(Math.max(1, nivel), PERSONAGEM_XP_EXPO));
+
+/** XP para sair do nível `n` de uma nave. */
+export const curvaXpNave = (nivel: number): number =>
+  Math.ceil(NAVE_XP_BASE * Math.pow(Math.max(1, nivel), NAVE_XP_EXPO));

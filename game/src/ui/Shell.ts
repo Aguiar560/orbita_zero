@@ -196,7 +196,7 @@ export class Shell {
       `${info.name} · fase ${phaseOfSector(st.run.sector)}`,
       `Setor ${st.run.sector}`,
       this.sim.encounterLabel,
-      `Patente ${st.command.level}`,
+      `Patente ${st.command.nivel}`,
     ].join('  ·  ');
   }
 

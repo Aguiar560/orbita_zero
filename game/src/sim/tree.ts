@@ -1,5 +1,5 @@
 import { NODE_BY_ID, TREE_ADJACENCY, TREE_NODES, type TreeNode } from '@data/tree';
-import { curvaXpComando } from '@data/balance/curvas';
+import { curvaXpPersonagem } from '@data/balance/curvas';
 import type { GameState, StatModifier } from './types';
 
 /** O nó central já vem alocado e não custa ponto. */
@@ -17,7 +17,7 @@ export function pointsForLevel(level: number): number {
  * nos primeiros minutos, senão a matriz fica trancada justamente quando ela é
  * a coisa mais interessante para o jogador novo mexer.
  */
-export const xpForLevel = curvaXpComando;
+export const xpForLevel = curvaXpPersonagem;
 
 export function allocatedSet(state: GameState): Set<string> {
   const set = new Set(state.command.allocated);
@@ -32,7 +32,7 @@ export function pointsSpent(state: GameState): number {
 export function pointsAvailable(state: GameState): number {
   // O modo de teste dá pontos à vontade para inspecionar a matriz inteira.
   if (state.settings.testMode) return 9999;
-  return pointsForLevel(state.command.level) - pointsSpent(state);
+  return pointsForLevel(state.command.nivel) - pointsSpent(state);
 }
 
 /** Um nó pode ser alocado se encosta em algo já alocado e há ponto sobrando. */

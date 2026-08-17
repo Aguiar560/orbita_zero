@@ -6,10 +6,11 @@ import { getHull, HULLS } from '@data/hulls';
 import {
   RESOURCE_IDS,
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
-  type SlotId, type Stats,
+  type NivelProgresso, type SlotId, type Stats,
 } from './types';
 import { CARGO_PER_LEVEL, MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
-import { curvaXpPatrulha } from '@data/balance/curvas';
+import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem } from '@data/balance/curvas';
+import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
 import { dropChance, openChest, rollItem, salvageValue, scoreItem } from './loot';
@@ -420,15 +421,27 @@ export class Sim {
    * do necessário precisa continuar subindo devagar — e é a IA melhorando e o
    * equipamento caindo que rompem o impasse.
    */
+  /**
+   * A nave caiu. Morrer é caro.
+   *
+   * O setor recomeça da onda 1, a carga da incursão evapora, o personagem e a
+   * nave perdem uma fatia do XP da faixa atual — podendo cair de nível, o que
+   * devolve o último ponto da Matriz — e parte da sucata em banco vai junto.
+   *
+   * O item não se perde. O jogador arriscou a incursão, não o inventário.
+   */
   failEncounter(): void {
     const run = this.state.run;
     this.state.stats.deaths++;
 
-    // Perde tudo o que a incursão tinha juntado. O que já estava no banco não
-    // é tocado aqui — quem mexe nele é a punição da 1B.3.
     const perdido = this.dropCarga();
+    const resumo = cobrarMorte(this.state);
 
-    bus.emit('sector:failed', { sector: run.sector, perdido });
+    // Refaz o setor inteiro. Sem isso a morte não custaria TEMPO, que é a
+    // moeda que mais importa num idle.
+    run.wave = 1;
+
+    bus.emit('sector:failed', { sector: run.sector, perdido, resumo });
     this.refreshEncounter();
     this.touch();
   }
@@ -461,25 +474,58 @@ export class Sim {
    */
   grantXp(amount: number): void {
     if (!(amount > 0)) return;
-    const cmd = this.state.command;
-    cmd.xp += amount * (1 + this.stats.xpGanho);
+    const ganho = amount * (1 + this.stats.xpGanho);
 
-    let leveled = 0;
-    // O laço tem teto: um relatório offline generoso não deve subir 400 níveis
-    // de uma vez e enfileirar 400 toasts.
-    while (cmd.xp >= xpForLevel(cmd.level) && leveled < 200) {
-      cmd.xp -= xpForLevel(cmd.level);
-      cmd.level++;
-      leveled++;
+    const cmd = this.state.command;
+    const subiu = this.avancarNivel(cmd, ganho, curvaXpPersonagem);
+    if (subiu > 0) {
+      toast(`Patente ${cmd.nivel} · +${subiu} ponto${subiu > 1 ? 's' : ''} de matriz`, 'epic', 'node/exp');
     }
-    if (leveled > 0) {
-      toast(`Patente ${cmd.level} · +${leveled} ponto${leveled > 1 ? 's' : ''} de matriz`, 'epic', 'node/exp');
-      this.touch();
+
+    // A nave ATIVA sobe junto, na curva dela. Quem não está voando não ganha
+    // nada: é isso que faz desenvolver uma segunda nave custar tempo próprio,
+    // e sem esse custo o §18 não teria como existir.
+    const nave = this.naveAtiva;
+    const subiuNave = this.avancarNivel(nave, ganho, curvaXpNave);
+    if (subiuNave > 0) {
+      toast(`${this.hull.name} nível ${nave.nivel}`, 'good', 'node/exp');
     }
+
+    if (subiu > 0 || subiuNave > 0) this.touch();
+  }
+
+  /** Progresso de nível da nave em uso, criado sob demanda. */
+  get naveAtiva(): NivelProgresso {
+    const naves = this.state.naves;
+    return (naves[this.state.hull] ??= { nivel: 1, xp: 0 });
+  }
+
+  /**
+   * Soma XP e sobe os níveis que couberem. Devolve quantos subiu.
+   *
+   * O teto de 200 níveis por chamada existe porque um relatório offline
+   * generoso não pode subir quatrocentos níveis de uma vez e enfileirar
+   * quatrocentos avisos.
+   */
+  private avancarNivel(
+    p: NivelProgresso,
+    ganho: number,
+    faixaDe: (nivel: number) => number,
+  ): number {
+    p.xp += ganho;
+    let subiu = 0;
+    while (p.nivel < NIVEL_MAX && p.xp >= faixaDe(p.nivel) && subiu < 200) {
+      p.xp -= faixaDe(p.nivel);
+      p.nivel++;
+      subiu++;
+    }
+    // No teto, o XP para de acumular em vez de crescer para sempre.
+    if (p.nivel >= NIVEL_MAX) p.xp = 0;
+    return subiu;
   }
 
   get xpProgress(): number {
-    return clamp(this.state.command.xp / xpForLevel(this.state.command.level), 0, 1);
+    return clamp(this.state.command.xp / xpForLevel(this.state.command.nivel), 0, 1);
   }
 
   get matrixPoints(): number {

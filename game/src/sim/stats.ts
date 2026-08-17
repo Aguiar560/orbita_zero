@@ -1,7 +1,7 @@
 import { DANO_STAT, RES_STAT, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
 import { RES_MAX, RES_MIN, aplicarLimites } from '@data/balance/limites';
-import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL } from '@data/balance/curvas';
+import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL, NAVE_GANHO_POR_NIVEL } from '@data/balance/curvas';
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
@@ -117,8 +117,14 @@ export function resolveStats(state: GameState): Stats {
   const acc = emptyAccum();
   const hull = getHull(state.hull);
 
+  // O nível da nave amplifica os atributos DELA, não os do equipamento: é o que
+  // faz desenvolver um casco valer a pena e o que dá sentido a manter uma frota
+  // (§18). Sem isso, o nível de nave seria um número sem efeito.
+  const nivelNave = state.naves[state.hull]?.nivel ?? 1;
+  const crescimento = 1 + (nivelNave - 1) * NAVE_GANHO_POR_NIVEL;
+
   for (const [stat, value] of Object.entries(hull.stats)) {
-    acc.add[stat as StatId] += value ?? 0;
+    acc.add[stat as StatId] += (value ?? 0) * crescimento;
   }
 
   for (const item of Object.values(state.equipped)) {
@@ -148,7 +154,7 @@ export function resolveStats(state: GameState): Stats {
   // A patente de comando dá uma base de sincronia que cresce só de jogar.
   // Sem isso o piloto ficaria refém de encontrar os itens certos, e o começo
   // — onde ele é deliberadamente ruim — nunca melhoraria sozinho.
-  acc.add.iaSkill += Math.min(COMANDO_IA_MAX, state.command.level * COMANDO_IA_POR_NIVEL);
+  acc.add.iaSkill += Math.min(COMANDO_IA_MAX, state.command.nivel * COMANDO_IA_POR_NIVEL);
 
   const out = {} as Stats;
   for (const id of STAT_IDS) {

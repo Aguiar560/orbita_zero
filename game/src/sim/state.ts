@@ -32,7 +32,8 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     inventorySize: 70,
 
     shop: {},
-    command: { level: 1, xp: 0, allocated: [], refunds: 3 },
+    command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
+    naves: {},
 
     run: {
       sector: 1, wave: 1, kind: 'onda', restam: 0, unidades: 0, elapsed: 0, cleared: 0,
@@ -99,7 +100,7 @@ export function migrate(raw: unknown): GameState | null {
     // um item mapeado errado ficaria com implícito e afixos de outra categoria.
     state.equipped = {};
     state.inventory = [];
-    state.command = { level: 1, xp: 0, allocated: [], refunds: 3 };
+    state.command = { nivel: 1, xp: 0, allocated: [], refunds: 3 };
   }
 
   if ((data.version ?? 0) < 3) {
@@ -118,7 +119,7 @@ export function migrate(raw: unknown): GameState | null {
 
   // Consertos de integridade — um save adulterado não deve travar o boot.
   if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
-  state.command.level = Math.max(1, Math.floor(state.command.level));
+  state.command.nivel = Math.max(1, Math.floor(state.command.nivel));
   state.command.allocated = state.command.allocated.filter((id) => typeof id === 'string');
   state.run.sector = Math.max(1, Math.floor(state.run.sector));
   state.run.wave = Math.min(WAVES_PER_SECTOR + 1, Math.max(1, Math.floor(state.run.wave)));

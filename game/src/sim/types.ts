@@ -153,6 +153,18 @@ export interface Item {
 
 // ── Progressão ──────────────────────────────────────────────────────────────
 
+/**
+ * Nível e XP acumulado DENTRO da faixa do nível atual.
+ *
+ * Guardar o acumulado da faixa, e não o total de sempre, é o que torna a
+ * punição por morte exprimível: a perda é uma fração do que se juntou desde o
+ * último nível, e não do esforço de uma vida inteira.
+ */
+export interface NivelProgresso {
+  nivel: number;
+  xp: number;
+}
+
 export type EncounterKind = 'onda' | 'elite' | 'chefe';
 
 export interface RunState {
@@ -263,6 +275,16 @@ export interface GameState {
   /** Cascos desbloqueados. */
   fleet: string[];
 
+  /**
+   * Nível e XP de CADA nave, por id de casco.
+   *
+   * Não há transferência entre naves (§17): trocar de casco recomeça a
+   * progressão daquele casco. É o que dá sentido a manter uma frota em vez de
+   * uma nave só — e o que faz o §18 funcionar, porque a nave certa para um
+   * conteúdo pode ser a que ainda não está desenvolvida.
+   */
+  naves: Record<string, NivelProgresso>;
+
   equipped: Partial<Record<SlotId, Item>>;
   inventory: Item[];
   inventorySize: number;
@@ -270,10 +292,14 @@ export interface GameState {
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;
 
-  /** Patente de comando: cada nível concede um ponto na matriz de passivas. */
-  command: {
-    level: number;
-    xp: number;
+  /**
+   * O personagem: nível global, XP da faixa atual e a Matriz.
+   *
+   * O nível dele é a principal referência do §17 e o que abre a Matriz. Vive
+   * aqui, e não num campo separado, porque patente e nível de personagem sempre
+   * foram a mesma coisa — separá-los criaria dois eixos idênticos.
+   */
+  command: NivelProgresso & {
     /** Nós da matriz já alocados. */
     allocated: string[];
     /** Refazes gratuitos restantes. */

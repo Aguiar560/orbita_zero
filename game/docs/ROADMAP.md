@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 61 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 73 testes passando · typecheck e build limpos.
 
 ---
 
@@ -17,16 +17,16 @@ momento — o ponto de partida, que não se reescreve.
 ```
 Etapa 0  ██████████  concluída
 Fase 1   ███████░░░  5 de 7 tarefas
-Fase 1B  ██████░░░░  3 de 5 — morte, progresso e permanência
+Fase 1B  ████████░░  4 de 5 — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1B.3 — a morte punitiva. Puxa junto as tarefas 1.8 e 1.9 (níveis de personagem e de nave), que ela precisa para existir. Entrou na frente da
-Fase 2 porque redefine o que o combate significa, e construir dano elemental
-sobre um progresso que vai mudar é retrabalho garantido.
+**Próxima:** Fase 1B.4 — chefes que exigem farm. Depois dela, a Fase 2 (combate elemental).
+
+
 
 ---
 
@@ -55,8 +55,8 @@ mudança de balanceamento seria fé.
 | 1.5 | Sete raridades, Comum → Divino (§9) | ✅ |
 | 1.6 | Tiers de atributo T1–T10 (§6) | ⬜ |
 | 1.7 | Orçamento e peso de atributos (§7) | ⬜ |
-| 1.8 | Nível de personagem 1–300 (§17) | ⬜ |
-| 1.9 | Nível de nave 1–300, sem transferência entre naves (§17, §18) | ⬜ |
+| 1.8 | Nível de personagem 1–300 (§17) | ✅ com a 1B.3 |
+| 1.9 | Nível de nave 1–300, sem transferência (§17, §18) | ✅ com a 1B.3 |
 | ~~1.10~~ | ~~Save v4 + migração~~ — cancelado: o save é descartável no desenvolvimento | — |
 
 ### Fora do plano, feito no caminho
@@ -130,7 +130,37 @@ escondida, seria surpresa.
 Medido: morrer com 5.360 de sucata e 1.127 núcleos na carga zerou os dois e
 deixou o banco intacto.
 
-### 1B.3 — Morte muito punitiva
+### 1B.3 — Morte muito punitiva ✅
+
+Puxou junto as tarefas **1.8 e 1.9**: a perda incide sobre a faixa de XP entre
+um nível e o próximo, então os níveis precisavam existir primeiro.
+
+**Níveis.** `command.level` virou `command.nivel` e passou a ser o nível de
+personagem do §17 — patente e nível sempre foram a mesma coisa, e separá-los
+criaria dois eixos idênticos. Cada nave ganhou `nivel`/`xp` próprios em
+`state.naves`, sem transferência: trocar de casco recomeça a progressão dele, e
+é isso que dá sentido a manter uma frota. O nível da nave amplifica os atributos
+DELA, não os do equipamento.
+
+As curvas viraram **polinomiais**. Com a exponencial antiga o nível 300 custaria
+7 × 10²⁰ de XP e o teto do §17 seria decorativo.
+
+**Verificado numa corrida do zero de duas horas:** setor 8, 24 mortes, nível 6
+de personagem e 9 de nave, 44 itens, dano por segundo de 24 a 596. A sucata
+recuou entre os minutos 100 e 120 — é o imposto da morte aparecendo.
+
+> O risco do empate **não se materializou**. Voltar à onda 1 funcionou desta vez
+> porque o terreno mudou: com progresso por abate e itens acumulando, o jogador
+> recupera o setor mais rápido do que a morte o atrasa.
+
+Pendências de calibragem, não de mecânica:
+
+- Nível 6 de personagem em duas horas. Para 300 níveis, a curva de XP precisa de
+  simulação contra as metas do §2 — os expoentes atuais são primeira passada.
+- O caminho abstrato (janela fechada) ainda não modela morte, então continua
+  rendendo mais que jogar.
+
+### 1B.3 — o pedido original
 
 | Perda | Detalhe |
 |---|---|
