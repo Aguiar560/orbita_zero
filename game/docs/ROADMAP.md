@@ -418,20 +418,43 @@ requisitos de nível, e o balanceamento das galáxias contra as metas de tempo d
 rolagens numa onda de doze inimigos. Agora é uma por inimigo real, com perda de
 coleta (`COLETA_ABSTRATA`). Medido: 1.822 itens em 2 h → 368.
 
-### O que a medição achou, e é o próximo trabalho
+### O simulador estava mentindo, e agora não está
 
-A nota antiga dizia "galáxia 1 em 40 minutos, rápido demais". **Remedido, o
-sinal inverteu:** a galáxia 1 custa **38,7 horas** e **3.088 mortes** no caminho
-abstrato, terminando no nível 6.
+A nota antiga dizia "galáxia 1 em 40 minutos, rápido demais". Remedido, o sinal
+INVERTEU: **38,7 horas e 3.088 mortes**. Três mil mortes não é um jogador lento,
+é um modelo quebrado — e o diagnóstico levou três tentativas.
 
-Três mil mortes não é um jogador lento, é um modelo quebrado. O caminho abstrato
-não tem piloto: ele compara `clearTime` com `survivalWindow` e morre sempre que
-a conta fecha do lado errado, sem esquiva, sem recuo, sem trocar de alvo. Ao
-vivo o mesmo jogador chegou ao setor 8 em 2 h com 24 mortes.
+| tentativa | galáxia 1 | mortes |
+|---|---|---|
+| como estava | 38,7 h | 3.088 |
+| vida por desgaste, no lugar do corte binário | 38,2 h | 2.638 |
+| + decisão de farmar quando é impossível | — | 179 em 6 h |
+| + desistir depois de três derrotas | **1,2 h** | **3** |
 
-Então **o ritmo do jogo não pode ser calibrado enquanto o simulador mentir sobre
-ele**. A ordem certa é: consertar o modelo abstrato de sobrevivência, medir uma
-corrida ao vivo nova, e só então mexer nas metas de tempo.
+A causa não era sobrevivência: era que **o simulador não sabia farmar**. Preso
+no chefe do setor 10 — janela de 19 s contra 49 s para derrubá-lo — ele repetia
+a mesma derrota para sempre. As ondas comuns do mesmo setor levavam 7 s e davam
+120 s de folga; o problema era só o chefe, exatamente como a 1B.4 pretendia.
+
+Ao vivo isso é o desenho: travar no chefe e voltar a farmar. Só que quem faz
+isso é o humano, clicando no mapa — e a simulação não tinha como expressar essa
+escolha.
+
+### O ritmo agora, medido
+
+| galáxia | horas | mortes | nível |
+|---|---|---|---|
+| 1 | 1,2 | 3 | 10 |
+| 2 | 6,5 | 246 | 34 |
+| 3 | 16,5 | 978 | 70 |
+| 4 | 25,0 | 1.713 | 138 |
+
+A meta do §2 é ~10 h por galáxia. A galáxia 1 vem rápida demais (1,2 h) e a
+curva ACELERA na direção certa — 5,3 h, depois 10 h, depois 8,5 h. O trecho
+inicial é que está curto.
+
+Falta: uma corrida AO VIVO nova para confirmar que o simulador agora bate com o
+jogo, antes de mexer nas metas.
 
 ---
 
@@ -450,7 +473,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 
 | O quê | Evidência | Onde resolve |
 |---|---|---|
-| **O caminho abstrato virou uma moagem** | medido na Fase 4: galáxia 1 em **38,7 h** e **3.088 mortes**, nível 6. A nota antiga dizia "40 min, rápido demais" — o sinal INVERTEU e ninguém tinha remedido | Fase 4 — é o próximo trabalho, e é de modelo, não de constante |
+| **A galáxia 1 vem rápida demais** | 1,2 h contra a meta de ~10 h; as seguintes vêm em 5,3 h, 10 h e 8,5 h | Fase 4 — depois de conferir o simulador contra uma corrida ao vivo |
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
 | **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
 | **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |

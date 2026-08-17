@@ -464,6 +464,7 @@ export class Sim {
       this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
 
       if (!this.state.settings.repetirSetor) run.sector = proximo;
+      run.falhasNoSetor = 0;
 
       bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
     } else {
@@ -506,6 +507,10 @@ export class Sim {
     // Refaz o setor inteiro. Sem isso a morte não custaria TEMPO, que é a
     // moeda que mais importa num idle.
     run.wave = 1;
+    run.falhasNoSetor = (run.falhasNoSetor ?? 0) + 1;
+    // Renasce inteiro: morrer já custa XP, nível, ponto de Matriz e carga, e a
+    // cena devolve a nave cheia. Manter a vida gasta puniria duas vezes.
+    run.vidaFracao = 1;
 
     bus.emit('sector:failed', { sector: run.sector, perdido, resumo });
     this.refreshEncounter();
@@ -524,11 +529,89 @@ export class Sim {
     run.restam = Math.max(0, run.restam - (dps(this.stats) / Math.max(1, this.unitHpMedio)) * dt);
     run.elapsed += dt;
 
+    /**
+     * A nave PERDE VIDA aos poucos, em vez de morrer num corte binário.
+     *
+     * Era `if (elapsed > survivalWindow) failEncounter()`. Um corte assim é
+     * determinístico e sem memória: um encontro que passasse do limiar por um
+     * segundo matava tão certo quanto um que passasse por um minuto, e vencer
+     * apertado — que ao vivo acontece o tempo todo — era impossível.
+     *
+     * Medido: o caminho abstrato acumulava 3.088 mortes ao fechar a galáxia 1,
+     * contra 24 do jogo ao vivo. Não era um jogador lento, era um modelo que
+     * matava sempre que a conta fechava do lado errado.
+     *
+     * Aqui a vida cai por dano recebido líquido de regeneração, e é o zero que
+     * mata. O efeito prático é que a nave aguenta encontros próximos do limite
+     * e só cai quando o dano acumulado a alcança — que é o que a cena faz.
+     */
+    const s = this.stats;
+    const efetiva = Math.max(1, s.vida + s.escudo);
+    const liquido = Math.max(0, this.incomingDps - s.regen);
+    run.vidaFracao = Math.min(1, (run.vidaFracao ?? 1) - (liquido / efetiva) * dt);
+
+    // Antes de morrer de novo no mesmo lugar, o jogador simulado vai farmar.
+    if (run.elapsed > 1 && this.decidirFarmar()) return;
+
     if (run.restam <= 0) {
       this.completeEncounter(true);
+      // O escudo volta entre encontros — é o que `SHIELD_LOCK` faz na cena
+      // depois de alguns segundos sem levar dano. Sem isto, a vida só descia e
+      // uma sequência de ondas apertadas matava por acúmulo que ao vivo não
+      // existe: lá o jogador chega na onda seguinte com o escudo cheio.
+      const fatiaDeEscudo = s.escudo / efetiva;
+      run.vidaFracao = Math.min(1, (run.vidaFracao ?? 1) + fatiaDeEscudo);
       return;
     }
-    if (run.elapsed > this.survivalWindow) this.failEncounter();
+
+    if ((run.vidaFracao ?? 1) <= 0) this.failEncounter();
+  }
+
+  /**
+   * O jogador abstrato decide FARMAR quando o encontro é invencível.
+   *
+   * Isto não é uma mecânica nova de jogo — ao vivo não existe recuo automático,
+   * e essa foi uma decisão explícita: escolher onde jogar é do jogador. É que o
+   * caminho abstrato SIMULA um jogador, e um jogador que bate num chefe
+   * impossível vai farmar o setor anterior. Sem modelar essa escolha, a
+   * simulação faz a única coisa que um humano nunca faria: repetir a mesma
+   * derrota para sempre.
+   *
+   * Medido antes: preso no chefe do setor 10 por seis horas, 369 mortes, com a
+   * janela de sobrevivência em 19 s contra 49 s necessários para derrubá-lo. As
+   * ondas comuns do mesmo setor levavam 7 s e davam 120 s de folga.
+   *
+   * O limiar é generoso (1,5×) de propósito: perto do limite o jogador tenta, e
+   * é dessas tentativas apertadas que vem a tensão do chefe.
+   */
+  private decidirFarmar(): boolean {
+    const run = this.state.run;
+    if (run.sector <= 1) return false;
+
+    /**
+     * Dois gatilhos, porque um jogador desiste por dois motivos diferentes.
+     *
+     * O primeiro é a leitura: quando o encontro é claramente impossível — leva
+     * mais que o dobro do que se aguenta —, nem se tenta.
+     *
+     * O segundo é a experiência: perto do limite se tenta, e é dessas
+     * tentativas apertadas que vem a tensão do chefe. Mas depois de apanhar
+     * três vezes no mesmo lugar, vai-se farmar. Sem este segundo gatilho o
+     * simulador ficava preso numa razão de 1,37 — abaixo do limiar de leitura —
+     * e morria 179 vezes insistindo.
+     */
+    const impossivel = this.clearTime > this.survivalWindow * 2;
+    const teimosia = (run.falhasNoSetor ?? 0) >= 3;
+    if (!impossivel && !teimosia) return false;
+
+    // Volta o suficiente para o farm valer: um setor só continuaria perto
+    // demais do que já não dá conta.
+    run.sector = Math.max(1, run.sector - 3);
+    run.wave = 1;
+    run.vidaFracao = 1;
+    run.falhasNoSetor = 0;
+    this.refreshEncounter();
+    return true;
   }
 
   // ── patente de comando e matriz de passivas ───────────────────────────────

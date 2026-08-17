@@ -219,6 +219,23 @@ export interface RunState {
   carga: Resources;
   /** Tempo gasto no encontro atual, para detectar bloqueio de progresso. */
   elapsed: number;
+  /**
+   * Vida restante da nave no caminho ABSTRATO, de 0 a 1.
+   *
+   * Só o caminho abstrato a usa: quando há cena, quem manda é o `hp` real do
+   * jogador. Existe porque o abstrato precisava de MEMÓRIA entre encontros —
+   * sem ela, morrer virava um corte binário por tempo e o simulador acumulava
+   * 3.088 mortes onde o jogo ao vivo tinha 24.
+   */
+  vidaFracao?: number;
+  /**
+   * Mortes seguidas neste setor, para a DECISÃO do jogador simulado.
+   *
+   * Só o caminho abstrato usa. Não é mecânica de jogo — ao vivo não existe
+   * recuo automático, e isso foi decisão explícita. É que a simulação precisa
+   * imitar o que um humano faz depois de apanhar três vezes no mesmo chefe.
+   */
+  falhasNoSetor?: number;
   /** Setores em que o jogador já derrotou o chefe neste universo. */
   cleared: number;
 }
