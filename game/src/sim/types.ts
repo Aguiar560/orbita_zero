@@ -174,6 +174,15 @@ export interface RunState {
    */
   restam: number;
   unidades: number;
+  /**
+   * Recursos ganhos nesta incursão, ainda NÃO depositados.
+   *
+   * Sucata, núcleos e cristais de combate ficam retidos até o setor inteiro
+   * cair. Morrer no meio perde tudo o que está aqui — é o que dá peso à morte
+   * sem tocar no que o jogador já tinha guardado. Renda de patrulha não passa
+   * por aqui: ela é a camada ociosa, não faz parte da incursão.
+   */
+  carga: Resources;
   /** Tempo gasto no encontro atual, para detectar bloqueio de progresso. */
   elapsed: number;
   /** Setores em que o jogador já derrotou o chefe neste universo. */

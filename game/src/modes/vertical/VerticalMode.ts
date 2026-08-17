@@ -979,8 +979,10 @@ export class VerticalMode {
     const stats = this.sim.stats;
 
     if (kind === 'recompensa') {
-      this.sim.grant('nucleo', this.sim.encounter.bounty * 0.25 * (1 + stats.nucleoGanho));
-      this.sim.grant('sucata', this.sim.encounter.bounty * 1.2 * (1 + stats.sucataGanho));
+      // Cápsula coletada em combate: vai para a carga da incursão, e some se a
+      // nave cair antes de o setor fechar.
+      this.sim.grantCarga('nucleo', this.sim.encounter.bounty * 0.25 * (1 + stats.nucleoGanho));
+      this.sim.grantCarga('sucata', this.sim.encounter.bounty * 1.2 * (1 + stats.sucataGanho));
     }
     this.particles.shockwave(p.x, p.y, 36, PICKUP_COLOR[kind], 0.3);
   }

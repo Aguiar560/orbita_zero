@@ -3,7 +3,11 @@ import { bus, toast } from '@app/Bus';
 import { getBiome, unlockedBiomes } from '@data/biomes';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
-import { RESOURCE_IDS, type ElementId, type GameState, type Item, type ResourceId, type SlotId, type Stats } from './types';
+import {
+  RESOURCE_IDS,
+  type ElementId, type GameState, type Item, type ResourceId, type Resources,
+  type SlotId, type Stats,
+} from './types';
 import { CARGO_PER_LEVEL, MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
 import { curvaXpPatrulha } from '@data/balance/curvas';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
@@ -221,6 +225,36 @@ export class Sim {
     bus.emit('resources:changed');
   }
 
+  /**
+   * Ganho de COMBATE: entra na carga da incursão, não no banco.
+   *
+   * Só é depositado quando o setor inteiro cai; morrer no meio perde tudo.
+   * A separação existe para a morte ter peso sem confiscar o que o jogador já
+   * havia guardado — o risco é o da incursão em curso, e ele cresce conforme
+   * ela avança, o que é exatamente a tensão que se quer.
+   */
+  grantCarga(resource: ResourceId, amount: number): void {
+    if (!(amount > 0)) return;
+    this.state.run.carga[resource] += amount;
+    bus.emit('resources:changed');
+  }
+
+  /** Deposita a carga no banco. Chamado só ao concluir o setor. */
+  private bankCarga(): void {
+    const carga = this.state.run.carga;
+    for (const id of RESOURCE_IDS) {
+      if (carga[id] > 0) this.grant(id, carga[id]);
+      carga[id] = 0;
+    }
+  }
+
+  /** Descarta a carga. Chamado na morte. */
+  private dropCarga(): Resources {
+    const perdido = { ...this.state.run.carga };
+    for (const id of RESOURCE_IDS) this.state.run.carga[id] = 0;
+    return perdido;
+  }
+
   /** No modo de teste tudo é pagável, sem alterar o saldo mostrado. */
   can(resource: ResourceId, amount: number): boolean {
     return this.testMode || this.state.resources[resource] >= amount;
@@ -302,8 +336,8 @@ export class Sim {
   rewardKill(fraction: number): void {
     const e = this.encounter;
     const s = this.stats;
-    this.grant('nucleo', e.bounty * fraction * 0.34 * (1 + s.nucleoGanho));
-    this.grant('sucata', e.bounty * fraction * 1.6 * (1 + s.sucataGanho));
+    this.grantCarga('nucleo', e.bounty * fraction * 0.34 * (1 + s.nucleoGanho));
+    this.grantCarga('sucata', e.bounty * fraction * 1.6 * (1 + s.sucataGanho));
     // XP por abate não usa `fraction`: a fatia de um inimigo numa onda de 20 é
     // pequena demais para render patente, e a patente deve premiar tempo de
     // combate, não o tamanho do alvo.
@@ -325,12 +359,12 @@ export class Sim {
     const s = this.stats;
     const run = this.state.run;
 
-    this.grant('sucata', e.bounty * 4 * (1 + s.sucataGanho));
-    this.grant('nucleo', e.bounty * 0.8 * (1 + s.nucleoGanho));
+    this.grantCarga('sucata', e.bounty * 4 * (1 + s.sucataGanho));
+    this.grantCarga('nucleo', e.bounty * 0.8 * (1 + s.nucleoGanho));
     this.grantXp(e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2));
 
     if (e.kind === 'chefe' && e.boss) {
-      this.grant('cristal', Math.max(1, Math.floor(e.bounty * 0.02)));
+      this.grantCarga('cristal', Math.max(1, Math.floor(e.bounty * 0.02)));
       this.state.stats.bossKills++;
       const first = !this.state.codex.includes(e.boss.id);
       if (first) {
@@ -357,6 +391,8 @@ export class Sim {
     bus.emit('wave:cleared', { wave: run.wave, ofWaves: WAVES_PER_SECTOR + 1 });
 
     if (run.wave > WAVES_PER_SECTOR) {
+      // O setor caiu: só agora a carga da incursão vira saldo.
+      this.bankCarga();
       run.sector++;
       run.wave = 1;
       run.cleared++;
@@ -387,7 +423,12 @@ export class Sim {
   failEncounter(): void {
     const run = this.state.run;
     this.state.stats.deaths++;
-    bus.emit('sector:failed', { sector: run.sector });
+
+    // Perde tudo o que a incursão tinha juntado. O que já estava no banco não
+    // é tocado aqui — quem mexe nele é a punição da 1B.3.
+    const perdido = this.dropCarga();
+
+    bus.emit('sector:failed', { sector: run.sector, perdido });
     this.refreshEncounter();
     this.touch();
   }

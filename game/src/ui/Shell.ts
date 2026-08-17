@@ -16,12 +16,7 @@ import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
 import { CodexPanel } from './panels/CodexPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
-
-const RESOURCE_META: Record<ResourceId, { label: string; icon: string; color: string }> = {
-  sucata: { label: 'Sucata', icon: 'moeda_0', color: '#ffd98a' },
-  nucleo: { label: 'Núcleos', icon: 'moeda_1', color: '#7fe4ff' },
-  cristal: { label: 'Cristais', icon: 'moeda_2', color: '#c07dff' },
-};
+import { RESOURCE_META } from './recursos';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;

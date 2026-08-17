@@ -74,6 +74,49 @@ describe('progresso do encontro (§16)', () => {
   });
 
   /**
+   * A carga da incursão: ganho de combate só vira saldo quando o setor cai.
+   *
+   * É o que dá peso à morte sem confiscar o que o jogador já tinha guardado. O
+   * risco é o da incursão em curso, e cresce conforme ela avança — que é
+   * exatamente a tensão que se quer.
+   */
+  it('ganho de combate entra na carga, não no banco', () => {
+    const s = sim();
+    const banco = s.state.resources.sucata;
+    s.grantCarga('sucata', 500);
+    expect(s.state.run.carga.sucata).toBe(500);
+    expect(s.state.resources.sucata).toBe(banco);
+  });
+
+  it('a carga vira saldo quando o setor inteiro cai', () => {
+    const s = sim();
+    const banco = s.state.resources.sucata;
+    s.grantCarga('sucata', 500);
+
+    // Vence tudo menos a última: a carga continua em risco.
+    for (let w = s.state.run.wave; w <= 5; w++) s.completeEncounter();
+    expect(s.state.resources.sucata).toBe(banco);
+
+    // A última fecha o setor e deposita.
+    s.completeEncounter();
+    expect(s.state.resources.sucata).toBeGreaterThan(banco + 500);
+    expect(s.state.run.carga.sucata).toBe(0);
+  });
+
+  it('morrer perde a carga e não toca no banco', () => {
+    const s = sim();
+    const banco = s.state.resources.sucata;
+    s.grantCarga('sucata', 900);
+    s.grantCarga('nucleo', 40);
+
+    s.failEncounter();
+
+    expect(s.state.run.carga.sucata).toBe(0);
+    expect(s.state.run.carga.nucleo).toBe(0);
+    expect(s.state.resources.sucata, 'o banco não é tocado aqui').toBe(banco);
+  });
+
+  /**
    * A cena e o caminho abstrato precisam medir a MESMA coisa.
    *
    * O abstrato roda quando a janela está fechada. Se ele contasse dano

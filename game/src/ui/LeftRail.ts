@@ -8,7 +8,10 @@ import { dps, effectiveHp, setCounts } from '@sim/stats';
 import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Item, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
+import { WAVES_PER_SECTOR } from '@data/balance/curvas';
+import { RESOURCE_IDS } from '@sim/types';
 import { h, clear, spriteIcon, progressBar } from './dom';
+import { RESOURCE_META } from './recursos';
 import { buildEquippedCard } from './ItemCard';
 
 const PILOTS = [
@@ -130,6 +133,12 @@ export class LeftRail {
       ),
       ...(sim.isStalled ? [h('.rail-warn', { text: 'Progresso travado neste encontro.' })] : []),
 
+      // ── carga da incursão ─────────────────────────────────────────────────
+      // Precisa estar à vista: perder a carga só é RISCO se o jogador souber o
+      // tamanho dela antes de morrer. Escondida, viraria surpresa.
+      h('.rail-section', { text: 'Carga da incursão' }),
+      this.cargoBoard(),
+
       // ── elementos ─────────────────────────────────────────────────────────
       h('.rail-section', { text: 'Elementos' }),
       this.elementBoard(),
@@ -158,6 +167,36 @@ export class LeftRail {
         h('span.tiny.muted', { text: 'Próxima cápsula' }),
         progressBar(sim.state.bar.cacheProgress, '#ffb638', 4),
       ),
+    );
+  }
+
+  /**
+   * O que a incursão juntou e ainda não é seu.
+   *
+   * Só vira saldo quando o setor inteiro cai; morrer antes disso perde tudo.
+   * Mostrar quanto está em jogo, e quantas ondas faltam para garantir, é o que
+   * transforma a punição em decisão — dá para ver que vale a pena arriscar mais
+   * uma onda, ou que já passou da hora de fechar o setor.
+   */
+  private cargoBoard(): HTMLElement {
+    const sim = this.sim;
+    const carga = sim.state.run.carga;
+    const vazia = RESOURCE_IDS.every((id) => carga[id] < 1);
+    const faltam = WAVES_PER_SECTOR + 1 - sim.state.run.wave;
+
+    return h('.rail-cargo', {},
+      vazia
+        ? h('span.muted.tiny', { text: 'Nada em risco no momento.' })
+        : h('.cargo-itens', {}, ...RESOURCE_IDS.filter((id) => carga[id] >= 1).map((id) =>
+            h('.cargo-item', {},
+              spriteIcon(RESOURCE_META[id].icon, 16),
+              h('strong.tiny', { text: fmt(carga[id]) }),
+            ))),
+      h('span.muted.tiny', {
+        text: faltam > 0
+          ? `Garante ao vencer mais ${faltam} ${faltam === 1 ? 'onda' : 'ondas'}.`
+          : 'Última onda — vença para depositar.',
+      }),
     );
   }
 

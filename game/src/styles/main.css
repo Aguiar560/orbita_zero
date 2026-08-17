@@ -519,6 +519,16 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .ship-axis-bar { height: 5px; border-radius: 3px; background: rgba(120, 160, 220, 0.12); overflow: hidden; }
 .ship-axis-fill { height: 100%; border-radius: 3px; }
 
+/* ── carga da incursão ───────────────────────────────────────────────────── */
+.rail-cargo {
+  display: grid; gap: 5px; padding: 7px 9px;
+  border: 1px dashed rgba(255, 182, 56, 0.4); border-radius: 8px;
+  background: rgba(255, 182, 56, 0.06);
+}
+.cargo-itens { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.cargo-item { display: flex; align-items: center; gap: 4px; }
+.cargo-item strong { font-variant-numeric: tabular-nums; color: #ffd98a; }
+
 /* ── elementos ───────────────────────────────────────────────────────────── */
 .rail-elements { display: grid; gap: 5px; }
 .elem-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

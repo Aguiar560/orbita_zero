@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 58 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 61 testes passando · typecheck e build limpos.
 
 ---
 
@@ -17,14 +17,14 @@ momento — o ponto de partida, que não se reescreve.
 ```
 Etapa 0  ██████████  concluída
 Fase 1   ███████░░░  5 de 7 tarefas
-Fase 1B  ████░░░░░░  2 de 5 — morte, progresso e permanência
+Fase 1B  ██████░░░░  3 de 5 — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1B.2 — recursos retidos até o setor fechar. Entrou na frente da
+**Próxima:** Fase 1B.3 — a morte punitiva. Puxa junto as tarefas 1.8 e 1.9 (níveis de personagem e de nave), que ela precisa para existir. Entrou na frente da
 Fase 2 porque redefine o que o combate significa, e construir dano elemental
 sobre um progresso que vai mudar é retrabalho garantido.
 
@@ -114,10 +114,21 @@ zero sempre com a tela limpa.
 > horas por galáxia) sem que ninguém tenha mexido em curva — o jogador agora
 > paga pelos inimigos que deixa passar.
 
-### 1B.2 — Recursos só ao concluir o SETOR
+### 1B.2 — Recursos só ao concluir o SETOR ✅
 
-Sucata, núcleos e cristais deixam de ser creditados por onda. Ficam retidos
-como "carga da incursão" e só entram no save quando o setor inteiro é vencido.
+Sucata, núcleos e cristais de combate deixaram de ser creditados por onda. Ficam
+em `run.carga` e só entram no banco quando o setor inteiro cai; morrer no meio
+perde tudo o que está lá.
+
+A renda de PATRULHA continua indo direto para o banco: ela é a camada ociosa e
+não faz parte da incursão, então não faz sentido pô-la em risco.
+
+A carga aparece no cockpit, com quantas ondas faltam para garanti-la. Perder só
+é risco se o jogador souber o tamanho do que está em jogo antes de morrer —
+escondida, seria surpresa.
+
+Medido: morrer com 5.360 de sucata e 1.127 núcleos na carga zerou os dois e
+deixou o banco intacto.
 
 ### 1B.3 — Morte muito punitiva
 
