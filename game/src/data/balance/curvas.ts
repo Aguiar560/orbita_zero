@@ -39,10 +39,13 @@ export const ILVL_POR_SETOR = 0.9;
  * monta um jogador em 34 setores de 1 a 300, tira a mediana de sete sementes
  * por setor e ajusta a lei de potência por mínimos quadrados em log-log.
  *
- *   DPS      = 0,663  × (ilvl + 3,0) ^ 2,7902    R² 0,9934
- *   vida ef. = 43,169 × (ilvl + 1,5) ^ 1,2421    R² 0,9873
+ *   DPS      = 0,527  × (ilvl + 3,0) ^ 2,9279    R² 0,9945
+ *   vida ef. = 42,902 × (ilvl + 1,5) ^ 1,2541    R² 0,9865
  *
- * ► Remedidos na 3.3, e desta vez o refit É a ferramenta certa: a calibragem
+ * ► Remedidos na 3.6: a décima categoria (§11) é um slot A MAIS, e um slot a
+ *   mais é ~11% de poder que a curva não conhecia.
+ *
+ * ► Remedidos antes na 3.3, e desta vez o refit É a ferramenta certa: a calibragem
  *   de afixo mudou o poder de TODO item do jogo, não um setor. Sem ele, três
  *   setores ficavam impossíveis.
  *
@@ -71,11 +74,11 @@ export const ILVL_POR_SETOR = 0.9;
  *   expoentes DESCREVEM o jogo; se o jogo mudar e eles não, o ritmo desanda em
  *   silêncio.
  */
-export const PODER_A = 0.663;
-export const PODER_P = 2.7902;
+export const PODER_A = 0.527;
+export const PODER_P = 2.9279;
 
-export const DEFESA_A = 43.169;
-export const DEFESA_P = 1.2421;
+export const DEFESA_A = 42.902;
+export const DEFESA_P = 1.2541;
 
 export const PODER_C = 3;
 export const DEFESA_C = 1.5;

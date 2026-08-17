@@ -24,6 +24,7 @@ export const SLOTS: readonly SlotInfo[] = [
   { id: 'escudo', name: 'Defesa / Escudos', short: 'Escudo', icon: 'slot/escudo', hint: 'Barreira que regenera entre encontros.' },
   { id: 'blindagem', name: 'Blindagem / Casco', short: 'Blindagem', icon: 'cat/blindagem', hint: 'Casco bruto — o que sobra quando o escudo cai.' },
   { id: 'suporte', name: 'Suportes / Utilitários', short: 'Suporte', icon: 'slot/suporte', hint: 'Sorte, coleta e rendimento.' },
+  { id: 'upgrade', name: 'Upgrades Gerais', short: 'Upgrade', icon: 'cat/reator', hint: 'Módulo universal — amplifica o que a nave já tem.' },
 ];
 
 export const SLOT_BY_ID = new Map(SLOTS.map((s) => [s.id, s]));
@@ -133,6 +134,7 @@ const NAMES: Record<SlotId, readonly string[]> = {
   escudo: ['Defletor Simples', 'Barreira Compacta', 'Campo Harmônico', 'Bolha Hexagonal', 'Escudo em Camadas', 'Barreira de Fase', 'Domo Espectral', 'Muralha Solar'],
   blindagem: ['Chapa Ablativa', 'Casco Reforçado', 'Placa Composta', 'Blindagem Reativa', 'Carapaça Densa', 'Liga Escura', 'Casco Adaptativo', 'Casco de Relíquia'],
   suporte: ['Kit de Reparo', 'Guincho Magnético', 'Sonda Prospectora', 'Módulo Logístico', 'Sensor Profundo', 'Coletor Automático', 'Extrator de Relíquias', 'Convergente'],
+  upgrade: ['Placa de Ajuste', 'Módulo Adaptativo', 'Otimizador de Fluxo', 'Regulador Quântico', 'Amplificador Coeso', 'Núcleo de Convergência', 'Arquitetura Viva', 'Singularidade Contida'],
 };
 
 /** Atributo implícito característico de cada slot. */
@@ -146,6 +148,15 @@ const IMPLICITS: Record<SlotId, { stat: StatId; kind: 'add' | 'mul'; per: number
   escudo: { stat: 'escudo', kind: 'add', per: 9.5 },
   blindagem: { stat: 'vida', kind: 'add', per: 12 },
   suporte: { stat: 'sorte', kind: 'add', per: 0.01 },
+  /**
+   * O implícito do Upgrade Geral é MULTIPLICATIVO e pequeno.
+   *
+   * É o que dá identidade à categoria sem lhe dar um eixo próprio: ela não
+   * traz dano nem casco, ela amplifica o que as outras nove já trouxeram.
+   * Aditivo tornaria a peça uma décima fonte de números; multiplicativo a
+   * torna um multiplicador da build, que é o papel de "upgrade geral".
+   */
+  upgrade: { stat: 'dano', kind: 'mul', per: 0.011 },
 };
 
 /**
@@ -214,6 +225,9 @@ export const AFINIDADE: Record<SlotId, Record<FamiliaDeAfixo, number>> = {
   escudo:     { ofensiva: 0.3, defensiva: 2.5, utilidade: 0.7 },
   blindagem:  { ofensiva: 0.3, defensiva: 2.5, utilidade: 0.7 },
   suporte:    { ofensiva: 0.35, defensiva: 0.4, utilidade: 6.0 },
+  // Deliberadamente EQUILIBRADO: é a única categoria sem tema, e é isso que a
+  // torna o encaixe curinga de qualquer build.
+  upgrade:    { ofensiva: 1.0, defensiva: 1.0, utilidade: 1.0 },
 };
 
 /** Peso efetivo de um afixo NAQUELE slot. */

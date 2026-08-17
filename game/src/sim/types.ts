@@ -106,10 +106,21 @@ export interface StatModifier {
 /** As nove categorias da folha `Itens.png`. */
 export type SlotId =
   | 'asas' | 'principal' | 'secundaria' | 'motor' | 'reator'
-  | 'controle' | 'escudo' | 'blindagem' | 'suporte';
+  | 'controle' | 'escudo' | 'blindagem' | 'suporte'
+  /**
+   * A décima categoria (§11).
+   *
+   * É um SLOT como os outros, não um sistema paralelo de melhoria: a nave
+   * evolui por item, craft e Matriz, e um "menu de upgrades" já foi removido
+   * uma vez (§31). O que a folha `novos itens.png` desenha aqui são itens com
+   * as sete raridades, como qualquer outra categoria — então é assim que
+   * entram.
+   */
+  | 'upgrade';
 
 export const SLOT_IDS: readonly SlotId[] = [
   'asas', 'principal', 'secundaria', 'motor', 'reator', 'controle', 'escudo', 'blindagem', 'suporte',
+  'upgrade',
 ];
 
 /**

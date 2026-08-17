@@ -21,8 +21,14 @@ const IDS = new Set(Object.keys(atlas.frames ?? atlas));
 /** A ordem em que a folha desenha as raridades, da esquerda para a direita. */
 const RARIDADES_DA_FOLHA = ['comum', 'incomum', 'raro', 'epico', 'lendario', 'mitico', 'divino'];
 
-/** As dez categorias: os nove slots do jogo, mais os Upgrades Gerais do §11. */
-const CATEGORIAS = [...SLOT_IDS, 'upgrade'];
+/**
+ * As dez categorias são exatamente os slots do jogo.
+ *
+ * Eram nove mais `upgrade` concatenado à mão; na 3.6 os Upgrades Gerais viraram
+ * um SLOT de verdade e a concatenação passou a contar onze. Derivar da fonte
+ * evita que a lista precise ser lembrada de novo na próxima categoria.
+ */
+const CATEGORIAS = SLOT_IDS;
 
 describe('o catálogo novo está completo', () => {
   it('o atlas foi gerado', () => {
@@ -79,7 +85,7 @@ describe('a folha e a tabela de raridades não podem divergir', () => {
     expect([...faltando]).toEqual([]);
   });
 
-  it('as nove primeiras categorias são exatamente os slots do jogo', () => {
-    expect(CATEGORIAS.slice(0, 9)).toEqual([...SLOT_IDS]);
+  it('a folha cobre todos os slots do jogo, sem sobra nem falta', () => {
+    expect(CATEGORIAS).toEqual([...SLOT_IDS]);
   });
 });

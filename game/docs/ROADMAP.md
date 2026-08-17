@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3.6 — a décima categoria, Upgrades Gerais (§11).
+**Próxima:** Fase 3.7 — filtros e ordenação do inventário (§28).
 
 
 
@@ -399,7 +399,7 @@ como ser dimensionado.
 | 3.3 | ✅ `calibre` por afixo, medido — dispersão 22,1× → 10,0× |
 | 3.4 | ✅ Três degraus de projétil, com portão de raridade e exclusão mútua |
 | 3.5 | ✅ Drop por REGRA — casa por padrão, aceita conteúdo futuro sem cadastro |
-| 3.6 | Décima categoria: Upgrades Gerais (§11) |
+| 3.6 | ✅ Upgrades Gerais como SLOT — décima categoria, com implícito multiplicativo |
 | 3.7 | Filtros e ordenação do inventário (§28) |
 | 3.8 | Separar inventário de itens do armazém de recursos (§29) |
 
