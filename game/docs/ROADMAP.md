@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 2 — combate elemental (dano normal e elemental separados, matriz configurável, crítico elemental, penetração).
+**Próxima:** Fase 2.7 — projéteis, impactos e explosões por elemento na cena, consumindo o atlas `elemental`.
 
 
 
@@ -380,12 +380,12 @@ como ser dimensionado.
 
 | # | Tarefa |
 |---|---|
-| 2.1 | `DamagePacket` — separar dano normal de elemental (§3) |
-| 2.2 | Refatorar o protótipo elemental para o novo modelo |
-| 2.3 | Matriz elemental gerada a partir do anel, configurável (§5) |
-| 2.4 | Crítico normal × crítico elemental, separados (§4) |
-| 2.5 | Resistência e penetração elemental (§4) |
-| 2.6 | Pipeline de `tiros e explosoes.png` — 6 elementos × 8 categorias (§21) |
+| 2.1 | ✅ `DamagePacket` — normal e elemental separados (§3) |
+| 2.2 | ✅ Combate refatorado para o pacote |
+| 2.3 | ✅ Matriz configurável em `data/balance/elemental.ts` |
+| 2.4 | ✅ Dois críticos, rolados à parte |
+| 2.5 | ✅ Penetração com teto de 0,8 |
+| 2.6 | ✅ Pipeline de `tiros e explosoes.png` — atlas `elemental`, 117 sprites |
 | 2.7 | Projéteis, impactos e explosões por elemento (§22) |
 
 ---

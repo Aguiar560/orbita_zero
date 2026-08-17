@@ -19,15 +19,21 @@ export const ROTULOS_ATE = 133;
 /**
  * Faixas verticais de cada categoria, medidas.
  *
+ * `vao` é a tolerância de fusão da segmentação, em fração da altura da célula,
+ * e existe porque as categorias têm formas OPOSTAS. Explosão espalha fagulhas
+ * soltas que precisam ser recolhidas ao corpo, então quer tolerância generosa;
+ * tiro é uma fileira de hastes verticais próximas, e a mesma tolerância colava
+ * três tiros num sprite só. Uma constante única servia mal aos dois — e servir
+ * mal aqui não aparece em número nenhum, só na folha de contato.
+ *
  * O cabeçalho `[7,70]` fica de fora: são as pílulas com o nome do elemento, não
- * sprites. Os ícones (última faixa) ENTRAM — são os glifos que o painel de
- * elementos e os pips de item já pediam e que hoje usam gema de raridade.
+ * sprites.
  */
 export const CATEGORIAS = [
-  { id: 'tiro', y: [84, 208], nome: 'tiros do jogador' },
-  { id: 'tiroini', y: [226, 328], nome: 'tiros do inimigo' },
-  { id: 'carga', y: [340, 436], nome: 'tiros carregados' },
-  { id: 'feixe', y: [449, 529], nome: 'raios e feixes' },
+  { id: 'tiro', y: [84, 208], nome: 'tiros do jogador', vao: 0.03 },
+  { id: 'tiroini', y: [226, 328], nome: 'tiros do inimigo', vao: 0.03 },
+  { id: 'carga', y: [340, 436], nome: 'tiros carregados', vao: 0.03 },
+  { id: 'feixe', y: [449, 529], nome: 'raios e feixes', vao: 0.03 },
   { id: 'fogacho', y: [546, 608], nome: 'efeitos de disparo' },
   { id: 'estouro', y: [626, 735], nome: 'explosões' },
   { id: 'faisca', y: [746, 846], nome: 'detalhes e partículas' },

@@ -8,9 +8,11 @@
  *    folha é escuro mas TINGIDO na cor do elemento, e o un-premultiply divide a
  *    cor por um alfa baixo — o fundo inteiro virava um bloco opaco colorido.
  *    Arte de brilho aditivo sobre escuro não precisa de un-premultiply nenhum.
- * 2. **`rowComponents` separa por limiar ABSOLUTO.** O halo de brilho faz ponte
- *    entre sprites vizinhos e o vale entre eles nunca chega a zero, então a
- *    célula inteira saía como um componente só.
+ * 2. **`rowComponents` separa por limiar ABSOLUTO, e em 1-D.** O halo faz ponte
+ *    entre sprites vizinhos, então nem limiar fixo nem vale relativo em projeção
+ *    davam conta: dois tiros encostados são um vale raso em 1-D e dois corpos
+ *    óbvios em 2-D. A primeira versão daqui era por vales e entregava blocos de
+ *    dois e três tiros colados — está no histórico, não vale ressuscitar.
  *
  * E não existe constante global que sirva: medido, o fundo vai de p10 = 12 no
  * cósmico a p10 = 86 no gelo. Tudo aqui é relativo à própria célula.
@@ -53,123 +55,140 @@ export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.
   return { data: out, width: w, height: h };
 }
 
-/** Perfil de alfa máximo por coluna. */
-function perfilDeAlfa(cel) {
-  const p = new Array(cel.width).fill(0);
-  for (let x = 0; x < cel.width; x++) {
-    for (let y = 0; y < cel.height; y++) {
-      const a = cel.data[(y * cel.width + x) * 4 + 3];
-      if (a > p[x]) p[x] = a;
-    }
-  }
-  return p;
-}
-
 /**
- * Separa os corpos de uma célula por VALES RELATIVOS.
+ * Segmenta uma célula por COMPONENTES 2-D.
  *
- * Um vale só conta como fronteira se for fundo o bastante *em relação aos picos
- * que o cercam*. É o que torna a regra invariante ao brilho da célula — e o
- * brilho varia demais entre elementos para qualquer limiar fixo funcionar.
+ * Substitui a separação por perfil de coluna, que não dava conta: dois tiros
+ * lado a lado cujos halos se tocam são um vale raso em projeção 1-D e dois
+ * corpos claramente distintos em 2-D. Medido, a versão 1-D entregava blocos de
+ * dois e três tiros colados em `tiro/*`, com lascas vazias no meio.
  *
- * Os padrões saíram de varredura: 0,45/9 partia a explosão de raio em quatro,
- * 0,30/20 dá de 1 a 6 corpos por célula — a faixa que a folha realmente tem.
+ * Três passos, e cada um resolve um defeito concreto:
  *
- * Devolve faixas `[x0, x1)`.
+ * 1. **Componentes conexos em alfa ALTO.** O halo é justamente o que gruda os
+ *    vizinhos, então a busca ignora o halo e acha só os núcleos brilhantes.
+ * 2. **Agrupamento por sobreposição horizontal.** Um sprite só costuma ter
+ *    vários núcleos — uma explosão tem o miolo e as fagulhas soltas em volta.
+ *    Como os sprites de uma célula estão numa FILEIRA, dois núcleos que ocupam
+ *    a mesma faixa de x são do mesmo sprite, e dois que não se sobrepõem são de
+ *    sprites diferentes.
+ * 3. **Expansão até o meio do caminho.** Recupera o halo que o passo 1 jogou
+ *    fora, sem invadir o vizinho.
  */
-export function separarPorVales(cel, { fracao = 0.30, minLargura = 20, borda = 20 } = {}) {
-  const perfil = perfilDeAlfa(cel);
-  const n = perfil.length;
+export function segmentarPorComponentes(cel, {
+  alphaNucleo = 170,
+  areaMinima = 24,
+  minLargura = 10,
+  vaoFracao = 0.12,
+} = {}) {
+  const { width: w, height: h, data } = cel;
+  const rotulo = new Int32Array(w * h).fill(-1);
+  const caixas = [];
+  const fila = new Int32Array(w * h);
 
-  let ini = 0;
-  while (ini < n && perfil[ini] < borda) ini++;
-  let fim = n - 1;
-  while (fim > ini && perfil[fim] < borda) fim--;
-  if (fim - ini < minLargura) return [];
+  for (let p0 = 0; p0 < w * h; p0++) {
+    if (rotulo[p0] >= 0 || data[p0 * 4 + 3] < alphaNucleo) continue;
 
-  // Máximos acumulados dos dois lados, para não varrer o perfil inteiro a cada
-  // candidato — a versão ingênua era O(n²) por célula.
-  const picoEsq = new Array(n).fill(0);
-  const picoDir = new Array(n).fill(0);
-  for (let i = ini; i <= fim; i++) picoEsq[i] = Math.max(i > ini ? picoEsq[i - 1] : 0, perfil[i]);
-  for (let i = fim; i >= ini; i--) picoDir[i] = Math.max(i < fim ? picoDir[i + 1] : 0, perfil[i]);
+    const id = caixas.length;
+    const caixa = { x0: p0 % w, x1: p0 % w, area: 0 };
+    let cabeca = 0;
+    let cauda = 0;
+    fila[cauda++] = p0;
+    rotulo[p0] = id;
 
-  const cortes = [];
-  for (let i = ini + minLargura; i <= fim - minLargura; i++) {
-    const v = perfil[i];
-    if (v > perfil[i - 1] || v > perfil[i + 1]) continue;
-    if (v < fracao * Math.min(picoEsq[i - 1], picoDir[i + 1])) cortes.push(i);
-  }
+    // Fila explícita e não recursão: uma explosão grande passa de dez mil
+    // pixels e a versão recursiva estourava a pilha do Node.
+    while (cabeca < cauda) {
+      const p = fila[cabeca++];
+      const x = p % w;
+      const y = (p / w) | 0;
+      caixa.area++;
+      if (x < caixa.x0) caixa.x0 = x;
+      if (x > caixa.x1) caixa.x1 = x;
 
-  // Vales adjacentes descrevem a mesma fronteira: fica o mais fundo do grupo.
-  const limpos = [];
-  for (const c of cortes) {
-    const ult = limpos[limpos.length - 1];
-    if (ult !== undefined && c - ult < minLargura) {
-      if (perfil[c] < perfil[ult]) limpos[limpos.length - 1] = c;
-    } else {
-      limpos.push(c);
+      // Vizinhança de 8: com 4 vizinhos, um traço fino na diagonal — comum nos
+      // estilhaços de gelo — vira uma dúzia de componentes soltos.
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const q = ny * w + nx;
+          if (rotulo[q] >= 0 || data[q * 4 + 3] < alphaNucleo) continue;
+          rotulo[q] = id;
+          fila[cauda++] = q;
+        }
+      }
     }
+
+    caixas.push(caixa);
   }
 
-  const faixas = [];
-  let a = ini;
-  for (const c of limpos) { faixas.push([a, c]); a = c; }
-  faixas.push([a, fim + 1]);
+  const vivas = caixas.filter((c) => c.area >= areaMinima).sort((a, b) => a.x0 - b.x0);
+  if (!vivas.length) return [];
 
-  // Segunda passada contra a SUB-divisão, que é o que sobrou depois de calibrar
-  // a fração. Quando dois sprites da mesma célula têm os halos encavalados, o
-  // vale entre eles nunca fica fundo o bastante e os dois saem como um corpo só
-  // — foi o que aconteceu com os dois redemoinhos cósmicos.
+  // Passo 2: funde as que partilham faixa de x — ou que estão perto demais.
   //
-  // O sinal de que isso ocorreu é a PROPORÇÃO: estes sprites são desenhados
-  // aproximadamente quadrados, então um corpo bem mais largo que alto é quase
-  // certamente mais de um. Nesse caso corta-se no vale mais fundo do interior,
-  // mesmo que ele não passe no teste relativo — a proporção já é a evidência.
-  // RECURSIVA, não de passada única: a fileira de glifos é recortada na largura
-  // inteira e contém doze ícones, então um corte só a deixaria em dois. Com uma
-  // passada só, o comando devolvia 2 sprites onde havia 12.
-  const largo = (x, z) => z - x > cel.height * 1.55;
-  const partir = ([x, z], profundidade = 0) => {
-    if (!largo(x, z) || profundidade > 5) return [[x, z]];
-    let melhor = -1;
-    for (let i = x + minLargura; i <= z - minLargura; i++) {
-      if (melhor < 0 || perfil[i] < perfil[melhor]) melhor = i;
+  // A tolerância de vão existe por causa das fagulhas SOLTAS: uma explosão de
+  // gelo espalha estilhaços que não encostam no miolo nem se sobrepõem a ele em
+  // x, e sem ela cada estilhaço virava um sprite. Sprites de verdade da mesma
+  // célula têm um vão bem maior — é o espaçamento com que a folha foi
+  // desenhada —, então a distância separa os dois casos sozinha.
+  const vaoMax = Math.round(h * vaoFracao);
+  const brutos = [];
+  for (const c of vivas) {
+    const ultimo = brutos[brutos.length - 1];
+    if (ultimo && c.x0 <= ultimo.x1 + vaoMax) {
+      ultimo.x1 = Math.max(ultimo.x1, c.x1);
+      ultimo.area += c.area;
+    } else {
+      brutos.push({ x0: c.x0, x1: c.x1, area: c.area });
     }
-    if (melhor < 0) return [[x, z]];
-    return [
-      ...partir([x, melhor], profundidade + 1),
-      ...partir([melhor, z], profundidade + 1),
-    ];
-  };
+  }
 
-  return faixas.flatMap((f) => partir(f)).filter(([x, z]) => z - x >= minLargura);
+  /**
+   * Descarta os FRAGMENTOS DE VIZINHO.
+   *
+   * A célula é recortada por meia-largura fixa, então ela morde um pedaço do
+   * sprite da coluna ao lado. Esse pedaço tem núcleo próprio e virava um sprite
+   * — as lascas de gradiente que apareciam na folha de contato.
+   *
+   * O critério é relativo ao maior corpo da própria célula, e não absoluto: o
+   * tamanho dos sprites varia demais entre categorias para um limiar em pixels.
+   * Um fragmento de borda é uma fração do corpo de que foi cortado; um sprite
+   * pequeno de verdade — as fagulhas de `faisca` — ainda passa de 10%.
+   */
+  const maior = brutos.reduce((m, g) => Math.max(m, g.area), 0);
+  const grupos = brutos.filter((g) => g.area >= maior * 0.10);
+  if (!grupos.length) return [];
+
+  // Passo 3: cada fronteira cai no meio do vão entre grupos vizinhos.
+  return grupos
+    .map((g, i) => {
+      const anterior = grupos[i - 1];
+      const proximo = grupos[i + 1];
+      const a = anterior ? Math.ceil((anterior.x1 + g.x0) / 2) : 0;
+      const z = proximo ? Math.ceil((g.x1 + proximo.x0) / 2) : w;
+      return [a, z];
+    })
+    .filter(([a, z]) => z - a >= minLargura);
 }
 
+
 /**
- * ► ESTADO: a extração de ALFA está resolvida; a SEGMENTAÇÃO não, e por isso
- *   `buildTiros` está escrito mas DESLIGADO em `build-assets.mjs`.
+ * ► RESÍDUO CONHECIDO, conferido em folha de contato.
  *
- * O que funciona, verificado em folha de contato: o alfa sai correto em todas
- * as 48 células, sem bloco opaco e sem comer o miolo dos sprites escuros. Esse
- * era o problema difícil — o fundo tingido — e ele está resolvido.
+ * A segmentação acerta a grande maioria dos corpos, e o que sobra é sempre um
+ * dos dois casos abaixo. Nenhum deles é aleatório, então dá para conferir à
+ * mão o punhado de ids que a Fase 2.7 for consumir de fato.
  *
- * O que não funciona: a separação é boa para corpos ARREDONDADOS e bem
- * espaçados (`estouro` sai 2 de 2 em todos os seis elementos, conferido) e ruim
- * para corpos ALTOS E FINOS. Em `tiro` vários sprites saem em blocos de dois ou
- * três, e outros saem como lascas vazias: os tiros são verticais, então a regra
- * de proporção (`largura > altura × 1,55`) quase nunca dispara e o halo faz
- * ponte entre eles.
+ * - **Blocos**: em duas ou três células os sprites estão tão juntos que os
+ *   núcleos se tocam mesmo em alfa 170, e saem colados (`tiro/padrao`, com três
+ *   hastes brancas quase encostadas, é o pior caso).
+ * - **Lascas**: sobra alguma faixa fina de gradiente quando o fragmento de
+ *   vizinho tem núcleo grande o bastante para passar do corte de 10%.
  *
- * Publicar assim daria ids confiantes — `tiro/fogo_2` — sobre recortes errados,
- * que é pior que id ausente: some em silêncio dentro do jogo.
- *
- * Caminho para fechar, em ordem de promessa:
- * 1. Segmentar por COMPONENTES 2-D em alfa alto, como a folha de planetas, em
- *    vez de por perfil 1-D. Dois tiros lado a lado que se tocam pelo halo são
- *    componentes distintos em 2-D e indistinguíveis em projeção.
- * 2. Se ainda faltar, parâmetros POR CATEGORIA: `estouro` e `tiro` têm formas
- *    opostas e não há razão para partilharem uma constante.
- * 3. A fileira `glifo` precisa de tratamento próprio de qualquer jeito — ver a
- *    nota em `tiros.slices.mjs`.
+ * A saída para os dois é a mesma e é barata: `MEIA_CELULA` por coluna, em vez
+ * de uma constante, encolhendo a janela nas colunas mais apertadas. Não fiz
+ * porque exige medir seis larguras à mão e o jogo ainda não consome o atlas.
  */

@@ -36,7 +36,7 @@ import {
   TIRO_FILEIRAS, TIRO_BLOCO, TIRO_DESSATURA,
 } from './sprites.slices.mjs';
 import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
-import { extrairCelula, separarPorVales } from './lib/elemental.mjs';
+import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 
 /** A folha elemental do §21. */
 const TIROS_SHEET = 'tiros e explosoes.png';
@@ -89,6 +89,7 @@ async function main() {
   await buildIcones(manifest);
   await buildOrbes(manifest);
   await buildSprites(manifest);
+  await buildTiros(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
   await buildDroneAtlas(manifest);
@@ -1104,7 +1105,7 @@ async function buildTiros(manifest) {
       const { x0, w } = col;
       const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0]);
 
-      const faixas = separarPorVales(celula);
+      const faixas = segmentarPorComponentes(celula, cat.vao ? { vaoFracao: cat.vao } : {});
       if (!faixas.length) { vazias++; continue; }
 
       faixas.forEach(([a, z], i) => {
