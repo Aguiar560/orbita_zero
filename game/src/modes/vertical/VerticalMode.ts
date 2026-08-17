@@ -23,29 +23,6 @@ import {
   type Bullet, type Enemy, type PickupKind, type Player,
 } from './entities';
 
-/**
- * Escala dos projéteis do atlas elemental.
- *
- * Os sprites da folha do §21 têm cerca de 141×124 px — foram desenhados grandes,
- * para servir também de arte de carga e de feixe. A nave tem ~36 px de largura
- * na tela, então desenhá-los a 0,9 dava um tiro MAIOR QUE A NAVE.
- *
- * 0,18 põe o projétil em torno de 25 × 22 px: legível, e claramente menor que
- * quem atirou. O número é a razão entre o alvo em pixels e o tamanho do sprite,
- * não um palpite — se a arte for reexportada em outro tamanho, é este valor que
- * muda.
- */
-const ESCALA_TIRO = 0.18;
-
-/**
- * O tiro inimigo sai um pouco menor que o do jogador.
- *
- * Não é economia de espaço: é leitura. Numa tela com trinta projéteis, o
- * tamanho é a pista mais rápida de quem atirou o quê, e o do jogador tem de
- * dominar visualmente o próprio ataque.
- */
-const ESCALA_TIRO_INIMIGO = 0.14;
-
 /** Segundos parado após a nave cair, antes de reiniciar o encontro. */
 const RESPAWN_DELAY = 1.8;
 /**
@@ -444,9 +421,9 @@ export class VerticalMode {
     const element = this.sim.element;
     const nativo = element === this.sim.hull.element;
     const info = getElement(element);
-    const sprite = nativo ? style.sprite : arteElemental('tiro', element);
+    const sprite = nativo ? style.sprite : info.bullet[0];
     const color = nativo ? style.color : info.color;
-    const scale = nativo ? style.scale : ESCALA_TIRO;
+    const scale = nativo ? style.scale : 0.9;
 
     // Fogacho na boca da arma, na arte do elemento (§22). É o que faz trocar de
     // arma mudar a CARA do disparo e não só o número — o tiro em si passa rápido
@@ -806,13 +783,9 @@ export class VerticalMode {
       b.radius = 8 * scale;
       b.damageTotal = damage;
       b.element = e.boss?.element ?? e.def.element;
-      // A folha do §21 tem uma fileira SÓ de tiros de inimigo, desenhados para
-      // serem lidos de relance como ameaça — mais chapados e mais escuros que os
-      // do jogador. Usá-la é o que impede a tela de virar uma sopa em que o
-      // próprio tiro e o do inimigo se confundem.
-      b.sprite = arteElemental('tiroini', b.element, e.id) || sprite;
+      b.sprite = sprite;
       b.color = color;
-      b.scale = ESCALA_TIRO_INIMIGO * scale;
+      b.scale = 0.6 * scale;
       b.homing = homing;
       b.pierce = 0;
       b.splash = 0;
