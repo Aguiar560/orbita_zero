@@ -213,7 +213,14 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
     id: `pot_${e.id}`,
     label: e.id === 'padrao' ? 'Dano normal' : `Dano de ${e.name.toLowerCase()}`,
     stat: DANO_STAT[e.id],
-    kind: 'mul' as const,
+    // `add`, não `mul`. Estes atributos são consumidos como `1 + x` — em
+    // `resolveStats`, `out.dano *= 1 + out[DANO_STAT[ativo]]` —, então já SÃO a
+    // fração. Como `mul`, a conta virava `(0 + 0) × (1 + 0,26) = 0`: nada
+    // alimenta o lado `add` de `danoFogo`, nem casco, nem conjunto, nem matriz.
+    // Os seis afixos de potência elemental eram inertes, rolavam, apareciam na
+    // ficha e não faziam nada. Medido com `simular -- afixos`: ganho idêntico ao
+    // de não equipar afixo nenhum.
+    kind: 'add' as const,
     min: 0.07, max: 0.26,
     slots: ['principal', 'secundaria', 'reator'] as const,
     weight: 70,
@@ -256,9 +263,9 @@ export const AFFIXES: readonly AffixDef[] = [
   { id: 'perf_f',      label: 'Perfuração',          stat: 'perfuracao',  kind: 'add', min: 1, max: 1, weight: 14, slots: ['principal', 'secundaria'], minIlvl: 8 },
   { id: 'expl_f',      label: 'Raio de explosão',    stat: 'explosao',    kind: 'add', min: 3, max: 11, weight: 35, slots: ['principal', 'secundaria', 'reator'], minIlvl: 6 },
   { id: 'sorte_f',     label: 'Sorte',               stat: 'sorte',       kind: 'add', min: 0.02, max: 0.09, weight: 45 },
-  { id: 'sucata_p',    label: 'Ganho de sucata',     stat: 'sucataGanho', kind: 'mul', min: 0.06, max: 0.22, weight: 55 },
-  { id: 'nucleo_p',    label: 'Ganho de núcleos',    stat: 'nucleoGanho', kind: 'mul', min: 0.05, max: 0.18, weight: 50 },
-  { id: 'xp_p',        label: 'Ganho de XP',         stat: 'xpGanho',     kind: 'mul', min: 0.05, max: 0.2, weight: 40 },
+  { id: 'sucata_p',    label: 'Ganho de sucata',     stat: 'sucataGanho', kind: 'add', min: 0.06, max: 0.22, weight: 55 },
+  { id: 'nucleo_p',    label: 'Ganho de núcleos',    stat: 'nucleoGanho', kind: 'add', min: 0.05, max: 0.18, weight: 50 },
+  { id: 'xp_p',        label: 'Ganho de XP',         stat: 'xpGanho',     kind: 'add', min: 0.05, max: 0.2, weight: 40 },
   { id: 'ia_f',        label: 'Sincronia do piloto', stat: 'iaSkill',     kind: 'add', min: 0.015, max: 0.06, weight: 22, slots: ['controle', 'motor', 'reator'], minIlvl: 10 },
   ...ELEMENTAL_AFFIXES,
 ];

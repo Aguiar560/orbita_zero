@@ -3,6 +3,10 @@ import { Rng } from '@core/math';
 import { JANELA_DE_TIERS, TIERS, TIER_ILVL, fatorDoTier, tierPorIlvl, tiersDisponiveis } from '@data/balance/tiers';
 import { RARITIES } from '@data/rarity';
 import { rollItem } from '@sim/loot';
+import { AFFIXES } from '@data/items';
+import { powerScore, resolveStats } from '@sim/stats';
+import { createState } from '@sim/state';
+import type { Item } from '@sim/types';
 
 /**
  * Tiers de afixo, T1–T10 (§6).
@@ -128,5 +132,47 @@ describe('o tier no item gerado', () => {
       return soma / n;
     };
     expect(media(270)).toBeGreaterThan(media(30));
+  });
+});
+
+/**
+ * Orçamento e peso de atributos (§7).
+ *
+ * O teste que teria pego o bug de nove afixos inertes anos antes: `pot_*` e as
+ * três rendas eram `kind: 'mul'` sobre atributos de base zero, então a conta
+ * era `(0 + 0) × (1 + 0,26) = 0`. Rolavam, apareciam na ficha e não faziam nada.
+ */
+describe('todo afixo precisa mover a nota de poder', () => {
+  const base = createState(1);
+  const notaBase = powerScore(resolveStats(base));
+
+  /** Equipa um afixo isolado e devolve quanto ele acrescentou. */
+  const ganhoDe = (def: typeof AFFIXES[number]): number => {
+    const slot = def.slots?.[0] ?? 'principal';
+    const item = {
+      uid: 'sonda', baseId: 'principal_0', slot, rarity: 0, ilvl: 30,
+      element: def.element ?? 'padrao', icon: '', origin: 0,
+      affixes: [{ id: def.id, stat: def.stat, kind: def.kind, value: (def.min + def.max) / 2, quality: 0.5, tier: 5 }],
+    } as unknown as Item;
+    const sonda = { ...base, equipped: { ...base.equipped, [slot]: item } };
+    return powerScore(resolveStats(sonda)) - notaBase;
+  };
+
+  it.each(AFFIXES.map((a) => [a.id, a] as const))('%s vale alguma coisa', (_id, def) => {
+    expect(ganhoDe(def)).toBeGreaterThan(0);
+  });
+
+  /**
+   * A causa raiz, dita diretamente: um afixo `mul` sobre atributo que ninguém
+   * alimenta pelo lado `add` multiplica zero. Se alguém reintroduzir um, aqui
+   * quebra.
+   */
+  it('nenhum afixo é `mul` sobre atributo de base e casco zerados', () => {
+    const zerados = AFFIXES.filter((def) => {
+      if (def.kind !== 'mul') return false;
+      const semAfixo = resolveStats(base);
+      return semAfixo[def.stat] === 0;
+    }).map((d) => d.id);
+    expect(zerados).toEqual([]);
   });
 });

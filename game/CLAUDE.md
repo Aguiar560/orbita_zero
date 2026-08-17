@@ -34,6 +34,7 @@ npm run assets && npm run dev
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
 | `npm run simular -- drops 200000` | distribuição real de raridade |
 | `npm run simular -- item 30` | dispersão de poder entre itens do mesmo nível |
+| `npm run simular -- afixos 30 5` | valor marginal de cada afixo, para o orçamento do §7 |
 
 Os packs crus em `D:\bbb\*` são **somente leitura**. O pipeline nunca escreve neles.
 

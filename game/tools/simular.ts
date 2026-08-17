@@ -20,7 +20,10 @@ import { rollItem, rollRarity } from '@sim/loot';
 import { WAVES_PER_SECTOR, buildEncounter } from '@sim/progression';
 import { powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
-import type { GameState } from '@sim/types';
+import type { GameState, Item } from '@sim/types';
+import { AFFIXES, BASE_BY_ID } from '@data/items';
+import { fatorDoTier } from '@data/balance/tiers';
+import { AFIXO_ESCALA_POR_ILVL, ATRIBUTOS_FRACIONARIOS } from '@data/balance/curvas';
 import {
   ajustarLeiDePotencia, diagnostico, divergencia, medirSetor, tentativasDoSetor,
 } from './lib/balanco';
@@ -224,6 +227,60 @@ function comandoOndas(de: number, ate: number): void {
   console.log('\nA vida total da onda é a mesma em qualquer perfil — muda como ela é repartida.');
 }
 
+/**
+ * Valor MARGINAL de cada afixo, em nota de poder (§7).
+ *
+ * O medidor que faltava para o orçamento existir. A dispersão dentro de uma
+ * raridade é o sintoma; a causa é que os afixos não custam o mesmo. Um Comum
+ * tem UMA linha, e se ela pode ser `+dano` ou `+1,2% de crítico`, a mesma
+ * raridade produz itens que diferem por ordens de grandeza sem que o jogador
+ * tenha feito escolha nenhuma.
+ *
+ * Mede o afixo isolado, na MEDIANA da sua faixa e num tier fixo, para o número
+ * refletir o afixo e não a sorte da rolagem.
+ */
+function comandoAfixos(ilvl: number, tier: number): void {
+  const base = createState(1);
+  const notaBase = powerScore(resolveStats(base));
+
+  const linhas = AFFIXES.map((def) => {
+    // Slot onde o afixo é permitido — alguns são restritos.
+    const slot = def.slots?.[0] ?? 'principal';
+    const bruto = (def.min + def.max) / 2;
+    const escalavel = def.kind === 'add' && !def.element && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
+    const escalado = escalavel ? bruto * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : bruto;
+    const contagem = def.id === 'proj_f' || def.id === 'perf_f';
+    const value = contagem ? Math.round(bruto) : escalado * fatorDoTier(tier);
+
+    const item = {
+      uid: 'sonda', baseId: BASE_BY_ID.keys().next().value as string, slot, rarity: 0 as const,
+      ilvl, element: (def.element ?? 'padrao'), icon: '', origin: 0,
+      affixes: [{ id: def.id, stat: def.stat, kind: def.kind, value, quality: 0.5, tier }],
+    } as unknown as Item;
+
+    const sonda: GameState = { ...base, equipped: { ...base.equipped, [slot]: item } };
+    return { def, ganho: powerScore(resolveStats(sonda)) - notaBase };
+  }).sort((a, b) => b.ganho - a.ganho);
+
+  const valores = linhas.map((l) => l.ganho).filter((g) => g > 0);
+  const mediana = valores.sort((a, b) => a - b)[Math.floor(valores.length / 2)] ?? 1;
+
+  tabela(
+    ['afixo', 'atributo', 'tipo', 'ganho', 'x mediana'],
+    linhas.map((l) => [
+      l.def.id, l.def.stat, l.def.kind, n(l.ganho),
+      `${(l.ganho / mediana).toFixed(2)}×`,
+    ]),
+  );
+
+  const positivos = linhas.filter((l) => l.ganho > 0.001).map((l) => l.ganho);
+  const menor = Math.min(...positivos);
+  const maior = Math.max(...positivos);
+  console.log(`\nnível de item ${ilvl} · tier ${tier} · mediana ${n(mediana)}`);
+  console.log(`dispersão entre afixos: ${(maior / menor).toFixed(1)}×`);
+  console.log(`afixos que não movem a nota: ${linhas.filter((l) => l.ganho <= 0.001).length}`);
+}
+
 // ── entrada ─────────────────────────────────────────────────────────────────
 
 const [comando, ...args] = process.argv.slice(2);
@@ -243,6 +300,9 @@ switch (comando) {
     break;
   case 'ondas':
     comandoOndas(Number(args[0] ?? 1), Number(args[1] ?? 3));
+    break;
+  case 'afixos':
+    comandoAfixos(Number(args[0] ?? 30), Number(args[1] ?? 5));
     break;
   default:
     console.log(`Arnês de simulação do Órbita Zero.

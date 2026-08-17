@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 90 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 121 testes passando · typecheck e build limpos.
 
 ---
 
@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1.7 — orçamento e peso de atributos. Depois, a Fase 2 (combate elemental).
+**Próxima:** fechar a 1.7 — normalizar as faixas de afixo. Depois, a Fase 2 (combate elemental).
 
 
 
@@ -54,7 +54,7 @@ mudança de balanceamento seria fé.
 | — | Densidade e pressão como eixos de dificuldade (§16) | ✅ `82b4347` |
 | 1.5 | Sete raridades, Comum → Divino (§9) | ✅ |
 | 1.6 | ✅ Tiers de atributo T1–T10 (§6) | `data/balance/tiers.ts` |
-| 1.7 | Orçamento e peso de atributos (§7) | ⬜ |
+| 1.7 | Orçamento e peso de atributos (§7) | 🟡 medidor pronto; falta normalizar faixas |
 | 1.8 | Nível de personagem 1–300 (§17) | ✅ com a 1B.3 |
 | 1.9 | Nível de nave 1–300, sem transferência (§17, §18) | ✅ com a 1B.3 |
 | ~~1.10~~ | ~~Save v4 + migração~~ — cancelado: o save é descartável no desenvolvimento | — |
@@ -126,6 +126,59 @@ etiqueta e sem erro — que é o contrato do `tier?` opcional.
 ~0 porque `powerScore` é cego a vários atributos, e a razão máx/mín amplifica
 isso. Consertar a métrica é pré-requisito da **1.7**, senão o orçamento de poder
 será calibrado contra um medidor quebrado.
+
+### 1.7 — Orçamento e peso de atributos 🟡 metade
+
+**O medidor foi consertado e ele achou um buraco maior que o orçamento.**
+
+`powerScore` enxergava 9 dos 27 atributos. Perfuração, explosão, velocidade,
+sorte, as três rendas e as cinco resistências valiam **zero** na comparação de
+itens — o auto-equipar descartava uma peça de resistência pura como se fosse
+vazia, e a dispersão do §7 media a cegueira do medidor, não a dos itens.
+
+Agora cada coeficiente entra ONDE o atributo age (`data/balance/orcamento.ts`):
+perfuração e explosão no dano contra a onda, velocidade e resistência na
+sobrevivência, sorte e renda num fator próprio. A forma continua sendo PRODUTO
+(`√dps × √vida`) e não soma ponderada — é o que faz um canhão de vidro pontuar
+abaixo de uma nave equilibrada.
+
+> **Nove afixos estavam mortos.** Os seis `pot_*` (potência elemental) e as três
+> rendas eram `kind: 'mul'` sobre atributos de base zero. A conta era
+> `(0 + 0) × (1 + 0,26) = 0`: nada alimenta o lado `add` desses atributos — nem
+> casco, nem conjunto, nem matriz. Eles rolavam, apareciam na ficha como "+18%
+> de dano de fogo" e não faziam **nada**. Todos são consumidos como `1 + x`, ou
+> seja, já são a fração: viraram `add`. As três rendas entraram junto em
+> `ATRIBUTOS_FRACIONARIOS`, senão passariam a escalar com o nível de item e
+> "+6% de sucata" viraria +580% no fim do jogo.
+>
+> Medido depois: os elementais foram de 6,7 (idêntico a não ter afixo) para 23.
+
+Novo comando de medição: `npm run simular -- afixos <ilvl> <tier>` dá o valor
+marginal de cada afixo isolado. É o instrumento que faltava para o orçamento
+existir.
+
+| medida | antes | depois |
+|---|---|---|
+| atributos que a nota enxerga | 9 de 27 | **27 de 27** |
+| afixos inertes | 9 | **0** |
+| piso da dispersão por raridade | 0,0 (falso) | 2,2 |
+| divergência da curva | 6,7× | **5,8×** |
+
+Nenhum setor fora da faixa, então **não** foi preciso recalibrar as curvas.
+
+#### O que falta na 1.7 — normalizar as faixas
+
+Com o medidor honesto, a dispersão real entre afixos aparece: **26,8× no ilvl 30
+e 35,5× no ilvl 270**. `dano_f` vale 23× a mediana; `crit_d` vale 0,50×.
+
+A causa é estrutural, não de tabela: afixo de valor BRUTO escala com o nível de
+item (`1 + ilvl × 0,32`, ou 87× ao longo do jogo) e afixo FRACIONÁRIO não —
+fração só cresce por tier, que para no 10. No fim do jogo só o bruto importa, e
+um Divino de sete linhas quer sete `dano_f`. A diversidade morre.
+
+Normalizar as faixas é a segunda metade da etapa, e é calibragem grande: mexer
+em `dano_f` mexe na curva inteira. Fica separado de propósito — a primeira
+metade é uma correção de bug verificável sozinha.
 
 ---
 

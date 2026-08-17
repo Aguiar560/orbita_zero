@@ -343,6 +343,13 @@ export const AFIXO_ESCALA_POR_ILVL = 0.32;
  */
 export const ATRIBUTOS_FRACIONARIOS: ReadonlySet<string> = new Set([
   'critChance', 'critDano', 'sorte', 'iaSkill',
+  // As três rendas entraram na 1.7, quando deixaram de ser `mul` (sobre base
+  // zero, portanto inertes) e viraram `add`. Como `add` sem esta marca, elas
+  // passariam a escalar com o nível de item e "+6% de sucata" viraria +580% no
+  // fim do jogo — exatamente o defeito que esta lista existe para impedir.
+  // Os seis de potência elemental não precisam entrar: `rollAffix` já os
+  // exclui por terem `element`.
+  'sucataGanho', 'nucleoGanho', 'xpGanho',
 ]);
 
 /** Chance de um abate soltar item, por tipo de encontro. */

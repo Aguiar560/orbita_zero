@@ -1,6 +1,10 @@
-import { DANO_STAT, RES_STAT, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
+import { DANO_STAT, RES_STAT, RESISTIVEIS, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
 import { RES_MAX, RES_MIN, aplicarLimites } from '@data/balance/limites';
+import {
+  EXPLOSAO_EFICACIA, JANELA_DE_COMBATE, PERFURACAO_EFICACIA, RENDA_PESO, SORTE_PESO,
+  VELOCIDADE_EFICACIA,
+} from '@data/balance/orcamento';
 import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL, NAVE_GANHO_POR_NIVEL } from '@data/balance/curvas';
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
@@ -173,18 +177,58 @@ export function resolveStats(state: GameState): Stats {
   return out;
 }
 
-/** Dano teórico por segundo, contando crítico e projéteis. */
+/**
+ * Dano teórico por segundo contra UM alvo.
+ *
+ * Deliberadamente alvo único: é esta função que a calibragem de curva compara
+ * com a vida do inimigo (`tools/lib/balanco.ts`), e ali o que importa é quanto
+ * tempo leva para derrubar uma nave. Perfuração e explosão não entram aqui —
+ * elas valem contra a onda, não contra o alvo, e entram em `powerScore`.
+ */
 export function dps(stats: Stats): number {
   return stats.dano * stats.cadencia * stats.projeteis * (1 + stats.critChance * stats.critDano);
 }
 
 /** "Vida efetiva" — casco + escudo + o que a regeneração devolve num combate típico. */
 export function effectiveHp(stats: Stats): number {
-  const COMBAT_WINDOW = 20; // segundos de referência para valorizar regeneração
-  return stats.vida + stats.escudo + stats.regen * COMBAT_WINDOW;
+  return stats.vida + stats.escudo + stats.regen * JANELA_DE_COMBATE;
 }
 
-/** Nota única de poder, usada em comparações rápidas na UI e no auto-equipar. */
+/**
+ * Nota única de poder, usada em comparações rápidas na UI e no auto-equipar.
+ *
+ * Enxerga os 27 atributos (§7). Antes via 9, e os 18 restantes valiam zero: uma
+ * peça de resistência pura era descartada como se fosse vazia. Ver
+ * `data/balance/orcamento.ts` para de onde vem cada coeficiente.
+ *
+ * A forma é PRODUTO e não soma de propósito. `√dps × √vida` faz um canhão de
+ * vidro pontuar abaixo de uma nave equilibrada — é o que impede o auto-equipar
+ * de montar algo que mata rápido e morre mais rápido ainda. Uma soma ponderada
+ * plana perderia isso.
+ */
 export function powerScore(stats: Stats): number {
-  return Math.sqrt(dps(stats)) * Math.sqrt(effectiveHp(stats)) * (1 + stats.iaSkill * 0.5);
+  // Contra a ONDA: perfuração acerta o alvo seguinte da linha, explosão respinga
+  // nos vizinhos. Nenhum dos dois melhora o tempo de morte de um alvo isolado,
+  // então ficam fora de `dps` e entram só aqui.
+  const alcance = (1 + stats.perfuracao * PERFURACAO_EFICACIA)
+    * (1 + stats.explosao * EXPLOSAO_EFICACIA);
+
+  // Resistência não some com o dano: ela DIVIDE o que chega. A média sobre os
+  // cinco elementos é o que traduz "resisto muito a um" em sobrevivência real —
+  // uma peça com 75% de resistência a fogo e nada mais cobre um quinto do que
+  // pode vir pela frente, e a nota tem de dizer isso.
+  const media = RESISTIVEIS.reduce((s, e) => s + resistance(stats, e), 0) / RESISTIVEIS.length;
+  const mitigacao = 1 / (1 - Math.min(RES_MAX, media));
+
+  // Velocidade evita o tiro em vez de absorvê-lo, mas o efeito é o mesmo eixo.
+  const esquiva = 1 + stats.velocidade * VELOCIDADE_EFICACIA;
+
+  const utilidade = 1
+    + stats.sorte * SORTE_PESO
+    + (stats.sucataGanho + stats.nucleoGanho + stats.xpGanho) * RENDA_PESO;
+
+  return Math.sqrt(dps(stats) * alcance)
+    * Math.sqrt(effectiveHp(stats) * mitigacao * esquiva)
+    * (1 + stats.iaSkill * 0.5)
+    * utilidade;
 }
