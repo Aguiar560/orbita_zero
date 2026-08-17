@@ -3,17 +3,37 @@ import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
+import { colunasDaGrade } from '@data/balance/capacidade';
+
 import { scoreItem } from '@sim/loot';
 import type { Item, Rarity } from '@sim/types';
 import type { Sim } from '@sim/index';
+
+/**
+ * A grade, com as colunas vindas da capacidade.
+ *
+ * Vai por `setProperty` e não pelo objeto `style` do helper porque propriedade
+ * CUSTOMIZADA não existe em `CSSStyleDeclaration` — o TypeScript recusa, e com
+ * razão: `style['--x']` é ignorado silenciosamente em runtime.
+ */
+function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
+  const el = h('.inv-grid', {}, ...cells);
+  el.style.setProperty('--inv-colunas', String(colunas));
+  return el;
+}
+
 import { h, spriteIcon } from '../dom';
 import { buildItemCard } from '../ItemCard';
 import type { Panel } from './types';
 
-/** Grade de 7 colunas × 10 linhas — 70 espaços à vista, sem rolagem. */
-const COLS = 7;
-const ROWS = 10;
-export const GRID_SIZE = COLS * ROWS;
+/**
+ * A forma da grade vem de `data/balance/capacidade.ts` (§28).
+ *
+ * Eram `COLS = 7` e `ROWS = 10` fixos aqui. Não é decisão de painel: quantos
+ * espaços o jogador tem é regra de jogo, e ela cresce de 15 até 70 por loja,
+ * chefe e universo. Manter a constante aqui faria a UI desenhar 70 células
+ * enquanto a simulação só permitia guardar 15.
+ */
 
 /**
  * Inventário em grade.
@@ -38,9 +58,13 @@ export class InventoryPanel implements Panel {
 
   render(sim: Sim): HTMLElement {
     const items = this.sorted(sim);
-    const cells: HTMLElement[] = items.slice(0, GRID_SIZE).map((item) => this.cell(sim, item));
+    // A grade tem exatamente os espaços que o jogador LIBEROU (§28), não um
+    // número fixo. Desenhar 70 células com capacidade 15 mostrava 55 espaços
+    // que não existem — o oposto do que um inventário apertado deve comunicar.
+    const capacidade = sim.cargoSlots;
+    const cells: HTMLElement[] = items.slice(0, capacidade).map((item) => this.cell(sim, item));
     // Preenche o resto com espaços vazios para a grade nunca "desmontar".
-    while (cells.length < GRID_SIZE) cells.push(h('.inv-cell.vazio'));
+    while (cells.length < capacidade) cells.push(h('.inv-cell.vazio'));
 
     return h('.panel-body.inv-body', {},
       h('.toolbar', {},
@@ -57,7 +81,7 @@ export class InventoryPanel implements Panel {
           h('option', { value: 'raridade', text: 'Raridade', selected: this.sort === 'raridade' }),
           h('option', { value: 'slot', text: 'Slot', selected: this.sort === 'slot' }),
         ),
-        h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.state.inventorySize}` }),
+        h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
         h('button.mini.danger', {
           text: 'Desmanchar ≤ incomum',
           onclick: () => {
@@ -69,7 +93,9 @@ export class InventoryPanel implements Panel {
       ),
 
       h('p.muted.tiny.hint', { text: 'Clique para equipar · Shift+clique para desmanchar · botão direito favorita.' }),
-      h('.inv-wrap', {}, h('.inv-grid', {}, ...cells), this.tip),
+      h('.inv-wrap', {},
+        grade(colunasDaGrade(capacidade), cells),
+        this.tip),
     );
   }
 

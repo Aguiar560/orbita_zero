@@ -2,6 +2,7 @@
 import { BIOMES } from '@data/biomes';
 import type { GameState } from './types';
 import { WAVES_PER_SECTOR } from './progression';
+import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
 
 export const SAVE_KEY = 'orbita-zero:save';
 /**
@@ -28,8 +29,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
 
     equipped: {},
     inventory: [],
-    // Casa com a grade 7×10 do painel de inventário.
-    inventorySize: 70,
+    cargaLiberada: [],
 
     shop: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
@@ -112,6 +112,22 @@ export function migrate(raw: unknown): GameState | null {
     // Éter e os nós de Legado deixaram de existir; o campo some do save sozinho
     // porque `createState` não o declara mais.
   }
+
+  // Save anterior à 3.7 guardava a capacidade como número solto. Converte para
+  // concessões, dando as da loja primeiro: quem já tinha 70 espaços continua com
+  // 70, e quem tinha menos recebe o equivalente mais próximo, sem perder nada.
+  const antigo = (data as { inventorySize?: number }).inventorySize;
+  if (typeof antigo === 'number' && !data.cargaLiberada) {
+    state.cargaLiberada = [];
+    let falta = antigo - CARGA_INICIAL;
+    for (const c of CONCESSOES) {
+      if (falta <= 0) break;
+      state.cargaLiberada.push(c.id);
+      falta -= c.itens ?? 0;
+    }
+  }
+  state.cargaLiberada = (state.cargaLiberada ?? []).filter((id) => CONCESSAO_POR_ID.has(id));
+  delete (state as unknown as Record<string, unknown>).inventorySize;
 
   // O sistema de Melhorias saiu (§31). Saves gravados antes disso ainda trazem
   // a chave, e o espalhamento de `...data` acima a repassaria adiante — ela

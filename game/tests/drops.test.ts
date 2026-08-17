@@ -3,6 +3,12 @@ import { REGRAS_DE_DROP, afinidadeDoAlvo, resolverDrop, type AlvoDoDrop } from '
 import { Rng } from '@core/math';
 import { rollItem } from '@sim/loot';
 import { ELEMENTS } from '@data/elements';
+import {
+  CARGA_INICIAL, CARGA_MAXIMA, CONCESSOES, RECURSO_INICIAL,
+  capacidadeDeItens, colunasDaGrade, linhasDaGrade,
+} from '@data/balance/capacidade';
+import { Sim } from '@sim/index';
+import { createState } from '@sim/state';
 
 /**
  * Tabelas de drop por regra (§10).
@@ -125,5 +131,68 @@ describe('raridade alta é mais elemental, não menos', () => {
       expect(neutro[r]!, `raridade ${r} contra ${r - 1}`).toBeLessThanOrEqual(neutro[r - 1]! + 0.02);
     }
     expect(ELEMENTS.length).toBe(6);
+  });
+});
+
+/**
+ * Capacidade de carga (§28).
+ *
+ * O inventário NASCE apertado e cresce por conquista. Com 70 espaços desde o
+ * primeiro minuto, "guardar ou desmanchar" nunca é uma decisão.
+ */
+describe('a carga começa pequena e cresce por conquista', () => {
+  it('começa em 15 — grade 5 × 3', () => {
+    expect(capacidadeDeItens([])).toBe(CARGA_INICIAL);
+    expect(CARGA_INICIAL).toBe(5 * 3);
+    expect(colunasDaGrade(CARGA_INICIAL)).toBe(5);
+  });
+
+  it('as concessões existentes chegam ao teto de 70 — grade 7 × 10', () => {
+    const todas = CONCESSOES.map((c) => c.id);
+    expect(capacidadeDeItens(todas)).toBe(CARGA_MAXIMA);
+    expect(CARGA_MAXIMA).toBe(7 * 10);
+    expect(colunasDaGrade(CARGA_MAXIMA)).toBe(7);
+  });
+
+  /**
+   * O teto vale mesmo se alguém cadastrar concessão demais — e é por isso que
+   * ele é aplicado na função e não confiado à soma da tabela.
+   */
+  it('nenhuma soma de concessões passa do teto', () => {
+    const dobradas = [...CONCESSOES, ...CONCESSOES].map((c) => c.id);
+    expect(capacidadeDeItens(dobradas)).toBeLessThanOrEqual(CARGA_MAXIMA);
+  });
+
+  it('a grade cresce em ALTURA antes de alargar', () => {
+    // Uma grade que muda de largura a cada compra apaga a memória visual de
+    // onde cada item fica, que é metade do valor de um inventário em grade.
+    expect(colunasDaGrade(20)).toBe(5);
+    expect(colunasDaGrade(35)).toBe(5);
+    expect(colunasDaGrade(40)).toBe(7);
+    expect(linhasDaGrade(15)).toBe(3);
+    expect(linhasDaGrade(70)).toBe(10);
+  });
+
+  it('conceder duas vezes a mesma fonte não dá espaço duas vezes', () => {
+    const sim = new Sim(createState(5));
+    const base = sim.cargoSlots;
+    expect(sim.concederCarga('loja_carga_1')).toBe(true);
+    const depois = sim.cargoSlots;
+    expect(depois).toBeGreaterThan(base);
+    expect(sim.concederCarga('loja_carga_1')).toBe(false);
+    expect(sim.cargoSlots).toBe(depois);
+  });
+
+  it('id desconhecido é recusado, não guardado', () => {
+    const sim = new Sim(createState(6));
+    expect(sim.concederCarga('fonte_que_nao_existe')).toBe(false);
+    expect(sim.state.cargaLiberada).not.toContain('fonte_que_nao_existe');
+  });
+
+  it('o depósito de recursos é separado e cresce junto (§29)', () => {
+    const sim = new Sim(createState(7));
+    expect(sim.resourceSlots).toBe(RECURSO_INICIAL);
+    sim.concederCarga('universo_2');
+    expect(sim.resourceSlots).toBeGreaterThan(RECURSO_INICIAL);
   });
 });

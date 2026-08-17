@@ -322,7 +322,20 @@ export interface GameState {
 
   equipped: Partial<Record<SlotId, Item>>;
   inventory: Item[];
-  inventorySize: number;
+  /**
+   * @deprecated Substituído por `cargaLiberada` na 3.7. Fica só para saves
+   * antigos não perderem a capacidade que já tinham; a migração o converte.
+   */
+  inventorySize?: number;
+  /**
+   * Ids das concessões de carga já obtidas (§28).
+   *
+   * Lista de ids e não um número porque a MESMA fonte não pode conceder duas
+   * vezes: com um contador, recomprar na loja ou rematar um chefe daria espaço
+   * de novo. O id também é o que permite ao painel dizer de onde veio cada
+   * espaço.
+   */
+  cargaLiberada: string[];
 
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;

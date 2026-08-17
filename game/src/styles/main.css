@@ -351,7 +351,10 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 /* ── painel: inventário (grade 7×10) ─────────────────────────────────────── */
 .inv-body { gap: 8px; }
 .inv-wrap { position: relative; }
-.inv-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+/* As colunas vêm do JS: a grade nasce 5 × 3 e cresce até 7 × 10 conforme o
+   jogador libera espaço (§28). Fixar 7 aqui faria os 15 espaços iniciais
+   aparecerem como duas fileiras largas e meia, em vez de um bloco. */
+.inv-grid { display: grid; grid-template-columns: repeat(var(--inv-colunas, 5), 1fr); gap: 4px; }
 .inv-cell {
   position: relative; aspect-ratio: 1; display: grid; place-items: center; cursor: pointer;
   background: rgba(10, 16, 30, 0.8); border: 1px solid var(--line); border-radius: 6px;

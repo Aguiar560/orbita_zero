@@ -2,6 +2,7 @@
 import { bus, toast } from '@app/Bus';
 import { getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
+import { CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { galaxyOfSector } from '@data/galaxies';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
@@ -10,7 +11,7 @@ import {
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
   type NivelProgresso, type SlotId, type Stats,
 } from './types';
-import { CARGO_PER_LEVEL, MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
+import { MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
 import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem } from '@data/balance/curvas';
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
@@ -369,6 +370,11 @@ export class Sim {
     if (e.kind === 'chefe' && e.boss) {
       this.grantCarga('cristal', Math.max(1, Math.floor(e.bounty * 0.02)));
       this.state.stats.bossKills++;
+      // Chefe de galáxia amplia a carga (§28). É idempotente por id, então
+      // rematar o mesmo chefe — coisa comum, com a trava de fase — não concede
+      // de novo.
+      const g = galaxyOfSector(e.sector) + 1;
+      if (g === 1 || g === 5 || g === 10) this.concederCarga(`chefe_g${g}`);
       const first = !this.state.codex.includes(e.boss.id);
       if (first) {
         this.state.codex.push(e.boss.id);
@@ -646,6 +652,29 @@ export class Sim {
     return out;
   }
 
+  /** Capacidade do depósito de RECURSOS (§29), separada da de itens. */
+  get resourceSlots(): number {
+    return capacidadeDeRecursos(this.state.cargaLiberada);
+  }
+
+  /**
+   * Concede espaço de carga. Idempotente por id.
+   *
+   * Porta única de propósito: a mesma fonte não pode conceder duas vezes, e com
+   * um contador em vez de ids recomprar na loja ou rematar um chefe daria
+   * espaço de novo. Devolve `true` só quando a concessão é nova, para quem
+   * chamou saber se deve avisar o jogador.
+   */
+  concederCarga(id: string): boolean {
+    if (!CONCESSAO_POR_ID.has(id)) return false;
+    if (this.state.cargaLiberada.includes(id)) return false;
+    this.state.cargaLiberada.push(id);
+    const c = CONCESSAO_POR_ID.get(id)!;
+    toast(`Carga ampliada: ${c.nota} (+${c.itens ?? 0} espaços)`);
+    this.touch();
+    return true;
+  }
+
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
     this.state.stats.itemsFound++;
@@ -773,7 +802,10 @@ export class Sim {
 
   /** Espaços de carga: base do save + o que a loja adicionou. */
   get cargoSlots(): number {
-    return this.state.inventorySize + this.shopOwned('carga') * CARGO_PER_LEVEL;
+    // A capacidade vem das CONCESSÕES obtidas (§28), não de um número no save.
+    // O jogador começa com 15 — grade 5 × 3 — e cresce até 70 por loja, chefe e
+    // universo; missões e conquistas entram quando existirem, sem tocar aqui.
+    return capacidadeDeItens(this.state.cargaLiberada);
   }
 
   /** Multiplicador do raio do ímã de coleta. */
