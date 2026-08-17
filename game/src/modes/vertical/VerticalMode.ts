@@ -9,8 +9,9 @@ import { PLANET_KEYS, describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSecto
 import { SKY_COMETS, SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
 import { WAVES_PER_SECTOR } from '@sim/progression';
 import { rarityInfo } from '@data/rarity';
-import { getElement, matchup } from '@data/elements';
-import { MULT_ELEMENTAL_MAX } from '@data/balance/limites';
+import { getElement } from '@data/elements';
+import { FRACAO_ELEMENTAL_INIMIGA } from '@data/balance/elemental';
+import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
 import type { EnemyDef } from '@data/enemies';
 import type { ElementId, Item } from '@sim/types';
 import type { Sim } from '@sim/index';
@@ -411,7 +412,14 @@ export class VerticalMode {
       // Leque simétrico: para 1 projétil o offset é 0, para 2 é ±0.5, etc.
       const offset = count === 1 ? 0 : i - (count - 1) / 2;
       const angle = -Math.PI / 2 + offset * style.spread;
-      const crit = this.rng.chance(stats.critChance);
+      // Normal e elemental crititam SEPARADO (§4). Com uma rolagem só, o tiro
+      // seria inteiro crítico ou inteiro não, e separar os componentes viraria
+      // contabilidade sem consequência no combate.
+      const { pacote, crit } = aplicarCritico(
+        montarPacote(stats),
+        stats,
+        () => this.rng.next(),
+      );
 
       b.friendly = true;
       b.x = p.x + offset * 9;
@@ -419,8 +427,10 @@ export class VerticalMode {
       b.vx = Math.cos(angle) * style.speed;
       b.vy = Math.sin(angle) * style.speed;
       b.radius = 7;
-      b.damage = stats.dano * (crit ? 1 + stats.critDano : 1);
-      b.crit = crit;
+      b.damage = pacote;
+      b.damageTotal = danoTotal(pacote);
+      b.crit = crit.critNormal;
+      b.critElem = crit.critElemental;
       b.element = element;
       b.sprite = sprite;
       b.color = color;
@@ -443,11 +453,31 @@ export class VerticalMode {
     const p = this.player;
     if (!p.alive || p.invuln > 0) return;
 
-    const mitigacao = Math.min(
-      MULT_ELEMENTAL_MAX,
-      matchup(element, this.sim.defenseElement) * (1 - this.sim.resistance(element)),
-    );
-    amount *= mitigacao;
+    /**
+     * O tiro inimigo também vira pacote (§3).
+     *
+     * `FRACAO_ELEMENTAL` é quanto do golpe de um inimigo elemental é elemental;
+     * o resto é normal e passa pela resistência sem ser tocado. Sem essa
+     * separação, uma nave com 75% de resistência a fogo ficaria praticamente
+     * imune a toda uma galáxia — era o que acontecia, porque a resistência
+     * multiplicava o golpe inteiro.
+     *
+     * Inimigo neutro entrega 100% normal, e é por isso que ele continua
+     * perigoso para quem investiu tudo em resistência.
+     */
+    const pacote = element === 'padrao'
+      ? { normal: amount, elementais: {} }
+      : {
+        normal: amount * (1 - FRACAO_ELEMENTAL_INIMIGA),
+        elementais: { [element]: amount * FRACAO_ELEMENTAL_INIMIGA },
+      };
+
+    amount = resolverDano(
+      pacote,
+      this.sim.defenseElement,
+      0, // inimigos não têm penetração; é um eixo do jogador por enquanto
+      (e) => this.sim.resistance(e),
+    ).total;
     // No modo de teste o dano ainda dá feedback visual, mas não mata: o ponto
     // é inspecionar conteúdo, não sobreviver a ele.
     if (this.sim.testMode) {
@@ -724,7 +754,7 @@ export class VerticalMode {
       b.vx = Math.cos(angle) * v;
       b.vy = Math.sin(angle) * v;
       b.radius = 8 * scale;
-      b.damage = damage;
+      b.damageTotal = damage;
       b.element = e.boss?.element ?? e.def.element;
       b.sprite = sprite;
       b.color = color;
@@ -858,7 +888,7 @@ export class VerticalMode {
       } else if (p.alive && p.invuln <= 0) {
         if (Math.hypot(p.x - b.x, p.y - b.y) < p.radius + b.radius) {
           b.alive = false;
-          this.damagePlayer(b.damage, b.element);
+          this.damagePlayer(b.damageTotal, b.element);
           this.particles.sparks(b.x, b.y, 6, b.color, 130);
         }
       }
@@ -870,23 +900,29 @@ export class VerticalMode {
     // O confronto entra AQUI, e não no dano do projétil, porque depende de quem
     // levou o tiro: a mesma salva pode ser vantagem contra um caça e resistida
     // contra o elite ao lado.
-    const mul = Math.min(
-      MULT_ELEMENTAL_MAX,
-      matchup(b.element, e.boss?.element ?? e.def.element),
+    //
+    // E entra só sobre os componentes ELEMENTAIS: o normal do pacote atravessa
+    // intocado, que é a regra do §3. É a diferença que dá identidade ao dano
+    // neutro — ele nunca ganha vantagem, mas também nunca é reduzido.
+    const alvo = e.boss?.element ?? e.def.element;
+    const { total: dano, melhorMult: mul, dominante } = resolverDano(
+      b.damage, alvo, this.sim.stats.penetracao,
     );
-    const dano = b.damage * mul;
 
     this.applyDamage(e, dano);
     e.hitFlash = 0.09;
-    this.particles.sparks(b.x, b.y, b.crit ? 8 : 4, b.crit ? '#ffe08a' : b.color, b.crit ? 190 : 130);
+    const critQualquer = b.crit || b.critElem;
+    this.particles.sparks(b.x, b.y, critQualquer ? 8 : 4, critQualquer ? '#ffe08a' : b.color, critQualquer ? 190 : 130);
 
     if (this.sim.state.settings.showDamageNumbers) {
-      // Vantagem sai maior e na cor do elemento, resistência sai apagada: o
-      // jogador aprende o anel olhando os números, sem abrir tabela nenhuma.
+      // Vantagem sai maior e na cor do elemento que MAIS contribuiu, resistência
+      // sai apagada: o jogador aprende o anel olhando os números, sem abrir
+      // tabela nenhuma. A cor vem do dominante e não do elemento da arma porque
+      // agora um tiro carrega vários componentes ao mesmo tempo.
       const forte = mul > 1.01;
       const fraco = mul < 0.99;
-      const cor = b.crit ? '#ffd35a' : forte ? getElement(b.element).glow : fraco ? '#7e8aa0' : '#e8f2ff';
-      const tam = (b.crit ? 16 : 12) * (forte ? 1.25 : fraco ? 0.85 : 1);
+      const cor = critQualquer ? '#ffd35a' : forte ? getElement(dominante).glow : fraco ? '#7e8aa0' : '#e8f2ff';
+      const tam = (critQualquer ? 16 : 12) * (forte ? 1.25 : fraco ? 0.85 : 1);
       this.particles.popup(e.x + this.rng.range(-8, 8), e.y - 12, fmt(dano, 1), cor, tam);
     }
 
@@ -895,8 +931,10 @@ export class VerticalMode {
       this.enemies.each((other) => {
         if (other === e || !other.alive) return;
         if (Math.hypot(other.x - b.x, other.y - b.y) > b.splash) return;
-        const outroMul = matchup(b.element, other.boss?.element ?? other.def.element);
-        this.applyDamage(other, b.damage * outroMul * 0.45);
+        const respingo = resolverDano(
+          b.damage, other.boss?.element ?? other.def.element, this.sim.stats.penetracao,
+        );
+        this.applyDamage(other, respingo.total * 0.45);
         other.hitFlash = 0.07;
         if (other.hp <= 0) this.killEnemy(other, true);
       });

@@ -54,6 +54,18 @@ export const LIMITES: Partial<Record<StatId, Limite>> = {
 
   critChance: { min: 0, max: 0.95 },
   critDano: { min: 0 },
+  critElemChance: { min: 0, max: 0.95 },
+  critElemDano: { min: 0 },
+  /**
+   * Penetração para em 0,8, o mesmo `PENETRACAO_MAX` do módulo elemental.
+   *
+   * Repetido aqui de propósito: este teto é o que o §40 exige de TODA fórmula,
+   * e o de lá é o que a função de confronto aplica. Penetração total tornaria a
+   * escolha de elemento irrelevante — bastaria empilhá-la e atirar em qualquer
+   * coisa. Em 0,8 o pior confronto sai de 0,70 para 0,94: quase neutro, nunca
+   * melhor.
+   */
+  penetracao: { min: 0, max: 0.8 },
   explosao: { min: 0, max: 260 },
   iaSkill: { min: 0, max: 1 },
 

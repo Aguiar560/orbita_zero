@@ -1,3 +1,4 @@
+import { confronto } from '@data/balance/elemental';
 import {
   DANO_STAT, ELEMENT_IDS, RES_STAT,
   type ElementId, type ElementoResistivel, type StatId,
@@ -79,23 +80,20 @@ export function counterOf(id: ElementId): ElementId | null {
 
 // ── Confronto ───────────────────────────────────────────────────────────────
 
-/** Vantagem, desvantagem e o desconto por atirar no próprio elemento. */
-export const VANTAGEM = 1.5;
-export const DESVANTAGEM = 0.7;
-export const ESPELHO = 0.75;
-
 /**
- * Multiplicador de dano de `ataque` contra `defesa`, só pelo anel.
+ * O confronto mora em `data/balance/elemental.ts` (§5).
  *
- * `padrao` sai e entra sempre em 1.0 — nem como atacante nem como defensor ele
- * participa do anel.
+ * Estava aqui, como três `if` encadeados sobre o campo `bate`. Funcionava, mas
+ * não era configurável: dizer "fogo bate gelo por 1,4" exigia reescrever a
+ * regra, e criar uma exceção para um único par quebrava a simetria do anel para
+ * todo mundo. Virou tabela. Estes apelidos ficam porque meia dúzia de painéis
+ * já os importavam.
  */
+export { CONFRONTO_MAX, CONFRONTO_MIN, DESVANTAGEM, ESPELHO, VANTAGEM, confronto } from '@data/balance/elemental';
+
+/** @deprecated Use `confronto`, que aceita penetração. Mantido para a UI antiga. */
 export function matchup(ataque: ElementId, defesa: ElementId): number {
-  if (ataque === 'padrao' || defesa === 'padrao') return 1;
-  if (ataque === defesa) return ESPELHO;
-  if (getElement(ataque).bate === defesa) return VANTAGEM;
-  if (getElement(defesa).bate === ataque) return DESVANTAGEM;
-  return 1;
+  return confronto(ataque, defesa);
 }
 
 /** Texto curto do confronto, para tooltip. */

@@ -343,6 +343,10 @@ export const AFIXO_ESCALA_POR_ILVL = 0.32;
  */
 export const ATRIBUTOS_FRACIONARIOS: ReadonlySet<string> = new Set([
   'critChance', 'critDano', 'sorte', 'iaSkill',
+  // Os três da Fase 2. Penetração é o mais perigoso da lista: como `add` sem
+  // esta marca, "+2% de penetração" viraria +180% no fim do jogo e o anel
+  // elemental deixaria de existir.
+  'critElemChance', 'critElemDano', 'penetracao',
   // As três rendas entraram na 1.7, quando deixaram de ser `mul` (sobre base
   // zero, portanto inertes) e viraram `add`. Como `add` sem esta marca, elas
   // passariam a escalar com o nível de item e "+6% de sucata" viraria +580% no

@@ -76,3 +76,20 @@ export const RENDA_PESO = 0.03;
  * coeficientes de valoração no mesmo arquivo.
  */
 export const JANELA_DE_COMBATE = 20;
+
+/**
+ * Quanto vale um ponto de penetração na nota de poder.
+ *
+ * Penetração não aparece em `dps` porque `dps` não tem alvo: ela só existe
+ * contra alguém que resiste. Medido isolado, o afixo dava ganho ZERO e o
+ * auto-equipar descartava a peça — o mesmo defeito que a 1.7 corrigiu para
+ * outros dezoito atributos.
+ *
+ * O coeficiente é o valor ESPERADO contra um inimigo de elemento sorteado.
+ * Entre os seis alvos possíveis, penetração só levanta os três multiplicadores
+ * abaixo de 1: desvantagem (0,70) e espelho (0,75). Logo o ganho médio é
+ * `p × [(1 − 0,70) + (1 − 0,75)] / 6 ≈ 0,092 p`, e ele incide só sobre o
+ * COMPONENTE ELEMENTAL — o normal nunca foi resistido, então penetrá-lo não
+ * significa nada.
+ */
+export const PENETRACAO_EFICACIA = 0.092;

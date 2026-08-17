@@ -3,6 +3,8 @@ import { Rng } from '@core/math';
 import { JANELA_DE_TIERS, TIERS, TIER_ILVL, fatorDoTier, tierPorIlvl, tiersDisponiveis } from '@data/balance/tiers';
 import { RARITIES } from '@data/rarity';
 import { rollItem } from '@sim/loot';
+import { montarPacote } from '@sim/dano';
+import { FRACAO_ELEMENTAL_MAX } from '@data/balance/elemental';
 import { AFFIXES } from '@data/items';
 import { powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
@@ -193,14 +195,38 @@ describe('a potência elemental não pode dominar o canal', () => {
   });
 
   /**
-   * O teto que impede a regressão: a potência elemental é dona de um canal que
-   * ninguém mais alimenta, então uma faixa larga a torna o afixo mais forte do
-   * jogo. Medido: com 0,07–0,26 valia 4,84× a mediana; com 0,02–0,08, 1,67×.
+   * A invariante mudou na Fase 2, e a razão importa.
+   *
+   * Na 1.7 a regra era "faixa estreita, porque o canal está vazio": a potência
+   * multiplicava o dano INTEIRO (`out.dano *= 1 + potência`), então uma faixa
+   * larga a tornava o afixo mais forte do jogo — 4,84× a mediana, medido.
+   *
+   * Com o `DamagePacket` ela não multiplica mais nada: cria um COMPONENTE
+   * próprio, de tamanho `dano × potência`. A faixa pôde voltar a subir, e a
+   * restrição que sobra é a do §3 — "não transformar todo o dano da nave em
+   * elemental". O normal precisa continuar sendo a maior parte, mesmo com as
+   * seis potências no tier máximo.
    */
-  it('a faixa é estreita, porque o canal está vazio', () => {
+  it('nem com as seis potências no topo o elemental passa o teto', () => {
+    const stats = { ...resolveStats(createState(1)) };
     for (const def of potencia) {
-      expect(def.max, def.id).toBeLessThanOrEqual(0.1);
+      stats[def.stat] = def.max * fatorDoTier(TIERS);
     }
+    const p = montarPacote(stats);
+    const elemental = Object.values(p.elementais).reduce((s, v) => s + (v ?? 0), 0);
+    const fatia = elemental / (elemental + p.normal);
+
+    // Medido sem o teto: 0,74. A build mais elemental possível do jogo.
+    expect(fatia).toBeLessThanOrEqual(FRACAO_ELEMENTAL_MAX + 1e-9);
+    // E o componente normal continua existindo — é ele que nenhum inimigo
+    // resiste, então zerá-lo tornaria alguém imune a esta build.
+    expect(p.normal).toBeGreaterThan(0);
+  });
+
+  it('uma nave sem afixo elemental atira 100% normal', () => {
+    const p = montarPacote(resolveStats(createState(1)));
+    expect(Object.values(p.elementais).reduce((s, v) => s + (v ?? 0), 0)).toBe(0);
+    expect(p.normal).toBeGreaterThan(0);
   });
 
   /**

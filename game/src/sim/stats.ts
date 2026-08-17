@@ -1,14 +1,16 @@
-import { DANO_STAT, RES_STAT, RESISTIVEIS, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
+import { RES_STAT, RESISTIVEIS, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
 import { RES_MAX, RES_MIN, aplicarLimites } from '@data/balance/limites';
 import {
-  EXPLOSAO_EFICACIA, JANELA_DE_COMBATE, PERFURACAO_EFICACIA, RENDA_PESO, SORTE_PESO,
+  EXPLOSAO_EFICACIA, JANELA_DE_COMBATE, PENETRACAO_EFICACIA, PERFURACAO_EFICACIA, RENDA_PESO, SORTE_PESO,
   VELOCIDADE_EFICACIA,
 } from '@data/balance/orcamento';
 import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL, NAVE_GANHO_POR_NIVEL } from '@data/balance/curvas';
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
+import { montarPacote } from './dano';
+import { CRIT_ELEM_BASE, CRIT_ELEM_DANO_BASE } from '@data/balance/elemental';
 
 /**
  * Base neutra. O casco entra como a primeira camada aditiva; estes valores só
@@ -165,11 +167,13 @@ export function resolveStats(state: GameState): Stats {
     out[id] = (BASE_STATS[id] + acc.add[id]) * (1 + acc.mul[id]);
   }
 
-  // Potência elemental dobra dentro de `dano`: a partir daqui todo o resto do
-  // jogo — dps, pontuação de item, auto-equipar — enxerga o ganho sem precisar
-  // saber que elementos existem. Só o CONFRONTO (vantagem contra a frota) fica
-  // de fora, porque depende de quem está do outro lado da tela.
-  out.dano *= 1 + out[DANO_STAT[activeElement(state)]];
+  // A potência elemental NÃO dobra mais dentro de `dano`.
+  //
+  // Dobrava, e era o que impedia o §3 de existir: com a potência embutida, o
+  // tiro saía como um número só e o confronto multiplicava ele INTEIRO — toda a
+  // nave virava elemental assim que equipava uma arma de fogo. Agora `dano` é o
+  // componente NORMAL e cada potência vira um componente próprio em
+  // `montarPacote` (`sim/dano.ts`). Quem quiser o total pede `danoTotal`.
 
   // Pisos e tetos de sanidade (§40), declarados em `data/balance/limites.ts`.
   aplicarLimites(out);
@@ -186,7 +190,19 @@ export function resolveStats(state: GameState): Stats {
  * elas valem contra a onda, não contra o alvo, e entram em `powerScore`.
  */
 export function dps(stats: Stats): number {
-  return stats.dano * stats.cadencia * stats.projeteis * (1 + stats.critChance * stats.critDano);
+  // Soma os COMPONENTES (§3): normal + Σ elementais. Antes bastava ler
+  // `stats.dano`, porque a potência elemental estava embutida nele; agora ela é
+  // componente à parte e ficaria de fora da conta.
+  const p = montarPacote(stats);
+  const normal = p.normal * (1 + stats.critChance * stats.critDano);
+
+  let elemental = 0;
+  for (const v of Object.values(p.elementais)) elemental += v ?? 0;
+  // Os dois críticos entram separados, cada um sobre a sua parcela — é o que
+  // faz deles dois atributos e não um.
+  elemental *= 1 + (CRIT_ELEM_BASE + stats.critElemChance) * (CRIT_ELEM_DANO_BASE + stats.critElemDano);
+
+  return (normal + elemental) * stats.cadencia * stats.projeteis;
 }
 
 /** "Vida efetiva" — casco + escudo + o que a regeneração devolve num combate típico. */
@@ -213,6 +229,15 @@ export function powerScore(stats: Stats): number {
   const alcance = (1 + stats.perfuracao * PERFURACAO_EFICACIA)
     * (1 + stats.explosao * EXPLOSAO_EFICACIA);
 
+  // Penetração não cabe em `dps`, que não tem alvo: ela só existe contra quem
+  // resiste. E incide só sobre o COMPONENTE ELEMENTAL — o normal nunca foi
+  // resistido, então penetrá-lo não significaria nada.
+  const pacote = montarPacote(stats);
+  let elemental = 0;
+  for (const v of Object.values(pacote.elementais)) elemental += v ?? 0;
+  const fracaoElemental = elemental / Math.max(1e-9, elemental + pacote.normal);
+  const penetra = 1 + stats.penetracao * PENETRACAO_EFICACIA * fracaoElemental;
+
   // Resistência não some com o dano: ela DIVIDE o que chega. A média sobre os
   // cinco elementos é o que traduz "resisto muito a um" em sobrevivência real —
   // uma peça com 75% de resistência a fogo e nada mais cobre um quinto do que
@@ -227,7 +252,7 @@ export function powerScore(stats: Stats): number {
     + stats.sorte * SORTE_PESO
     + (stats.sucataGanho + stats.nucleoGanho + stats.xpGanho) * RENDA_PESO;
 
-  return Math.sqrt(dps(stats) * alcance)
+  return Math.sqrt(dps(stats) * alcance * penetra)
     * Math.sqrt(effectiveHp(stats) * mitigacao * esquiva)
     * (1 + stats.iaSkill * 0.5)
     * utilidade;

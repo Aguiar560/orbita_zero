@@ -2,6 +2,7 @@ import { Pool } from '@core/pool';
 import type { BossDef } from '@data/bosses';
 import type { EnemyDef } from '@data/enemies';
 import type { ElementId, Item } from '@sim/types';
+import type { DamagePacket } from '@sim/dano';
 
 /**
  * Espaço lógico da camada de combate.
@@ -30,7 +31,16 @@ export interface Bullet {
   vx: number;
   vy: number;
   radius: number;
-  damage: number;
+  /**
+   * Dano em COMPONENTES (§3): normal + Σ elementais.
+   *
+   * Antes era um número só com um elemento ao lado, e o confronto multiplicava
+   * o número inteiro — toda a nave virava elemental ao equipar uma arma de
+   * fogo. O pacote é o que separa a parte irresistível da parte que aposta.
+   */
+  damage: DamagePacket;
+  /** Só a soma, para o número que aparece na tela e para o dano do inimigo. */
+  damageTotal: number;
   /** `true` = do jogador. */
   friendly: boolean;
   sprite: string;
@@ -42,7 +52,10 @@ export interface Bullet {
   splash: number;
   /** Força de correção de curso, em rad/s. 0 = reto. */
   homing: number;
+  /** Crítico do componente NORMAL. */
   crit: boolean;
+  /** Crítico do componente ELEMENTAL — rolado à parte (§4). */
+  critElem: boolean;
   /**
    * Tipo de dano que este projétil carrega.
    *
@@ -163,13 +176,19 @@ export interface Player {
 export function createBulletPool(capacity = 1400): Pool<Bullet> {
   return new Pool<Bullet>(
     () => ({
-      alive: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4, damage: 1, friendly: true,
-      sprite: '', color: '#fff', scale: 1, pierce: 0, splash: 0, homing: 0, crit: false,
-      element: 'padrao', life: 0, hitId: -1,
+      alive: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4,
+      damage: { normal: 1, elementais: {} }, damageTotal: 1, friendly: true,
+      sprite: '', color: '#fff', scale: 1, pierce: 0, splash: 0, homing: 0,
+      crit: false, critElem: false, element: 'padrao', life: 0, hitId: -1,
     }),
     (b) => {
-      b.pierce = 0; b.splash = 0; b.homing = 0; b.crit = false; b.life = 0; b.hitId = -1;
-      b.scale = 1; b.element = 'padrao';
+      b.pierce = 0; b.splash = 0; b.homing = 0; b.crit = false; b.critElem = false;
+      b.life = 0; b.hitId = -1; b.scale = 1; b.element = 'padrao';
+      // Objeto NOVO, não o mesmo limpo: o pacote sai do pool e é lido durante o
+      // voo, então reaproveitar a referência faria uma salva nova sobrescrever
+      // o dano de uma que ainda está no ar.
+      b.damage = { normal: 0, elementais: {} };
+      b.damageTotal = 0;
     },
     capacity,
   );

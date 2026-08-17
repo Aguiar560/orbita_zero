@@ -38,8 +38,11 @@ export type StatId =
   | 'cadencia'      // disparos por segundo
   | 'projeteis'     // projéteis por disparo
   | 'perfuracao'    // inimigos atravessados por projétil
-  | 'critChance'    // 0..1
-  | 'critDano'      // multiplicador extra no crítico
+  | 'critChance'    // 0..1 — crítico do componente NORMAL
+  | 'critDano'      // multiplicador extra no crítico normal
+  | 'critElemChance' // 0..1 — crítico do componente ELEMENTAL, rolado à parte (§4)
+  | 'critElemDano'  // multiplicador extra no crítico elemental
+  | 'penetracao'    // 0..1 — anula resistência e desvantagem, nunca cria vantagem
   | 'explosao'      // raio de dano em área, em px
   | 'vida'          // casco
   | 'escudo'        // barreira que regenera
@@ -79,7 +82,8 @@ export const RES_STAT: Record<ElementoResistivel, StatId> = {
 };
 
 export const STAT_IDS: readonly StatId[] = [
-  'dano', 'cadencia', 'projeteis', 'perfuracao', 'critChance', 'critDano', 'explosao',
+  'dano', 'cadencia', 'projeteis', 'perfuracao', 'critChance', 'critDano',
+  'critElemChance', 'critElemDano', 'penetracao', 'explosao',
   'vida', 'escudo', 'regen', 'velocidade', 'iaSkill', 'sorte', 'sucataGanho', 'nucleoGanho', 'xpGanho',
   ...ELEMENT_IDS.map((e) => DANO_STAT[e]),
   ...RESISTIVEIS.map((e) => RES_STAT[e]),

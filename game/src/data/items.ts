@@ -235,7 +235,7 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
      * original de 0,07–0,26 estes seis afixos valiam 4,84× a mediana e eram os
      * mais fortes do jogo. Com 0,02–0,08 valem 1,67× — o mesmo que `dano_f`.
      */
-    min: 0.02, max: 0.08,
+    min: 0.06, max: 0.20,
     slots: ['principal', 'secundaria', 'reator'] as const,
     weight: 70,
     minIlvl: 3,
@@ -267,6 +267,20 @@ export const AFFIXES: readonly AffixDef[] = [
   { id: 'cadencia_p',  label: 'Cadência',            stat: 'cadencia',    kind: 'mul', min: 0.03, max: 0.12, weight: 75 },
   { id: 'crit_c',      label: 'Chance de crítico',   stat: 'critChance',  kind: 'add', min: 0.012, max: 0.045, weight: 60, minIlvl: 4 },
   { id: 'crit_d',      label: 'Dano crítico',        stat: 'critDano',    kind: 'add', min: 0.06, max: 0.24, weight: 55, minIlvl: 4 },
+  // Crítico ELEMENTAL, separado do normal (§4). Faixas iguais às do normal de
+  // propósito: quem escolhe um dos dois está escolhendo em qual componente
+  // investiu, não pegando o número maior.
+  { id: 'crite_c',     label: 'Crítico elemental',   stat: 'critElemChance', kind: 'add', min: 0.04, max: 0.15, weight: 40, minIlvl: 10 },
+  { id: 'crite_d',     label: 'Dano crít. elemental', stat: 'critElemDano', kind: 'add', min: 0.20, max: 0.80, weight: 38, minIlvl: 10 },
+  /**
+   * Penetração: anula resistência e desvantagem, nunca cria vantagem.
+   *
+   * Peso baixo e nível alto porque é o afixo que RESOLVE o anel — quem tem
+   * muita penetração deixa de precisar escolher elemento. Ele existe como
+   * alternativa a essa escolha, não como atalho para ignorá-la, e o teto de
+   * `PENETRACAO_MAX` garante que o pior confronto chegue a 0,94 e não a 1,0.
+   */
+  { id: 'pen_f',       label: 'Penetração',          stat: 'penetracao',  kind: 'add', min: 0.02, max: 0.07, weight: 30, minIlvl: 20 },
   { id: 'vida_f',      label: 'Casco',               stat: 'vida',        kind: 'add', min: 9, max: 22, weight: 95 },
   { id: 'vida_p',      label: 'Casco',               stat: 'vida',        kind: 'mul', min: 0.04, max: 0.13, weight: 70 },
   { id: 'escudo_f',    label: 'Escudo',              stat: 'escudo',      kind: 'add', min: 7, max: 19, weight: 90 },
