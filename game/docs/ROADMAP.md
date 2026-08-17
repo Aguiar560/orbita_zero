@@ -508,6 +508,25 @@ Só depois disso vale mexer nas metas de tempo do §2.
 
 ---
 
+## A cara da interface
+
+Passe sci-fi aplicado POR TOKEN, não painel a painel: brilho, corte de canto e
+espessura de moldura vêm de variáveis, então mudar o tom do jogo inteiro é mexer
+em cinco linhas em vez de caçar cor em quarenta seletores.
+
+Três decisões, cada uma com um porquê:
+
+- **Canto chanfrado** por `clip-path`. Retângulo puro lê como formulário; o
+  chanfro lê como painel de máquina. Não custa layout.
+- **Neon na BORDA, não no fundo.** Fundo brilhante come contraste do texto, e
+  este é um jogo lido o tempo todo, com número em cima de número.
+- **Varredura sutil** — duas linhas por 4 px, quase invisíveis, que dão textura
+  de tela em vez de papel.
+
+Os modais ficaram mais transparentes: o fundo escurece 55% em vez de 82% e
+desfoca mais. Ver o combate continuar atrás É informação — o jogo é ocioso, e
+abrir uma tela não pausa nada.
+
 ## A forma da interface, decidida em 17/08/2026
 
 Painel de nave, não navegador de abas:

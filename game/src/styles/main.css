@@ -941,3 +941,110 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 
 /* A coluna direita não tem mais barra de abas: é só o inventário. */
 .rail-right { grid-template-rows: minmax(0, 1fr); }
+
+/* ══ camada sci-fi ═══════════════════════════════════════════════════════════
+ *
+ * Passe de aparência aplicado POR TOKEN, não painel a painel: o brilho, o corte
+ * de canto e a espessura da moldura vêm de variáveis, então mudar o tom do jogo
+ * inteiro é mexer em cinco linhas em vez de caçar cor em quarenta seletores.
+ *
+ * Três ideias, e cada uma tem um porquê:
+ *
+ * 1. CANTO CORTADO. Retângulo puro é interface de formulário; o chanfro é o que
+ *    lê como painel de máquina. Vai por `clip-path`, que não custa layout.
+ * 2. NEON NA BORDA E NÃO NO FUNDO. Fundo brilhante come contraste do texto —
+ *    e este jogo é lido o tempo todo, com número em cima de número.
+ * 3. VARREDURA sutil. Duas linhas por 4 px, quase invisíveis, que dão textura
+ *    de tela em vez de papel.
+ */
+:root {
+  --neon: 0 0 10px rgba(79, 195, 255, 0.35);
+  --neon-forte: 0 0 16px rgba(79, 195, 255, 0.55), inset 0 0 12px rgba(79, 195, 255, 0.10);
+  --corte: 9px;
+  --vidro: rgba(9, 16, 32, 0.62);
+  --vidro-fundo: rgba(6, 11, 24, 0.78);
+}
+
+/* Chanfro de canto reaproveitável. */
+.painel-cortado,
+.camada-caixa,
+.rail-hull,
+.fab-tipo,
+.fab-info,
+.armazem-linha,
+.fab-anel { clip-path: polygon(var(--corte) 0, 100% 0, 100% calc(100% - var(--corte)), calc(100% - var(--corte)) 100%, 0 100%, 0 var(--corte)); }
+/* O anel é redondo: o chanfro não se aplica. */
+.fab-anel { clip-path: none; }
+
+/* ── barra superior ── */
+.topbar {
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: 0 1px 0 rgba(79, 195, 255, 0.12), 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.brand-mark { box-shadow: var(--neon); text-shadow: 0 0 8px rgba(79, 195, 255, 0.6); }
+
+.topbar .tab { position: relative; }
+/* O traço de neon marca a aba ativa sem encher de fundo — o rótulo continua
+   legível, que é o que uma barra com oito itens precisa. */
+.topbar .tab.active::after {
+  content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+}
+.topbar .tab.active { text-shadow: 0 0 8px rgba(79, 195, 255, 0.5); }
+
+.res { border-color: var(--line-strong); box-shadow: inset 0 0 10px rgba(79, 195, 255, 0.06); }
+
+/* ── trilhos ── */
+.rail-left, .rail-right {
+  background:
+    linear-gradient(180deg, rgba(12, 20, 40, 0.72), rgba(5, 9, 20, 0.92)),
+    repeating-linear-gradient(0deg, rgba(120, 190, 255, 0.03) 0 1px, transparent 1px 4px);
+}
+.rail-section { color: var(--accent); text-shadow: 0 0 6px rgba(79, 195, 255, 0.35); }
+.rail-hull { box-shadow: inset 0 0 14px rgba(79, 195, 255, 0.06); }
+
+/* ── modais mais transparentes ── */
+/*
+ * O fundo escurece menos e desfoca mais: o combate continua acontecendo atrás e
+ * ver que ele continua É informação — este é um jogo ocioso, e a tela aberta não
+ * pausa nada.
+ */
+.camada {
+  background: rgba(3, 6, 14, 0.55);
+  backdrop-filter: blur(6px) saturate(1.1);
+}
+.camada-caixa {
+  background:
+    linear-gradient(180deg, rgba(14, 24, 46, 0.72), rgba(6, 11, 24, 0.78)),
+    repeating-linear-gradient(0deg, rgba(120, 190, 255, 0.035) 0 1px, transparent 1px 4px);
+  border-color: rgba(120, 190, 255, 0.42);
+  box-shadow: var(--neon-forte), 0 28px 90px rgba(0, 0, 0, 0.55);
+}
+.camada-topo h1 { text-shadow: 0 0 12px rgba(79, 195, 255, 0.5); }
+
+/* ── controles ── */
+.btn, .mini, .chip, .fab-chip, .camada-x, .select {
+  transition: box-shadow 0.14s, border-color 0.14s, color 0.14s;
+}
+.btn:hover, .mini:hover, .camada-x:hover { box-shadow: var(--neon); }
+.chip.active, .fab-chip.ativo { box-shadow: 0 0 10px currentColor; }
+
+/* ── fabricação ── */
+.fab-titulo { text-shadow: 0 0 8px rgba(79, 195, 255, 0.45); }
+.fab-anel {
+  border-color: rgba(120, 190, 255, 0.35);
+  box-shadow: inset 0 0 40px rgba(79, 195, 255, 0.08), var(--neon);
+}
+.fab-encaixe.cheio { box-shadow: 0 0 14px rgba(79, 195, 255, 0.5), inset 0 0 10px rgba(79, 195, 255, 0.15); }
+.fab-miolo { box-shadow: inset 0 0 26px rgba(79, 195, 255, 0.10), 0 0 18px rgba(0, 0, 0, 0.5); }
+.fab-pct { text-shadow: 0 0 12px currentColor; }
+.fab-acao.pronta { box-shadow: var(--neon-forte); }
+.fab-peca:hover { box-shadow: 0 0 12px currentColor; }
+.fab-tipo.ativo { box-shadow: inset 0 0 16px color-mix(in srgb, var(--cor) 22%, transparent); }
+
+/* ── inventário ── */
+.inv-cell:hover { box-shadow: var(--neon); }
+.affix-tier.maximo { box-shadow: 0 0 10px rgba(255, 215, 106, 0.45); }
+
+/* ── armazém ── */
+.armazem-linha { box-shadow: inset 0 0 12px rgba(79, 195, 255, 0.04); }
