@@ -376,11 +376,13 @@ describe('ritmo do jogo (§2)', () => {
   });
 
   // O teto é o alvo mais alto do regime (23 golpes, no setor 50) acrescido do
-  // resíduo documentado de 35%.
-  it('no regime estável o jogador aguenta entre 6 e 32 golpes', () => {
+  // resíduo do ajuste no pior ponto — 45%, medido depois da etapa 1.6. Era 35%
+  // antes dos tiers de afixo: tornar o topo de magnitude uma rolagem aumentou a
+  // variância entre setores, que é o preço do eixo de caçada.
+  it('no regime estável o jogador aguenta entre 6 e 34 golpes', () => {
     const fora = medidas
       .filter((m) => m.setor > REGIME)
-      .filter((m) => m.golpesAteMorrer < 6 || m.golpesAteMorrer > 32)
+      .filter((m) => m.golpesAteMorrer < 6 || m.golpesAteMorrer > 34)
       .map((m) => `setor ${m.setor}: ${m.golpesAteMorrer.toFixed(1)} golpes`);
     expect(fora).toEqual([]);
   });

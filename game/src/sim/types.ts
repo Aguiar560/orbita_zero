@@ -122,8 +122,15 @@ export interface Affix {
   stat: StatId;
   kind: 'add' | 'mul';
   value: number;
-  /** Nível de rolagem 0..1 dentro da faixa do afixo — mostrado como qualidade. */
+  /** Nível de rolagem 0..1 DENTRO do tier — mostrado como qualidade. */
   quality: number;
+  /**
+   * Tier da linha, 1 a 10 (§6). É quem manda na magnitude.
+   *
+   * Opcional só por causa de saves antigos, cujos afixos não têm o campo; a
+   * migração assume T1 para não inflar item nenhum retroativamente.
+   */
+  tier?: number;
 }
 
 export interface Item {

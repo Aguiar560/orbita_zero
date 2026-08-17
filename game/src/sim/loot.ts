@@ -4,6 +4,7 @@ import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
 import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
 import { ELEMENTS } from '@data/elements';
+import { fatorDoTier, tiersDisponiveis } from '@data/balance/tiers';
 import {
   AFIXO_ESCALA_POR_ILVL, ATRIBUTOS_FRACIONARIOS, DROP_BASE, DROP_SORTE_PESO, DROP_TETO,
 } from '@data/balance/curvas';
@@ -63,7 +64,7 @@ export function rollItem(
     const def = rng.weighted(eligible.filter((a) => !used.has(a.id)), (a) => a.weight);
     if (!def) break;
     used.add(def.id);
-    affixes.push(rollAffix(rng, def, ilvl, info.power));
+    affixes.push(rollAffix(rng, def, ilvl, info.tierMax));
   }
 
   // Conjuntos só aparecem em raridades altas e apenas nos slots que o conjunto
@@ -102,7 +103,13 @@ function rollElement(rng: Rng, rarity: Rarity): ElementId {
   return rng.pick(ELEMENTS.filter((e) => e.id !== 'padrao')).id;
 }
 
-function rollAffix(rng: Rng, def: AffixDef, ilvl: number, power: number): Affix {
+function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affix {
+  // O tier decide a magnitude; a qualidade só posiciona dentro dele. Antes a
+  // magnitude vinha da qualidade multiplicada pelo `power` da raridade, e nada
+  // disso era legível na ficha — ver `data/balance/tiers.ts`.
+  const opcoes = tiersDisponiveis(ilvl, tierMax);
+  const tier = rng.weighted(opcoes, (o) => o.peso).tier;
+
   const quality = rng.next();
   const raw = def.min + (def.max - def.min) * quality;
   // Só valor BRUTO escala com o nível de item. Fração — crítico, sorte,
@@ -112,8 +119,11 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, power: number): Affix 
     && !def.element
     && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
   const scaled = escalavel ? raw * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : raw;
-  const value = def.id === 'proj_f' || def.id === 'perf_f' ? Math.round(raw) : scaled * power;
-  return { id: def.id, stat: def.stat, kind: def.kind, value, quality };
+  // Projéteis e perfuração são CONTAGEM: escalar por tier daria "+3,7 projéteis".
+  // O tier já se expressa neles por outra via — o teto de raridade que os libera.
+  const contagem = def.id === 'proj_f' || def.id === 'perf_f';
+  const value = contagem ? Math.round(raw) : scaled * fatorDoTier(tier);
+  return { id: def.id, stat: def.stat, kind: def.kind, value, quality, tier };
 }
 
 /** Abre um baú e devolve os itens gerados (recursos são creditados pelo chamador). */

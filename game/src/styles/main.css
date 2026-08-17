@@ -325,7 +325,11 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .slot.empty { opacity: 0.62; }
 .slot-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .slot-text strong { font-size: 13.5px; }
-.affix { font-size: 12px; color: #a9d6ff; }
+.affix { font-size: 12px; color: #a9d6ff; display: flex; gap: 6px; align-items: baseline; }
+/* Largura fixa para os T alinharem numa coluna: comparar duas peças é ler essa
+   coluna de cima a baixo, o que não funciona se o número dança com o texto. */
+.affix-tier { flex: none; min-width: 26px; font-size: 10.5px; font-variant-numeric: tabular-nums; text-align: center; padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,.07); color: var(--muted); }
+.affix-tier.maximo { background: rgba(255,215,106,.16); color: #ffd76a; }
 
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
 .stat { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px dotted rgba(120, 160, 220, 0.12); }

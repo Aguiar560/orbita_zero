@@ -1,6 +1,7 @@
 import { fmt } from '@core/format';
 import { SET_BY_ID, SLOT_LABEL } from '@data/items';
 import { rarityInfo } from '@data/rarity';
+import { TIERS } from '@data/balance/tiers';
 import { affixText, itemName, itemStats, salvageValue } from '@sim/loot';
 import { setCounts } from '@sim/stats';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
@@ -83,7 +84,16 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
     frag.append(h('span.set-line', { style: { color: set.color } }, `Conjunto ${set.name} (${worn}/${set.slots.length})`));
   }
 
-  frag.append(h('.tip-affixes', {}, ...item.affixes.map((a) => h('span.affix', { text: affixText(a) }))));
+  // O tier vai numa etiqueta própria, e não embutido no texto, porque é o que o
+  // jogador compara entre duas peças do mesmo nome — precisa ser varrível numa
+  // coluna, não caçado no meio da frase.
+  frag.append(h('.tip-affixes', {}, ...item.affixes.map((a) => h('span.affix', {},
+    ...(a.tier ? [h(`span.affix-tier${a.tier >= TIERS ? '.maximo' : ''}`, {
+      text: `T${a.tier}`,
+      title: a.tier >= TIERS ? 'Tier máximo' : `Tier ${a.tier} de ${TIERS}`,
+    })] : []),
+    h('span', { text: affixText(a) }),
+  ))));
 
   if (comparing && equipped) {
     frag.append(

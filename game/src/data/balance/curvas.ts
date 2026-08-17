@@ -39,8 +39,14 @@ export const ILVL_POR_SETOR = 0.9;
  * monta um jogador em 34 setores de 1 a 300, tira a mediana de sete sementes
  * por setor e ajusta a lei de potência por mínimos quadrados em log-log.
  *
- *   DPS      = 2,118 × (ilvl + 1,5) ^ 2,7626    R² 0,9922
- *   vida ef. = 81,5  × (ilvl + 0,5) ^ 1,2485    R² 0,9838
+ *   DPS      = 1,022  × (ilvl + 2,5) ^ 2,7999    R² 0,9939
+ *   vida ef. = 48,121 × (ilvl + 1,5) ^ 1,2757    R² 0,9907
+ *
+ * ► Remedidos na etapa 1.6. Os tiers de afixo tornaram o topo de magnitude uma
+ *   ROLAGEM em vez de um efeito colateral da raridade, então o jogador médio
+ *   ficou mais fraco e os coeficientes caíram junto — `PODER_A` pela metade.
+ *   O expoente quase não se moveu (2,7626 → 2,7999), que é o sinal de que a
+ *   FORMA da curva não mudou: só a altura.
  *
  * O deslocamento existe por causa do começo: no nível de item 1 o poder vem
  * quase todo do CASCO, e uma lei de potência pura previa 14 de dano onde a
@@ -55,14 +61,14 @@ export const ILVL_POR_SETOR = 0.9;
  *   expoentes DESCREVEM o jogo; se o jogo mudar e eles não, o ritmo desanda em
  *   silêncio.
  */
-export const PODER_A = 2.118;
-export const PODER_P = 2.7626;
+export const PODER_A = 1.022;
+export const PODER_P = 2.7999;
 
-export const DEFESA_A = 81.525;
-export const DEFESA_P = 1.2485;
+export const DEFESA_A = 48.121;
+export const DEFESA_P = 1.2757;
 
-export const PODER_C = 1.5;
-export const DEFESA_C = 0.5;
+export const PODER_C = 2.5;
+export const DEFESA_C = 1.5;
 
 /**
  * O primeiro trecho do jogo tem curva própria, e isso não é fudge — é o

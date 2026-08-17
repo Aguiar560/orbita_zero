@@ -1,0 +1,132 @@
+import { describe, expect, it } from 'vitest';
+import { Rng } from '@core/math';
+import { JANELA_DE_TIERS, TIERS, TIER_ILVL, fatorDoTier, tierPorIlvl, tiersDisponiveis } from '@data/balance/tiers';
+import { RARITIES } from '@data/rarity';
+import { rollItem } from '@sim/loot';
+
+/**
+ * Tiers de afixo, T1–T10 (§6).
+ *
+ * O eixo que dá o que caçar depois que a raridade já saiu boa. Errar aqui é
+ * errar a magnitude de toda linha de todo item do jogo.
+ */
+describe('a escada de magnitude', () => {
+  it('T1 não altera nada e T10 é o teto de 7×', () => {
+    expect(fatorDoTier(1)).toBeCloseTo(1, 6);
+    expect(fatorDoTier(TIERS)).toBeCloseTo(7, 6);
+  });
+
+  it('cresce sempre — um tier acima nunca vale menos', () => {
+    for (let t = 1; t < TIERS; t++) {
+      expect(fatorDoTier(t + 1)).toBeGreaterThan(fatorDoTier(t));
+    }
+  });
+
+  it('tier fora da faixa é aparado, não extrapolado', () => {
+    expect(fatorDoTier(0)).toBeCloseTo(fatorDoTier(1), 6);
+    expect(fatorDoTier(99)).toBeCloseTo(fatorDoTier(TIERS), 6);
+  });
+});
+
+describe('os portões por nível de item', () => {
+  it('a tabela é monótona: um tier mais alto nunca abre antes', () => {
+    for (let t = 1; t < TIERS; t++) {
+      expect(TIER_ILVL[t]!, `T${t + 1}`).toBeGreaterThan(TIER_ILVL[t - 1]!);
+    }
+  });
+
+  it('o nível de item mais baixo do jogo ainda produz T1', () => {
+    expect(tierPorIlvl(1)).toBe(1);
+    expect(tierPorIlvl(0)).toBe(1);
+  });
+
+  it('o nível de item do setor 300 destrava o topo', () => {
+    // `curvaIlvl(300)` = 270 com ILVL_POR_SETOR = 0,9.
+    expect(tierPorIlvl(270)).toBe(TIERS);
+  });
+});
+
+describe('a janela de tiers', () => {
+  /**
+   * A regra que impede o fim do jogo de continuar soltando T1 — sem ela, um
+   * item de nível alto sorteia entre dez tiers e quase sempre cai num baixo,
+   * ficando PIOR que os de nível médio.
+   */
+  it('nunca oferece mais que a janela', () => {
+    for (const ilvl of [1, 30, 90, 160, 270]) {
+      for (const r of RARITIES) {
+        expect(tiersDisponiveis(ilvl, r.tierMax).length).toBeLessThanOrEqual(JANELA_DE_TIERS);
+      }
+    }
+  });
+
+  it('o teto respeita o menor entre a raridade e o nível de item', () => {
+    // Nível de item altíssimo, raridade baixa: quem limita é a raridade.
+    const comum = tiersDisponiveis(270, RARITIES[0]!.tierMax);
+    expect(Math.max(...comum.map((o) => o.tier))).toBe(RARITIES[0]!.tierMax);
+
+    // Raridade máxima, nível de item baixo: quem limita é o nível.
+    const divinoCedo = tiersDisponiveis(5, RARITIES[6]!.tierMax);
+    expect(Math.max(...divinoCedo.map((o) => o.tier))).toBe(tierPorIlvl(5));
+  });
+
+  it('o topo da janela é o mais raro', () => {
+    const opcoes = tiersDisponiveis(270, TIERS);
+    const topo = opcoes.find((o) => o.tier === TIERS)!;
+    for (const o of opcoes) {
+      if (o.tier < TIERS) expect(o.peso).toBeGreaterThan(topo.peso);
+    }
+  });
+
+  /**
+   * O bug que a indexação por distância-até-o-topo existe para evitar: com a
+   * janela curta (começo do jogo), indexar pelo fundo daria ao teto o peso alto
+   * do fundo e o tier máximo sairia na MAIORIA das linhas.
+   */
+  it('mesmo com a janela curta, o teto continua sendo o mais raro', () => {
+    const opcoes = tiersDisponiveis(5, 2); // janela de dois tiers só
+    expect(opcoes).toHaveLength(2);
+    const [baixo, alto] = opcoes;
+    expect(alto!.peso).toBeLessThan(baixo!.peso);
+  });
+});
+
+describe('o tier no item gerado', () => {
+  it('toda linha sai com tier dentro da faixa', () => {
+    const rng = new Rng(4242);
+    for (let i = 0; i < 400; i++) {
+      const item = rollItem(rng, 1 + (i % 270), 0, 0);
+      for (const a of item.affixes) {
+        expect(a.tier, `${item.baseId}/${a.id}`).toBeGreaterThanOrEqual(1);
+        expect(a.tier!).toBeLessThanOrEqual(TIERS);
+      }
+    }
+  });
+
+  /**
+   * O contrato central: a raridade limita o tier. Se vazar, um Comum pode rolar
+   * a mesma linha que um Divino e a raridade perde o sentido.
+   */
+  it('nenhuma linha ultrapassa o tierMax da própria raridade', () => {
+    const rng = new Rng(99);
+    for (let i = 0; i < 3000; i++) {
+      const item = rollItem(rng, 270, 3, 0);
+      const teto = RARITIES[item.rarity]!.tierMax;
+      for (const a of item.affixes) {
+        expect(a.tier!, `${RARITIES[item.rarity]!.name}/${a.id}`).toBeLessThanOrEqual(teto);
+      }
+    }
+  });
+
+  it('nível de item alto empurra os tiers para cima', () => {
+    const media = (ilvl: number) => {
+      const rng = new Rng(7);
+      let soma = 0; let n = 0;
+      for (let i = 0; i < 1500; i++) {
+        for (const a of rollItem(rng, ilvl, 0, 0, { floor: 6 }).affixes) { soma += a.tier!; n++; }
+      }
+      return soma / n;
+    };
+    expect(media(270)).toBeGreaterThan(media(30));
+  });
+});

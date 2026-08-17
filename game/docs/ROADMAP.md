@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 73 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 90 testes passando · typecheck e build limpos.
 
 ---
 
@@ -16,15 +16,15 @@ momento — o ponto de partida, que não se reescreve.
 
 ```
 Etapa 0  ██████████  concluída
-Fase 1   ███████░░░  5 de 7 tarefas
-Fase 1B  ████████░░  4 de 5 — morte, progresso e permanência
+Fase 1   █████████░  6 de 7 tarefas
+Fase 1B  ██████████  concluída — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1.6 — tiers de afixo T1–T10. Depois, 1.7 (orçamento de poder) e a Fase 2 (combate elemental).
+**Próxima:** Fase 1.7 — orçamento e peso de atributos. Depois, a Fase 2 (combate elemental).
 
 
 
@@ -53,7 +53,7 @@ mudança de balanceamento seria fé.
 | 1.4 | Calibrar por simulação, com corrida do zero como prova | ✅ `72c849e` |
 | — | Densidade e pressão como eixos de dificuldade (§16) | ✅ `82b4347` |
 | 1.5 | Sete raridades, Comum → Divino (§9) | ✅ |
-| 1.6 | Tiers de atributo T1–T10 (§6) | ⬜ |
+| 1.6 | ✅ Tiers de atributo T1–T10 (§6) | `data/balance/tiers.ts` |
 | 1.7 | Orçamento e peso de atributos (§7) | ⬜ |
 | 1.8 | Nível de personagem 1–300 (§17) | ✅ com a 1B.3 |
 | 1.9 | Nível de nave 1–300, sem transferência (§17, §18) | ✅ com a 1B.3 |
@@ -67,6 +67,65 @@ Duas remoções que a especificação pedia e que não dependiam de mais nada:
 |---|---|
 | Remover o menu Melhorias (§31) | `dc6ec0b` |
 | Remover os Power Ups de batalha (§30) e tornar o dano normal irresistível | `857c2cc` |
+
+### 1.6 — Tiers de afixo T1–T10 ✅
+
+`tierMax` existia na tabela de raridades desde a Fase 1 e **nunca era lido pelo
+gerador** — só um teste conferia que a coluna era monótona. A magnitude de uma
+linha vinha de duas fontes ao mesmo tempo: uma rolagem uniforme dentro da faixa
+do afixo, multiplicada pelo `power` da raridade. Nenhuma das duas aparecia na
+ficha, então dois Épicos com "+Dano" podiam diferir 3× sem nada explicando por quê.
+
+| O quê | Onde |
+|---|---|
+| Escada de magnitude, portões por ilvl, janela de tiers | `data/balance/tiers.ts` |
+| `rollAffix` sorteia tier; `power` sai de cena | `sim/loot.ts` |
+| `Affix.tier` opcional — saves antigos não quebram | `sim/types.ts` |
+| Etiqueta `T4` na ficha, coluna alinhada | `ui/ItemCard.ts` |
+
+**A decisão que estruturou tudo:** o tier **substitui** `power` como controle de
+magnitude da raridade. Deixar os dois multiplicando faria a raridade contar duas
+vezes e um Divino T10 sairia 7× acima do que a curva de poder pressupõe. A
+raridade continua mandando em três eixos — quantas linhas, até onde elas sobem
+(`tierMax`) e a chance de conjunto —, mas a magnitude POR LINHA é do tier.
+
+A escada é geométrica de 1,0 a 7,0, de propósito a **mesma** que o `power` das
+sete raridades percorria. Assim o teto do jogo não se move: o que muda é que
+chegar nele passa a ser uma rolagem.
+
+**A janela de 4 tiers** é o que impede o fim do jogo de continuar soltando T1.
+Sem ela um item de ilvl 270 sortearia entre dez tiers e quase sempre cairia num
+baixo — itens de nível alto ficariam piores que os de nível médio.
+
+> **Bug pego pelos próprios testes:** o vetor de pesos estava invertido. Ele é
+> indexado pela distância até o TETO, então `[4,3,2,1]` dava ao tier máximo o
+> peso mais alto e ele saía na maioria das linhas — justo onde deveria ser
+> conquista. Com `[1,2,3,4]`, o teto sai em 10% das linhas.
+
+**Recalibragem.** Tornar o topo uma rolagem enfraqueceu o jogador médio, e a
+primeira medição acusou o setor 295 como IMPOSSÍVEL (7,1 golpes contra o piso de
+10). Remedido com `npm run simular -- ajustar`:
+
+| | antes | depois |
+|---|---|---|
+| `PODER_A` · `PODER_P` · `PODER_C` | 2,118 · 2,7626 · 1,5 | 1,022 · 2,7999 · 2,5 |
+| `DEFESA_A` · `DEFESA_P` · `DEFESA_C` | 81,525 · 1,2485 · 0,5 | 48,121 · 1,2757 · 1,5 |
+| divergência ofensiva em 299 setores | 19× | **6,7×** |
+| divergência defensiva | — | **4,2×** |
+| setores fora da faixa | 1 (IMPOSSÍVEL) | **0** |
+
+O coeficiente caiu pela metade e o expoente quase não se moveu (2,7626 →
+2,7999): a FORMA da curva não mudou, só a altura. R² 0,9939 e 0,9907.
+
+Verificado no navegador: as etiquetas saem como `T4 +146 Dano`, `T5 +116 Dano`,
+`T3 +667 Escudo`. Os 331 afixos do save antigo, sem o campo, renderizam sem
+etiqueta e sem erro — que é o contrato do `tier?` opcional.
+
+**Dívida que esta etapa NÃO resolveu.** A dispersão dentro da mesma raridade
+(§7) subiu de 135× para 570× na medição, mas o número está contaminado: o piso é
+~0 porque `powerScore` é cego a vários atributos, e a razão máx/mín amplifica
+isso. Consertar a métrica é pré-requisito da **1.7**, senão o orçamento de poder
+será calibrado contra um medidor quebrado.
 
 ---
 
