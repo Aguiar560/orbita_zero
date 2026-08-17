@@ -1191,30 +1191,61 @@ async function buildNovosItens(manifest) {
  * dia em que a folha ganhar uma fileira.
  */
 async function buildRecursos(manifest) {
-  const dir = path.join(RAW, 'spaceships new', 'Recursos');
-  if (!existsSync(dir)) {
-    console.warn('   ! Recursos/ não encontrado — pulando recursos');
+  /**
+   * Duas pastas, e a 2.0 VENCE.
+   *
+   * `Recursos 2.0` tem 42 arquivos com o fundo já removido à mão — canal alfa
+   * de verdade, não estimativa. A pasta original tem os 70, mas sem alfa: são
+   * recortes retangulares com o fundo da célula junto, e a extração automática
+   * acerta a maioria e erra as bordas finas.
+   *
+   * Então a 2.0 entra INTACTA, sem passar por extração nenhuma — mexer no que
+   * já veio pronto só teria como piorar —, e a original preenche o que falta.
+   */
+  const dirNovo = path.join(RAW, 'spaceships new', 'Recursos 2.0');
+  const dirVelho = path.join(RAW, 'spaceships new', 'Recursos');
+
+  const listar = async (dir) => (existsSync(dir)
+    ? (await readdir(dir)).filter((f) => /.png$/i.test(f))
+    : []);
+
+  const prontos = await listar(dirNovo);
+  const brutos = await listar(dirVelho);
+  if (!prontos.length && !brutos.length) {
+    console.warn('   ! nenhuma pasta de recurso encontrada');
     return;
   }
 
-  const arquivos = (await readdir(dir)).filter((f) => /.png$/i.test(f)).sort();
-  log(`Recursos: ${arquivos.length} arquivos individuais`);
-
+  const jaFeitos = new Set(prontos.map((f) => idDeRecurso(f.replace(/.png$/i, ''))));
   const sprites = [];
-  for (const f of arquivos) {
-    const src = path.join(dir, f);
+
+  // Os que já vieram com alfa: entram como estão.
+  for (const f of prontos) {
+    const src = path.join(dirNovo, f);
+    noteRead(src);
+    const raw = await toRaw(src);
+    const trimmed = trimAlpha(raw, 6);
+    if (!trimmed) { console.warn(`   ! recurso vazio (2.0): ${f}`); continue; }
+    sprites.push({
+      id: `recurso/${idDeRecurso(f.replace(/.png$/i, ''))}`,
+      raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
+      sw: raw.width, sh: raw.height,
+    });
+  }
+
+  // Os que faltam: extração automática do arquivo sem alfa.
+  let extraidos = 0;
+  for (const f of brutos) {
+    const id = idDeRecurso(f.replace(/.png$/i, ''));
+    if (jaFeitos.has(id)) continue;
+
+    const src = path.join(dirVelho, f);
     noteRead(src);
     const { data, info } = await sharp(src).raw().toBuffer({ resolveWithObject: true });
 
-    // Os arquivos vêm SEM alfa (três canais): são recortes retangulares com o
-    // fundo da célula junto. A mesma extração por fundo local das outras folhas
-    // resolve — e aqui ela é ainda mais direta, porque cada arquivo já é uma
-    // célula só, sem vizinho para invadir.
+    // Repescagem com pisos menores: o percentil 30 assume que ao menos um terço
+    // do arquivo é fundo, e falha quando o ícone ocupa quase tudo.
     let trimmed = null;
-    // Repescagem com piso mais baixo. O percentil 30 assume que ao menos um
-    // terço do arquivo é fundo, e isso falha quando o ícone ocupa quase tudo —
-    // `NECTAR ESTELAR` saía VAZIO, porque a mediana do fundo caía dentro do
-    // próprio desenho e o recorte comia a imagem inteira.
     for (const piso of [0.3, 0.12, 0.04]) {
       const região = extrairCelula(data, info, 0, 0, info.width, info.height, { margem: 38, piso });
       trimmed = trimAlpha(região, 6);
@@ -1223,13 +1254,14 @@ async function buildRecursos(manifest) {
     if (!trimmed) { console.warn(`   ! recurso vazio: ${f}`); continue; }
 
     sprites.push({
-      id: `recurso/${idDeRecurso(f.replace(/.png$/i, ''))}`,
+      id: `recurso/${id}`,
       raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
       sw: info.width, sh: info.height,
     });
+    extraidos++;
   }
 
-  log(`   ${sprites.length} ícones de recurso`);
+  log(`Recursos: ${prontos.length} já com alfa + ${extraidos} extraídos`);
   await writeAtlas('recursos', sprites, manifest, 2048);
 }
 
@@ -1240,7 +1272,26 @@ async function buildRecursos(manifest) {
  * confere que todo recurso do catálogo acha o seu sprite, que é o que impede as
  * duas cópias de divergirem.
  */
+/**
+ * Nomes de arquivo que divergem do catálogo.
+ *
+ * A arte veio com variações e erros de digitação — `TECNIO` para Tecnécio,
+ * `NEOINIO` para Neônio, `LAGRIMA GALATICA` sem o "c" de Galáctica. O catálogo
+ * é a fonte de verdade do nome de EXIBIÇÃO, então quem se ajusta é o arquivo:
+ * renomear a arte quebraria a próxima entrega que viesse com o nome original.
+ */
+const APELIDOS = {
+  tecnio: 'tecnecio',
+  neoinio: 'neonio',
+  lagrima_galatica: 'lagrima_galactica',
+};
+
 function idDeRecurso(nome) {
+  const bruto = normalizarId(nome);
+  return APELIDOS[bruto] ?? bruto;
+}
+
+function normalizarId(nome) {
   return nome.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '_')

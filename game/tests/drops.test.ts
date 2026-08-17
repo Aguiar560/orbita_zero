@@ -11,7 +11,7 @@ import {
 } from '@data/balance/capacidade';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
-import { RECURSOS, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
+import { RECURSOS, iconeDeRecurso, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { RESISTIVEIS } from '@sim/types';
 
 /**
@@ -410,5 +410,37 @@ describe('os cenários de galáxia', () => {
     for (const f of manifesto.fundos ?? []) {
       expect(['parallax', 'chapado'], f.id).toContain(f.tipo);
     }
+  });
+});
+
+/**
+ * A ponte entre o catálogo de recursos e o atlas.
+ *
+ * Esta verificação FALTAVA, e por isso três recursos ficaram sem ícone sem que
+ * nada acusasse: os arquivos de arte vieram com nomes divergentes do catálogo
+ * — `TECNIO` para Tecnécio, `NEOINIO` para Neônio, `LAGRIMA GALATICA` sem o
+ * "c" — e o jogo simplesmente não desenharia nada. Os 202 testes passavam.
+ */
+describe('todo recurso tem ícone', () => {
+  const atlas = JSON.parse(
+    readFileSync(new URL('../public/assets/atlas/recursos.json', import.meta.url), 'utf8'),
+  ) as Record<string, unknown> & { frames?: Record<string, unknown> };
+  const IDS = new Set(Object.keys(atlas.frames ?? atlas));
+
+  it('o atlas foi gerado', () => {
+    expect(IDS.size, 'rode `npm run assets`').toBeGreaterThan(50);
+  });
+
+  it.each(RECURSOS.map((r) => [r.nome, r] as const))('%s resolve sprite', (_nome, r) => {
+    expect(IDS.has(iconeDeRecurso(r))).toBe(true);
+  });
+
+  /**
+   * O outro sentido: sprite que nenhum recurso pede é arte paga e não usada, e
+   * costuma ser sinal de um nome que divergiu sem ninguém notar.
+   */
+  it('nenhum sprite fica órfão', () => {
+    const pedidos = new Set(RECURSOS.map((r) => iconeDeRecurso(r)));
+    expect([...IDS].filter((id) => !pedidos.has(id))).toEqual([]);
   });
 });
