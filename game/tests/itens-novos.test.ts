@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { RARITIES } from '@data/rarity';
 import { SLOT_IDS } from '@sim/types';
+import { Rng } from '@core/math';
+import { rollItem } from '@sim/loot';
 
 /**
  * O catálogo de `novos itens.png` — 10 categorias × 7 raridades × 2 variantes (§23).
@@ -54,12 +56,27 @@ describe('o catálogo novo está completo', () => {
  * passa a atribuir o ícone de Divino ao Mítico. Nada quebra, nada avisa.
  */
 describe('a folha e a tabela de raridades não podem divergir', () => {
+  /**
+   * Compara contra `slug`, não contra `name` normalizado.
+   *
+   * A primeira versão deste teste tirava acento de `name` para casar com a
+   * folha, e isso deixava o vínculo dependente do texto de EXIBIÇÃO — renomear
+   * "Divino" para "Divindade" trocaria o ícone de toda a raridade máxima e o
+   * teste ainda passaria, porque ele normalizaria o nome novo. `slug` existe
+   * para ser o id estável que a arte referencia.
+   */
   it('a folha tem uma coluna por raridade do jogo, na mesma ordem', () => {
-    const doJogo = RARITIES.map((r) =>
-      r.name.toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, ''));
-    expect(RARIDADES_DA_FOLHA).toEqual(doJogo);
+    expect(RARIDADES_DA_FOLHA).toEqual(RARITIES.map((r) => r.slug));
+  });
+
+  it('todo item gerado aponta para um ícone que existe', () => {
+    const rng = new Rng(31337);
+    const faltando = new Set<string>();
+    for (let i = 0; i < 2000; i++) {
+      const item = rollItem(rng, 1 + (i % 270), 3, 0);
+      if (!IDS.has(item.icon)) faltando.add(item.icon);
+    }
+    expect([...faltando]).toEqual([]);
   });
 
   it('as nove primeiras categorias são exatamente os slots do jogo', () => {

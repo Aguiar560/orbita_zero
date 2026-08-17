@@ -1,5 +1,5 @@
 import { Rng, clamp } from '@core/math';
-import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, type AffixDef } from '@data/items';
+import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, iconeDeItem, type AffixDef } from '@data/items';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
 import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
@@ -83,7 +83,7 @@ export function rollItem(
     ilvl,
     affixes,
     element,
-    icon: base.icon,
+    icon: iconeDeItem(base.slot, rarity, base.tier),
     origin,
     ...(set ? { set } : {}),
   };

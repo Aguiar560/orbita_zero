@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 17/08/2026 · 160 testes passando · typecheck e build limpos.
+**Última atualização:** 17/08/2026 · 161 testes passando · typecheck e build limpos.
 
 ---
 
@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3.2 — `AffixDef` com tier, pesos e restrições; e ligar o catálogo novo à UI, que ainda desenha os ícones por tier de base.
+**Próxima:** Fase 3.2 — `AffixDef` com tier, pesos e restrições (§6, §7).
 
 
 

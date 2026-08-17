@@ -1,4 +1,5 @@
-import { DANO_STAT, RES_STAT, type ElementId, type SlotId, type StatId } from '@sim/types';
+import { DANO_STAT, RES_STAT, type ElementId, type Rarity, type SlotId, type StatId } from '@sim/types';
+import { rarityInfo } from '@data/balance/raridades';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS } from './elements';
 
 // ── Slots ───────────────────────────────────────────────────────────────────
@@ -303,3 +304,20 @@ export const affixElement = (id: string): ElementId | undefined =>
   AFFIX_BY_ID.get(id)?.element;
 
 export const AFFIX_BY_ID = new Map(AFFIXES.map((a) => [a.id, a]));
+
+/**
+ * Ícone de um item, do catálogo novo (§23).
+ *
+ * A folha `novos itens.png` indexa por RARIDADE, não pelo nível de acabamento
+ * da base — e essa é a mudança que faz o inventário ser legível de relance. Com
+ * a folha antiga, um Comum e um Divino do mesmo cano tinham o mesmo desenho e
+ * só a borda mudava; agora o Divino tem moldura dourada e silhueta própria.
+ *
+ * A variante (são duas por célula) sai do TIER DA BASE, não de sorteio: o mesmo
+ * cano precisa ter sempre a mesma cara, senão desmanchar e recuperar um item
+ * mudaria o desenho dele. Bases de tier par e ímpar alternam, o que dá variedade
+ * dentro de uma raridade sem custar estabilidade.
+ */
+export function iconeDeItem(slot: SlotId, rarity: Rarity, tierDaBase: number): string {
+  return `novo/${slot}_${rarityInfo(rarity).slug}_${tierDaBase % 2}`;
+}

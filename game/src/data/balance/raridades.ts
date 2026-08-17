@@ -20,7 +20,18 @@ import type { Rarity } from '@sim/types';
  */
 export interface RarityInfo {
   id: Rarity;
+  /** Nome de exibição. MUDA com tradução e polimento de texto. */
   name: string;
+  /**
+   * Identificador estável, não-visual.
+   *
+   * Existe porque a arte é indexada por raridade (§23) e o pipeline roda em
+   * Node puro, sem importar `src/`. Sem um id próprio, o único jeito de casar
+   * ícone com raridade era normalizar `name` — tirar acento, pôr em minúsculas
+   * — e aí renomear "Divino" para "Divindade" trocaria silenciosamente o ícone
+   * de todos os itens da raridade máxima.
+   */
+  slug: string;
   color: string;
   glow: string;
   /** Sprite do hexágono na folha `Itens.png`. Só existem cinco. */
@@ -57,15 +68,15 @@ export interface RarityInfo {
  * matematicamente impossível.
  */
 export const RARITIES: readonly RarityInfo[] = [
-  { id: 0, name: 'Comum',      color: '#a8b6c8', glow: 'rgba(168,182,200,.30)', gem: 'gem/0', afixos: 1, power: 1.0,  weight: 10000, sorteExpo: 0, tierMax: 3,  setChance: 0 },
-  { id: 1, name: 'Incomum',    color: '#7ed957', glow: 'rgba(126,217,87,.38)',  gem: 'gem/1', afixos: 2, power: 1.3,  weight: 3400, sorteExpo: 1,  tierMax: 4,  setChance: 0.04 },
-  { id: 2, name: 'Raro',       color: '#38a9ff', glow: 'rgba(56,169,255,.44)',  gem: 'gem/2', afixos: 3, power: 1.75, weight: 960, sorteExpo: 2,   tierMax: 6,  setChance: 0.14 },
-  { id: 3, name: 'Épico',      color: '#c060ff', glow: 'rgba(192,96,255,.50)',  gem: 'gem/3', afixos: 4, power: 2.4,  weight: 220, sorteExpo: 3,   tierMax: 7,  setChance: 0.3 },
-  { id: 4, name: 'Lendário',   color: '#ff9a1f', glow: 'rgba(255,154,31,.56)',  gem: 'gem/4', afixos: 5, power: 3.4,  weight: 40, sorteExpo: 4,    tierMax: 8,  setChance: 0.55 },
+  { id: 0, name: 'Comum', slug: 'comum',      color: '#a8b6c8', glow: 'rgba(168,182,200,.30)', gem: 'gem/0', afixos: 1, power: 1.0,  weight: 10000, sorteExpo: 0, tierMax: 3,  setChance: 0 },
+  { id: 1, name: 'Incomum', slug: 'incomum',    color: '#7ed957', glow: 'rgba(126,217,87,.38)',  gem: 'gem/1', afixos: 2, power: 1.3,  weight: 3400, sorteExpo: 1,  tierMax: 4,  setChance: 0.04 },
+  { id: 2, name: 'Raro', slug: 'raro',       color: '#38a9ff', glow: 'rgba(56,169,255,.44)',  gem: 'gem/2', afixos: 3, power: 1.75, weight: 960, sorteExpo: 2,   tierMax: 6,  setChance: 0.14 },
+  { id: 3, name: 'Épico', slug: 'epico',      color: '#c060ff', glow: 'rgba(192,96,255,.50)',  gem: 'gem/3', afixos: 4, power: 2.4,  weight: 220, sorteExpo: 3,   tierMax: 7,  setChance: 0.3 },
+  { id: 4, name: 'Lendário', slug: 'lendario',   color: '#ff9a1f', glow: 'rgba(255,154,31,.56)',  gem: 'gem/4', afixos: 5, power: 3.4,  weight: 40, sorteExpo: 4,    tierMax: 8,  setChance: 0.55 },
   // Mítico e Divino reaproveitam o hexágono do Lendário: a folha `Itens.png` só
   // tem cinco. As molduras próprias chegam na Fase 3, com `novos itens.png`.
-  { id: 5, name: 'Mítico',     color: '#ff4d5e', glow: 'rgba(255,77,94,.62)',   gem: 'gem/4', afixos: 6, power: 4.9,  weight: 5, sorteExpo: 4.6,     tierMax: 9,  setChance: 0.75 },
-  { id: 6, name: 'Divino',     color: '#ffd76a', glow: 'rgba(255,215,106,.70)', gem: 'gem/4', afixos: 7, power: 7.0,  weight: 0.4, sorteExpo: 5.2,   tierMax: 10, setChance: 0.9 },
+  { id: 5, name: 'Mítico', slug: 'mitico',     color: '#ff4d5e', glow: 'rgba(255,77,94,.62)',   gem: 'gem/4', afixos: 6, power: 4.9,  weight: 5, sorteExpo: 4.6,     tierMax: 9,  setChance: 0.75 },
+  { id: 6, name: 'Divino', slug: 'divino',     color: '#ffd76a', glow: 'rgba(255,215,106,.70)', gem: 'gem/4', afixos: 7, power: 7.0,  weight: 0.4, sorteExpo: 5.2,   tierMax: 10, setChance: 0.9 },
 ];
 
 export const rarityInfo = (r: Rarity): RarityInfo => RARITIES[r] ?? RARITIES[0]!;
