@@ -1,5 +1,5 @@
 import { Rng, clamp } from '@core/math';
-import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, iconeDeItem, type AffixDef } from '@data/items';
+import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, iconeDeItem, pesoNoSlot, type AffixDef } from '@data/items';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
 import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
@@ -61,7 +61,11 @@ export function rollItem(
   const affixes: Affix[] = [];
   const used = new Set<string>();
   for (let i = 0; i < info.afixos && used.size < eligible.length; i++) {
-    const def = rng.weighted(eligible.filter((a) => !used.has(a.id)), (a) => a.weight);
+    // O peso é o do afixo NAQUELE slot, não o global. É o que dá identidade às
+    // nove categorias: sem isso, medido, uma blindagem tinha 41,8% de linhas
+    // defensivas e um suporte 18% de utilidade — nove peças que eram a mesma
+    // peça com nomes diferentes.
+    const def = rng.weighted(eligible.filter((a) => !used.has(a.id)), (a) => pesoNoSlot(a, base.slot));
     if (!def) break;
     used.add(def.id);
     affixes.push(rollAffix(rng, def, ilvl, info.tierMax));

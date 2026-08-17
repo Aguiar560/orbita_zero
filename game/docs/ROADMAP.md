@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3.2 — `AffixDef` com tier, pesos e restrições (§6, §7).
+**Próxima:** Fase 3.3 — gerador de item com orçamento de poder.
 
 
 
@@ -395,7 +395,7 @@ como ser dimensionado.
 | # | Tarefa |
 |---|---|
 | 3.1 | ✅ Pipeline de `novos itens.png` — atlas `itens-novos`, 140 ícones |
-| 3.2 | `AffixDef` com tier, pesos e restrições (§6, §7) |
+| 3.2 | ✅ Afinidade de slot: cada categoria puxa a própria família de afixo |
 | 3.3 | Gerador de item com orçamento de poder |
 | 3.4 | `+N projéteis` com as restrições do §8 |
 | 3.5 | Tabelas de drop por galáxia, inimigo, chefe e exclusivo (§10) |
@@ -431,6 +431,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **Ritmo de relógio 15× rápido** | galáxia 1 em 40 min; meta é ~10 h | Fase 4 |
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
 | **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
+| **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |
 | **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | Fase 3 |
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |

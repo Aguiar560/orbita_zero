@@ -42,6 +42,12 @@ export const ILVL_POR_SETOR = 0.9;
  *   DPS      = 1,022  × (ilvl + 2,5) ^ 2,7999    R² 0,9939
  *   vida ef. = 48,121 × (ilvl + 1,5) ^ 1,2757    R² 0,9907
  *
+ * ► A 3.2 TENTOU remedir e reverteu. A afinidade de slot deixou o jogador mais
+ *   duro no setor 50, e refazer o ajuste baixou `DEFESA_A` — o que reduz o dano
+ *   do inimigo e faz o jogador aguentar AINDA MAIS golpes. O sintoma piorou de
+ *   34,7 para 37,3. O ajuste global é mínimos quadrados sobre 34 setores; puxá-lo
+ *   para corrigir um ponto é usar a ferramenta errada.
+ *
  * ► Remedidos na etapa 1.6. Os tiers de afixo tornaram o topo de magnitude uma
  *   ROLAGEM em vez de um efeito colateral da raridade, então o jogador médio
  *   ficou mais fraco e os coeficientes caíram junto — `PODER_A` pela metade.

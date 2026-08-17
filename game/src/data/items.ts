@@ -178,9 +178,54 @@ export function basesForIlvl(ilvl: number, slot?: SlotId): ItemBase[] {
 
 // ── Afixos ──────────────────────────────────────────────────────────────────
 
+/**
+ * A que eixo do jogo um afixo pertence (§7).
+ *
+ * Serve para dar IDENTIDADE aos slots. Sem isso, todo slot rola do mesmo bolo:
+ * medido, uma blindagem tinha a mesma chance de sair cheia de dano que uma arma
+ * principal, e um reator saía cheio de escudo. O jogador via nove peças que
+ * eram a mesma peça com nomes diferentes.
+ */
+export type FamiliaDeAfixo = 'ofensiva' | 'defensiva' | 'utilidade';
+
+/**
+ * Quanto cada slot puxa cada família, multiplicando o peso do afixo.
+ *
+ * VIÉS, não exclusão. Uma blindagem ainda pode rolar dano — só é raro, e por
+ * isso vale alguma coisa quando acontece. Exclusão dura tornaria cada slot
+ * previsível e mataria o item surpreendente, que é metade da graça de um ARPG.
+ *
+ * Os números seguem os `hint` que os slots já declaram em `SLOTS`: "a fonte de
+ * dano por tiro" puxa ofensiva, "o que sobra quando o escudo cai" puxa
+ * defensiva, "sorte, coleta e rendimento" puxa utilidade.
+ *
+ * O multiplicador de `suporte` é o dobro dos outros, e não é favoritismo: a
+ * família `utilidade` tem CINCO afixos contra onze de cada uma das outras duas.
+ * Com 3,0 o suporte ainda saía com metade das linhas fora do tema, porque estava
+ * competindo em número. O peso compensa o tamanho do bolo, não o valor da linha.
+ */
+export const AFINIDADE: Record<SlotId, Record<FamiliaDeAfixo, number>> = {
+  asas:       { ofensiva: 0.6, defensiva: 1.2, utilidade: 1.0 },
+  principal:  { ofensiva: 2.5, defensiva: 0.35, utilidade: 0.7 },
+  secundaria: { ofensiva: 2.2, defensiva: 0.4, utilidade: 0.8 },
+  motor:      { ofensiva: 0.5, defensiva: 1.3, utilidade: 1.2 },
+  reator:     { ofensiva: 1.8, defensiva: 0.7, utilidade: 1.0 },
+  controle:   { ofensiva: 1.2, defensiva: 0.8, utilidade: 1.6 },
+  escudo:     { ofensiva: 0.3, defensiva: 2.5, utilidade: 0.7 },
+  blindagem:  { ofensiva: 0.3, defensiva: 2.5, utilidade: 0.7 },
+  suporte:    { ofensiva: 0.35, defensiva: 0.4, utilidade: 6.0 },
+};
+
+/** Peso efetivo de um afixo NAQUELE slot. */
+export function pesoNoSlot(def: AffixDef, slot: SlotId): number {
+  return def.weight * (AFINIDADE[slot]?.[def.familia] ?? 1);
+}
+
 export interface AffixDef {
   id: string;
   label: string;
+  /** Eixo do jogo a que pertence — decide a afinidade com cada slot. */
+  familia: FamiliaDeAfixo;
   stat: StatId;
   kind: 'add' | 'mul';
   /** Faixa de rolagem por nível de item. */
@@ -212,6 +257,7 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
   // afixo legítimo, e é o que dá o que investir a quem escolheu o dano neutro.
   ...ELEMENTS.map((e) => ({
     id: `pot_${e.id}`,
+    familia: 'ofensiva' as const,
     label: e.id === 'padrao' ? 'Dano normal' : `Dano de ${e.name.toLowerCase()}`,
     stat: DANO_STAT[e.id],
     // `add`, não `mul`. Estes atributos são consumidos como `1 + x` — em
@@ -247,6 +293,7 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
   // redução que a fórmula de dano nunca aplicaria.
   ...ELEMENTOS_RESISTIVEIS.map((e) => ({
     id: `res_${e.id}`,
+    familia: 'defensiva' as const,
     label: `Resistência a ${e.name.toLowerCase()}`,
     stat: RES_STAT[e.id],
     kind: 'add' as const,
@@ -263,16 +310,16 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
  * porque uma porcentagem já é relativa — senão +10% viraria +1000% no fim.
  */
 export const AFFIXES: readonly AffixDef[] = [
-  { id: 'dano_f',      label: 'Dano',                stat: 'dano',        kind: 'add', min: 1.4, max: 3.2, weight: 100 },
-  { id: 'dano_p',      label: 'Dano',                stat: 'dano',        kind: 'mul', min: 0.04, max: 0.14, weight: 80 },
-  { id: 'cadencia_p',  label: 'Cadência',            stat: 'cadencia',    kind: 'mul', min: 0.03, max: 0.12, weight: 75 },
-  { id: 'crit_c',      label: 'Chance de crítico',   stat: 'critChance',  kind: 'add', min: 0.012, max: 0.045, weight: 60, minIlvl: 4 },
-  { id: 'crit_d',      label: 'Dano crítico',        stat: 'critDano',    kind: 'add', min: 0.06, max: 0.24, weight: 55, minIlvl: 4 },
+  { id: 'dano_f',      label: 'Dano',                familia: 'ofensiva', stat: 'dano',        kind: 'add', min: 1.4, max: 3.2, weight: 100 },
+  { id: 'dano_p',      label: 'Dano',                familia: 'ofensiva', stat: 'dano',        kind: 'mul', min: 0.04, max: 0.14, weight: 80 },
+  { id: 'cadencia_p',  label: 'Cadência',            familia: 'ofensiva', stat: 'cadencia',    kind: 'mul', min: 0.03, max: 0.12, weight: 75 },
+  { id: 'crit_c',      label: 'Chance de crítico',   familia: 'ofensiva', stat: 'critChance',  kind: 'add', min: 0.012, max: 0.045, weight: 60, minIlvl: 4 },
+  { id: 'crit_d',      label: 'Dano crítico',        familia: 'ofensiva', stat: 'critDano',    kind: 'add', min: 0.06, max: 0.24, weight: 55, minIlvl: 4 },
   // Crítico ELEMENTAL, separado do normal (§4). Faixas iguais às do normal de
   // propósito: quem escolhe um dos dois está escolhendo em qual componente
   // investiu, não pegando o número maior.
-  { id: 'crite_c',     label: 'Crítico elemental',   stat: 'critElemChance', kind: 'add', min: 0.04, max: 0.15, weight: 40, minIlvl: 10 },
-  { id: 'crite_d',     label: 'Dano crít. elemental', stat: 'critElemDano', kind: 'add', min: 0.20, max: 0.80, weight: 38, minIlvl: 10 },
+  { id: 'crite_c',     label: 'Crítico elemental',   familia: 'ofensiva', stat: 'critElemChance', kind: 'add', min: 0.04, max: 0.15, weight: 40, minIlvl: 10 },
+  { id: 'crite_d',     label: 'Dano crít. elemental', familia: 'ofensiva', stat: 'critElemDano', kind: 'add', min: 0.20, max: 0.80, weight: 38, minIlvl: 10 },
   /**
    * Penetração: anula resistência e desvantagem, nunca cria vantagem.
    *
@@ -281,21 +328,21 @@ export const AFFIXES: readonly AffixDef[] = [
    * alternativa a essa escolha, não como atalho para ignorá-la, e o teto de
    * `PENETRACAO_MAX` garante que o pior confronto chegue a 0,94 e não a 1,0.
    */
-  { id: 'pen_f',       label: 'Penetração',          stat: 'penetracao',  kind: 'add', min: 0.02, max: 0.07, weight: 30, minIlvl: 20 },
-  { id: 'vida_f',      label: 'Casco',               stat: 'vida',        kind: 'add', min: 9, max: 22, weight: 95 },
-  { id: 'vida_p',      label: 'Casco',               stat: 'vida',        kind: 'mul', min: 0.04, max: 0.13, weight: 70 },
-  { id: 'escudo_f',    label: 'Escudo',              stat: 'escudo',      kind: 'add', min: 7, max: 19, weight: 90 },
-  { id: 'escudo_p',    label: 'Escudo',              stat: 'escudo',      kind: 'mul', min: 0.05, max: 0.16, weight: 65 },
-  { id: 'regen_f',     label: 'Regeneração',         stat: 'regen',       kind: 'add', min: 0.4, max: 1.6, weight: 60 },
-  { id: 'veloc_p',     label: 'Velocidade',          stat: 'velocidade',  kind: 'mul', min: 0.03, max: 0.11, weight: 60, slots: ['motor', 'asas', 'blindagem'] },
-  { id: 'proj_f',      label: 'Projéteis',           stat: 'projeteis',   kind: 'add', min: 1, max: 1, weight: 9, slots: ['principal', 'secundaria'], minIlvl: 12 },
-  { id: 'perf_f',      label: 'Perfuração',          stat: 'perfuracao',  kind: 'add', min: 1, max: 1, weight: 14, slots: ['principal', 'secundaria'], minIlvl: 8 },
-  { id: 'expl_f',      label: 'Raio de explosão',    stat: 'explosao',    kind: 'add', min: 3, max: 11, weight: 35, slots: ['principal', 'secundaria', 'reator'], minIlvl: 6 },
-  { id: 'sorte_f',     label: 'Sorte',               stat: 'sorte',       kind: 'add', min: 0.02, max: 0.09, weight: 45 },
-  { id: 'sucata_p',    label: 'Ganho de sucata',     stat: 'sucataGanho', kind: 'add', min: 0.06, max: 0.22, weight: 55 },
-  { id: 'nucleo_p',    label: 'Ganho de núcleos',    stat: 'nucleoGanho', kind: 'add', min: 0.05, max: 0.18, weight: 50 },
-  { id: 'xp_p',        label: 'Ganho de XP',         stat: 'xpGanho',     kind: 'add', min: 0.05, max: 0.2, weight: 40 },
-  { id: 'ia_f',        label: 'Sincronia do piloto', stat: 'iaSkill',     kind: 'add', min: 0.015, max: 0.06, weight: 22, slots: ['controle', 'motor', 'reator'], minIlvl: 10 },
+  { id: 'pen_f',       label: 'Penetração',          familia: 'ofensiva', stat: 'penetracao',  kind: 'add', min: 0.02, max: 0.07, weight: 30, minIlvl: 20 },
+  { id: 'vida_f',      label: 'Casco',               familia: 'defensiva', stat: 'vida',        kind: 'add', min: 9, max: 22, weight: 95 },
+  { id: 'vida_p',      label: 'Casco',               familia: 'defensiva', stat: 'vida',        kind: 'mul', min: 0.04, max: 0.13, weight: 70 },
+  { id: 'escudo_f',    label: 'Escudo',              familia: 'defensiva', stat: 'escudo',      kind: 'add', min: 7, max: 19, weight: 90 },
+  { id: 'escudo_p',    label: 'Escudo',              familia: 'defensiva', stat: 'escudo',      kind: 'mul', min: 0.05, max: 0.16, weight: 65 },
+  { id: 'regen_f',     label: 'Regeneração',         familia: 'defensiva', stat: 'regen',       kind: 'add', min: 0.4, max: 1.6, weight: 60 },
+  { id: 'veloc_p',     label: 'Velocidade',          familia: 'defensiva', stat: 'velocidade',  kind: 'mul', min: 0.03, max: 0.11, weight: 60, slots: ['motor', 'asas', 'blindagem'] },
+  { id: 'proj_f',      label: 'Projéteis',           familia: 'ofensiva', stat: 'projeteis',   kind: 'add', min: 1, max: 1, weight: 9, slots: ['principal', 'secundaria'], minIlvl: 12 },
+  { id: 'perf_f',      label: 'Perfuração',          familia: 'ofensiva', stat: 'perfuracao',  kind: 'add', min: 1, max: 1, weight: 14, slots: ['principal', 'secundaria'], minIlvl: 8 },
+  { id: 'expl_f',      label: 'Raio de explosão',    familia: 'ofensiva', stat: 'explosao',    kind: 'add', min: 3, max: 11, weight: 35, slots: ['principal', 'secundaria', 'reator'], minIlvl: 6 },
+  { id: 'sorte_f',     label: 'Sorte',               familia: 'utilidade', stat: 'sorte',       kind: 'add', min: 0.02, max: 0.09, weight: 45 },
+  { id: 'sucata_p',    label: 'Ganho de sucata',     familia: 'utilidade', stat: 'sucataGanho', kind: 'add', min: 0.06, max: 0.22, weight: 55 },
+  { id: 'nucleo_p',    label: 'Ganho de núcleos',    familia: 'utilidade', stat: 'nucleoGanho', kind: 'add', min: 0.05, max: 0.18, weight: 50 },
+  { id: 'xp_p',        label: 'Ganho de XP',         familia: 'utilidade', stat: 'xpGanho',     kind: 'add', min: 0.05, max: 0.2, weight: 40 },
+  { id: 'ia_f',        label: 'Sincronia do piloto', familia: 'utilidade', stat: 'iaSkill',     kind: 'add', min: 0.015, max: 0.06, weight: 22, slots: ['controle', 'motor', 'reator'], minIlvl: 10 },
   ...ELEMENTAL_AFFIXES,
 ];
 
