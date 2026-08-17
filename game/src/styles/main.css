@@ -1117,8 +1117,10 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 
 /* Moldura do modal: 620×596 de arte, margem de 74. */
 .camada-caixa {
-  border: 34px solid transparent;
-  border-image: url(assets/ui/moldura_modal.png) 74 fill stretch;
+  /* Margem de 300 px na arte de 1254: o ornamento de canto inteiro cabe nela.
+     Cortar no meio do ornamento jogaria o resto na faixa que estica. */
+  border: 62px solid transparent;
+  border-image: url(assets/ui/moldura_modal.png) 300 fill stretch;
   border-radius: 0;
   clip-path: none;
   /* O `fill` da borda já pinta o miolo com a parte central da arte, então o

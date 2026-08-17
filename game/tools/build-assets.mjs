@@ -39,7 +39,7 @@ import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mj
 import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
 import { RECURSOS_SHEET, celulas as celulasDeRecurso } from './recursos.slices.mjs';
-import { INTERFACE_SHEET, PECAS } from './interface.slices.mjs';
+import { INTERFACE_SHEET, PECAS, PECAS_SOLTAS } from './interface.slices.mjs';
 
 /** O catálogo novo do §23. */
 const NOVOS_ITENS_SHEET = 'novos itens.png';
@@ -1459,5 +1459,18 @@ async function buildInterface(manifest) {
     manifest.interface[p.id] = { src: rel, w: p.w, h: p.h, ...(p.slice ? { slice: p.slice } : {}) };
   }
 
-  log(`   ${PECAS.length} peças de interface`);
+  // Peças que vieram em arquivo próprio.
+  let soltas = 0;
+  for (const p of PECAS_SOLTAS) {
+    const f = path.join(RAW, 'spaceships new', p.arquivo);
+    if (!existsSync(f)) { console.warn(`   ! ${p.arquivo} não encontrado`); continue; }
+    noteRead(f);
+    const raw = await toRaw(f);
+    const rel = `ui/${p.id}.png`;
+    await rawToSharp(raw).png({ compressionLevel: 9 }).toFile(await ensureFile(rel));
+    manifest.interface[p.id] = { src: rel, w: raw.width, h: raw.height, ...(p.slice ? { slice: p.slice } : {}) };
+    soltas++;
+  }
+
+  log(`   ${PECAS.length + soltas} peças de interface`);
 }

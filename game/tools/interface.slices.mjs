@@ -21,12 +21,7 @@ export const INTERFACE_SHEET = 'fabricação 2.png';
  * para `border-image-slice`. Só as peças que esticam precisam dela.
  */
 export const PECAS = [
-  {
-    id: 'moldura_modal', x: 24, y: 9, w: 620, h: 596,
-    slice: 74,
-    nota: 'Moldura do modal. Estica de 620 para até 1180 px, então a margem é '
-      + 'generosa: o canto ornamentado inteiro precisa caber dentro dela.',
-  },
+
   {
     id: 'placa_titulo', x: 737, y: 10, w: 746, h: 93,
     slice: 120,
@@ -67,5 +62,30 @@ export const PECAS = [
     id: 'botao_ativo', x: 808, y: 816, w: 399, h: 120,
     slice: 58,
     nota: 'Botão aceso.',
+  },
+];
+
+/**
+ * Peças que vieram em ARQUIVO PRÓPRIO, fora da chapa.
+ *
+ * A moldura do modal foi refeita separada e com muito mais detalhe que a da
+ * chapa, então não faz sentido forçá-la de volta para lá — o pipeline aceita as
+ * duas origens.
+ */
+export const PECAS_SOLTAS = [
+  {
+    id: 'moldura_modal', arquivo: 'moldura_modal.png',
+    /**
+     * Margem de 9-slice de 300 px, medida.
+     *
+     * O ornamento de canto — o nó circular e o colchete angulado — vai até
+     * cerca de 290 px. A margem precisa contê-lo INTEIRO: se cortar no meio, o
+     * pedaço que sobra entra na faixa que estica e o desenho se alonga.
+     *
+     * São 24% de cada lado, o que parece muito e não é: a caixa tem até 1180 px
+     * e os dois cantos somam 600, sobrando 580 para a faixa esticar.
+     */
+    slice: 300,
+    nota: 'Moldura do modal, versão detalhada.',
   },
 ];
