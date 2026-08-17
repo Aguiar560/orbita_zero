@@ -9,7 +9,7 @@ import {
 } from '@data/balance/capacidade';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
-import { MATERIAIS } from '@data/materiais';
+import { RECURSOS, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { RESISTIVEIS } from '@sim/types';
 
 /**
@@ -209,7 +209,7 @@ describe('o armazém guarda TIPOS, não unidades', () => {
   it('material já guardado sempre aceita mais, mesmo com o depósito cheio', () => {
     const sim = new Sim(createState(11));
     // Enche o depósito de tipos até o limite inicial.
-    const ids = MATERIAIS.map((m) => m.id).slice(0, sim.resourceSlots);
+    const ids = RECURSOS.map((m) => m.id).slice(0, sim.resourceSlots);
     for (const id of ids) expect(sim.guardarMaterial(id, 10)).toBe(10);
     expect(sim.materiaisGuardados).toBe(ids.length);
 
@@ -221,7 +221,7 @@ describe('o armazém guarda TIPOS, não unidades', () => {
     const sim = new Sim(createState(12));
     // Força o depósito a caber um tipo só.
     sim.state.armazem = {};
-    const todos = MATERIAIS.map((m) => m.id);
+    const todos = RECURSOS.map((m) => m.id);
     for (const id of todos.slice(0, sim.resourceSlots)) sim.guardarMaterial(id, 1);
 
     const excedente = todos[sim.resourceSlots];
@@ -235,32 +235,32 @@ describe('o armazém guarda TIPOS, não unidades', () => {
 
   it('gastar até o fim remove a chave em vez de deixá-la em zero', () => {
     const sim = new Sim(createState(13));
-    sim.guardarMaterial('liga_bruta', 10);
-    expect(sim.gastarMaterial('liga_bruta', 4)).toBe(true);
-    expect(sim.state.armazem.liga_bruta).toBe(6);
-    expect(sim.gastarMaterial('liga_bruta', 6)).toBe(true);
+    sim.guardarMaterial('ferrita', 10);
+    expect(sim.gastarMaterial('ferrita', 4)).toBe(true);
+    expect(sim.state.armazem.ferrita).toBe(6);
+    expect(sim.gastarMaterial('ferrita', 6)).toBe(true);
     // Chave zerada contaria como tipo guardado e comeria capacidade à toa.
-    expect('liga_bruta' in sim.state.armazem).toBe(false);
+    expect('ferrita' in sim.state.armazem).toBe(false);
     expect(sim.materiaisGuardados).toBe(0);
   });
 
   it('gastar mais do que se tem falha sem alterar nada', () => {
     const sim = new Sim(createState(14));
-    sim.guardarMaterial('liga_bruta', 3);
-    expect(sim.gastarMaterial('liga_bruta', 4)).toBe(false);
-    expect(sim.state.armazem.liga_bruta).toBe(3);
+    sim.guardarMaterial('ferrita', 3);
+    expect(sim.gastarMaterial('ferrita', 4)).toBe(false);
+    expect(sim.state.armazem.ferrita).toBe(3);
   });
 
   it('material fora do catálogo é recusado', () => {
     const sim = new Sim(createState(15));
-    expect(sim.guardarMaterial('material_inventado', 9)).toBe(0);
+    expect(sim.guardarMaterial('recurso_inventado', 9)).toBe(0);
   });
 
   /**
    * O elo entre o inventário apertado (§28) e o craft: uma peça que não serve
    * deixa de ser lixo e vira insumo.
    */
-  it('desmanchar rende material, e peça elemental rende essência', () => {
+  it('desmanchar rende minério, e mais quanto melhor a peça', () => {
     const sim = new Sim(createState(16));
     const rng = new Rng(2024);
     let peca = null;
@@ -272,19 +272,96 @@ describe('o armazém guarda TIPOS, não unidades', () => {
 
     sim.state.inventory = [peca!];
     sim.salvage(peca!.uid);
-    expect(sim.state.armazem.liga_bruta ?? 0).toBeGreaterThan(0);
-    expect(sim.state.armazem.essencia_gelo ?? 0).toBeGreaterThan(0);
+    expect(sim.state.armazem.ferrita ?? 0).toBeGreaterThan(0);
+    // Raridade 3 ou acima também rende titânio — desmanchar um Épico tem de
+    // valer mais que desmanchar dez Comuns.
+    expect(sim.state.armazem.titanio ?? 0).toBeGreaterThan(0);
+  });
+
+});
+
+/**
+ * O catálogo de 70 recursos (§10, §29).
+ *
+ * O que estes testes protegem é a ligação entre a FOLHA e os dados: o ícone é
+ * casado por índice, então o catálogo e o recorte precisam ter o mesmo tamanho
+ * e a mesma ordem. Uma fileira nova na folha sem linha nova aqui deixaria dez
+ * ícones órfãos, e o contrário daria dez recursos invisíveis.
+ */
+describe('os 70 recursos da folha', () => {
+  it('são 70, dez por fileira', () => {
+    expect(RECURSOS).toHaveLength(70);
+    for (let l = 0; l < 7; l++) {
+      expect(RECURSOS.filter((r) => Math.floor(r.indice / 10) === l)).toHaveLength(10);
+    }
+  });
+
+  it('os índices são contíguos e sem repetição', () => {
+    const vistos = new Set(RECURSOS.map((r) => r.indice));
+    expect(vistos.size).toBe(70);
+    for (let i = 0; i < 70; i++) expect(vistos.has(i), `índice ${i}`).toBe(true);
+  });
+
+  it('os ids são únicos e não-visuais', () => {
+    const ids = new Set(RECURSOS.map((r) => r.id));
+    expect(ids.size).toBe(70);
+    for (const r of RECURSOS) expect(r.id, r.nome).toMatch(/^[a-z0-9_]+$/);
+  });
+
+  it('nenhum recurso é inalcançável', () => {
+    for (const r of RECURSOS) expect(r.origens.length, r.id).toBeGreaterThan(0);
   });
 
   /**
-   * Os ids de essência são tabelados e não interpolados: "químico" vira
-   * `essencia_quimica` e "cósmico" vira `essencia_cosmica` — o gênero muda a
-   * palavra, e `essencia_${elemento}` daria ids inexistentes.
+   * `torre` e `missao` não têm sistema ainda — são da Fase 5. Estão declarados
+   * agora porque o pedido é explícito em já deixar guardado: quando a torre
+   * existir, ligá-la é ler esta lista, não reclassificar setenta recursos.
    */
-  it('existe uma essência para cada elemento resistível, com id válido', () => {
-    for (const el of RESISTIVEIS) {
-      const achou = MATERIAIS.some((m) => m.categoria === 'essencia' && m.origem.toLowerCase().includes(el === 'quimico' ? 'químic' : el === 'cosmico' ? 'cósmic' : el));
-      expect(achou, el).toBe(true);
+  it('as origens futuras já estão declaradas', () => {
+    const todas = new Set(RECURSOS.flatMap((r) => r.origens));
+    for (const o of ['planeta', 'chefe', 'torre', 'missao', 'evento', 'desmanche']) {
+      expect(todas.has(o as never), o).toBe(true);
+    }
+  });
+});
+
+describe('quem solta o quê', () => {
+  /**
+   * Determinístico é o ponto: o jogador aprende onde um recurso cai e VOLTA lá.
+   * Com sorteio a cada visita, farmar um recurso específico seria impossível.
+   */
+  it('o mesmo setor dá sempre os mesmos três recursos', () => {
+    for (const setor of [1, 30, 90, 250]) {
+      const a = recursosDoPlaneta(setor).map((r) => r.id);
+      const b = recursosDoPlaneta(setor).map((r) => r.id);
+      expect(a).toEqual(b);
+      expect(a.length).toBeGreaterThan(0);
+      expect(a.length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('setores diferentes dão conjuntos diferentes', () => {
+    const conjuntos = [1, 30, 90, 250].map((s) => recursosDoPlaneta(s).map((r) => r.id).join(','));
+    expect(new Set(conjuntos).size).toBeGreaterThan(1);
+  });
+
+  it('as famílias melhores só abrem mais fundo no jogo', () => {
+    const cedo = new Set(recursosDoPlaneta(5).map((r) => r.familia));
+    expect(cedo).toEqual(new Set(['minerio']));
+    const tarde = new Set(recursosDoPlaneta(250).map((r) => r.familia));
+    expect(tarde.size).toBeGreaterThanOrEqual(1);
+  });
+
+  it('cada chefe tem o SEU recurso, sempre o mesmo', () => {
+    expect(recursoDoChefe('nebulon')?.id).toBe(recursoDoChefe('nebulon')?.id);
+    expect(recursoDoChefe('nebulon')).toBeTruthy();
+  });
+
+  it('chefe nunca solta recurso que já cai em planeta comum', () => {
+    for (const id of ['nebulon', 'devorador', 'chefe_futuro_qualquer']) {
+      const r = recursoDoChefe(id);
+      expect(r, id).toBeTruthy();
+      expect(r!.origens).toContain('chefe');
     }
   });
 });

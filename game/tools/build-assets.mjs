@@ -38,6 +38,7 @@ import {
 import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
 import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
+import { RECURSOS_SHEET, celulas as celulasDeRecurso } from './recursos.slices.mjs';
 
 /** O catálogo novo do §23. */
 const NOVOS_ITENS_SHEET = 'novos itens.png';
@@ -95,6 +96,7 @@ async function main() {
   await buildSprites(manifest);
   await buildTiros(manifest);
   await buildNovosItens(manifest);
+  await buildRecursos(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
   await buildDroneAtlas(manifest);
@@ -1176,4 +1178,44 @@ async function buildNovosItens(manifest) {
   if (vazias) console.warn(`   ! ${vazias} células vazias no catálogo novo`);
   log(`   ${sprites.length} ícones de item`);
   await writeAtlas('itens-novos', sprites, manifest, 2048);
+}
+
+/**
+ * `Recursos.png` — 70 recursos numa grade 10 × 7.
+ *
+ * Os ids saem de `data/recursos.ts` e são casados por ÍNDICE com a ordem de
+ * leitura da folha. Casar por índice e não por nome é o que permite renomear um
+ * recurso sem reexportar arte — e um teste confere que a contagem bate, para o
+ * dia em que a folha ganhar uma fileira.
+ */
+async function buildRecursos(manifest) {
+  const file = path.join(RAW, RECURSOS_SHEET);
+  if (!existsSync(file)) {
+    console.warn(`   ! ${RECURSOS_SHEET} não encontrado — pulando recursos`);
+    return;
+  }
+
+  noteRead(file);
+  const { data: bruto, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+  log(`Recursos: Recursos.png (${info.width}x${info.height})`);
+
+  const sprites = [];
+  let vazias = 0;
+
+  for (const c of celulasDeRecurso()) {
+    // Mesma extração das outras folhas de catálogo: a placa de cada célula é
+    // tingida, e `alphaOverDark` a deixaria opaca.
+    const região = extrairCelula(bruto, info, c.x, c.y, c.w, c.h, { margem: 40, piso: 0.3 });
+    const trimmed = trimAlpha(região, 6);
+    if (!trimmed) { vazias++; continue; }
+    sprites.push({
+      id: `recurso/${c.indice}`,
+      raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
+      sw: c.w, sh: c.h,
+    });
+  }
+
+  if (vazias) console.warn(`   ! ${vazias} células de recurso vazias`);
+  log(`   ${sprites.length} ícones de recurso`);
+  await writeAtlas('recursos', sprites, manifest, 2048);
 }

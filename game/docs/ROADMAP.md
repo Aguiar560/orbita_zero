@@ -401,7 +401,7 @@ como ser dimensionado.
 | 3.5 | ✅ Drop por REGRA — casa por padrão, aceita conteúdo futuro sem cadastro |
 | 3.6 | ✅ Upgrades Gerais como SLOT — décima categoria, com implícito multiplicativo |
 | 3.7 | ✅ Carga 15 → 70 por conquista, filtro por elemento e favoritos, cinco ordens |
-| 3.8 | ✅ Armazém de materiais, separado do inventário e da moeda |
+| 3.8 | ✅ Armazém, e os 70 recursos de `Recursos.png` com origem por planeta, chefe, torre e missão |
 
 ---
 

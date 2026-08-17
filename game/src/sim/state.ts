@@ -3,7 +3,7 @@ import { BIOMES } from '@data/biomes';
 import type { GameState } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
-import { MATERIAL_POR_ID } from '@data/materiais';
+import { RECURSO_POR_ID } from '@data/recursos';
 
 export const SAVE_KEY = 'orbita-zero:save';
 /**
@@ -133,7 +133,7 @@ export function migrate(raw: unknown): GameState | null {
   // Material que saiu do catálogo é descartado, não mantido como chave órfã: o
   // painel não saberia desenhá-lo e a capacidade contaria um tipo fantasma.
   state.armazem = Object.fromEntries(
-    Object.entries(state.armazem ?? {}).filter(([id, n]) => MATERIAL_POR_ID.has(id) && n > 0),
+    Object.entries(state.armazem ?? {}).filter(([id, n]) => RECURSO_POR_ID.has(id) && n > 0),
   );
   delete (state as unknown as Record<string, unknown>).inventorySize;
 

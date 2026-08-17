@@ -3,7 +3,7 @@ import { bus, toast } from '@app/Bus';
 import { getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
-import { MATERIAL_POR_ID } from '@data/materiais';
+import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 
 /**
  * Sufixo do id de essência por elemento.
@@ -12,9 +12,15 @@ import { MATERIAL_POR_ID } from '@data/materiais';
  * "cósmico" vira `essencia_cosmica` — o gênero muda a palavra, e um
  * `essencia_${elemento}` daria ids que não existem no catálogo.
  */
-const ESSENCIA: Record<string, string> = {
-  fogo: 'fogo', gelo: 'gelo', raio: 'raio', quimico: 'quimica', cosmico: 'cosmica',
-};
+/**
+ * Teto de uma pilha.
+ *
+ * Único para todos os recursos: o Armazém limita quantos TIPOS se acompanha
+ * (§28), não a quantidade de cada um, então este número existe só para o
+ * contador não virar notação científica na tela.
+ */
+const PILHA_MAX = 999_999_999;
+
 import { galaxyOfSector } from '@data/galaxies';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
@@ -387,8 +393,10 @@ export class Sim {
       // de novo.
       const g = galaxyOfSector(e.sector) + 1;
       if (g === 1 || g === 5 || g === 10) this.concederCarga(`chefe_g${g}`);
-      // Fragmento de chefe: o gargalo previsto para os craft de fim de jogo.
-      this.guardarMaterial('fragmento_de_chefe', 1);
+      // Cada chefe solta o SEU recurso, sempre o mesmo: é o que o transforma em
+      // destino de farm em vez de obstáculo.
+      const rec = e.boss && recursoDoChefe(e.boss.id);
+      if (rec) this.guardarMaterial(rec.id, 1 + Math.floor(this.stats.sorte));
       const first = !this.state.codex.includes(e.boss.id);
       if (first) {
         this.state.codex.push(e.boss.id);
@@ -416,6 +424,12 @@ export class Sim {
     if (run.wave > WAVES_PER_SECTOR) {
       // O setor caiu: só agora a carga da incursão vira saldo.
       this.bankCarga();
+      // Cada planeta solta os SEUS três recursos (§10). Entram ao fechar o
+      // setor, no mesmo momento em que a carga é depositada: recurso de planeta
+      // é o pagamento por ter limpado o lugar, não por ter matado um inimigo.
+      for (const r of recursosDoPlaneta(run.sector)) {
+        this.guardarMaterial(r.id, 3 + Math.floor(this.stats.sorte * 2));
+      }
       run.wave = 1;
       run.cleared++;
 
@@ -683,13 +697,13 @@ export class Sim {
    * é novo, para quem chamou poder avisar em vez de perder o material calado.
    */
   guardarMaterial(id: string, quantidade: number): number {
-    const def = MATERIAL_POR_ID.get(id);
+    const def = RECURSO_POR_ID.get(id);
     if (!def || !(quantidade > 0)) return 0;
 
     const atual = this.state.armazem[id] ?? 0;
     if (atual === 0 && this.materiaisGuardados >= this.resourceSlots) return 0;
 
-    const cabe = Math.max(0, Math.min(quantidade, def.pilhaMax - atual));
+    const cabe = Math.max(0, Math.min(quantidade, PILHA_MAX - atual));
     if (cabe <= 0) return 0;
     this.state.armazem[id] = atual + cabe;
     this.touch();
@@ -807,13 +821,9 @@ export class Sim {
     // A quantidade acompanha nível e raridade — desmanchar um Divino de nível
     // alto tem de valer mais que dez Comuns de nível baixo.
     const base = Math.max(1, Math.round(item.ilvl * 0.4 * (1 + item.rarity * 0.5)));
-    this.guardarMaterial('liga_bruta', base);
-    if (item.rarity >= 2) this.guardarMaterial('placa_composta', Math.max(1, Math.round(base * 0.25)));
-    // A essência sai do ELEMENTO da peça: quem quiser essência de gelo desmancha
-    // peça de gelo, o que dá destino ao equipamento elemental que não serve.
-    if (item.element && item.element !== 'padrao' && item.rarity >= 3) {
-      this.guardarMaterial(`essencia_${ESSENCIA[item.element]}`, 1);
-    }
+    this.guardarMaterial('ferrita', base);
+    if (item.rarity >= 2) this.guardarMaterial('titanio', Math.max(1, Math.round(base * 0.25)));
+    if (item.rarity >= 4) this.guardarMaterial('iridio', Math.max(1, Math.round(base * 0.08)));
   }
 
   /** Desmancha tudo abaixo de uma raridade, exceto favoritos. Devolve o total. */

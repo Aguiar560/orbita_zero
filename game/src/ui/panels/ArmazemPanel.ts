@@ -1,8 +1,8 @@
 import { fmt } from '@core/format';
 import { rarityInfo } from '@data/rarity';
-import { CATEGORIAS_ORDENADAS, CATEGORIA_LABEL, MATERIAIS } from '@data/materiais';
+import { FAMILIAS_ORDENADAS, FAMILIA_LABEL, RECURSOS, iconeDeRecurso } from '@data/recursos';
 import type { Sim } from '@sim/index';
-import { h } from '../dom';
+import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
 
 /**
@@ -32,23 +32,23 @@ export class ArmazemPanel implements Panel {
     const teto = sim.resourceSlots;
     const cheio = guardados >= teto;
 
-    const grupos = CATEGORIAS_ORDENADAS.map((cat) => {
-      const linhas = MATERIAIS
-        .filter((m) => m.categoria === cat)
+    const grupos = FAMILIAS_ORDENADAS.map((cat) => {
+      const linhas = RECURSOS
+        .filter((m) => m.familia === cat)
         .filter((m) => !this.soPossuidos || (armazem[m.id] ?? 0) > 0)
         .sort((a, b) => b.raridade - a.raridade || a.nome.localeCompare(b.nome));
       if (!linhas.length) return null;
 
       return h('.armazem-grupo', {},
-        h('h3.section', { text: CATEGORIA_LABEL[cat] }),
+        h('h3.section', { text: FAMILIA_LABEL[cat] }),
         ...linhas.map((m) => {
           const n = armazem[m.id] ?? 0;
           const cor = rarityInfo(m.raridade).color;
-          return h(`.armazem-linha${n > 0 ? '' : '.vazia'}`, { title: m.origem },
-            h('span.armazem-gema', { style: { background: cor } }),
+          return h(`.armazem-linha${n > 0 ? '' : '.vazia'}`, { title: m.origens.join(', ') },
+            spriteIcon(iconeDeRecurso(m), 26),
             h('.armazem-texto', {},
               h('strong', { text: m.nome, style: { color: n > 0 ? cor : 'var(--muted)' } }),
-              h('span.muted.tiny', { text: m.origem }),
+              h('span.muted.tiny', { text: m.origens.join(' · ') }),
             ),
             h('span.armazem-qtd', {
               text: n > 0 ? fmt(n) : '—',
