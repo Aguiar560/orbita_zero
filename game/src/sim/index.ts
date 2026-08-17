@@ -463,7 +463,20 @@ export class Sim {
       this.state.universe.bestSector = Math.max(this.state.universe.bestSector, proximo);
       this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
 
-      if (!this.state.settings.repetirSetor) run.sector = proximo;
+      /**
+       * Fora do jogo, a fase NUNCA avança.
+       *
+       * O modo ocioso é o jogador delegando o combate à IA numa fase que ele
+       * escolheu e sabe que a nave aguenta. Avançar sozinho tiraria dele
+       * justamente a decisão que a trava de fase existe para dar — e o levaria
+       * para um setor que ele não escolheu, possivelmente um que a nave não
+       * vence, onde ficaria morrendo sem ninguém ver.
+       *
+       * A liberação do setor seguinte acontece do mesmo jeito (`bestSector`
+       * acima): o acesso é conquistado, só o ponteiro é que fica parado. Quando
+       * o jogador voltar, ele escolhe se avança.
+       */
+      if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
       run.falhasNoSetor = 0;
 
       bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
@@ -550,9 +563,6 @@ export class Sim {
     const liquido = Math.max(0, this.incomingDps - s.regen);
     run.vidaFracao = Math.min(1, (run.vidaFracao ?? 1) - (liquido / efetiva) * dt);
 
-    // Antes de morrer de novo no mesmo lugar, o jogador simulado vai farmar.
-    if (run.elapsed > 1 && this.decidirFarmar()) return;
-
     if (run.restam <= 0) {
       this.completeEncounter(true);
       // O escudo volta entre encontros — é o que `SHIELD_LOCK` faz na cena
@@ -567,52 +577,6 @@ export class Sim {
     if ((run.vidaFracao ?? 1) <= 0) this.failEncounter();
   }
 
-  /**
-   * O jogador abstrato decide FARMAR quando o encontro é invencível.
-   *
-   * Isto não é uma mecânica nova de jogo — ao vivo não existe recuo automático,
-   * e essa foi uma decisão explícita: escolher onde jogar é do jogador. É que o
-   * caminho abstrato SIMULA um jogador, e um jogador que bate num chefe
-   * impossível vai farmar o setor anterior. Sem modelar essa escolha, a
-   * simulação faz a única coisa que um humano nunca faria: repetir a mesma
-   * derrota para sempre.
-   *
-   * Medido antes: preso no chefe do setor 10 por seis horas, 369 mortes, com a
-   * janela de sobrevivência em 19 s contra 49 s necessários para derrubá-lo. As
-   * ondas comuns do mesmo setor levavam 7 s e davam 120 s de folga.
-   *
-   * O limiar é generoso (1,5×) de propósito: perto do limite o jogador tenta, e
-   * é dessas tentativas apertadas que vem a tensão do chefe.
-   */
-  private decidirFarmar(): boolean {
-    const run = this.state.run;
-    if (run.sector <= 1) return false;
-
-    /**
-     * Dois gatilhos, porque um jogador desiste por dois motivos diferentes.
-     *
-     * O primeiro é a leitura: quando o encontro é claramente impossível — leva
-     * mais que o dobro do que se aguenta —, nem se tenta.
-     *
-     * O segundo é a experiência: perto do limite se tenta, e é dessas
-     * tentativas apertadas que vem a tensão do chefe. Mas depois de apanhar
-     * três vezes no mesmo lugar, vai-se farmar. Sem este segundo gatilho o
-     * simulador ficava preso numa razão de 1,37 — abaixo do limiar de leitura —
-     * e morria 179 vezes insistindo.
-     */
-    const impossivel = this.clearTime > this.survivalWindow * 2;
-    const teimosia = (run.falhasNoSetor ?? 0) >= 3;
-    if (!impossivel && !teimosia) return false;
-
-    // Volta o suficiente para o farm valer: um setor só continuaria perto
-    // demais do que já não dá conta.
-    run.sector = Math.max(1, run.sector - 3);
-    run.wave = 1;
-    run.vidaFracao = 1;
-    run.falhasNoSetor = 0;
-    this.refreshEncounter();
-    return true;
-  }
 
   // ── patente de comando e matriz de passivas ───────────────────────────────
 
