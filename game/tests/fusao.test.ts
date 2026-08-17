@@ -114,6 +114,14 @@ describe('fundir de verdade', () => {
    */
   it('falhar consome os itens e o custo', () => {
     const sim = new Sim(createState(2));
+    /**
+     * Semente FIXA no rng do `Sim`.
+     *
+     * Ele nasce sem semente — o jogo real quer imprevisibilidade —, e sem isto
+     * o teste dependia de sorte: ele falhou uma vez e passou na seguinte. Um
+     * teste instável é pior que nenhum, porque ensina a ignorar vermelho.
+     */
+    (sim as unknown as { rng: Rng }).rng = new Rng(20260817);
     abastecer(sim, 0);
     const receita = receitaPara(0)!;
     const nucleosAntes = sim.state.resources.nucleo;
@@ -128,7 +136,10 @@ describe('fundir de verdade', () => {
       }
     }
     expect(houveFalha, 'nenhuma falha em 60 tentativas com 85% de chance').toBe(true);
-    expect(sim.state.resources.nucleo).toBeLessThan(nucleosAntes - receita.nucleos);
+    // No MÁXIMO o que sobrou: cada tentativa cobra uma receita, e a falha pode
+    // vir logo na primeira — foi o que a semente fixa expôs. A asserção pedia
+    // gasto ESTRITAMENTE maior que uma receita e quebrava nesse caso.
+    expect(sim.state.resources.nucleo).toBeLessThanOrEqual(nucleosAntes - receita.nucleos);
   });
 
   it('recusa seleção com raridades misturadas', () => {

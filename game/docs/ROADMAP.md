@@ -534,11 +534,23 @@ Favorito nunca entra. Fundir é destrutivo, e a marca existe para proteger disso
 
 O sistema se chama **Fabricação** (§25 pede um nome que não seja "Forja").
 
-A seleção no painel é AUTOMÁTICA, e é a decisão de interface que o define: num
-jogo ocioso, "fundir dez Comuns" tem de ser um clique. Obrigar a marcar dez
-peças uma a uma transformaria a mecânica que existe para limpar o inventário
-numa tarefa mais tediosa que limpá-lo à mão. O painel escolhe as PIORES peças
-elegíveis — menor nível primeiro —, e favorito e equipado nunca entram.
+O painel É a máquina, não uma lista dela. Um núcleo hexagonal com as peças de
+entrada num ANEL em volta, a chance de sucesso como arco fechando esse anel, e o
+resultado no centro. Cada encaixe acende quando há peça para ele, então "faltam
+três" é uma coisa que se VÊ, sem ler número.
+
+A escolha do que fabricar é uma ESCADA, uma etapa por raridade. A raridade é uma
+progressão, e uma escada mostra isso; seis cartões empilhados, não.
+
+Tudo é SVG e CSS. Um canvas daria mais liberdade e custaria laço de animação
+próprio, sincronia com o passo fixo do jogo e caminho de descarte — para um
+painel que fica parado a maior parte do tempo.
+
+A seleção de peças é AUTOMÁTICA: num jogo ocioso, "fundir dez Comuns" tem de ser
+um clique. Obrigar a marcar dez peças uma a uma transformaria a mecânica que
+existe para limpar o inventário numa tarefa mais tediosa que limpá-lo à mão. O
+painel escolhe as PIORES elegíveis — menor nível primeiro —, e favorito e
+equipado nunca entram.
 
 Verificado no jogo: dez Comuns viram uma peça, e a ferrita desce de 5.000 para
 4.810.
