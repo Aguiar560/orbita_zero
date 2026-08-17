@@ -453,8 +453,45 @@ A meta do §2 é ~10 h por galáxia. A galáxia 1 vem rápida demais (1,2 h) e a
 curva ACELERA na direção certa — 5,3 h, depois 10 h, depois 8,5 h. O trecho
 inicial é que está curto.
 
-Falta: uma corrida AO VIVO nova para confirmar que o simulador agora bate com o
-jogo, antes de mexer nas metas.
+### A corrida ao vivo, e o que ela achou
+
+Medida com a MESMA semente do simulador (777), duas horas de jogo:
+
+| | ao vivo | abstrato |
+|---|---|---|
+| setor em 2 h | **5** | 10 |
+| mortes | 31 | ~45 |
+| nível | 6 | 6 |
+| itens | 44 | ~368 |
+
+O simulador continua ~2× à frente em setor e ~8× em item. **Mas o achado
+importante não é a diferença: é que o jogo AO VIVO empaca do mesmo jeito.**
+Entre 90 e 120 minutos ele não saiu do setor 5 — as mortes foram de 20 para 31 e
+o setor ficou parado.
+
+É a consequência direta de duas decisões que se cruzam, e as duas foram
+deliberadas:
+
+- o chefe exige farm dos setores anteriores (1B.4);
+- não existe recuo automático — escolher onde jogar é do jogador.
+
+Juntas, elas significam que **o laço ocioso, deixado sozinho, trava**. Quem
+destrava é o humano: clicando numa fase anterior no mapa, ou ligando a trava de
+fase para farmar. O simulador precisou aprender a fazer isso justamente porque
+um humano faz.
+
+Isso é uma pergunta de design, não um bug, e não é minha para responder: um
+idle que exige atenção a cada parede é uma escolha legítima — mas é uma escolha.
+As saídas possíveis, sem mexer no que já foi decidido:
+
+1. Deixar como está. Bater na parede é o sinal de "vá farmar", e a trava de
+   fase já existe para isso.
+2. A trava de fase LIGAR SOZINHA depois de N derrotas, sem mover o jogador —
+   ele continua onde está, mas para de perder tempo repetindo o chefe.
+3. Um aviso na HUD quando o encontro estiver claramente fora de alcance,
+   apontando para o mapa.
+
+Só depois disso vale mexer nas metas de tempo do §2.
 
 ---
 
@@ -473,7 +510,8 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 
 | O quê | Evidência | Onde resolve |
 |---|---|---|
-| **A galáxia 1 vem rápida demais** | 1,2 h contra a meta de ~10 h; as seguintes vêm em 5,3 h, 10 h e 8,5 h | Fase 4 — depois de conferir o simulador contra uma corrida ao vivo |
+| **A galáxia 1 vem rápida demais no simulador** | 1,2 h contra a meta de ~10 h; as seguintes em 5,3 h, 10 h e 8,5 h. Ao vivo é bem mais lento: setor 5 em 2 h | Fase 4 — o simulador ainda corre ~2× à frente |
+| **O laço ocioso trava sozinho na parede do chefe** | ao vivo, setor 5 dos 90 aos 120 min, mortes de 20 para 31. Cruzamento de "chefe exige farm" (1B.4) com "sem recuo automático" | **decisão de design pendente** — três saídas listadas na Fase 4 |
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
 | **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
 | **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |
