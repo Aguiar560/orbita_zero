@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { XP_PERDIDO, SUCATA_PERDIDA, aplicarPerdaDeXp, cobrarMorte } from '@sim/morte';
-import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { WAVES_PER_SECTOR, curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 
 /**
  * A punição por morrer.
@@ -170,5 +170,54 @@ describe('níveis de personagem e de nave (§17)', () => {
       expect(curvaXpPersonagem(n + 1)).toBeGreaterThan(curvaXpPersonagem(n));
       expect(curvaXpNave(n + 1)).toBeGreaterThan(curvaXpNave(n));
     }
+  });
+});
+
+/**
+ * A trava de fase (§1B.4).
+ *
+ * Farmar é parte do desenho — o chefe é dimensionado para quem já voltou atrás
+ * atrás de item e de nível. A trava é o que torna isso viável num jogo ocioso.
+ */
+describe('repetir a fase em vez de avançar', () => {
+  const noFimDoSetor = (repetir: boolean) => {
+    const sim = new Sim(createState(21));
+    sim.state.settings.repetirSetor = repetir;
+    sim.jumpSector(8);
+    sim.state.run.wave = WAVES_PER_SECTOR + 1;
+    return sim;
+  };
+
+  it('desligada, a incursão segue para a fase seguinte', () => {
+    const sim = noFimDoSetor(false);
+    sim.completeEncounter();
+    expect(sim.state.run.sector).toBe(9);
+    expect(sim.state.run.wave).toBe(1);
+  });
+
+  it('ligada, a incursão fica onde está e refaz da onda 1', () => {
+    const sim = noFimDoSetor(true);
+    sim.completeEncounter();
+    expect(sim.state.run.sector).toBe(8);
+    expect(sim.state.run.wave).toBe(1);
+  });
+
+  /**
+   * O ponto delicado: travar não pode custar o acesso conquistado, senão quem
+   * farma antes do chefe perde o direito de enfrentá-lo.
+   */
+  it('ligada, a fase seguinte libera do mesmo jeito', () => {
+    const sim = noFimDoSetor(true);
+    sim.completeEncounter();
+    expect(sim.state.universe.bestSector).toBeGreaterThanOrEqual(9);
+  });
+
+  it('ligada, a recompensa da incursão é depositada normalmente', () => {
+    const sim = noFimDoSetor(true);
+    sim.grantCarga('sucata', 500);
+    const antes = sim.state.resources.sucata;
+    sim.completeEncounter();
+    expect(sim.state.resources.sucata).toBeGreaterThan(antes);
+    expect(sim.state.run.carga.sucata).toBe(0);
   });
 });

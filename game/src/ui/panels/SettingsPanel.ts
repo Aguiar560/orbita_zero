@@ -17,6 +17,7 @@ export class SettingsPanel implements Panel {
     return h('.panel-body', {},
       h('h3.section', { text: 'Automação' }),
       toggle('Equipar automaticamente o que for melhor', s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); }),
+      toggle('Repetir a fase em vez de avançar', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); }),
       h('.setting', {},
         h('.setting-text', {},
           h('strong', { text: 'Desmanchar automaticamente abaixo de' }),

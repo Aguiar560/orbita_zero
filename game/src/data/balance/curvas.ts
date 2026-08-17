@@ -182,8 +182,22 @@ export const RECOMPENSA_FRACAO = 0.0033;
  * elite vale duas e pouco. `BossDef.hp` continua existindo para diferenciar um
  * chefe do outro, mas numa faixa estreita de identidade (1,0 a 2,0).
  */
-export const CHEFE_ONDAS = 3.5;
+export const CHEFE_ONDAS = 5;
 export const ELITE_ONDAS = 2.2;
+
+/**
+ * Quanto o chefe pressupõe que o jogador esteja ACIMA da curva do setor.
+ *
+ * É o número que transforma o chefe em marco em vez de sexta onda. Todo o resto
+ * do jogo é dimensionado para o jogador que acabou de chegar ao setor; o chefe é
+ * dimensionado para quem já voltou aos setores anteriores atrás de item e de
+ * nível. Quem tenta na chegada apanha, e apanhar aqui é a informação de que
+ * falta preparo — não um bug de balanceamento.
+ *
+ * Multiplica vida E dano: só vida faria uma luta longa, só dano faria uma
+ * loteria. Juntos, exigem equipamento para aguentar e para derrubar.
+ */
+export const CHEFE_EXIGENCIA = 1.6;
 
 /**
  * Quanto um chefe fica mais duro a cada volta na lista.

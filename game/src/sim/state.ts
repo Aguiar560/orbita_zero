@@ -51,6 +51,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
       pilot: 'equilibrado',
       testMode: false,
       speed: 1,
+      repetirSetor: false,
       autoEquip: true,
       autoSalvage: 0,
       showDamageNumbers: true,

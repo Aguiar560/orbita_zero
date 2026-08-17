@@ -394,11 +394,18 @@ export class Sim {
     if (run.wave > WAVES_PER_SECTOR) {
       // O setor caiu: só agora a carga da incursão vira saldo.
       this.bankCarga();
-      run.sector++;
       run.wave = 1;
       run.cleared++;
-      this.state.universe.bestSector = Math.max(this.state.universe.bestSector, run.sector);
+
+      // O setor seguinte libera de qualquer forma: quem venceu conquistou o
+      // acesso, mesmo que escolha ficar. É `bestSector` que abre a fase no mapa,
+      // não a posição da incursão.
+      const proximo = run.sector + 1;
+      this.state.universe.bestSector = Math.max(this.state.universe.bestSector, proximo);
       this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
+
+      if (!this.state.settings.repetirSetor) run.sector = proximo;
+
       bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
     } else {
       run.wave++;

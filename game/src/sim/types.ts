@@ -248,6 +248,19 @@ export interface Settings {
   testMode: boolean;
   /** Multiplicador de velocidade do jogo (1..8), só com o modo de teste. */
   speed: number;
+  /**
+   * Ficar no setor atual em vez de avançar ao vencê-lo.
+   *
+   * Farmar é parte do desenho: o chefe é dimensionado para quem já voltou atrás
+   * de item e de nível (`CHEFE_EXIGENCIA`). Sem esta trava, farmar exigiria
+   * voltar ao mapa e reclicar a fase a cada volta — o jogo é ocioso, então
+   * repetir de propósito precisa ser tão automático quanto avançar.
+   *
+   * Não afeta o que a vitória rende: recompensa, XP, drops e a liberação do
+   * setor seguinte acontecem igual. O que ela segura é só o ponteiro da
+   * incursão.
+   */
+  repetirSetor: boolean;
   /** Auto-equipar quando o item novo for melhor pela pontuação. */
   autoEquip: boolean;
   /** Auto-descartar itens abaixo desta raridade. */

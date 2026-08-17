@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1B.4 — chefes que exigem farm. Depois dela, a Fase 2 (combate elemental).
+**Próxima:** Fase 1.6 — tiers de afixo T1–T10. Depois, 1.7 (orçamento de poder) e a Fase 2 (combate elemental).
 
 
 
@@ -153,12 +153,15 @@ recuou entre os minutos 100 e 120 — é o imposto da morte aparecendo.
 > porque o terreno mudou: com progresso por abate e itens acumulando, o jogador
 > recupera o setor mais rápido do que a morte o atrasa.
 
-Pendências de calibragem, não de mecânica:
+**Nível 6 em duas horas é o desenho, não um problema.** Confirmado em 16/08/2026:
+a progressão é para ser lenta, e o nível 300 é para custar **semanas de jogo**.
+Isso reclassifica a pendência que estava anotada aqui — o ritmo lento deixa de
+ser dívida e vira critério de aceite: qualquer mudança que faça o nível subir
+rápido está errada, mesmo que pareça mais gostosa nas primeiras horas.
 
-- Nível 6 de personagem em duas horas. Para 300 níveis, a curva de XP precisa de
-  simulação contra as metas do §2 — os expoentes atuais são primeira passada.
-- O caminho abstrato (janela fechada) ainda não modela morte, então continua
-  rendendo mais que jogar.
+Pendência de calibragem que continua de pé: o caminho abstrato (janela fechada)
+ainda não modela morte, então render mais que jogar ficou pior agora que morrer
+custa caro.
 
 ### 1B.3 — o pedido original
 
@@ -187,11 +190,33 @@ Confirmado em 16/08/2026: **15%** nas duas quedas, inclusive após perder nível
 > aquisição de itens estiverem calibradas para o jogador **vencer** o setor na
 > maioria das tentativas. Precisa de simulação antes de fechar.
 
-### 1B.4 — Chefes de verdade
+### 1B.4 — Chefes de verdade ✅
 
 O chefe deve exigir farm dos setores anteriores — item e nível — em vez de cair
-na primeira tentativa. Hoje ele vale 3,5 ondas comuns (`CHEFE_ONDAS`), o que é
-pouco para um marco de galáxia.
+na primeira tentativa. Valia 3,5 ondas comuns (`CHEFE_ONDAS`), pouco para um
+marco de galáxia.
+
+| O quê | Onde |
+|---|---|
+| `CHEFE_ONDAS` 3,5 → 5 | `data/balance/curvas.ts` |
+| `CHEFE_EXIGENCIA` = 1,6 — multiplica vida **e** dano do chefe | `data/balance/curvas.ts` |
+| Trava de fase: `settings.repetirSetor` | `sim/types.ts`, `sim/index.ts` |
+| Botão da trava no mapa de fases e nos ajustes | `ui/panels/GalaxyPanel.ts`, `SettingsPanel.ts` |
+
+`CHEFE_EXIGENCIA` multiplica os dois eixos de propósito: só vida faria uma luta
+longa, só dano faria uma loteria. Juntos, exigem equipamento para aguentar e
+para derrubar.
+
+**A trava foi o que faltava para o pedido ser honesto.** Medindo uma corrida do
+zero, o jogador empacou no setor 10 — 62 mortes, dps caindo de 420 para 398 em
+dez minutos. Travar no chefe e voltar a farmar é o desenho pretendido, mas num
+jogo ocioso quem joga é o laço: sem a trava, farmar exigiria voltar ao mapa e
+reclicar a fase a cada volta. Ligada, a incursão refaz a mesma fase ao vencê-la.
+O que a vitória rende não muda — recompensa, XP, drops e a liberação do setor
+seguinte continuam iguais; ela segura só o ponteiro da incursão.
+
+Decidido junto: a morte **não** regride o setor sozinha, e não existe recuo
+automático. Escolher onde jogar é do jogador.
 
 ### 1B.5 — Aba em segundo plano não é ausência ✅
 

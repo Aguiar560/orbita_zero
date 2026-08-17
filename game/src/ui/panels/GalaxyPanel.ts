@@ -135,6 +135,23 @@ export class GalaxyPanel implements Panel {
         return cell;
       })),
 
+      // ── travar a fase ─────────────────────────────────────────────────────
+      // Fica aqui, e não só nos ajustes, porque é a mesma decisão que o mapa
+      // resolve: onde farmar. O chefe é feito para exigir voltar atrás, e sem
+      // esta trava voltar atrás custaria reclicar a fase a cada volta.
+      h(`button.mini.trava-setor${sim.state.settings.repetirSetor ? '.ativa' : ''}`, {
+        text: sim.state.settings.repetirSetor
+          ? `⟲ Repetindo a fase ${phaseOfSector(sim.state.run.sector)}`
+          : '→ Avançando de fase ao vencer',
+        title: sim.state.settings.repetirSetor
+          ? 'A incursão fica nesta fase ao vencê-la. Recompensa, XP e itens continuam iguais, e a fase seguinte continua liberando.'
+          : 'Ao vencer a fase, a incursão segue para a próxima. Clique para travar e farmar esta.',
+        onclick: () => {
+          sim.state.settings.repetirSetor = !sim.state.settings.repetirSetor;
+          sim.touch();
+        },
+      }),
+
       // ── rodapé ────────────────────────────────────────────────────────────
       h('.galaxy-foot', {},
         h('span.muted.tiny', {

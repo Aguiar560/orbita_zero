@@ -2,7 +2,7 @@ import { Rng } from '@core/math';
 import { bossForSector, isBossSector, type BossDef } from '@data/bosses';
 import { enemiesForSector, type EnemyDef } from '@data/enemies';
 import {
-  CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
+  CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_EXIGENCIA, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
   RECOMPENSA_FRACAO, WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
   densidadeAlvo, pressaoAlvo,
 } from '@data/balance/curvas';
@@ -73,14 +73,14 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     const cycleMult = Math.pow(CHEFE_CICLO, cycle);
     // `boss.hp` é identidade (1,0 a 2,0), não escalada: quem escala com o setor
     // é `baseHp`, que já embute o tempo-alvo.
-    const hpPool = baseHp * CHEFE_ONDAS * boss.hp * cycleMult;
+    const hpPool = baseHp * CHEFE_ONDAS * CHEFE_EXIGENCIA * boss.hp * cycleMult;
     return {
       sector, wave, kind, boss,
       hpPool,
       // O chefe é uma unidade só: o encontro acaba quando ele cai.
       unidades: 1,
       squad: [],
-      damage: baseDamage * boss.dano,
+      damage: baseDamage * boss.dano * CHEFE_EXIGENCIA,
       // O chefe tem cadência própria por fase; a pressão do setor não se aplica.
       pressao: 1,
       perfil: 'Chefe',
