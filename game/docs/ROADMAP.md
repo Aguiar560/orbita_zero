@@ -559,8 +559,12 @@ conta uma vez e nunca mais pensaria no assunto.
 Divino. A quantidade fixa torna a escada legível: a regra se aprende uma vez e
 vale em todo degrau. O que varia é a CHANCE e o CUSTO.
 
-A chance despenca no topo: 85%, 60%, 38%, 20%, **7%** e **3%**. Mítico e Divino
-são para ser extremamente difíceis.
+A chance de SUBIR despenca: 72%, 48%, **30%**, **15%**, **7%** e **3%**.
+
+Esse é o número que a tela mostra, e não o campo `chance` do dado. Os dois
+divergem nos degraus com consolação — 40% de sucesso com 25% de peso para a
+mesma raridade dá 30% de subir de fato. Anunciar o campo cru seria mentir por
+omissão: o jogador não aposta em "não falhar", aposta em subir de raridade.
 
 Os quatro primeiros degraus têm consolação — peso para sair a mesma raridade —,
 o que faz uma fusão bem-sucedida ser boa notícia sem ser garantia. Os dois

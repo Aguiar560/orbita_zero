@@ -1228,3 +1228,20 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 /* Os filtros também transbordavam: sete chips numa linha só. */
 .camada .fab-filtros { min-width: 0; }
 .camada .fab-chip { flex: 0 1 auto; min-width: 0; }
+
+/* ── fabricação: custo de materiais, abaixo do inventário ────────────────── */
+/*
+ * Ficava na coluna do meio, embaixo do anel. Foi para a esquerda porque é da
+ * mesma natureza do inventário — é o que você TEM contra o que precisa —, e
+ * porque a coluna esquerda tinha espaço sobrando abaixo dos filtros enquanto o
+ * meio estava apertado entre o anel e o botão.
+ */
+.fab-custo-lista { display: grid; gap: 3px; }
+.fab-custo-linha {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 3px 6px; min-width: 0;
+  background: rgba(8, 14, 28, 0.55); border-radius: 6px;
+}
+.fab-custo-nome { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fab-custo-nome span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fab-custo-linha > span:last-child { flex: none; font-variant-numeric: tabular-nums; }

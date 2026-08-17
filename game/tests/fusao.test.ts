@@ -3,7 +3,7 @@ import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { Rng } from '@core/math';
 import { rollItem } from '@sim/loot';
-import { RECEITAS, ilvlDaFusao, receitaPara } from '@data/balance/fusao';
+import { RECEITAS, chanceDeSubir, ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import { RECURSO_POR_ID } from '@data/recursos';
 import type { Item, Rarity } from '@sim/types';
 
@@ -50,9 +50,16 @@ describe('as receitas', () => {
    * transformar Mítico em Divino é aposta — e é essa curva que impede a fusão
    * de virar uma esteira de conversão até o topo.
    */
+  /**
+   * Compara a chance REAL de subir, não o campo `chance`.
+   *
+   * Os dois divergem nos degraus com consolação, e comparar o campo cru deixaria
+   * passar uma escada em que um degrau parece mais fácil que o anterior mas
+   * entrega menos.
+   */
   it('a chance cai e o custo sobe a cada degrau', () => {
     for (let i = 1; i < RECEITAS.length; i++) {
-      expect(RECEITAS[i]!.chance, RECEITAS[i]!.id).toBeLessThan(RECEITAS[i - 1]!.chance);
+      expect(chanceDeSubir(RECEITAS[i]!), RECEITAS[i]!.id).toBeLessThan(chanceDeSubir(RECEITAS[i - 1]!));
       expect(RECEITAS[i]!.nucleos).toBeGreaterThan(RECEITAS[i - 1]!.nucleos);
     }
   });
@@ -101,8 +108,8 @@ describe('as receitas', () => {
    * 7% e 3%. Uma recalibragem que afrouxe isso quebra aqui.
    */
   it('os dois últimos degraus são muito improváveis', () => {
-    expect(receitaPara(4)!.chance).toBeLessThanOrEqual(0.07);
-    expect(receitaPara(5)!.chance).toBeLessThanOrEqual(0.03);
+    expect(chanceDeSubir(receitaPara(4)!)).toBeLessThanOrEqual(0.07);
+    expect(chanceDeSubir(receitaPara(5)!)).toBeLessThanOrEqual(0.03);
   });
 });
 

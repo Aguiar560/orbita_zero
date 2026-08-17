@@ -1,5 +1,5 @@
 import { fmt } from '@core/format';
-import { RECEITAS, type ReceitaDeFusao } from '@data/balance/fusao';
+import { RECEITAS, chanceDeSubir, type ReceitaDeFusao } from '@data/balance/fusao';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import type { Sim } from '@sim/index';
@@ -84,12 +84,48 @@ export class FabricacaoPanel implements Panel {
         ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
       ),
 
+      // O custo mora AQUI, e não na coluna do meio, por dois motivos: a coluna
+      // esquerda tem espaço sobrando abaixo dos filtros, e o custo é da mesma
+      // natureza do inventário — é o que você TEM contra o que precisa. Junto
+      // dele, a decisão de fabricar se lê num lugar só.
+      placa('MATERIAIS'),
+      this.custo(sim, receita),
+
       h('.fab-info', {},
         h('span.tiny', {
-          text: 'Combine itens da mesma raridade para ter chance de obter um item de raridade superior.',
+          text: 'Combine 10 itens da mesma raridade para ter chance de obter um item de raridade superior.',
         }),
       ),
     );
+  }
+
+  /** O que a receita cobra, com o que há no armazém. */
+  private custo(sim: Sim, receita: ReceitaDeFusao): HTMLElement {
+    const linhas: HTMLElement[] = [
+      h('.fab-custo-linha', {},
+        h('span.tiny', { text: 'Núcleos' }),
+        h('span.tiny', {
+          text: `${fmt(sim.state.resources.nucleo)} / ${fmt(receita.nucleos)}`,
+          style: { color: sim.state.resources.nucleo >= receita.nucleos ? 'var(--text)' : 'var(--bad)' },
+        }),
+      ),
+    ];
+
+    for (const [id, n] of Object.entries(receita.custo)) {
+      const rec = RECURSO_POR_ID.get(id);
+      const tem = sim.state.armazem[id] ?? 0;
+      linhas.push(h('.fab-custo-linha', { title: rec?.origens.join(' · ') ?? '' },
+        h('.fab-custo-nome', {},
+          rec ? spriteIcon(iconeDeRecurso(rec), 26) : h('span'),
+          h('span.tiny', { text: rec?.nome ?? id }),
+        ),
+        h('span.tiny', {
+          text: `${fmt(tem)} / ${fmt(n)}`,
+          style: { color: tem >= n ? 'var(--text)' : 'var(--bad)' },
+        }),
+      ));
+    }
+    return h('.fab-custo-lista', {}, ...linhas);
   }
 
   private pecaDoInventario(sim: Sim, item: Item, receita: ReceitaDeFusao): HTMLElement {
@@ -189,7 +225,7 @@ export class FabricacaoPanel implements Panel {
     out.push(h('.fab-miolo', {},
       h('span.tiny.muted', { text: 'CHANCE DE OBTER' }),
       h('span.fab-saida-nome', { text: saida.name.toUpperCase(), style: { color: saida.color } }),
-      h('span.fab-pct', { text: `${Math.round(receita.chance * 100)}%` }),
+      h('span.fab-pct', { text: `${Math.round(chanceDeSubir(receita) * 100)}%` }),
     ));
     return out;
   }
@@ -222,7 +258,7 @@ export class FabricacaoPanel implements Panel {
             // Anel e não número: a chance é uma proporção, e um anel se compara
             // de relance entre seis linhas — seis porcentagens em texto exigem
             // ler todas.
-            anelDeChance(r.chance, info.color),
+            anelDeChance(chanceDeSubir(r), info.color),
             h('span.tiny.muted', { text: 'chance de obter' }),
             // Custo em recurso resumido: o painel do meio mostra o detalhe.
             ...Object.keys(r.custo).slice(0, 2).map((id) => {

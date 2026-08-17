@@ -51,7 +51,10 @@ export interface ReceitaDeFusao {
  * escada legível: o jogador aprende a regra uma vez e ela vale em todo degrau.
  * O que muda de um degrau para o outro é a CHANCE e o CUSTO.
  *
- * A chance despenca no topo — 85%, 60%, 38%, 20%, 7%, 3%. Mítico e Divino são
+ * A chance de SUBIR despenca no topo — 72%, 48%, 30%, 15%, 7%, 3%. Nos degraus
+ * com consolação, o campo `chance` é maior que isso: ele é a chance de não
+ * FALHAR, e parte dela devolve a mesma raridade. Quem manda no que a tela mostra
+ * é `chanceDeSubir`. Mítico e Divino são
  * para ser extremamente difíceis, e a conta composta mostra por quê: sair de
  * dez Comuns até um Divino exige, no caminho direto, 100 mil peças comuns.
  *
@@ -84,7 +87,9 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
   {
     id: 'raro_epico',
     nome: 'Transmutação',
-    entrada: 2, quantidade: 10, chance: 0.38, nucleos: 600,
+    // 0,40 de sucesso × 75% de subir = 30% REAIS, que é o número pedido e o
+    // que a tela mostra.
+    entrada: 2, quantidade: 10, chance: 0.4, nucleos: 600,
     custo: { titanio: 250, cristal_quantico: 40 },
     resultados: [{ raridade: 3, peso: 75 }, { raridade: 2, peso: 25 }],
     nota: 'Dez Raros e cristal quântico.',
@@ -92,7 +97,8 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
   {
     id: 'epico_lendario',
     nome: 'Fusão Estelar',
-    entrada: 3, quantidade: 10, chance: 0.2, nucleos: 2500,
+    // 0,1875 × 80% = 15% REAIS.
+    entrada: 3, quantidade: 10, chance: 0.1875, nucleos: 2500,
     custo: { cristal_quantico: 120, aco_estelar: 60 },
     resultados: [{ raridade: 4, peso: 80 }, { raridade: 3, peso: 20 }],
     nota: 'Dez Épicos e aço estelar.',
@@ -133,4 +139,23 @@ export const receitaPara = (r: Rarity): ReceitaDeFusao | undefined =>
 export function ilvlDaFusao(ilvls: readonly number[]): number {
   if (!ilvls.length) return 1;
   return Math.max(1, Math.round(ilvls.reduce((s, n) => s + n, 0) / ilvls.length));
+}
+
+/**
+ * Chance REAL de sair um item de raridade superior.
+ *
+ * Diferente de `chance`, que é só a de a fusão não falhar. Nos degraus com
+ * consolação as duas divergem: 30% de sucesso com 25% de peso para a mesma
+ * raridade dá 22,5% de subir de fato.
+ *
+ * É este o número que a tela mostra. Anunciar `chance` seria mentir por
+ * omissão — o jogador não está apostando em "não falhar", está apostando em
+ * subir de raridade, e é essa a probabilidade que ele precisa para decidir.
+ */
+export function chanceDeSubir(r: ReceitaDeFusao): number {
+  const total = r.resultados.reduce((s, x) => s + x.peso, 0) || 1;
+  const sobe = r.resultados
+    .filter((x) => x.raridade > r.entrada)
+    .reduce((s, x) => s + x.peso, 0);
+  return r.chance * (sobe / total);
 }
