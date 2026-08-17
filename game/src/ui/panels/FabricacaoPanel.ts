@@ -106,7 +106,10 @@ export class FabricacaoPanel implements Panel {
         h('span.tiny', { text: 'Núcleos' }),
         h('span.tiny', {
           text: `${fmt(sim.state.resources.nucleo)} / ${fmt(receita.nucleos)}`,
-          style: { color: sim.state.resources.nucleo >= receita.nucleos ? 'var(--text)' : 'var(--bad)' },
+          // Verde quando bate a meta, vermelho quando falta. Branco não dizia
+          // nada: obrigava a ler os dois números e comparar de cabeça, linha a
+          // linha, para saber se dava para fabricar.
+          style: { color: sim.state.resources.nucleo >= receita.nucleos ? 'var(--good)' : 'var(--bad)' },
         }),
       ),
     ];
@@ -121,7 +124,7 @@ export class FabricacaoPanel implements Panel {
         ),
         h('span.tiny', {
           text: `${fmt(tem)} / ${fmt(n)}`,
-          style: { color: tem >= n ? 'var(--text)' : 'var(--bad)' },
+          style: { color: tem >= n ? 'var(--good)' : 'var(--bad)' },
         }),
       ));
     }
