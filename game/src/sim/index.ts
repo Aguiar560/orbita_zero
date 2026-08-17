@@ -4,6 +4,8 @@ import { getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
+import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
+import { rarityInfo } from '@data/rarity';
 
 /**
  * Sufixo do id de essência por elemento.
@@ -812,6 +814,76 @@ export class Sim {
     toast(`Carga ampliada: ${c.nota} (+${c.itens ?? 0} espaços)`);
     this.touch();
     return true;
+  }
+
+  // ── fusão de itens (§26) ──────────────────────────────────────────────────
+
+  /** O que falta para uma fusão poder acontecer. Vazio = pode. */
+  faltaParaFundir(uids: readonly string[]): string[] {
+    const itens = uids
+      .map((u) => this.state.inventory.find((i) => i.uid === u))
+      .filter((i): i is Item => !!i);
+    const faltas: string[] = [];
+
+    if (itens.length !== uids.length) faltas.push('item já não está no inventário');
+    if (!itens.length) return faltas;
+
+    const raridade = itens[0]!.rarity;
+    if (itens.some((i) => i.rarity !== raridade)) faltas.push('todos precisam ser da mesma raridade');
+
+    const receita = receitaPara(raridade);
+    if (!receita) { faltas.push('não há receita para esta raridade'); return faltas; }
+
+    if (itens.length !== receita.quantidade) {
+      faltas.push(`a receita pede ${receita.quantidade} itens`);
+    }
+    // Favorito NUNCA entra: fundir é destrutivo, e a marca de favorito existe
+    // justamente para proteger uma peça de sumir por engano.
+    if (itens.some((i) => i.favorite)) faltas.push('há favoritos na seleção');
+
+    if (this.state.resources.nucleo < receita.nucleos) faltas.push('núcleos insuficientes');
+    for (const [id, n] of Object.entries(receita.custo)) {
+      if ((this.state.armazem[id] ?? 0) < n) faltas.push(`falta ${RECURSO_POR_ID.get(id)?.nome ?? id}`);
+    }
+    return faltas;
+  }
+
+  /**
+   * Funde itens (§26). Devolve o item gerado, ou `null` quando a fusão falha.
+   *
+   * Falhar CONSOME os itens e o custo — é o que dá peso à decisão. Sem risco,
+   * fundir seria só uma conversão com um passo a mais, e o jogador faria a
+   * conta uma vez e nunca mais pensaria no assunto.
+   */
+  fundirItens(uids: readonly string[]): { item: Item | null; receita: string } | null {
+    if (this.faltaParaFundir(uids).length) return null;
+
+    const itens = uids.map((u) => this.state.inventory.find((i) => i.uid === u)!);
+    const receita = receitaPara(itens[0]!.rarity)!;
+
+    // Cobra ANTES de sortear: o custo é da tentativa, não do sucesso.
+    this.spend('nucleo', receita.nucleos);
+    for (const [id, n] of Object.entries(receita.custo)) this.gastarMaterial(id, n);
+    this.state.inventory = this.state.inventory.filter((i) => !uids.includes(i.uid));
+
+    if (!this.rng.chance(receita.chance)) {
+      toast(`${receita.nome} falhou — os itens foram consumidos.`);
+      this.touch();
+      return { item: null, receita: receita.id };
+    }
+
+    const saida = this.rng.weighted(receita.resultados, (r) => r.peso).raridade;
+    const item = rollItem(
+      this.rng,
+      ilvlDaFusao(itens.map((i) => i.ilvl)),
+      this.stats.sorte,
+      this.state.universe.index,
+      { floor: saida },
+    );
+    this.acquire(item);
+    toast(`${receita.nome}: ${rarityInfo(item.rarity).name}!`);
+    this.touch();
+    return { item, receita: receita.id };
   }
 
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */

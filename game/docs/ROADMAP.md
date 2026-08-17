@@ -510,6 +510,32 @@ Só depois disso vale mexer nas metas de tempo do §2.
 
 ## Fase 5 — Conteúdo
 
+### 3.9 / §26 — Sacrifício e fusão de itens ✅
+
+O problema que resolve: no fim do jogo um drop Comum é lixo. Ocupa um dos 15 a
+70 espaços do inventário e o único destino é desmanchar. Com fusão, dez viram
+uma tentativa.
+
+**Não é conversão garantida** — o §26 é explícito que dez Comuns não são um
+Raro. Cada receita tem chance de sucesso, e falhar CONSOME os itens e o custo.
+Sem risco, fundir seria uma conversão com um passo a mais: o jogador faria a
+conta uma vez e nunca mais pensaria no assunto.
+
+Seis receitas, uma por degrau. A chance cai (85% → 15%) e o custo sobe, e os
+degraus altos pedem material que só chefe solta — o que amarra a fusão ao
+conteúdo em vez de deixá-la acontecer sozinha no inventário. Todas têm peso para
+sair a MESMA raridade: uma fusão bem-sucedida é boa notícia sem ser garantia.
+
+O nível do item gerado é a MÉDIA dos que entraram, não o maior: com o maior,
+fundir nove lixos de nível 1 com um bom de 270 devolveria um item de 270 por
+quase nada.
+
+Favorito nunca entra. Fundir é destrutivo, e a marca existe para proteger disso.
+
+**Falta a UI.** A regra está no `Sim` (`faltaParaFundir` e `fundirItens`, com o
+motivo de recusa legível), mas ainda não há painel — não dá para fundir jogando.
+
+
 Naves, inimigos, chefes, recursos por galáxia, crafting (§25), sacrifício e
 fusão de itens (§26), missões (§27) e o modo de chefes de 100 pisos (§32–§35).
 É onde o `content-data-agent` trabalha em volume, a partir de schemas já
