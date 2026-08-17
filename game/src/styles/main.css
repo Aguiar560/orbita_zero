@@ -759,7 +759,7 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 /* ── painel: armazém (§29) ───────────────────────────────────────────────── */
 .armazem-grupo { display: grid; gap: 4px; margin-bottom: 10px; }
 .armazem-linha {
-  display: flex; align-items: center; gap: 9px; padding: 6px 9px;
+  display: flex; align-items: center; gap: 11px; padding: 8px 10px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
 }
 /* O que ainda não caiu fica apagado mas VISÍVEL: metade do valor de um armazém

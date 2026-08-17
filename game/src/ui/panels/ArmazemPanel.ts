@@ -45,7 +45,16 @@ export class ArmazemPanel implements Panel {
           const n = armazem[m.id] ?? 0;
           const cor = rarityInfo(m.raridade).color;
           return h(`.armazem-linha${n > 0 ? '' : '.vazia'}`, { title: m.origens.join(', ') },
-            spriteIcon(iconeDeRecurso(m), 26),
+            /**
+             * 44 px e não 26.
+             *
+             * Os ícones de recurso foram desenhados em ~139 px, com muito
+             * detalhe: a 26 px viravam ruído colorido e o jogador não
+             * reconhecia nenhum, mesmo com o id correto por trás. O tamanho é
+             * o mínimo em que a silhueta de um cristal se distingue da de um
+             * frasco.
+             */
+            spriteIcon(iconeDeRecurso(m), 44),
             h('.armazem-texto', {},
               h('strong', { text: m.nome, style: { color: n > 0 ? cor : 'var(--muted)' } }),
               h('span.muted.tiny', { text: m.origens.join(' · ') }),
