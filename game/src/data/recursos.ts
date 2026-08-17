@@ -102,8 +102,15 @@ export const RECURSOS: readonly RecursoDef[] = LINHAS.flatMap((linha, l) =>
 
 export const RECURSO_POR_ID = new Map(RECURSOS.map((r) => [r.id, r]));
 
-/** Sprite do recurso no atlas. */
-export const iconeDeRecurso = (r: RecursoDef): string => `recurso/${r.indice}`;
+/**
+ * Sprite do recurso no atlas.
+ *
+ * Por ID e não por índice. Era `recurso/${indice}` enquanto a arte vinha de uma
+ * folha em grade, onde a posição ERA a identidade. Agora cada recurso é um
+ * arquivo com o próprio nome, e casar por nome é mais robusto: acrescentar um
+ * recurso no meio da lista deixaria de deslocar o ícone de todos os seguintes.
+ */
+export const iconeDeRecurso = (r: RecursoDef): string => `recurso/${r.id}`;
 
 /** Rótulo de cada família, para agrupar o Armazém. */
 export const FAMILIA_LABEL: Record<FamiliaDeRecurso, string> = {

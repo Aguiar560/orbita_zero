@@ -2,7 +2,6 @@
 import { fmt } from '@core/format';
 import { assets } from '@render/Assets';
 import { Particles } from '@render/Particles';
-import { StarScroll } from '@render/Parallax';
 import type { Surface } from '@render/Surface';
 import { frameAt, getClip } from '@render/Anim';
 import { PLANET_KEYS, describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector } from '@data/galaxies';
@@ -23,6 +22,29 @@ import {
   createBulletPool, createEnemyPool, createPickupPool,
   type Bullet, type Enemy, type PickupKind, type Player,
 } from './entities';
+
+/**
+ * Escala dos projéteis do atlas elemental.
+ *
+ * Os sprites da folha do §21 têm cerca de 141×124 px — foram desenhados grandes,
+ * para servir também de arte de carga e de feixe. A nave tem ~36 px de largura
+ * na tela, então desenhá-los a 0,9 dava um tiro MAIOR QUE A NAVE.
+ *
+ * 0,18 põe o projétil em torno de 25 × 22 px: legível, e claramente menor que
+ * quem atirou. O número é a razão entre o alvo em pixels e o tamanho do sprite,
+ * não um palpite — se a arte for reexportada em outro tamanho, é este valor que
+ * muda.
+ */
+const ESCALA_TIRO = 0.18;
+
+/**
+ * O tiro inimigo sai um pouco menor que o do jogador.
+ *
+ * Não é economia de espaço: é leitura. Numa tela com trinta projéteis, o
+ * tamanho é a pista mais rápida de quem atirou o quê, e o do jogador tem de
+ * dominar visualmente o próprio ataque.
+ */
+const ESCALA_TIRO_INIMIGO = 0.14;
 
 /** Segundos parado após a nave cair, antes de reiniciar o encontro. */
 const RESPAWN_DELAY = 1.8;
@@ -67,21 +89,25 @@ export class VerticalMode {
   private readonly pickups = createPickupPool();
 
   /**
-   * Camadas de estrela que rolam sobre o fundo da galáxia.
+   * Não há mais campos de estrela avulsos.
    *
-   * Só estrelas: as folhas de nebulosa de 320px não são costuráveis na
-   * horizontal e deixavam uma emenda visível no campo largo. A cor do lugar vem
-   * do fundo da galáxia; estas camadas existem para dar movimento e paralaxe.
+   * Eram dois `StarScroll` de cruzes brilhantes por cima do fundo. Existiam
+   * porque o pano de fundo antigo era uma imagem PARADA e a cena precisava de
+   * movimento vindo de algum lugar. Os cenários de `backgrounds` já trazem a
+   * própria camada de estrelas, com a densidade e a cor que o artista escolheu
+   * para aquele lugar — somar as cruzes por cima virava poluição, e escondia
+   * justamente a arte nova.
    */
-  private readonly skyLayers = [
-    new StarScroll('bg/campo_miudas.png', 1.1, 0.7, 2),
-    new StarScroll('bg/campo_grandes.png', 1.9, 0.85, 2),
-  ];
 
   /** Tempo acumulado da cena, usado pelos clipes em loop que não têm estado. */
   private elapsed = 0;
-  /** Fundo em exibição. Só muda quando a imagem nova termina de carregar. */
-  private galaxyBackdrop = '';
+  /**
+   * Camadas do cenário em exibição, do fundo para a frente.
+   *
+   * Lista e não uma imagem só: os conjuntos de `backgrounds` vêm em três
+   * camadas feitas para serem empilhadas, e a de trás sozinha é quase preta.
+   */
+  private galaxyLayers: { src: string; velocidade: number; alfa: number }[] = [];
   /** Fundo pedido para a galáxia atual, carregando ou já ativo. */
   private pendingBackdrop = '';
 
@@ -181,33 +207,36 @@ export class VerticalMode {
     // ter viajado. Antes as estrelas eram as mesmas do setor 1 ao 200.
     const galaxy = describeGalaxy(galaxyOfSector(e.sector));
     /**
-     * Prefere o cenário novo (`backgrounds`) e cai no antigo quando não há.
+     * Monta as camadas do cenário. Prefere o conjunto novo e cai no antigo.
      *
-     * São 19 conjuntos para 30 galáxias mais as profundas, então o backdrop
-     * antigo continua atendendo quem sobra. Do conjunto de parallax entra a
-     * camada DISTANTE, que é a que faz papel de pano de fundo; as outras duas
-     * ficam no manifesto para quando a cena souber empilhá-las.
+     * As velocidades sobem da camada de trás para a da frente — é a diferença
+     * entre elas que cria profundidade, não a existência de três imagens. A
+     * distante quase não anda; as estrelas atravessam a tela.
+     *
+     * O conjunto CHAPADO vira uma camada só: são variações completas do mesmo
+     * lugar, e sobrepô-las daria um borrão em vez de profundidade.
      */
     const novo = assets.manifest?.fundos?.find((f) => f.id === galaxy.fundoId);
-    const alvo = novo
-      ? (novo.tipo === 'parallax' ? novo.camadas.longe : novo.variacoes[0]!)
-      : galaxy.backdrop;
+    const alvos = novo
+      ? (novo.tipo === 'parallax'
+        ? [
+          { src: novo.camadas.longe, velocidade: 4, alfa: 1 },
+          { src: novo.camadas.nebulosa, velocidade: 11, alfa: 0.85 },
+          { src: novo.camadas.estrelas, velocidade: 26, alfa: 0.9 },
+        ]
+        : [{ src: novo.variacoes[0]!, velocidade: 6, alfa: 1 }])
+      : [{ src: galaxy.backdrop, velocidade: 0, alfa: 0.75 }];
 
-    if (alvo !== this.pendingBackdrop) {
-      this.pendingBackdrop = alvo;
+    const chave = alvos.map((a) => a.src).join('|');
+    if (chave !== this.pendingBackdrop) {
+      this.pendingBackdrop = chave;
 
-      // Só troca depois de carregar: assumir na hora deixava a tela preta por
-      // um instante a cada mudança de galáxia, enquanto a imagem vinha.
-      void assets.image(alvo)
-        .then(() => { this.galaxyBackdrop = alvo; })
-        .catch(() => console.warn(`[cena] fundo ${alvo} indisponível`));
+      // Só troca depois de TODAS carregarem: trocar camada a camada mostrava a
+      // nebulosa nova sobre as estrelas velhas por um instante.
+      void Promise.all(alvos.map((a) => assets.image(a.src)))
+        .then(() => { this.galaxyLayers = alvos; })
+        .catch(() => console.warn(`[cena] cenário ${galaxy.fundoId ?? galaxy.backdrop} indisponível`));
 
-      this.skyLayers.forEach((layer, i) => {
-        const next = `bg/campo_${galaxy.starfields[i] ?? 'grandes'}.png`;
-        void assets.image(next)
-          .then(() => { layer.src = next; layer.tint = galaxy.starTint; })
-          .catch(() => console.warn(`[cena] campo ${next} indisponível`));
-      });
     }
 
     this.buildSkyProps(e.sector);
@@ -286,7 +315,6 @@ export class VerticalMode {
         prop.fx = this.rng.range(0.05, 0.95);
       }
     }
-    for (const layer of this.skyLayers) layer.update(dt, 60);
   }
 
   // ── ciclo ─────────────────────────────────────────────────────────────────
@@ -418,7 +446,7 @@ export class VerticalMode {
     const info = getElement(element);
     const sprite = nativo ? style.sprite : arteElemental('tiro', element);
     const color = nativo ? style.color : info.color;
-    const scale = nativo ? style.scale : 0.9;
+    const scale = nativo ? style.scale : ESCALA_TIRO;
 
     // Fogacho na boca da arma, na arte do elemento (§22). É o que faz trocar de
     // arma mudar a CARA do disparo e não só o número — o tiro em si passa rápido
@@ -784,7 +812,7 @@ export class VerticalMode {
       // próprio tiro e o do inimigo se confundem.
       b.sprite = arteElemental('tiroini', b.element, e.id) || sprite;
       b.color = color;
-      b.scale = 0.6 * scale;
+      b.scale = ESCALA_TIRO_INIMIGO * scale;
       b.homing = homing;
       b.pierce = 0;
       b.splash = 0;
@@ -1171,23 +1199,35 @@ export class VerticalMode {
   }
 
   private drawBackground(s: Surface): void {
-    // Pano de fundo da galáxia: cobre a tela inteira, bem escurecido, só para
-    // dar a cor do lugar. As camadas de estrela por cima é que dão movimento.
-    const sky = assets.peek(this.galaxyBackdrop);
-    if (sky) {
-      const scale = Math.max(VIEW.w / sky.width, VIEW.h / sky.height);
-      const w = sky.width * scale;
-      const hgt = sky.height * scale;
-      s.ctx.globalAlpha = 0.75;
-      s.ctx.drawImage(sky, (VIEW.w - w) / 2, (VIEW.h - hgt) / 2, w, hgt);
+    /**
+     * O cenário da galáxia, em até três camadas com rolagens diferentes.
+     *
+     * Antes era UMA imagem parada a 75% de alfa. Ficava quase preta — a camada
+     * distante dos conjuntos novos é escura de propósito, porque foi desenhada
+     * para ter nebulosa e estrelas por cima. Sozinha, ela é o vazio que sobra.
+     *
+     * As camadas rolam em velocidades crescentes (a distante quase parada, as
+     * estrelas rápidas), que é o que cria profundidade: sem a diferença de
+     * velocidade seriam três imagens sobrepostas, não um parallax.
+     */
+    for (const camada of this.galaxyLayers) {
+      const img = assets.peek(camada.src);
+      if (!img) continue;
+
+      const scale = Math.max(VIEW.w / img.width, VIEW.h / img.height);
+      const w = img.width * scale;
+      const hgt = img.height * scale;
+      const x = (VIEW.w - w) / 2;
+      // Rolagem cíclica: o deslocamento é reduzido à altura da imagem e ela é
+      // desenhada duas vezes, uma acima da outra, para não haver costura.
+      const y = ((this.elapsed * camada.velocidade) % hgt + hgt) % hgt;
+
+      s.ctx.globalAlpha = camada.alfa;
+      s.ctx.drawImage(img, x, y - hgt, w, hgt);
+      s.ctx.drawImage(img, x, y, w, hgt);
       s.ctx.globalAlpha = 1;
     }
 
-    // A antiga coluna de nebulosa tinha 295px de largura e era esticada para a
-    // tela toda — num campo de ~1180px isso virava um borrão com emenda visível.
-    // O fundo de galáxia cobre esse papel melhor, e as camadas de estrela dão o
-    // movimento.
-    for (const layer of this.skyLayers) layer.draw(s);
 
     // Corpos celestes: os distantes primeiro, para o corpo da fase ficar por
     // cima. `fx` é fração da largura, então mudar de janela não os desloca.

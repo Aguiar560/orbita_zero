@@ -1191,35 +1191,60 @@ async function buildNovosItens(manifest) {
  * dia em que a folha ganhar uma fileira.
  */
 async function buildRecursos(manifest) {
-  const file = path.join(RAW, RECURSOS_SHEET);
-  if (!existsSync(file)) {
-    console.warn(`   ! ${RECURSOS_SHEET} não encontrado — pulando recursos`);
+  const dir = path.join(RAW, 'spaceships new', 'Recursos');
+  if (!existsSync(dir)) {
+    console.warn('   ! Recursos/ não encontrado — pulando recursos');
     return;
   }
 
-  noteRead(file);
-  const { data: bruto, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
-  log(`Recursos: Recursos.png (${info.width}x${info.height})`);
+  const arquivos = (await readdir(dir)).filter((f) => /.png$/i.test(f)).sort();
+  log(`Recursos: ${arquivos.length} arquivos individuais`);
 
   const sprites = [];
-  let vazias = 0;
+  for (const f of arquivos) {
+    const src = path.join(dir, f);
+    noteRead(src);
+    const { data, info } = await sharp(src).raw().toBuffer({ resolveWithObject: true });
 
-  for (const c of celulasDeRecurso()) {
-    // Mesma extração das outras folhas de catálogo: a placa de cada célula é
-    // tingida, e `alphaOverDark` a deixaria opaca.
-    const região = extrairCelula(bruto, info, c.x, c.y, c.w, c.h, { margem: 40, piso: 0.3 });
-    const trimmed = trimAlpha(região, 6);
-    if (!trimmed) { vazias++; continue; }
+    // Os arquivos vêm SEM alfa (três canais): são recortes retangulares com o
+    // fundo da célula junto. A mesma extração por fundo local das outras folhas
+    // resolve — e aqui ela é ainda mais direta, porque cada arquivo já é uma
+    // célula só, sem vizinho para invadir.
+    let trimmed = null;
+    // Repescagem com piso mais baixo. O percentil 30 assume que ao menos um
+    // terço do arquivo é fundo, e isso falha quando o ícone ocupa quase tudo —
+    // `NECTAR ESTELAR` saía VAZIO, porque a mediana do fundo caía dentro do
+    // próprio desenho e o recorte comia a imagem inteira.
+    for (const piso of [0.3, 0.12, 0.04]) {
+      const região = extrairCelula(data, info, 0, 0, info.width, info.height, { margem: 38, piso });
+      trimmed = trimAlpha(região, 6);
+      if (trimmed) break;
+    }
+    if (!trimmed) { console.warn(`   ! recurso vazio: ${f}`); continue; }
+
     sprites.push({
-      id: `recurso/${c.indice}`,
+      id: `recurso/${idDeRecurso(f.replace(/.png$/i, ''))}`,
       raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
-      sw: c.w, sh: c.h,
+      sw: info.width, sh: info.height,
     });
   }
 
-  if (vazias) console.warn(`   ! ${vazias} células de recurso vazias`);
   log(`   ${sprites.length} ícones de recurso`);
   await writeAtlas('recursos', sprites, manifest, 2048);
+}
+
+/**
+ * Id a partir do nome do arquivo — a MESMA regra de `data/recursos.ts`.
+ *
+ * Repetida porque o pipeline roda em Node puro e não importa `src/`. Um teste
+ * confere que todo recurso do catálogo acha o seu sprite, que é o que impede as
+ * duas cópias de divergirem.
+ */
+function idDeRecurso(nome) {
+  return nome.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 /**

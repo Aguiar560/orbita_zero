@@ -26,7 +26,7 @@
  * (as explosões grandes ocupam quase tudo) a mediana já é sprite, e o recorte
  * comeria o miolo. O percentil 20 ainda cai no fundo mesmo nessas.
  */
-export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.20 } = {}) {
+export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.20, corte = 26 } = {}) {
   const { width: W, channels: C } = info;
   const lums = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
@@ -49,7 +49,19 @@ export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.
       out[o + 1] = data[i + 1];
       out[o + 2] = data[i + 2];
       // Suavização cúbica: um corte duro deixa serrilha visível no halo.
-      out[o + 3] = Math.round(t * t * (3 - 2 * t) * 255);
+      const a = Math.round(t * t * (3 - 2 * t) * 255);
+      /**
+       * CORTE do alfa residual.
+       *
+       * O fundo fica alguns pontos acima do percentil de referência, então
+       * sobrava alfa baixo — 10 a 25 — em toda a célula. Invisível sozinho, mas
+       * a cena desenha projétil com mistura ADITIVA, e aí a célula inteira vira
+       * uma caixa luminosa em volta do tiro. Foi assim que apareceu no jogo.
+       *
+       * Zerar abaixo do corte não come o halo de verdade: o halo desses sprites
+       * passa de 60 de alfa a poucos pixels do corpo.
+       */
+      out[o + 3] = a < corte ? 0 : a;
     }
   }
   return { data: out, width: w, height: h };
