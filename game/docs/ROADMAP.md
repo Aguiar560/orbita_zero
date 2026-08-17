@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 48 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 58 testes passando · typecheck e build limpos.
 
 ---
 
@@ -17,14 +17,14 @@ momento — o ponto de partida, que não se reescreve.
 ```
 Etapa 0  ██████████  concluída
 Fase 1   ███████░░░  5 de 7 tarefas
-Fase 1B  ██░░░░░░░░  1 de 5 — morte, progresso e permanência
+Fase 1B  ████░░░░░░  2 de 5 — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1B.1 — progresso por abate em vez de dano. Entrou na frente da
+**Próxima:** Fase 1B.2 — recursos retidos até o setor fechar. Entrou na frente da
 Fase 2 porque redefine o que o combate significa, e construir dano elemental
 sobre um progresso que vai mudar é retrabalho garantido.
 
@@ -78,7 +78,7 @@ setor avança sozinho; a intenção é que morrer doa e que o avanço venha de m
 Vem **antes da Fase 2** porque redefine o que o combate significa — implementar
 dano elemental sobre um sistema de progresso que vai mudar é retrabalho certo.
 
-### 1B.1 — Progresso por ABATE, não por dano
+### 1B.1 — Progresso por ABATE, não por dano ✅
 
 Hoje o encontro é um poço de vida que drena a cada golpe: `applyDamage` credita
 o dano ao `hpPool`, e quando o poço zera a onda acaba **com inimigos ainda
@@ -93,6 +93,26 @@ precisa resolver os dois lados — o avanço vem de abate, e quem escapa não co
 > desciam e saíam pela base, o diretor repunha a onda inteira, e o jogador de
 > nave nua (24 de dano por segundo) nunca fechava a conta — 90 minutos, 67
 > mortes, zero itens coletados.
+
+**Como ficou.** `run.hp/hpMax` viraram `run.restam/unidades`, e o crédito saiu de
+`applyDamage` para `killEnemy`. O caminho abstrato converte dano por segundo em
+abates por segundo, para os dois medirem a mesma coisa. Quem escapa pela base
+volta para a fila do diretor **com a vida que lhe restava**.
+
+Essa última parte não estava no plano e é o que faz a peça funcionar: na
+primeira tentativa o fugitivo voltava curado, e isso apagava o trabalho do
+jogador. Medido: cinco minutos na onda de elite do setor 3 com **zero abates e
+35 escapes**, `restam` congelado em 2 de 2. Um casco que não cai numa passagem
+também não cai na seguinte, e o encontro nunca terminava.
+
+Verificado depois: com o disparo desarmado, 104 inimigos escaparam em 60
+segundos e o progresso ficou em zero — escapar não é atalho. E `restam` chega a
+zero sempre com a tela limpa.
+
+> **Efeito colateral no ritmo.** A corrida do zero passou de setor 10 em 40
+> minutos para **setor 7 em 60 minutos**. Vai na direção da meta do §2 (dez
+> horas por galáxia) sem que ninguém tenha mexido em curva — o jogador agora
+> paga pelos inimigos que deixa passar.
 
 ### 1B.2 — Recursos só ao concluir o SETOR
 

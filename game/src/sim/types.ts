@@ -161,9 +161,19 @@ export interface RunState {
   /** Onda atual dentro do setor, 1-based. */
   wave: number;
   kind: EncounterKind;
-  /** HP restante do encontro corrente, em unidades abstratas. */
-  hp: number;
-  hpMax: number;
+  /**
+   * Inimigos que ainda falta ABATER no encontro, e quantos ele tem no total.
+   *
+   * Antes o encontro era um poço de vida que drenava a cada golpe, e a onda
+   * acabava quando o poço zerava — com naves ainda vivas na tela. O avanço
+   * agora vem de destruir, que é o que o jogador vê acontecer.
+   *
+   * Quem escapa pela base não conta e volta para a fila do diretor: sem isso,
+   * deixar os inimigos passarem limparia a onda de graça, que foi o defeito que
+   * o modelo de poço existia para tapar.
+   */
+  restam: number;
+  unidades: number;
   /** Tempo gasto no encontro atual, para detectar bloqueio de progresso. */
   elapsed: number;
   /** Setores em que o jogador já derrotou o chefe neste universo. */

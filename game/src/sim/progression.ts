@@ -25,8 +25,15 @@ export interface Encounter {
   sector: number;
   wave: number;
   kind: EncounterKind;
-  /** Vida total do encontro. As entidades da camada vertical dividem esse bolo. */
+  /**
+   * Vida total do encontro. As entidades dividem esse bolo.
+   *
+   * Continua DIMENSIONANDO os inimigos — é dele que sai a vida de cada nave —,
+   * mas não é mais o medidor de progresso: quem mede é `unidades`.
+   */
   hpPool: number;
+  /** Quantos inimigos precisam ser abatidos para o encontro acabar. */
+  unidades: number;
   /** Composição da onda: tipos e quantidades. */
   squad: { def: EnemyDef; count: number }[];
   boss: BossDef | null;
@@ -70,6 +77,8 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     return {
       sector, wave, kind, boss,
       hpPool,
+      // O chefe é uma unidade só: o encontro acaba quando ele cai.
+      unidades: 1,
       squad: [],
       damage: baseDamage * boss.dano,
       // O chefe tem cadência própria por fase; a pressão do setor não se aplica.
@@ -131,6 +140,7 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
   return {
     sector, wave, kind, boss: null,
     hpPool: waveHp,
+    unidades: squad.reduce((s, g) => s + g.count, 0),
     squad,
     damage: baseDamage,
     // A pressão do setor, temperada pelo perfil, é o que faz uma onda de poucos

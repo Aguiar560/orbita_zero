@@ -15,6 +15,15 @@ interface SpawnGroup {
   at: number;
   /** Espaçamento entre unidades do grupo. */
   gap: number;
+  /**
+   * Vida com que o grupo nasce, quando não é a padrão do encontro.
+   *
+   * Usado por quem escapou pela base: ele volta ferido, com a vida que tinha ao
+   * sair. Voltar curado apagaria o trabalho do jogador e travava a onda — um
+   * casco que o jogador não conseguia derrubar numa passagem também não
+   * conseguiria na seguinte, e o encontro nunca terminava.
+   */
+  hp?: number;
 }
 
 /**
@@ -59,13 +68,33 @@ export class WaveDirector {
   }
 
   /**
-   * Reprograma a mesma onda. Chamado quando a tela esvaziou mas o pool ainda
-   * tem vida — cada repetição chega um pouco mais rápido que a anterior.
+   * Reprograma a mesma onda. Chamado quando a tela esvaziou mas ainda falta
+   * abater — cada repetição chega um pouco mais rápido que a anterior.
    */
   replenish(): void {
     if (!this.encounter) return;
     this.cycle++;
     this.schedule();
+  }
+
+  /**
+   * Devolve à fila um inimigo que escapou pela base, com a vida que lhe restava.
+   *
+   * O encontro só termina por abate, então quem passa reto tem de voltar —
+   * senão bastaria esperar todo mundo descer para a onda acabar sozinha. Mas
+   * voltar CURADO é o outro extremo, e trava o jogo: medido, um piloto de nave
+   * nua ficou cinco minutos na onda de elite do setor 3 com zero abates e 35
+   * escapes, porque nunca conseguia derrubar um casco cheio numa única
+   * passagem. Guardar a vida faz o dano acumular entre as voltas.
+   */
+  requeue(def: EnemyDef, hp: number): void {
+    if (!this.encounter) return;
+    this.groups.push({
+      def, count: 1, gap: 0, formation: 'linha',
+      at: this.timer + 1.2,
+      hp: Math.max(1, hp),
+    });
+    this.pending += 1;
   }
 
   private schedule(): void {
@@ -155,7 +184,7 @@ export class WaveDirector {
     enc: Encounter,
     spawn: (def: EnemyDef, x: number, y: number, hp: number, damage: number) => Enemy | null,
   ): number {
-    const hp = unitHp(enc, group.def);
+    const hp = group.hp ?? unitHp(enc, group.def);
     const damage = enc.damage;
     let born = 0;
 

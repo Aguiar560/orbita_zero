@@ -518,8 +518,11 @@ export class VerticalMode {
       // impossível de acertar e faz a IA perseguir a parede.
       e.x = clamp(e.x, 28, VIEW.w - 28);
       if (e.y > VIEW.h + 90) {
-        // Escapou: o pool do encontro não recebe o abate, mas a onda não trava.
+        // Escapou. Não conta como abate e VOLTA PARA A FILA: deixar passar não
+        // pode ser um jeito de limpar a onda, que é exatamente o buraco que o
+        // antigo modelo de poço existia para tapar.
         e.alive = false;
+        if (e.counts) this.director.requeue(e.def, e.hp);
         return;
       }
 
@@ -782,7 +785,9 @@ export class VerticalMode {
 
     if (!byPlayer) return;
 
-    // O pool já foi debitado a cada golpe (`applyDamage`); aqui só a recompensa.
+    // É AQUI que o encontro anda. `counts` é falso nos lacaios invocados por
+    // chefe: eles pressionam, mas matá-los não pode substituir matar o chefe.
+    if (e.counts) this.sim.creditKill();
     this.sim.rewardKill(e.boss ? 1 : Math.max(e.share, 0.02));
 
     // Cápsula de moeda: uma fração dos abates deixa recompensa para a IA
@@ -901,18 +906,15 @@ export class VerticalMode {
   }
 
   /**
-   * Aplica dano e credita o mesmo valor ao pool do encontro.
+   * Aplica dano. O encontro NÃO anda por aqui — anda por abate.
    *
-   * Creditar por DANO e não por ABATE é o que mantém a camada ao vivo e a
-   * simulação abstrata falando a mesma língua: as duas gastam o pool a
-   * `dps × tempo`. Se o crédito fosse por abate, dano em inimigos que escapam
-   * sumiria e a barra de progresso ficaria parada enquanto o jogador atira.
-   * O excedente do golpe fatal é descartado para não adiantar a onda.
+   * Creditar por dano fazia a onda terminar com naves ainda vivas na tela, o
+   * que fica estranho e some com a sensação de ter limpado alguma coisa. Quem
+   * credita agora é `killEnemy`, e o caminho abstrato converte dano por segundo
+   * em abates por segundo para os dois medirem a mesma coisa.
    */
   private applyDamage(e: Enemy, amount: number): void {
-    const applied = Math.min(amount, Math.max(0, e.hp));
     e.hp -= amount;
-    if (e.counts) this.sim.damageEncounter(applied);
   }
 
   // ── coletáveis ────────────────────────────────────────────────────────────
@@ -1005,7 +1007,9 @@ export class VerticalMode {
     }
     if (this.cleared) return;
 
-    if (this.sim.state.run.hp > 0) {
+    if (this.sim.state.run.restam > 0) {
+      // Ainda falta abater e a tela esvaziou: repõe a onda. Acontece quando os
+      // inimigos escaparam mais rápido do que o jogador conseguiu derrubá-los.
       if (this.player.alive && this.director.remaining === 0 && this.enemies.size === 0) {
         this.director.replenish();
       }

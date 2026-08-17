@@ -34,7 +34,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     shop: {},
     command: { level: 1, xp: 0, allocated: [], refunds: 3 },
 
-    run: { sector: 1, wave: 1, kind: 'onda', hp: 0, hpMax: 0, elapsed: 0, cleared: 0 },
+    run: { sector: 1, wave: 1, kind: 'onda', restam: 0, unidades: 0, elapsed: 0, cleared: 0 },
     bar: { biome: BIOMES[0]!.id, distance: 0, kills: 0, cacheProgress: 0, patrol: 1, patrolXp: 0 },
     universe: { index: 0, seed, modifiers: [], bestSector: 1, bestSectorEver: 1 },
 

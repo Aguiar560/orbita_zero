@@ -175,8 +175,8 @@ export class Sim {
     this.encounterCache = null;
     const e = this.encounter;
     this.state.run.kind = e.kind;
-    this.state.run.hpMax = e.hpPool;
-    this.state.run.hp = e.hpPool;
+    this.state.run.unidades = e.unidades;
+    this.state.run.restam = e.unidades;
     this.state.run.elapsed = 0;
   }
 
@@ -281,9 +281,21 @@ export class Sim {
 
   // ── camada vertical (combate) ─────────────────────────────────────────────
 
-  /** Aplica dano ao pool do encontro. Usado pelo modo ao vivo a cada abate. */
-  damageEncounter(amount: number): void {
-    this.state.run.hp = Math.max(0, this.state.run.hp - amount);
+  /**
+   * Credita um abate ao encontro.
+   *
+   * Só o ABATE anda com o encontro. Dano em inimigo que escapa não conta, e a
+   * onda não pode acabar com nave viva na tela — era o que acontecia quando o
+   * progresso vinha do dano acumulado.
+   */
+  creditKill(quantidade = 1): void {
+    this.state.run.restam = Math.max(0, this.state.run.restam - quantidade);
+  }
+
+  /** Vida média de um inimigo do encontro. Alimenta a estimativa abstrata. */
+  get unitHpMedio(): number {
+    const e = this.encounter;
+    return e.hpPool / Math.max(1, e.unidades);
   }
 
   /** Recompensa de um abate individual dentro do encontro. */
@@ -386,10 +398,13 @@ export class Sim {
    */
   abstractTick(dt: number): void {
     const run = this.state.run;
-    run.hp -= dps(this.stats) * dt;
+    // Converte dano por segundo em ABATES por segundo, para o caminho abstrato
+    // medir a mesma coisa que a cena mede. Sem isso os dois divergiriam: um
+    // contaria dano e o outro naves destruídas.
+    run.restam = Math.max(0, run.restam - (dps(this.stats) / Math.max(1, this.unitHpMedio)) * dt);
     run.elapsed += dt;
 
-    if (run.hp <= 0) {
+    if (run.restam <= 0) {
       this.completeEncounter(true);
       return;
     }
@@ -754,6 +769,6 @@ export class Sim {
   }
 
   get sectorProgress(): number {
-    return clamp(1 - this.state.run.hp / Math.max(1, this.state.run.hpMax), 0, 1);
+    return clamp(1 - this.state.run.restam / Math.max(1, this.state.run.unidades), 0, 1);
   }
 }
