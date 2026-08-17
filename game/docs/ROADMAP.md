@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 17/08/2026 · 146 testes passando · typecheck e build limpos.
+**Última atualização:** 17/08/2026 · 160 testes passando · typecheck e build limpos.
 
 ---
 
@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 3 — itemização (dispersão de poder, afixos mortos por saturação de teto, conjuntos).
+**Próxima:** Fase 3.2 — `AffixDef` com tier, pesos e restrições; e ligar o catálogo novo à UI, que ainda desenha os ícones por tier de base.
 
 
 
@@ -394,7 +394,7 @@ como ser dimensionado.
 
 | # | Tarefa |
 |---|---|
-| 3.1 | Pipeline de `novos itens.png` — 10 categorias × 7 raridades (§23) |
+| 3.1 | ✅ Pipeline de `novos itens.png` — atlas `itens-novos`, 140 ícones |
 | 3.2 | `AffixDef` com tier, pesos e restrições (§6, §7) |
 | 3.3 | Gerador de item com orçamento de poder |
 | 3.4 | `+N projéteis` com as restrições do §8 |

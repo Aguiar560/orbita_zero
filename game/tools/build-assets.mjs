@@ -37,6 +37,10 @@ import {
 } from './sprites.slices.mjs';
 import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
 import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
+import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
+
+/** O catálogo novo do §23. */
+const NOVOS_ITENS_SHEET = 'novos itens.png';
 
 /** A folha elemental do §21. */
 const TIROS_SHEET = 'tiros e explosoes.png';
@@ -90,6 +94,7 @@ async function main() {
   await buildOrbes(manifest);
   await buildSprites(manifest);
   await buildTiros(manifest);
+  await buildNovosItens(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
   await buildDroneAtlas(manifest);
@@ -1128,4 +1133,47 @@ async function buildTiros(manifest) {
   if (vazias) console.warn(`   ! ${vazias} células saíram vazias`);
   log(`   ${sprites.length} sprites elementais`);
   await writeAtlas('elemental', sprites, manifest, 2048);
+}
+
+/**
+ * `novos itens.png` — 10 categorias × 7 raridades × 2 variantes (§23).
+ *
+ * O fundo de cada célula é uma placa escura com moldura da cor da raridade, e
+ * não um gradiente tingido como na folha elemental: aqui `alphaOverDark`
+ * SERVE, porque a placa é neutra. A moldura fica de fora pelo recuo — ela é
+ * decoração da folha, e no jogo quem desenha a borda de raridade é a UI, que
+ * precisa da cor viva mesmo quando o item está num slot pequeno.
+ */
+async function buildNovosItens(manifest) {
+  const file = path.join(RAW, NOVOS_ITENS_SHEET);
+  if (!existsSync(file)) {
+    console.warn(`   ! ${NOVOS_ITENS_SHEET} não encontrado — pulando catálogo novo`);
+    return;
+  }
+
+  noteRead(file);
+  const { data: bruto, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+  log(`Itens novos: ${NOVOS_ITENS_SHEET} (${info.width}x${info.height})`);
+
+  const sprites = [];
+  let vazias = 0;
+
+  for (const c of celulasDeItem()) {
+    // `extrairCelula` e não `alphaOverDark`: a placa de cada célula é TINGIDA na
+    // cor da raridade — a de Divino é dourada e clara —, e o un-premultiply de
+    // `alphaOverDark` deixava a placa opaca, virando um ladrilho quadrado em vez
+    // de um ícone recortado. Mesmo defeito da folha elemental, mesma cura já
+    // escrita: estimar o fundo POR CÉLULA.
+    const região = extrairCelula(bruto, info, c.x, c.y, c.w, c.h, { margem: 34, piso: 0.25 });
+    const trimmed = trimAlpha(região, 6);
+    if (!trimmed) { vazias++; continue; }
+    sprites.push({
+      id: c.id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
+      sw: c.w, sh: c.h,
+    });
+  }
+
+  if (vazias) console.warn(`   ! ${vazias} células vazias no catálogo novo`);
+  log(`   ${sprites.length} ícones de item`);
+  await writeAtlas('itens-novos', sprites, manifest, 2048);
 }
