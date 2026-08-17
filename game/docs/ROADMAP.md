@@ -409,7 +409,29 @@ como ser dimensionado.
 
 Integração da Matriz com o nível de personagem, curvas de XP calibradas,
 requisitos de nível, e o balanceamento das galáxias contra as metas de tempo do
-§2 — hoje a galáxia 1 leva 40 minutos e a meta é ~10 horas.
+§2 (~10 h por galáxia).
+
+### O que já foi feito
+
+**O caminho abstrato parou de inundar de item.** A contagem de abates vinha de
+`hpPool / bounty`, resquício de quando o progresso era medido em dano: até 40
+rolagens numa onda de doze inimigos. Agora é uma por inimigo real, com perda de
+coleta (`COLETA_ABSTRATA`). Medido: 1.822 itens em 2 h → 368.
+
+### O que a medição achou, e é o próximo trabalho
+
+A nota antiga dizia "galáxia 1 em 40 minutos, rápido demais". **Remedido, o
+sinal inverteu:** a galáxia 1 custa **38,7 horas** e **3.088 mortes** no caminho
+abstrato, terminando no nível 6.
+
+Três mil mortes não é um jogador lento, é um modelo quebrado. O caminho abstrato
+não tem piloto: ele compara `clearTime` com `survivalWindow` e morre sempre que
+a conta fecha do lado errado, sem esquiva, sem recuo, sem trocar de alvo. Ao
+vivo o mesmo jogador chegou ao setor 8 em 2 h com 24 mortes.
+
+Então **o ritmo do jogo não pode ser calibrado enquanto o simulador mentir sobre
+ele**. A ordem certa é: consertar o modelo abstrato de sobrevivência, medir uma
+corrida ao vivo nova, e só então mexer nas metas de tempo.
 
 ---
 
@@ -428,7 +450,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 
 | O quê | Evidência | Onde resolve |
 |---|---|---|
-| **Ritmo de relógio 15× rápido** | galáxia 1 em 40 min; meta é ~10 h | Fase 4 |
+| **O caminho abstrato virou uma moagem** | medido na Fase 4: galáxia 1 em **38,7 h** e **3.088 mortes**, nível 6. A nota antiga dizia "40 min, rápido demais" — o sinal INVERTEU e ninguém tinha remedido | Fase 4 — é o próximo trabalho, e é de modelo, não de constante |
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
 | **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
 | **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |
