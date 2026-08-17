@@ -17,14 +17,14 @@ momento — o ponto de partida, que não se reescreve.
 ```
 Etapa 0  ██████████  concluída
 Fase 1   ███████░░░  5 de 7 tarefas
-Fase 1B  ░░░░░░░░░░  morte, progresso e permanência
+Fase 1B  ██░░░░░░░░  1 de 5 — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 1B — progresso por abate e morte punitiva. Entrou na frente da
+**Próxima:** Fase 1B.1 — progresso por abate em vez de dano. Entrou na frente da
 Fase 2 porque redefine o que o combate significa, e construir dano elemental
 sobre um progresso que vai mudar é retrabalho garantido.
 
@@ -117,8 +117,7 @@ Exemplo dado, que vira o teste: nível 10 começa em 1000 de XP e o 11 exige
 200). Se o total chegar a 1000 ou menos, cai para o nível 9 e as perdas
 seguintes passam a incidir sobre a faixa de 9 → 10.
 
-> ⚠️ **A confirmar:** o pedido diz 15% na primeira menção e 20% na segunda.
-> Anotado como 15% em ambas até você decidir.
+Confirmado em 16/08/2026: **15%** nas duas quedas, inclusive após perder nível.
 
 > ⚠️ **Risco conhecido.** Voltar à onda 1 do setor foi tentado e removido no
 > commit `72c849e`: com as ondas dimensionadas por tempo, a regressão criava
@@ -133,14 +132,17 @@ O chefe deve exigir farm dos setores anteriores — item e nível — em vez de 
 na primeira tentativa. Hoje ele vale 3,5 ondas comuns (`CHEFE_ONDAS`), o que é
 pouco para um marco de galáxia.
 
-### 1B.5 — Aba em segundo plano não é ausência
+### 1B.5 — Aba em segundo plano não é ausência ✅
 
-Trocar de aba do navegador deve **manter o jogo rodando**. A contagem de
-progresso offline vale só quando a janela é fechada de fato.
+Feito. A aba oculta continua simulando; ausência é só janela fechada.
 
-Hoje `Game.onVisibility` trata `visibilitychange` como saída e acumula
-`offlineSeconds`. O certo é usar `pagehide`/`beforeunload` para marcar a saída
-real, e deixar a aba oculta continuar simulando.
+`requestAnimationFrame` congela em segundo plano, então não bastava deixar de
+parar o laço — foi preciso um segundo relógio. O avanço é calculado pelo relógio
+de PAREDE decorrido e não pelo número de chamadas, então o estrangulamento que o
+navegador aplica a `setInterval` não atrasa o jogo: um tick que demorou um
+segundo processa um segundo de simulação.
+
+Medido: três segundos ocultos produziram três segundos de jogo, sem desvio.
 
 ---
 
@@ -206,6 +208,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |
 | **Nave nua trava em onda de elite** | setor 4: 90 min, 67 mortes, 0 itens — inimigos escapam pela base e a onda é reposta com vida cheia | Fase 1B.1 |
+| **Offline rende ~20× mais que jogar** | 2 h fechado = 18 setores e 8.211 abates; ao vivo, o mesmo jogador leva 90 min para sair do setor 4. `abstractTick` usa `dps` puro: não erra tiro, não morre, não perde cápsula | Fase 1B.3 — ao modelar morte, o caminho abstrato precisa modelá-la também |
 | **Escala de afixo fracionário** | crítico, sorte e sincronia escalavam com ilvl; sorte chegava a 3699% e o baú soltava Divino em metade dos itens | ✅ resolvido em `1.5` |
 | **`sharp` com CVE de libvips** | `npm audit`; é ferramenta de build, não entra no bundle | etapa própria |
 

@@ -10,17 +10,25 @@ import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
 
-/** Ausência mínima (segundos) para creditar progresso offline. */
+/**
+ * Ausência mínima (segundos) para creditar progresso offline.
+ *
+ * Ausência aqui significa JANELA FECHADA — o tempo entre o último save e o
+ * boot. Trocar de aba não passa por este caminho: a aba oculta continua
+ * simulando no relógio de fundo do laço.
+ */
 const AWAY_THRESHOLD = 3;
+
+/** Ausência mínima para o relatório aparecer. Recarregar a página não conta. */
+const REPORT_THRESHOLD = 120;
 
 /**
  * Orquestrador: junta simulação, os dois modos e a interface num só laço.
  *
  * Regra central de tempo: a patrulha (`sim.patrolTick`) e o combate correm
- * SEMPRE, independente do que está na tela. A camada vertical roda ao vivo
- * enquanto a aba está visível e cai para `sim.abstractTick()` quando não está —
- * as duas usam o mesmo `Encounter`, então o progresso não muda de ritmo por
- * causa de onde o jogador está olhando.
+ * SEMPRE. Aba oculta continua simulando ao vivo, num relógio próprio do laço —
+ * o que muda é só que não se desenha. `sim.abstractTick()` existe apenas para o
+ * tempo de JANELA FECHADA, onde não há cena para rodar.
  *
  * A patrulha continua rendendo sem cena própria: virou uma renda de fundo lida
  * no painel esquerdo, e a tela inteira ficou para o combate.
@@ -34,7 +42,6 @@ export class Game {
   private vertical!: VerticalMode;
 
   private stageWrap!: HTMLElement;
-  private hiddenAt = 0;
 
   constructor(root: HTMLElement) {
     const loaded = loadFromStorage();
@@ -66,6 +73,10 @@ export class Game {
 
     window.addEventListener('resize', this.layout);
     document.addEventListener('visibilitychange', this.onVisibility);
+    // `pagehide` é o evento que realmente dispara ao fechar em todo navegador;
+    // `beforeunload` não é garantido no celular. Salvar nos dois é barato e a
+    // gravação é idempotente.
+    window.addEventListener('pagehide', () => this.sim.save());
     window.addEventListener('beforeunload', () => this.sim.save());
     bus.on('state:changed', () => this.vertical.refreshPlayer());
 
@@ -74,7 +85,7 @@ export class Game {
     if (this.offlineSeconds > AWAY_THRESHOLD) {
       const report = this.sim.applyOffline(this.offlineSeconds);
       this.vertical.refreshPlayer(true);
-      this.shell.showOfflineReport(report);
+      if (this.offlineSeconds > REPORT_THRESHOLD) this.shell.showOfflineReport(report);
     }
 
     this.loop.start();
@@ -122,22 +133,20 @@ export class Game {
     this.vertical.resize(Math.floor(VIEW.w * scale), Math.floor(VIEW.h * scale));
   };
 
+  /**
+   * Trocar de aba NÃO é ausência.
+   *
+   * Antes, `visibilitychange` parava o laço e contabilizava o tempo como
+   * progresso offline — o jogador olhava outra aba por um minuto e voltava com
+   * um relatório de ausência. Agora a aba oculta continua simulando, num
+   * relógio próprio, porque `requestAnimationFrame` congela em segundo plano.
+   *
+   * Ausência de verdade é a janela fechada, e quem detecta isso é `pagehide`:
+   * o tempo entre fechar e reabrir sai do `savedAt` do save, no boot.
+   */
   private readonly onVisibility = (): void => {
-    if (document.hidden) {
-      this.hiddenAt = Date.now();
-      this.sim.save();
-      this.loop.stop();
-      return;
-    }
-
-    const away = (Date.now() - this.hiddenAt) / 1000;
-    this.hiddenAt = 0;
-    if (away > AWAY_THRESHOLD) {
-      const report = this.sim.applyOffline(away);
-      this.vertical.refreshPlayer();
-      if (away > 120) this.shell.showOfflineReport(report);
-    }
-    this.loop.start();
+    this.loop.setBackground(document.hidden);
+    if (document.hidden) this.sim.save();
   };
 
   /** Reaplica o layout — chamado quando a faixa é escondida/mostrada. */

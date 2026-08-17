@@ -45,12 +45,14 @@ const SHIELD_LOCK = 4;
 /**
  * Camada vertical — o combate "de verdade".
  *
- * Aqui a nave é pilotada por IA (`PilotAI`) e o jogador atua pelo loadout, pelas
- * melhorias e pela política de pilotagem. A cena é a fonte de verdade do
- * combate ao vivo; ela informa a simulação a cada abate e no fim do encontro.
- * Quando não está visível, `Sim.abstractTick()` assume o mesmo papel de forma
- * numérica, e ambos usam o mesmo `Encounter` — por isso o progresso é contínuo
- * entre olhar e não olhar.
+ * Aqui a nave é pilotada por IA (`PilotAI`) e o jogador atua pelo loadout, pela
+ * Matriz e pela política de pilotagem. A cena é a fonte de verdade do combate;
+ * ela informa a simulação a cada abate e no fim do encontro.
+ *
+ * Ela roda mesmo com a aba oculta — o laço troca de relógio, mas a simulação é
+ * a mesma. `Sim.abstractTick()` só entra quando a JANELA foi fechada e não há
+ * cena para rodar; os dois caminhos partilham o mesmo `Encounter`, então o
+ * progresso não muda de ritmo conforme o jogador olha ou não.
  */
 export class VerticalMode {
   private readonly ai = new PilotAI();
