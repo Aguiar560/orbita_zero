@@ -532,8 +532,16 @@ quase nada.
 
 Favorito nunca entra. Fundir é destrutivo, e a marca existe para proteger disso.
 
-**Falta a UI.** A regra está no `Sim` (`faltaParaFundir` e `fundirItens`, com o
-motivo de recusa legível), mas ainda não há painel — não dá para fundir jogando.
+O sistema se chama **Fabricação** (§25 pede um nome que não seja "Forja").
+
+A seleção no painel é AUTOMÁTICA, e é a decisão de interface que o define: num
+jogo ocioso, "fundir dez Comuns" tem de ser um clique. Obrigar a marcar dez
+peças uma a uma transformaria a mecânica que existe para limpar o inventário
+numa tarefa mais tediosa que limpá-lo à mão. O painel escolhe as PIORES peças
+elegíveis — menor nível primeiro —, e favorito e equipado nunca entram.
+
+Verificado no jogo: dez Comuns viram uma peça, e a ferrita desce de 5.000 para
+4.810.
 
 
 Naves, inimigos, chefes, recursos por galáxia, crafting (§25), sacrifício e

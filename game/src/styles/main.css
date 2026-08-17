@@ -774,3 +774,13 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
   background: rgba(255, 93, 122, 0.1); border: 1px solid var(--bad);
   border-radius: 8px; color: #ffb0c0;
 }
+
+/* ── painel: fabricação (§25, §26) ───────────────────────────────────────── */
+.fab-receita {
+  display: grid; gap: 6px; padding: 10px 12px; margin-bottom: 9px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.fab-cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.fab-fluxo { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.fab-custo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fab-item { display: flex; align-items: center; gap: 4px; }
