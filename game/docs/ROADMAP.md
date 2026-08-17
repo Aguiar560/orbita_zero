@@ -534,23 +534,21 @@ Favorito nunca entra. Fundir é destrutivo, e a marca existe para proteger disso
 
 O sistema se chama **Fabricação** (§25 pede um nome que não seja "Forja").
 
-O painel É a máquina, não uma lista dela. Um núcleo hexagonal com as peças de
-entrada num ANEL em volta, a chance de sucesso como arco fechando esse anel, e o
-resultado no centro. Cada encaixe acende quando há peça para ele, então "faltam
-três" é uma coisa que se VÊ, sem ler número.
+**A câmara de síntese**, em três colunas: inventário à esquerda, anel no meio,
+tipos de fabricação à direita.
 
-A escolha do que fabricar é uma ESCADA, uma etapa por raridade. A raridade é uma
-progressão, e uma escada mostra isso; seis cartões empilhados, não.
+O jogador escolhe as peças UMA A UMA. Duas versões anteriores selecionavam
+sozinhas as piores, o que era cômodo e errado: fundir é destrutivo e
+irreversível, e escolher o que se perde é a decisão inteira. Automatizar isso é
+automatizar a única coisa que o painel existe para o jogador fazer. O atalho
+"encher com as piores" continua existindo — o que saiu foi a obrigação.
 
-Tudo é SVG e CSS. Um canvas daria mais liberdade e custaria laço de animação
-próprio, sincronia com o passo fixo do jogo e caminho de descarte — para um
-painel que fica parado a maior parte do tempo.
+Clicar uma peça a põe no anel; clicar o encaixe a devolve. Peça que não serve à
+receita fica VISÍVEL e apagada, em vez de sumir: esconder faria o jogador achar
+que ela desapareceu, e ver o que não serve ensina a regra.
 
-A seleção de peças é AUTOMÁTICA: num jogo ocioso, "fundir dez Comuns" tem de ser
-um clique. Obrigar a marcar dez peças uma a uma transformaria a mecânica que
-existe para limpar o inventário numa tarefa mais tediosa que limpá-lo à mão. O
-painel escolhe as PIORES elegíveis — menor nível primeiro —, e favorito e
-equipado nunca entram.
+Os encaixes são posicionados em PORCENTAGEM, então o anel acompanha a largura da
+coluna sem medida em pixels nem recálculo no resize.
 
 Verificado no jogo: dez Comuns viram uma peça, e a ferrita desce de 5.000 para
 4.810.
