@@ -22,6 +22,8 @@ export class ArmazemPanel implements Panel {
   id = 'armazem';
   title = 'Armazém';
   icon = 'aba/inventario';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   /** Esconde o que ainda não foi encontrado — para quem já conhece o catálogo. */
   private soPossuidos = false;

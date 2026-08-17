@@ -88,6 +88,11 @@ export class Shell {
           this.statusNode,
         ),
       ),
+      // As abas moram na barra de cima, como num painel de nave: o eixo
+      // horizontal é o que sobra numa tela larga, e libera a coluna direita
+      // inteira para o inventário ficar SEMPRE à vista — que é o que se
+      // consulta o tempo todo enquanto se joga.
+      this.tabBar,
       h('.topbar-right', {},
         h('.resources', {}, ...RESOURCE_IDS.map((id) => {
           const meta = RESOURCE_META[id];
@@ -107,7 +112,7 @@ export class Shell {
       h('main.layout', {},
         this.leftRail.root,
         h('.center', {}, stageWrap),
-        h('aside.rail-right', {}, this.tabBar, this.panelHost),
+        h('aside.rail-right', {}, this.panelHost),
       ),
       this.toastHost,
     );
@@ -122,6 +127,8 @@ export class Shell {
   private buildTabs(): void {
     clear(this.tabBar);
     for (const panel of this.panels) {
+      // O inventário não tem aba: ele nunca sai da tela.
+      if (panel === this.painelFixo) continue;
       const badge = panel.badge?.(this.sim) ?? 0;
       const tab = h(`button.tab${panel === this.active ? '.active' : ''}`, {
         title: panel.title,
@@ -181,25 +188,29 @@ export class Shell {
     this.updateResources();
   }
 
+  /**
+   * A coluna direita é o INVENTÁRIO, sempre.
+   *
+   * Ele deixou de ser uma aba entre outras porque não é uma tela que se visita:
+   * é o que se consulta enquanto se joga, a cada drop. As demais telas abrem em
+   * camada por cima, disparadas pelas abas da barra de cima.
+   */
   private renderPanel(): void {
-    // Painel de camada: sai da grade do layout e cobre a tela. O trilho mostra
-    // um aviso no lugar, para a aba não parecer vazia enquanto a camada está
-    // aberta.
-    if (this.active.overlay) {
-      clear(this.panelHost).append(
-        h('.panel-head', {}, h('h1', { text: this.active.title })),
-        h('p.muted.tiny', { text: 'Aberto em tela cheia.' }),
-      );
-      this.abrirCamada();
-      return;
-    }
-
-    this.fecharCamada();
-    const content = this.active.render(this.sim);
+    const fixo = this.painelFixo;
     clear(this.panelHost).append(
-      h('.panel-head', {}, h('h1', { text: this.active.title })),
-      content,
+      h('.panel-head', {}, h('h1', { text: fixo.title })),
+      fixo.render(this.sim),
     );
+
+    // A camada segue o painel ATIVO, que é o que a aba escolheu. Quando o ativo
+    // é o próprio inventário, não há camada nenhuma.
+    if (this.active !== fixo) this.abrirCamada();
+    else this.fecharCamada();
+  }
+
+  /** O painel que mora na coluna direita. */
+  private get painelFixo(): Panel {
+    return this.panels.find((p) => p.id === 'inventario') ?? this.panels[0]!;
   }
 
   /** Monta (ou re-renderiza) a camada do painel ativo. */
@@ -240,8 +251,7 @@ export class Shell {
   /** Fecha a camada e volta para o primeiro painel que não é de camada. */
   private voltarDaCamada(): void {
     this.fecharCamada();
-    const anterior = this.panels.find((p) => !p.overlay);
-    if (anterior) this.active = anterior;
+    this.active = this.painelFixo;
     this.buildTabs();
     this.renderPanel();
   }

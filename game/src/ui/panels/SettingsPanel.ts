@@ -10,6 +10,8 @@ export class SettingsPanel implements Panel {
   id = 'ajustes';
   title = 'Ajustes';
   icon = 'geral/b_1';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   render(sim: Sim): HTMLElement {
     const s = sim.state.settings;

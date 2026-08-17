@@ -9,6 +9,8 @@ export class CodexPanel implements Panel {
   id = 'codex';
   title = 'Códex';
   icon = 'aba/codex';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   render(sim: Sim): HTMLElement {
     const st = sim.state.stats;

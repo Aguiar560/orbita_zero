@@ -21,6 +21,8 @@ export class GalaxyPanel implements Panel {
   id = 'galaxia';
   title = 'Galáxia';
   icon = 'aba/galaxia';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   /** Galáxia sendo olhada; pode diferir daquela em que a frota está. */
   private viewing = -1;

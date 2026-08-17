@@ -24,6 +24,8 @@ export class ShopPanel implements Panel {
   id = 'loja';
   title = 'Loja';
   icon = 'aba/loja';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   badge(sim: Sim): number {
     return SHOP.filter((item) => this.visivel(sim, item) && this.pagavel(sim, item)).length;

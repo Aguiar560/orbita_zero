@@ -508,6 +508,21 @@ Só depois disso vale mexer nas metas de tempo do §2.
 
 ---
 
+## A forma da interface, decidida em 17/08/2026
+
+Painel de nave, não navegador de abas:
+
+- **combate no centro**, sempre;
+- **equipamento e ficha à esquerda**, sempre;
+- **inventário à direita**, sempre — ele não é uma tela que se visita, é o que
+  se consulta a cada drop;
+- **menus na barra de cima**, e cada um abre como CAMADA por cima da tela.
+
+A camada existe porque o trilho tem ~350 px: basta para uma lista, não para um
+painel de trabalho. Tentei antes alargar a coluna e esbarrei numa briga de
+cascata que não consegui explicar; a camada não depende da grade do layout, o
+que faz o problema deixar de existir em vez de ser contornado.
+
 ## Fase 5 — Conteúdo
 
 ### 3.9 / §26 — Sacrifício e fusão de itens ✅

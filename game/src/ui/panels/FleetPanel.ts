@@ -11,6 +11,8 @@ export class FleetPanel implements Panel {
   id = 'frota';
   title = 'Hangar';
   icon = 'aba/hangar';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   badge(sim: Sim): number {
     return HULLS.filter(

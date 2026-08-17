@@ -11,6 +11,8 @@ export class ChestsPanel implements Panel {
   id = 'baus';
   title = 'Baús';
   icon = 'aba/baus';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   private lastOpen: { tier: string; items: Item[] } | null = null;
 

@@ -915,3 +915,29 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .camada .fab-anel { max-width: 460px; }
 .camada .fab-encaixe { width: 62px; height: 62px; }
 .camada .fab-acao { max-width: 460px; }
+
+/* ── abas na barra de cima ───────────────────────────────────────────────── */
+/*
+ * As abas subiram do trilho para a barra superior.
+ *
+ * O eixo horizontal é o que sobra numa tela larga, e tirá-las da direita libera
+ * aquela coluna INTEIRA para o inventário — que não é uma tela que se visita, é
+ * o que se consulta a cada drop enquanto se joga.
+ */
+.topbar .tabs {
+  display: flex; align-items: center; gap: 4px;
+  flex: 1; justify-content: center; min-width: 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.topbar .tabs::-webkit-scrollbar { display: none; }
+.topbar .tab {
+  display: grid; justify-items: center; gap: 2px; flex: none;
+  padding: 4px 10px; border-radius: 8px; font-size: 10.5px; letter-spacing: 0.5px;
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.topbar .tab:hover { color: var(--text); background: rgba(30, 48, 80, 0.5); }
+.topbar .tab.active { color: var(--accent); border-color: var(--line-strong); background: rgba(30, 48, 80, 0.6); }
+
+/* A coluna direita não tem mais barra de abas: é só o inventário. */
+.rail-right { grid-template-rows: minmax(0, 1fr); }

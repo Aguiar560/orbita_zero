@@ -27,6 +27,8 @@ export class TreePanel implements Panel {
   id = 'matriz';
   title = 'Matriz';
   icon = 'aba/matriz';
+  /** Abre em camada: a coluna direita é do inventário. */
+  overlay = true;
 
   private readonly root: HTMLElement;
   private readonly canvas: HTMLCanvasElement;
