@@ -16,14 +16,17 @@ momento — o ponto de partida, que não se reescreve.
 
 ```
 Etapa 0  ██████████  concluída
-Fase 1   ██████░░░░  4 de 7 tarefas
+Fase 1   ███████░░░  5 de 7 tarefas
+Fase 1B  ░░░░░░░░░░  morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima tarefa:** 1.5 — sete raridades, de Comum a Divino.
+**Próxima:** Fase 1B — progresso por abate e morte punitiva. Entrou na frente da
+Fase 2 porque redefine o que o combate significa, e construir dano elemental
+sobre um progresso que vai mudar é retrabalho garantido.
 
 ---
 
@@ -49,7 +52,7 @@ mudança de balanceamento seria fé.
 | 1.3 | Inverter a dependência: `hpDaOnda = poderEsperado × tempoAlvo` | ✅ `72c849e` |
 | 1.4 | Calibrar por simulação, com corrida do zero como prova | ✅ `72c849e` |
 | — | Densidade e pressão como eixos de dificuldade (§16) | ✅ `82b4347` |
-| 1.5 | **Sete raridades, Comum → Divino** (§9) | ⬜ próxima |
+| 1.5 | Sete raridades, Comum → Divino (§9) | ✅ |
 | 1.6 | Tiers de atributo T1–T10 (§6) | ⬜ |
 | 1.7 | Orçamento e peso de atributos (§7) | ⬜ |
 | 1.8 | Nível de personagem 1–300 (§17) | ⬜ |
@@ -64,6 +67,80 @@ Duas remoções que a especificação pedia e que não dependiam de mais nada:
 |---|---|
 | Remover o menu Melhorias (§31) | `dc6ec0b` |
 | Remover os Power Ups de batalha (§30) e tornar o dano normal irresistível | `857c2cc` |
+
+---
+
+## Fase 1B — Morte, progresso e permanência
+
+Bloco pedido em 16/08/2026. Muda a natureza do jogo: hoje morrer custa pouco e o
+setor avança sozinho; a intenção é que morrer doa e que o avanço venha de matar.
+
+Vem **antes da Fase 2** porque redefine o que o combate significa — implementar
+dano elemental sobre um sistema de progresso que vai mudar é retrabalho certo.
+
+### 1B.1 — Progresso por ABATE, não por dano
+
+Hoje o encontro é um poço de vida que drena a cada golpe: `applyDamage` credita
+o dano ao `hpPool`, e quando o poço zera a onda acaba **com inimigos ainda
+vivos na tela**. Fica estranho, e é o que o pedido aponta.
+
+O modelo de poço existe por um motivo que não pode ser perdido: antes dele, os
+inimigos que escapavam pela base da tela limpavam a onda de graça. A substituição
+precisa resolver os dois lados — o avanço vem de abate, e quem escapa não conta.
+
+> **Evidência do problema, medida.** Setor 4, onda de elite: o poço marcava
+> 435 de 970 enquanto as três naves em tela estavam com vida cheia. Os inimigos
+> desciam e saíam pela base, o diretor repunha a onda inteira, e o jogador de
+> nave nua (24 de dano por segundo) nunca fechava a conta — 90 minutos, 67
+> mortes, zero itens coletados.
+
+### 1B.2 — Recursos só ao concluir o SETOR
+
+Sucata, núcleos e cristais deixam de ser creditados por onda. Ficam retidos
+como "carga da incursão" e só entram no save quando o setor inteiro é vencido.
+
+### 1B.3 — Morte muito punitiva
+
+| Perda | Detalhe |
+|---|---|
+| Progresso do setor | Volta para a onda 1 e refaz o setor inteiro |
+| XP do personagem | −15% do acumulado **dentro da faixa do nível atual** |
+| XP da nave | idem, na faixa do nível da nave |
+| Nível | Se o XP cair abaixo do piso do nível, **desce de nível** e continua perdendo na faixa anterior |
+| Matriz | Ao perder nível, o **último ponto alocado** é devolvido |
+| Carga da incursão | Todos os recursos coletados no setor são perdidos |
+| Sucata em banco | Perde uma parcela do que já estava guardado |
+| Itens | **Não se perdem** — o que caiu, caiu |
+
+Exemplo dado, que vira o teste: nível 10 começa em 1000 de XP e o 11 exige
+1400. Com 1200 de total, o acumulado na faixa é 200, e a morte tira 30 (15% de
+200). Se o total chegar a 1000 ou menos, cai para o nível 9 e as perdas
+seguintes passam a incidir sobre a faixa de 9 → 10.
+
+> ⚠️ **A confirmar:** o pedido diz 15% na primeira menção e 20% na segunda.
+> Anotado como 15% em ambas até você decidir.
+
+> ⚠️ **Risco conhecido.** Voltar à onda 1 do setor foi tentado e removido no
+> commit `72c849e`: com as ondas dimensionadas por tempo, a regressão criava
+> empate — o piloto avançava e recuava no mesmo ritmo e passava quarenta
+> minutos no mesmo setor. Só volta a funcionar se a curva de dificuldade e a
+> aquisição de itens estiverem calibradas para o jogador **vencer** o setor na
+> maioria das tentativas. Precisa de simulação antes de fechar.
+
+### 1B.4 — Chefes de verdade
+
+O chefe deve exigir farm dos setores anteriores — item e nível — em vez de cair
+na primeira tentativa. Hoje ele vale 3,5 ondas comuns (`CHEFE_ONDAS`), o que é
+pouco para um marco de galáxia.
+
+### 1B.5 — Aba em segundo plano não é ausência
+
+Trocar de aba do navegador deve **manter o jogo rodando**. A contagem de
+progresso offline vale só quando a janela é fechada de fato.
+
+Hoje `Game.onVisibility` trata `visibilitychange` como saída e acumula
+`offlineSeconds`. O certo é usar `pagehide`/`beforeunload` para marcar a saída
+real, e deixar a aba oculta continuar simulando.
 
 ---
 
@@ -128,6 +205,8 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | Fase 3 |
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |
+| **Nave nua trava em onda de elite** | setor 4: 90 min, 67 mortes, 0 itens — inimigos escapam pela base e a onda é reposta com vida cheia | Fase 1B.1 |
+| **Escala de afixo fracionário** | crítico, sorte e sincronia escalavam com ilvl; sorte chegava a 3699% e o baú soltava Divino em metade dos itens | ✅ resolvido em `1.5` |
 | **`sharp` com CVE de libvips** | `npm audit`; é ferramenta de build, não entra no bundle | etapa própria |
 
 ---

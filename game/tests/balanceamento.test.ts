@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/math';
-import { RARITIES } from '@data/rarity';
+import { MAX_RARITY, RARITIES } from '@data/rarity';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, matchup } from '@data/elements';
 import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN } from '@data/balance/limites';
 import { AFFIXES } from '@data/items';
@@ -168,7 +168,18 @@ describe('limites de sanidade (§40)', () => {
  * mentira.
  */
 describe('distribuição de raridade (§9)', () => {
-  it('bate com os pesos declarados, dentro de 5%', () => {
+  /**
+   * A tolerância vem da estatística, não de um número redondo.
+   *
+   * Uma folga fixa de 5% é generosa demais para o Comum e apertada demais para
+   * o Lendário: com duzentas mil amostras ele aparece umas quinhentas vezes, e
+   * só o erro de amostragem já vale 4%. O limite aqui é quatro desvios-padrão
+   * da proporção, que escala sozinho conforme a raridade fica mais rara.
+   *
+   * Mítico e Divino saem de fora porque nem seiscentas mil amostras dariam
+   * contagem suficiente — eles têm testes próprios, com faixa de "1 em quantos".
+   */
+  it('bate com os pesos declarados, dentro do erro de amostragem', () => {
     const AMOSTRAS = 200_000;
     const rng = new Rng(20260816);
     const cont = new Array(RARITIES.length).fill(0);
@@ -177,8 +188,13 @@ describe('distribuição de raridade (§9)', () => {
     const total = RARITIES.reduce((s, r) => s + r.weight, 0);
     for (const r of RARITIES) {
       const esperado = r.weight / total;
+      if (esperado * AMOSTRAS < 100) continue;
       const real = cont[r.id] / AMOSTRAS;
-      expect(Math.abs(real / esperado - 1), `${r.name}: ${real} vs ${esperado}`).toBeLessThan(0.05);
+      const sigma = Math.sqrt((1 - esperado) / (esperado * AMOSTRAS));
+      expect(
+        Math.abs(real / esperado - 1),
+        `${r.name}: ${(real * 100).toFixed(4)}% contra ${(esperado * 100).toFixed(4)}%`,
+      ).toBeLessThan(4 * sigma);
     }
   });
 
@@ -189,7 +205,52 @@ describe('distribuição de raridade (§9)', () => {
     }
   });
 
-  it.todo('Divino sai entre 1/30.000 e 1/45.000 (§10) — depende das 7 raridades');
+  it('existem as sete raridades, de Comum a Divino', () => {
+    expect(RARITIES.map((r) => r.name)).toEqual([
+      'Comum', 'Incomum', 'Raro', 'Épico', 'Lendário', 'Mítico', 'Divino',
+    ]);
+    expect(MAX_RARITY).toBe(RARITIES.length - 1);
+  });
+
+  /** §10: extremamente difícil, mas não impossível na vida útil do jogo. */
+  it('Divino sai entre 1 em 25.000 e 1 em 50.000 sem sorte', () => {
+    const rng = new Rng(2026);
+    const AMOSTRAS = 600_000;
+    let divinos = 0;
+    for (let i = 0; i < AMOSTRAS; i++) if (rollRarity(rng, 0, 0) === 6) divinos++;
+    const umEm = AMOSTRAS / Math.max(1, divinos);
+    expect(umEm, `1 em ${Math.round(umEm)}`).toBeGreaterThan(25_000);
+    expect(umEm, `1 em ${Math.round(umEm)}`).toBeLessThan(50_000);
+  });
+
+  /**
+   * A sorte não pode comprar o topo.
+   *
+   * O expoente da sorte estava amarrado ao ÍNDICE da raridade. Ao passar de
+   * cinco para sete, `sorte^6` virou 64 vezes mais forte que `sorte^4` e o baú
+   * de Singularidade passou a soltar Divino em um de cada seis itens. Este
+   * teste trava a separação entre expoente e índice.
+   */
+  it('mesmo com sorte alta, Divino continua sendo minoria', () => {
+    const rng = new Rng(77);
+    const AMOSTRAS = 200_000;
+    let divinos = 0;
+    for (let i = 0; i < AMOSTRAS; i++) if (rollRarity(rng, 7, 0) === 6) divinos++;
+    const fracao = divinos / AMOSTRAS;
+    expect(fracao, `${(fracao * 100).toFixed(1)}% com sorte 7`).toBeLessThan(0.08);
+  });
+
+  it('cada raridade dá mais afixos e tolera tier mais alto que a anterior', () => {
+    for (let i = 1; i < RARITIES.length; i++) {
+      const antes = RARITIES[i - 1]!;
+      const agora = RARITIES[i]!;
+      expect(agora.afixos, agora.name).toBeGreaterThan(antes.afixos);
+      expect(agora.power, agora.name).toBeGreaterThan(antes.power);
+      expect(agora.tierMax, agora.name).toBeGreaterThanOrEqual(antes.tierMax);
+      expect(agora.weight, agora.name).toBeLessThan(antes.weight);
+    }
+    expect(RARITIES[RARITIES.length - 1]!.tierMax).toBe(10);
+  });
 });
 
 /** O anel elemental precisa ser simétrico, senão um elemento domina. */

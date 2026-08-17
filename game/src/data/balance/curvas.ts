@@ -39,8 +39,8 @@ export const ILVL_POR_SETOR = 0.9;
  * monta um jogador em 34 setores de 1 a 300, tira a mediana de sete sementes
  * por setor e ajusta a lei de potência por mínimos quadrados em log-log.
  *
- *   DPS      = 0,329 × (ilvl + 3,5) ^ 3,7043    R² 0,9937
- *   vida ef. = 114,7 × (ilvl + 2)   ^ 1,1011    R² 0,9941
+ *   DPS      = 2,118 × (ilvl + 1,5) ^ 2,7626    R² 0,9922
+ *   vida ef. = 81,5  × (ilvl + 0,5) ^ 1,2485    R² 0,9838
  *
  * O deslocamento existe por causa do começo: no nível de item 1 o poder vem
  * quase todo do CASCO, e uma lei de potência pura previa 14 de dano onde a
@@ -55,13 +55,13 @@ export const ILVL_POR_SETOR = 0.9;
  *   expoentes DESCREVEM o jogo; se o jogo mudar e eles não, o ritmo desanda em
  *   silêncio.
  */
-export const PODER_A = 0.368;
-export const PODER_P = 3.6954;
+export const PODER_A = 2.118;
+export const PODER_P = 2.7626;
 
-export const DEFESA_A = 91.591;
-export const DEFESA_P = 1.1552;
+export const DEFESA_A = 81.525;
+export const DEFESA_P = 1.2485;
 
-export const PODER_C = 2;
+export const PODER_C = 1.5;
 export const DEFESA_C = 0.5;
 
 /**
@@ -86,12 +86,13 @@ export const INICIO_DEFESA_BASE = 227;
 export const INICIO_DEFESA_RAZAO = 1.1;
 
 /**
- * A assimetria que a Fase 3 precisa atacar: **3,70 contra 1,10**.
+ * A assimetria que a Fase 3 ainda precisa atacar: **2,76 contra 1,25**.
  *
- * A ofensiva do jogador cresce três vezes e meia mais rápido que a defensiva,
- * porque os afixos ofensivos são multiplicativos e os defensivos são aditivos.
- * As curvas abaixo acomodam essa assimetria; corrigi-la é trabalho de orçamento
- * de item (§7), não de curva de dificuldade.
+ * A ofensiva do jogador cresce mais que o dobro da defensiva, porque os afixos
+ * ofensivos são multiplicativos e os defensivos são aditivos. Já foi pior — era
+ * 3,70 contra 1,10 enquanto crítico e sorte escalavam com o nível de item, o
+ * que inflava o dano e não a sobrevivência. As curvas abaixo acomodam o que
+ * sobrou; fechar a diferença é trabalho de orçamento de item (§7).
  */
 export const poderEsperado = (setor: number): number => Math.min(
   PODER_A * Math.pow(curvaIlvl(setor) + PODER_C, PODER_P),
@@ -284,11 +285,28 @@ export const PATRULHA_XP_RAZAO = 1.24;
 /**
  * Quanto um afixo aditivo cresce por nível de item.
  *
- * Percentuais não escalam — já são relativos. Resistência também não, apesar de
- * ser aditiva na forma: ela é fração no significado, e escalada por nível um
- * +4% viraria +130% no setor 30, ou seja, imunidade.
+ * Vale para valores BRUTOS — dano, casco, escudo, regeneração —, que precisam
+ * acompanhar a curva. Percentuais não escalam porque já são relativos.
  */
 export const AFIXO_ESCALA_POR_ILVL = 0.32;
+
+/**
+ * Atributos que são FRAÇÃO, mesmo somando como valor absoluto.
+ *
+ * Nenhum deles pode escalar com o nível de item, e a distinção não é
+ * cosmética: `+4,5% de crítico` escalado por ilvl 200 vira `+990% de crítico`.
+ * Os tetos escondiam o problema em quase todos — crítico e sincronia batiam no
+ * limite e o afixo virava inútil dali em diante — mas `sorte` não tem teto
+ * natural, e o estrago apareceu na tabela de raridade: um jogador bem equipado
+ * chegava a 3699% de sorte e o baú de Singularidade soltava Divino em metade
+ * dos itens.
+ *
+ * A resistência elemental já estava fora por este mesmo motivo; esta lista
+ * generaliza a regra em vez de tratar cada caso.
+ */
+export const ATRIBUTOS_FRACIONARIOS: ReadonlySet<string> = new Set([
+  'critChance', 'critDano', 'sorte', 'iaSkill',
+]);
 
 /** Chance de um abate soltar item, por tipo de encontro. */
 export const DROP_BASE = { onda: 0.06, elite: 0.5, chefe: 1 } as const;

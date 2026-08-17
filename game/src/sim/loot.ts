@@ -2,8 +2,11 @@ import { Rng, clamp } from '@core/math';
 import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, type AffixDef } from '@data/items';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
+import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
 import { ELEMENTS } from '@data/elements';
-import { AFIXO_ESCALA_POR_ILVL, DROP_BASE, DROP_SORTE_PESO, DROP_TETO } from '@data/balance/curvas';
+import {
+  AFIXO_ESCALA_POR_ILVL, ATRIBUTOS_FRACIONARIOS, DROP_BASE, DROP_SORTE_PESO, DROP_TETO,
+} from '@data/balance/curvas';
 import type { Affix, ElementId, GameState, Item, Rarity, SlotId, Stats } from './types';
 import { resolveStats, powerScore } from './stats';
 
@@ -18,8 +21,14 @@ const uid = (): string => `${Date.now().toString(36)}${(uidCounter++).toString(3
  * relíquia, que é exatamente onde o jogador quer sentir o investimento.
  */
 export function rollRarity(rng: Rng, luck: number, floor: Rarity = 0): Rarity {
-  const boost = 1 + Math.max(0, luck);
-  const pick = rng.weighted(RARITIES, (r) => (r.id < floor ? 0 : r.weight * Math.pow(boost, r.id)));
+  const boost = 1 + Math.min(SORTE_EFETIVA_MAX, Math.max(0, luck));
+  // O expoente vem da tabela, não do índice da raridade. Amarrado ao índice, a
+  // passagem de cinco para sete raridades multiplicou por 64 o efeito da sorte
+  // no topo e um baú de Singularidade passou a soltar Divino um a cada seis.
+  const pick = rng.weighted(
+    RARITIES,
+    (r) => (r.id < floor ? 0 : r.weight * Math.pow(boost, r.sorteExpo)),
+  );
   return Math.max(floor, pick.id) as Rarity;
 }
 
@@ -50,7 +59,7 @@ export function rollItem(
 
   const affixes: Affix[] = [];
   const used = new Set<string>();
-  for (let i = 0; i < info.affixes && used.size < eligible.length; i++) {
+  for (let i = 0; i < info.afixos && used.size < eligible.length; i++) {
     const def = rng.weighted(eligible.filter((a) => !used.has(a.id)), (a) => a.weight);
     if (!def) break;
     used.add(def.id);
@@ -96,10 +105,12 @@ function rollElement(rng: Rng, rarity: Rarity): ElementId {
 function rollAffix(rng: Rng, def: AffixDef, ilvl: number, power: number): Affix {
   const quality = rng.next();
   const raw = def.min + (def.max - def.min) * quality;
-  // Afixos aditivos escalam com o nível de item; percentuais já são relativos.
-  // Resistência é aditiva na forma mas fração no significado: escalada pelo
-  // nível, +4% de resistência a fogo viraria +130% no setor 30 — imunidade.
-  const escalavel = def.kind === 'add' && !def.element;
+  // Só valor BRUTO escala com o nível de item. Fração — crítico, sorte,
+  // sincronia, resistência — não: escalada por ilvl 200, uma linha de +4,5% de
+  // crítico viraria +990%.
+  const escalavel = def.kind === 'add'
+    && !def.element
+    && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
   const scaled = escalavel ? raw * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : raw;
   const value = def.id === 'proj_f' || def.id === 'perf_f' ? Math.round(raw) : scaled * power;
   return { id: def.id, stat: def.stat, kind: def.kind, value, quality };

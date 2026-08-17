@@ -92,12 +92,12 @@ function comandoDrops(amostras: number, sorte: number): void {
   const cont = new Array(RARITIES.length).fill(0);
   for (let i = 0; i < amostras; i++) cont[rollRarity(rng, sorte, 0)]++;
 
-  const pesoTotal = RARITIES.reduce((s, r) => s + r.weight * Math.pow(1 + sorte, r.id), 0);
+  const pesoTotal = RARITIES.reduce((s, r) => s + r.weight * Math.pow(1 + sorte, r.sorteExpo), 0);
 
   tabela(
     ['raridade', 'esperado', 'real', 'desvio', '1 em'],
     RARITIES.map((r, i) => {
-      const esperado = (r.weight * Math.pow(1 + sorte, r.id)) / pesoTotal;
+      const esperado = (r.weight * Math.pow(1 + sorte, r.sorteExpo)) / pesoTotal;
       const real = cont[i] / amostras;
       const desvio = esperado > 0 ? (real / esperado - 1) * 100 : 0;
       return [

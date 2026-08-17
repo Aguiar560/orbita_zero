@@ -56,7 +56,12 @@ export const LIMITES: Partial<Record<StatId, Limite>> = {
   critDano: { min: 0 },
   explosao: { min: 0, max: 260 },
   iaSkill: { min: 0, max: 1 },
-  sorte: { min: 0 },
+
+  // NOVO — sorte era o único atributo fracionário sem teto, e por isso foi o
+  // único cujo defeito de escala apareceu no jogo em vez de ser mascarado por
+  // um limite. Ela entra na tabela de raridade como expoente, então cada ponto
+  // a mais desloca a distribuição inteira.
+  sorte: { min: 0, max: 5 },
 };
 
 /**
@@ -107,6 +112,16 @@ export const INIMIGOS_POR_ONDA_MAX = 60;
 
 /** Teto de inimigos do mesmo tipo num grupo, para a formação continuar legível. */
 export const INIMIGOS_POR_GRUPO_MAX = 30;
+
+/**
+ * Teto da sorte EFETIVA na rolagem de raridade.
+ *
+ * A sorte do jogador já tem teto, mas os baús a multiplicam — o de
+ * Singularidade por sete. Sem um segundo limite aqui, o produto escapava e o
+ * baú mais caro do jogo soltava Divino em metade dos itens, esvaziando as sete
+ * raridades que acabaram de ser criadas.
+ */
+export const SORTE_EFETIVA_MAX = 12;
 
 /**
  * Aplica todos os limites, no lugar.

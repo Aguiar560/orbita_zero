@@ -108,8 +108,14 @@ export const SLOT_IDS: readonly SlotId[] = [
   'asas', 'principal', 'secundaria', 'motor', 'reator', 'controle', 'escudo', 'blindagem', 'suporte',
 ];
 
-/** 0 comum · 1 incomum · 2 raro · 3 épico · 4 lendário */
-export type Rarity = 0 | 1 | 2 | 3 | 4;
+/**
+ * 0 comum · 1 incomum · 2 raro · 3 épico · 4 lendário · 5 mítico · 6 divino
+ *
+ * Os índices 0 a 4 mantêm o significado que sempre tiveram, então um item de
+ * save antigo continua com a raridade certa: Mítico e Divino entraram por cima,
+ * não no meio.
+ */
+export type Rarity = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface Affix {
   id: string;

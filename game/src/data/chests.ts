@@ -37,7 +37,10 @@ export const CHESTS: readonly ChestDef[] = [
   },
   {
     id: 'singularidade', name: 'Singularidade', color: '#c060ff', icon: 'bau/c_2',
-    items: [4, 6], ilvlBonus: 10, floor: 3, luck: 7.0,
+    // Piso subiu de Épico para Lendário quando as raridades passaram de cinco
+    // para sete: garantir Épico era o penúltimo degrau e virou o do meio, o que
+    // esvaziava a identidade do baú mais caro do jogo.
+    items: [4, 6], ilvlBonus: 10, floor: 4, luck: 7.0,
     resources: { sucata: 5000, nucleo: 420, cristal: 18 }, buy: 240,
   },
 ];
