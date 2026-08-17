@@ -1245,3 +1245,31 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .fab-custo-nome { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .fab-custo-nome span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fab-custo-linha > span:last-child { flex: none; font-variant-numeric: tabular-nums; }
+
+/* ── correção: a arte sumia contra o fundo do modal ──────────────────────── */
+/*
+ * A geometria estava certa — anel de 417 px, dez encaixes de 62, botão de 417 —
+ * e as imagens carregando. O que faltava era CONTRASTE: as peças são linha
+ * azul-escura com fio de neon, e o interior do modal também é azul-escuro. A
+ * arte estava lá e não se via.
+ *
+ * `brightness` em vez de trocar a arte: o desenho está certo, é a relação com o
+ * fundo que estava errada. E o brilho volta por `drop-shadow`, que segue a
+ * silhueta da peça em vez de fazer um halo retangular como `box-shadow` faria
+ * numa arte recortada.
+ */
+.camada .fab-encaixe {
+  filter: brightness(1.55) drop-shadow(0 0 4px rgba(79, 195, 255, 0.35));
+}
+.camada .fab-encaixe.cheio {
+  filter: brightness(1.3) drop-shadow(0 0 9px rgba(79, 195, 255, 0.65));
+}
+.fab-anel { filter: brightness(1.5) saturate(1.15); }
+.fab-miolo { filter: brightness(1.45) drop-shadow(0 0 8px rgba(79, 195, 255, 0.3)); }
+.fab-acao { filter: brightness(1.5); }
+.fab-acao.pronta { filter: brightness(1.2) drop-shadow(0 0 8px rgba(79, 195, 255, 0.5)); }
+.camada .fab-inv, .camada .fab-tipos { filter: brightness(1.35); }
+.fab-placa { filter: brightness(1.35); }
+
+/* O miolo do modal escurece um pouco, para a arte ter contra o que aparecer. */
+.camada-caixa { background: rgba(4, 8, 18, 0.72); }
