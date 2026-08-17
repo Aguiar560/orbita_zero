@@ -47,16 +47,22 @@ export interface ReceitaDeFusao {
 /**
  * As receitas.
  *
- * Uma por degrau de raridade, e a chance CAI conforme sobe: transformar Comum
- * em Incomum é rotina, transformar Mítico em Divino é aposta. O custo em
- * recurso sobe junto, e muda de família — os degraus altos pedem material que
- * só chefe solta, o que amarra a fusão ao conteúdo em vez de deixá-la
- * acontecer sozinha no inventário.
+ * SEMPRE DEZ ITENS, do Comum ao Divino. A quantidade fixa é o que torna a
+ * escada legível: o jogador aprende a regra uma vez e ela vale em todo degrau.
+ * O que muda de um degrau para o outro é a CHANCE e o CUSTO.
  *
- * O resultado nem sempre é o degrau seguinte: há peso para sair a MESMA
- * raridade. É o que faz uma fusão bem-sucedida ainda ser uma boa notícia sem
- * ser garantia — e o que mantém o jogador fundindo em vez de fazer a conta uma
- * vez e parar.
+ * A chance despenca no topo — 85%, 60%, 38%, 20%, 7%, 3%. Mítico e Divino são
+ * para ser extremamente difíceis, e a conta composta mostra por quê: sair de
+ * dez Comuns até um Divino exige, no caminho direto, 100 mil peças comuns.
+ *
+ * O custo em recurso sobe junto e muda de família: os degraus altos pedem
+ * material que só chefe solta, o que amarra a fusão ao conteúdo em vez de
+ * deixá-la acontecer sozinha no inventário.
+ *
+ * Os quatro primeiros degraus têm CONSOLAÇÃO — peso para sair a mesma raridade
+ * —, o que faz uma fusão bem-sucedida ser boa notícia sem ser garantia. Os dois
+ * últimos NÃO têm: com 7% e 3% de chance, dividir o sucesso outra vez tornaria
+ * o número anunciado uma mentira. Lá em cima, acertar é subir.
  */
 export const RECEITAS: readonly ReceitaDeFusao[] = [
   {
@@ -70,42 +76,44 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
   {
     id: 'incomum_raro',
     nome: 'Síntese Ligada',
-    entrada: 1, quantidade: 8, chance: 0.7, nucleos: 120,
-    custo: { ferrita: 400, titanio: 60 },
+    entrada: 1, quantidade: 10, chance: 0.6, nucleos: 150,
+    custo: { ferrita: 500, titanio: 80 },
     resultados: [{ raridade: 2, peso: 80 }, { raridade: 1, peso: 20 }],
-    nota: 'Oito Incomuns, com liga de titânio.',
+    nota: 'Dez Incomuns, com liga de titânio.',
   },
   {
     id: 'raro_epico',
     nome: 'Transmutação',
-    entrada: 2, quantidade: 6, chance: 0.55, nucleos: 400,
-    custo: { titanio: 150, cristal_quantico: 20 },
+    entrada: 2, quantidade: 10, chance: 0.38, nucleos: 600,
+    custo: { titanio: 250, cristal_quantico: 40 },
     resultados: [{ raridade: 3, peso: 75 }, { raridade: 2, peso: 25 }],
-    nota: 'Seis Raros e cristal quântico.',
+    nota: 'Dez Raros e cristal quântico.',
   },
   {
     id: 'epico_lendario',
     nome: 'Fusão Estelar',
-    entrada: 3, quantidade: 5, chance: 0.4, nucleos: 1200,
-    custo: { cristal_quantico: 60, aco_estelar: 25 },
-    resultados: [{ raridade: 4, peso: 70 }, { raridade: 3, peso: 30 }],
-    nota: 'Cinco Épicos e aço estelar.',
+    entrada: 3, quantidade: 10, chance: 0.2, nucleos: 2500,
+    custo: { cristal_quantico: 120, aco_estelar: 60 },
+    resultados: [{ raridade: 4, peso: 80 }, { raridade: 3, peso: 20 }],
+    nota: 'Dez Épicos e aço estelar.',
   },
   {
     id: 'lendario_mitico',
     nome: 'Convergência',
-    entrada: 4, quantidade: 4, chance: 0.28, nucleos: 4000,
-    custo: { aco_estelar: 80, nucleo_de_energia: 12 },
-    resultados: [{ raridade: 5, peso: 65 }, { raridade: 4, peso: 35 }],
-    nota: 'Quatro Lendários e núcleos de energia — só chefe solta.',
+    entrada: 4, quantidade: 10, chance: 0.07, nucleos: 12_000,
+    custo: { aco_estelar: 200, nucleo_de_energia: 40 },
+    // Sem consolação: com 7% de chance, dividir o sucesso outra vez tornaria o
+    // número anunciado uma mentira. Aqui acertar É subir de raridade.
+    resultados: [{ raridade: 5, peso: 100 }],
+    nota: 'Dez Lendários e núcleos de energia — só chefe solta.',
   },
   {
     id: 'mitico_divino',
     nome: 'Singularidade Contida',
-    entrada: 5, quantidade: 3, chance: 0.15, nucleos: 14_000,
-    custo: { fragmento_divino: 5, essencia_primordial: 3 },
-    resultados: [{ raridade: 6, peso: 60 }, { raridade: 5, peso: 40 }],
-    nota: 'Três Míticos, fragmento divino e essência primordial.',
+    entrada: 5, quantidade: 10, chance: 0.03, nucleos: 60_000,
+    custo: { fragmento_divino: 25, essencia_primordial: 15 },
+    resultados: [{ raridade: 6, peso: 100 }],
+    nota: 'Dez Míticos, fragmento divino e essência primordial.',
   },
 ];
 

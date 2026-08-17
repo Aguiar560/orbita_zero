@@ -65,15 +65,44 @@ describe('as receitas', () => {
     expect(faltando).toEqual([]);
   });
 
-  /**
-   * Sempre há peso para sair a MESMA raridade. É o que faz uma fusão
-   * bem-sucedida ser boa notícia sem ser garantia.
-   */
-  it('o resultado nem sempre é o degrau seguinte', () => {
+  it('toda receita pode entregar o degrau seguinte', () => {
     for (const r of RECEITAS) {
-      expect(r.resultados.some((x) => x.raridade === r.entrada), r.id).toBe(true);
       expect(r.resultados.some((x) => x.raridade > r.entrada), r.id).toBe(true);
     }
+  });
+
+  /**
+   * A consolação existe só onde a chance é generosa.
+   *
+   * Nos degraus baratos ela faz a fusão bem-sucedida ser boa notícia sem ser
+   * garantia. Nos degraus de 7% e 3% ela sairia — dividir um sucesso já raro
+   * tornaria o número ANUNCIADO uma mentira: o jogador leria 3% e receberia
+   * menos que isso.
+   */
+  it('consolação só nas receitas generosas', () => {
+    for (const r of RECEITAS) {
+      const temConsolacao = r.resultados.some((x) => x.raridade === r.entrada);
+      expect(temConsolacao, `${r.id} (chance ${r.chance})`).toBe(r.chance >= 0.15);
+    }
+  });
+
+  /**
+   * DEZ em todo degrau, do Comum ao Divino.
+   *
+   * A quantidade fixa é o que torna a escada legível: a regra se aprende uma
+   * vez e vale em todo lugar. O que varia entre degraus é chance e custo.
+   */
+  it('toda receita consome exatamente dez itens', () => {
+    for (const r of RECEITAS) expect(r.quantidade, r.id).toBe(10);
+  });
+
+  /**
+   * Mítico e Divino têm de ser extremamente difíceis, e o teste fixa o número:
+   * 7% e 3%. Uma recalibragem que afrouxe isso quebra aqui.
+   */
+  it('os dois últimos degraus são muito improváveis', () => {
+    expect(receitaPara(4)!.chance).toBeLessThanOrEqual(0.07);
+    expect(receitaPara(5)!.chance).toBeLessThanOrEqual(0.03);
   });
 });
 

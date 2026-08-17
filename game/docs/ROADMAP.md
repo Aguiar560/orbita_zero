@@ -555,10 +555,34 @@ Raro. Cada receita tem chance de sucesso, e falhar CONSOME os itens e o custo.
 Sem risco, fundir seria uma conversão com um passo a mais: o jogador faria a
 conta uma vez e nunca mais pensaria no assunto.
 
-Seis receitas, uma por degrau. A chance cai (85% → 15%) e o custo sobe, e os
-degraus altos pedem material que só chefe solta — o que amarra a fusão ao
-conteúdo em vez de deixá-la acontecer sozinha no inventário. Todas têm peso para
-sair a MESMA raridade: uma fusão bem-sucedida é boa notícia sem ser garantia.
+**Sempre dez itens**, do Comum ao Divino — inclusive dez Míticos para um
+Divino. A quantidade fixa torna a escada legível: a regra se aprende uma vez e
+vale em todo degrau. O que varia é a CHANCE e o CUSTO.
+
+A chance despenca no topo: 85%, 60%, 38%, 20%, **7%** e **3%**. Mítico e Divino
+são para ser extremamente difíceis.
+
+Os quatro primeiros degraus têm consolação — peso para sair a mesma raridade —,
+o que faz uma fusão bem-sucedida ser boa notícia sem ser garantia. Os dois
+últimos não têm: com 7% e 3%, dividir o sucesso outra vez tornaria o número
+ANUNCIADO uma mentira.
+
+Medido, o caminho puro por fusão da base ao topo:
+
+| degrau | chance efetiva | peças de entrada |
+|---|---|---|
+| Comum → Incomum | 72% | 14 |
+| Incomum → Raro | 48% | 21 |
+| Raro → Épico | 29% | 35 |
+| Épico → Lendário | 16% | 62 |
+| Lendário → Mítico | 7% | 143 |
+| Mítico → Divino | 3% | 333 |
+
+Acumulado da base ao topo: **30 bilhões de Comuns** — número absurdo, e sem
+importância prática. Ninguém sobe a escada inteira: a fusão do topo se alimenta
+de Míticos que CAEM, e dez deles saem em cerca de 29 mil drops. É esse o número
+real do endgame, e a escada de baixo serve para reciclar lixo, não para chegar
+ao Divino.
 
 O nível do item gerado é a MÉDIA dos que entraram, não o maior: com o maior,
 fundir nove lixos de nível 1 com um bom de 270 devolveria um item de 270 por
