@@ -75,10 +75,10 @@ export class FabricacaoPanel implements Panel {
       .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl);
 
     return h('.fab-col.fab-inv', {},
-      h('.fab-titulo', { text: 'INVENTÁRIO' }),
+      placa('INVENTÁRIO'),
       h('.fab-grade', {}, ...lista.slice(0, 24).map((it) => this.pecaDoInventario(sim, it, receita))),
 
-      h('.fab-titulo', { text: 'FILTROS' }),
+      placa('FILTROS'),
       h('.fab-filtros', {},
         this.chip(sim, -1, 'Todos', '#9fb0c4'),
         ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
@@ -137,7 +137,7 @@ export class FabricacaoPanel implements Panel {
     const saida = rarityInfo(Math.max(...receita.resultados.map((x) => x.raridade)) as Rarity);
 
     return h('.fab-col.fab-centro', {},
-      h('.fab-titulo', { text: 'SÍNTESE DE ITENS' }),
+      placa('SÍNTESE DE ITENS'),
       h('.fab-anel', {}, ...this.encaixes(sim, receita, saida)),
 
       h(`button.fab-acao${pode ? '.pronta' : ''}`, {
@@ -198,7 +198,7 @@ export class FabricacaoPanel implements Panel {
 
   private tipos(sim: Sim): HTMLElement {
     return h('.fab-col.fab-tipos', {},
-      h('.fab-titulo', { text: 'TIPOS DE FABRICAÇÃO' }),
+      placa('TIPOS DE FABRICAÇÃO'),
       ...RECEITAS.map((r) => {
         const info = rarityInfo(r.entrada);
         const tem = sim.state.inventory.filter((i) => i.rarity === r.entrada && !i.favorite).length;
@@ -219,11 +219,11 @@ export class FabricacaoPanel implements Panel {
             }),
           ),
           h('.fab-tipo-baixo', {},
-            h('span.tiny.muted', { text: 'chance' }),
-            h('span.fab-tipo-pct', {
-              text: `${Math.round(r.chance * 100)}%`,
-              style: { color: info.color },
-            }),
+            // Anel e não número: a chance é uma proporção, e um anel se compara
+            // de relance entre seis linhas — seis porcentagens em texto exigem
+            // ler todas.
+            anelDeChance(r.chance, info.color),
+            h('span.tiny.muted', { text: 'chance de obter' }),
             // Custo em recurso resumido: o painel do meio mostra o detalhe.
             ...Object.keys(r.custo).slice(0, 2).map((id) => {
               const rec = RECURSO_POR_ID.get(id);
@@ -238,4 +238,37 @@ export class FabricacaoPanel implements Panel {
       }),
     );
   }
+}
+
+
+/**
+ * Placa de título com colchetes.
+ *
+ * O traço que se abre para os lados é o que dá a leitura de "painel de máquina"
+ * — é o mesmo recurso que a arte de referência usa em cada seção, e sai de dois
+ * pseudo-elementos em vez de imagem.
+ */
+function placa(texto: string): HTMLElement {
+  return h('.fab-placa', {}, h('span', { text: texto }));
+}
+
+/**
+ * Anel de porcentagem.
+ *
+ * SVG e não barra: a chance é uma proporção de um todo, e o anel se compara de
+ * relance entre seis linhas. Seis porcentagens em texto obrigam a ler todas.
+ */
+function anelDeChance(fracao: number, cor: string): HTMLElement {
+  const R = 13;
+  const perimetro = 2 * Math.PI * R;
+  const el = h('span.fab-anelinho');
+  el.innerHTML = `
+    <svg viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="${R}" class="fab-anelinho-trilho"/>
+      <circle cx="16" cy="16" r="${R}" class="fab-anelinho-arco" stroke="${cor}"
+        stroke-dasharray="${(perimetro * fracao).toFixed(1)} ${perimetro.toFixed(1)}"
+        transform="rotate(-90 16 16)"/>
+      <text x="16" y="16" class="fab-anelinho-txt" fill="${cor}">${Math.round(fracao * 100)}%</text>
+    </svg>`;
+  return el;
 }
