@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 124 testes passando · typecheck e build limpos.
+**Última atualização:** 17/08/2026 · 146 testes passando · typecheck e build limpos.
 
 ---
 
@@ -18,13 +18,13 @@ momento — o ponto de partida, que não se reescreve.
 Etapa 0  ██████████  concluída
 Fase 1   ██████████  concluída
 Fase 1B  ██████████  concluída — morte, progresso e permanência
-Fase 2   ░░░░░░░░░░
+Fase 2   ██████████  concluída — combate elemental
 Fase 3   ░░░░░░░░░░
 Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** Fase 2.7 — projéteis, impactos e explosões por elemento na cena, consumindo o atlas `elemental`.
+**Próxima:** Fase 3 — itemização (dispersão de poder, afixos mortos por saturação de teto, conjuntos).
 
 
 
@@ -386,7 +386,7 @@ como ser dimensionado.
 | 2.4 | ✅ Dois críticos, rolados à parte |
 | 2.5 | ✅ Penetração com teto de 0,8 |
 | 2.6 | ✅ Pipeline de `tiros e explosoes.png` — atlas `elemental`, 117 sprites |
-| 2.7 | Projéteis, impactos e explosões por elemento (§22) |
+| 2.7 | ✅ Projéteis, impactos e explosões por elemento (§22) |
 
 ---
 

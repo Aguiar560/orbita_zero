@@ -10,6 +10,7 @@ import { SKY_COMETS, SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
 import { WAVES_PER_SECTOR } from '@sim/progression';
 import { rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
+import { arteElemental } from '@data/arte-elemental';
 import { FRACAO_ELEMENTAL_INIMIGA } from '@data/balance/elemental';
 import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
 import type { EnemyDef } from '@data/enemies';
@@ -402,9 +403,17 @@ export class VerticalMode {
     const element = this.sim.element;
     const nativo = element === this.sim.hull.element;
     const info = getElement(element);
-    const sprite = nativo ? style.sprite : info.bullet[0];
+    const sprite = nativo ? style.sprite : arteElemental('tiro', element);
     const color = nativo ? style.color : info.color;
     const scale = nativo ? style.scale : 0.9;
+
+    // Fogacho na boca da arma, na arte do elemento (§22). É o que faz trocar de
+    // arma mudar a CARA do disparo e não só o número — o tiro em si passa rápido
+    // demais para ser lido, o clarão do cano fica.
+    this.particles.flash(
+      arteElemental('fogacho', element, this.sim.encounter.wave),
+      p.x, p.y - 22, 0.5, { vida: 0.12, crescimento: 0.9 },
+    );
 
     for (let i = 0; i < count; i++) {
       const b = this.bullets.spawn();
@@ -756,7 +765,11 @@ export class VerticalMode {
       b.radius = 8 * scale;
       b.damageTotal = damage;
       b.element = e.boss?.element ?? e.def.element;
-      b.sprite = sprite;
+      // A folha do §21 tem uma fileira SÓ de tiros de inimigo, desenhados para
+      // serem lidos de relance como ameaça — mais chapados e mais escuros que os
+      // do jogador. Usá-la é o que impede a tela de virar uma sopa em que o
+      // próprio tiro e o do inimigo se confundem.
+      b.sprite = arteElemental('tiroini', b.element, e.id) || sprite;
       b.color = color;
       b.scale = 0.6 * scale;
       b.homing = homing;
@@ -810,6 +823,17 @@ export class VerticalMode {
     const own = e.def.deathClip && getClip(e.def.deathClip) ? e.def.deathClip : null;
     const clip = own ?? (getClip(e.def.blast) ? e.def.blast : 'blast/fire');
     this.particles.burst(clip, e.x, e.y, own ? e.scale : e.scale * (e.boss ? 3.4 : 1.5));
+
+    // Estouro elemental POR CIMA da animação de destruição, não no lugar dela.
+    // A animação própria da nave desmonta aquele casco e vale demais para ser
+    // trocada; o estouro do atlas do §21 acrescenta a assinatura do elemento
+    // que derrubou. Somados, o abate diz duas coisas: o que morreu e do quê.
+    this.particles.flash(
+      arteElemental('estouro', e.boss?.element ?? e.def.element, e.id),
+      e.x, e.y, e.scale * (e.boss ? 2.2 : 0.85),
+      { vida: e.boss ? 0.5 : 0.3, crescimento: 0.8 },
+    );
+
     this.particles.debris(e.x, e.y, e.boss ? 26 : 6, '#9aa7bd', e.boss ? 240 : 120);
     this.shake = Math.max(this.shake, e.boss ? 16 : 2.5);
 
@@ -913,6 +937,16 @@ export class VerticalMode {
     e.hitFlash = 0.09;
     const critQualquer = b.crit || b.critElem;
     this.particles.sparks(b.x, b.y, critQualquer ? 8 : 4, critQualquer ? '#ffe08a' : b.color, critQualquer ? 190 : 130);
+
+    // O impacto usa o elemento DOMINANTE do que de fato entrou, não o da arma.
+    // É aqui que o modelo de componentes (§3) vira coisa visível: atirar fogo e
+    // gelo num alvo que resiste a gelo faz o impacto sair vermelho, porque foi o
+    // fogo que passou. Sem isto o pacote seria só contabilidade interna.
+    this.particles.flash(
+      arteElemental('faisca', dominante, e.id),
+      b.x, b.y, critQualquer ? 0.5 : 0.34,
+      { vida: 0.16, crescimento: 1.1 },
+    );
 
     if (this.sim.state.settings.showDamageNumbers) {
       // Vantagem sai maior e na cor do elemento que MAIS contribuiu, resistência

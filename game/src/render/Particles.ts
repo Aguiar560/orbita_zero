@@ -28,6 +28,18 @@ export interface Particle {
 export interface SpriteBurst {
   alive: boolean;
   clip: Clip | null;
+  /**
+   * Sprite ESTÁTICO, quando não há clipe.
+   *
+   * O atlas elemental do §21 é de quadros únicos, não de animações: cada
+   * explosão é um desenho só. Em vez de um segundo pool quase idêntico, o mesmo
+   * burst aceita as duas formas — com clipe anima, sem clipe cresce e some.
+   */
+  sprite: string;
+  /** Segundos de vida, para o quadro único. Com clipe quem manda é a duração. */
+  vida: number;
+  /** Quanto a escala cresce até o fim da vida. 0 = fixa. */
+  crescimento: number;
   time: number;
   x: number;
   y: number;
@@ -64,8 +76,8 @@ export class Particles {
   );
 
   readonly bursts = new Pool<SpriteBurst>(
-    () => ({ alive: false, clip: null, time: 0, x: 0, y: 0, vx: 0, vy: 0, scale: 1, rotation: 0, alpha: 1, additive: true }),
-    (b) => { b.clip = null; b.time = 0; b.vx = 0; b.vy = 0; b.scale = 1; b.rotation = 0; b.alpha = 1; b.additive = true; },
+    () => ({ alive: false, clip: null, sprite: '', vida: 0.3, crescimento: 0, time: 0, x: 0, y: 0, vx: 0, vy: 0, scale: 1, rotation: 0, alpha: 1, additive: true }),
+    (b) => { b.clip = null; b.sprite = ''; b.vida = 0.3; b.crescimento = 0; b.time = 0; b.vx = 0; b.vy = 0; b.scale = 1; b.rotation = 0; b.alpha = 1; b.additive = true; },
     160,
   );
 
@@ -165,6 +177,33 @@ export class Particles {
     p.additive = false;
   }
 
+  /**
+   * Lampejo de um sprite ESTÁTICO — o formato do atlas elemental (§22).
+   *
+   * Existe ao lado de `burst` e não no lugar dele: a arte de nave e de chefe
+   * continua vindo de clipes animados, e trocar tudo por quadro único perderia
+   * animação já pronta.
+   */
+  flash(
+    spriteId: string,
+    x: number,
+    y: number,
+    scale = 1,
+    opts: { vida?: number; crescimento?: number; rotation?: number; additive?: boolean } = {},
+  ): void {
+    if (!spriteId) return;
+    const b = this.bursts.spawn();
+    if (!b) return;
+    b.clip = null;
+    b.sprite = spriteId;
+    b.x = x; b.y = y;
+    b.scale = scale;
+    b.vida = opts.vida ?? 0.28;
+    b.crescimento = opts.crescimento ?? 0.6;
+    b.rotation = opts.rotation ?? 0;
+    b.additive = opts.additive ?? true;
+  }
+
   /** Explosão animada a partir de um clipe registrado. */
   burst(clipId: string, x: number, y: number, scale = 1, opts: { vx?: number; vy?: number; rotation?: number; additive?: boolean } = {}): void {
     const clip = getClip(clipId);
@@ -202,7 +241,7 @@ export class Particles {
       b.time += dt;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      if (b.clip && b.time >= clipDuration(b.clip)) b.alive = false;
+      if (b.clip ? b.time >= clipDuration(b.clip) : b.time >= b.vida) b.alive = false;
     });
     this.bursts.compact();
   }
@@ -223,13 +262,19 @@ export class Particles {
     });
 
     this.bursts.each((b) => {
-      if (!b.clip) return;
-      const id = frameAt(b.clip, b.time);
-      const t = clamp01(b.time / clipDuration(b.clip));
+      const comClipe = !!b.clip;
+      const id = comClipe ? frameAt(b.clip!, b.time) : b.sprite;
+      if (!id) return;
+      const t = clamp01(b.time / (comClipe ? clipDuration(b.clip!) : b.vida));
       s.sprite(id, b.x, b.y, {
-        scale: b.scale,
+        // O quadro único não tem animação para dar vida ao efeito, então ela
+        // vem do movimento: cresce e desaparece. Com clipe isso não se aplica —
+        // a animação já é o efeito, e escalar por cima dela dá um zoom estranho.
+        scale: b.scale * (comClipe ? 1 : 1 + b.crescimento * t),
         rotation: b.rotation,
-        alpha: 1 - t * t * 0.35,
+        // Some por completo no quadro único; o clipe só perde um pouco de força
+        // no fim, porque o último quadro dele já é quase transparente.
+        alpha: comClipe ? 1 - t * t * 0.35 : (1 - t) * (1 - t),
         composite: b.additive ? 'lighter' : undefined,
       });
     });
