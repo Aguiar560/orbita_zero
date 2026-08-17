@@ -1104,3 +1104,89 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .camada-caixa::after { bottom: 6px; left: 6px; border-bottom: 2px solid; border-left: 2px solid; }
 
 .fab-tipo-baixo { gap: 8px; }
+
+/* ══ peças de interface (§25) ════════════════════════════════════════════════
+ *
+ * A arte substitui as bordas desenhadas em CSS. Vai por `border-image`, que é o
+ * mecanismo de 9-slice do navegador: os cantos ficam intactos e só as faixas do
+ * meio esticam — que era a razão de a especificação pedir margens explícitas.
+ *
+ * As regras antigas de `border`/`box-shadow` continuam como reserva: se o
+ * pipeline não rodar, a tela fica sem a arte mas não fica quebrada.
+ */
+
+/* Moldura do modal: 620×596 de arte, margem de 74. */
+.camada-caixa {
+  border: 34px solid transparent;
+  border-image: url(assets/ui/moldura_modal.png) 74 fill stretch;
+  border-radius: 0;
+  clip-path: none;
+  /* O `fill` da borda já pinta o miolo com a parte central da arte, então o
+     fundo próprio sai — dois fundos empilhados dariam uma caixa opaca demais. */
+  background: rgba(6, 11, 24, 0.55);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+  padding: 4px 14px 14px;
+}
+/* Os cantos desenhados em CSS saem: a arte já os traz. */
+.camada-caixa::before, .camada-caixa::after { content: none; }
+
+/* Placa de título: 746×93 de arte, margem de 120. */
+.fab-placa {
+  border: 0 solid transparent;
+  border-left-width: 34px; border-right-width: 34px;
+  border-image: url(assets/ui/placa_titulo.png) 120 fill stretch;
+  padding: 6px 0 8px; margin-bottom: 4px;
+}
+.fab-placa::before, .fab-placa::after { content: none; }
+.fab-placa span { background: transparent; }
+
+/* Disco do reator, atrás dos encaixes. */
+.fab-anel {
+  background:
+    url(assets/ui/anel_fundo.png) center / contain no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(79, 195, 255, 0.08), transparent 62%);
+  border: none; box-shadow: none;
+}
+
+/* Soquetes. A arte tem a silhueta; o ícone do item vai por cima. */
+.camada .fab-encaixe {
+  background: url(assets/ui/encaixe_vazio.png) center / contain no-repeat;
+  border: none; box-shadow: none;
+}
+.camada .fab-encaixe.cheio {
+  background: url(assets/ui/encaixe_cheio.png) center / contain no-repeat;
+  box-shadow: none;
+}
+
+/* Núcleo. */
+.fab-miolo {
+  background: url(assets/ui/nucleo_hex.png) center / contain no-repeat;
+  border: none; box-shadow: none;
+  width: 52%; aspect-ratio: 1;
+}
+
+/* Botão de ação: 398×116 de arte, margem de 58. */
+.fab-acao {
+  border: 0 solid transparent;
+  border-left-width: 26px; border-right-width: 26px;
+  border-image: url(assets/ui/botao.png) 58 fill stretch;
+  background: transparent; box-shadow: none;
+}
+.fab-acao.pronta {
+  border-image-source: url(assets/ui/botao_ativo.png);
+  background: transparent; box-shadow: none;
+}
+
+/* Célula do inventário na câmara: 231×227 de arte, margem de 40. */
+.camada .fab-peca {
+  border: 12px solid transparent;
+  border-image: url(assets/ui/celula_item.png) 40 fill stretch;
+  background: transparent; border-radius: 0;
+}
+
+/* Molduras das colunas laterais: 325×315 de arte, margem de 46. */
+.camada .fab-inv, .camada .fab-tipos {
+  border: 18px solid transparent;
+  border-image: url(assets/ui/painel_secao.png) 46 fill stretch;
+  padding: 2px 6px 8px;
+}

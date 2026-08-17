@@ -39,6 +39,7 @@ import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mj
 import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
 import { RECURSOS_SHEET, celulas as celulasDeRecurso } from './recursos.slices.mjs';
+import { INTERFACE_SHEET, PECAS } from './interface.slices.mjs';
 
 /** O catálogo novo do §23. */
 const NOVOS_ITENS_SHEET = 'novos itens.png';
@@ -99,6 +100,7 @@ async function main() {
   await buildRecursos(manifest);
   await buildFundosDeGalaxia(manifest);
   await buildDestrocos(manifest);
+  await buildInterface(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
   await buildDroneAtlas(manifest);
@@ -1424,4 +1426,38 @@ async function buildDestrocos(manifest) {
 
   log(`Destroços: ${sprites.length} peças de cenário`);
   await writeAtlas('destrocos', sprites, manifest, 512);
+}
+
+/**
+ * `fabricação 2.png` — as peças de interface (§25).
+ *
+ * Saem como IMAGENS soltas e não como atlas: quem as consome é o CSS, por
+ * `border-image` e `background-image`, e CSS não sabe recortar de um atlas sem
+ * uma tabela de posições que teria de ser mantida à mão nos dois lados.
+ *
+ * Já vêm com alfa, então não passam por extração nenhuma — só recorte e apara.
+ */
+async function buildInterface(manifest) {
+  const file = path.join(RAW, 'spaceships new', INTERFACE_SHEET);
+  const alt = path.join(RAW, INTERFACE_SHEET);
+  const src = existsSync(file) ? file : existsSync(alt) ? alt : null;
+  if (!src) {
+    console.warn(`   ! ${INTERFACE_SHEET} não encontrado — pulando peças de interface`);
+    return;
+  }
+
+  noteRead(src);
+  const folha = await toRaw(src);
+  log(`Interface: ${INTERFACE_SHEET} (${folha.width}x${folha.height})`);
+
+  manifest.interface = {};
+  for (const p of PECAS) {
+    const rel = `ui/${p.id}.png`;
+    await rawToSharp(crop(folha, p.x, p.y, p.w, p.h))
+      .png({ compressionLevel: 9 })
+      .toFile(await ensureFile(rel));
+    manifest.interface[p.id] = { src: rel, w: p.w, h: p.h, ...(p.slice ? { slice: p.slice } : {}) };
+  }
+
+  log(`   ${PECAS.length} peças de interface`);
 }

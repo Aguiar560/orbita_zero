@@ -1,3 +1,8 @@
+> **Entregue.** A folha veio como `fabricação 2.png` e está recortada em
+> `public/assets/ui/`. As posições de recorte ficaram em
+> `tools/interface.slices.mjs` — medidas por detecção, não por régua, porque
+> a IA não respeitou a grade pedida.
+
 # Peças de interface — Fabricação
 
 Especificação para gerar os sprites da tela de Fabricação. As medidas saíram do
