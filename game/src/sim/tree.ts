@@ -1,4 +1,4 @@
-import { NODE_BY_ID, TREE_ADJACENCY, TREE_NODES, type TreeNode } from '@data/tree';
+import { NODE_BY_ID, TREE_ADJACENCY, TREE_NODES, type TreeNode, custoDoNo } from '@data/tree';
 import { curvaXpPersonagem } from '@data/balance/curvas';
 import type { GameState, StatModifier } from './types';
 
@@ -26,7 +26,17 @@ export function allocatedSet(state: GameState): Set<string> {
 }
 
 export function pointsSpent(state: GameState): number {
-  return state.command.allocated.filter((id) => id !== ROOT).length;
+  // Soma o CUSTO de cada nó, não a contagem: nós profundos custam mais, e é
+  // isso que faz a Matriz durar os 300 níveis em vez de encher no 177.
+  return state.command.allocated
+    .filter((id) => id !== ROOT)
+    .reduce((total, id) => total + custoDeNo(id), 0);
+}
+
+/** Custo de um nó pelo id. Nó desconhecido — de save antigo — custa 1. */
+export function custoDeNo(id: string): number {
+  const n = NODE_BY_ID.get(id);
+  return n ? custoDoNo(n) : 1;
 }
 
 export function pointsAvailable(state: GameState): number {
@@ -40,7 +50,7 @@ export function canAllocate(state: GameState, id: string): boolean {
   if (!NODE_BY_ID.has(id)) return false;
   const allocated = allocatedSet(state);
   if (allocated.has(id)) return false;
-  if (pointsAvailable(state) <= 0) return false;
+  if (custoDeNo(id) > pointsAvailable(state)) return false;
   return (TREE_ADJACENCY.get(id) ?? []).some((n) => allocated.has(n));
 }
 
@@ -89,9 +99,13 @@ export function pathTo(state: GameState, target: string): string[] | null {
 export function allocatePath(state: GameState, target: string): number {
   const path = pathTo(state, target);
   if (!path || path.length === 0) return 0;
-  if (path.length > pointsAvailable(state)) return 0;
+  // Compara CUSTO com pontos, não contagem de nós: com custo por profundidade,
+  // uma rota de quatro nós de borda vale doze pontos, e comparar quatro contra
+  // os pontos disponíveis deixaria alocar de graça.
+  const custo = path.reduce((total, id) => total + custoDeNo(id), 0);
+  if (custo > pointsAvailable(state)) return 0;
   for (const id of path) state.command.allocated.push(id);
-  return path.length;
+  return custo;
 }
 
 /**

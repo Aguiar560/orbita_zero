@@ -453,6 +453,19 @@ A meta do §2 é ~10 h por galáxia. A galáxia 1 vem rápida demais (1,2 h) e a
 curva ACELERA na direção certa — 5,3 h, depois 10 h, depois 8,5 h. O trecho
 inicial é que está curto.
 
+### A Matriz saturava no nível 177
+
+Eram 177 nós custando 1 ponto cada, e o nível máximo entrega 300 pontos. Do
+nível 178 ao 300, subir de nível não fazia **nada** pela Matriz — 123 níveis sem
+efeito, num jogo em que chegar ao 300 é para custar semanas.
+
+`custoDoNo` deriva o custo da DISTÂNCIA ao centro, em três faixas: 1, 2 e 3
+pontos. Derivado e não escrito nó a nó porque a matriz é gerada, e uma coluna de
+custo à mão envelheceria no primeiro nó novo.
+
+Custo total: **297 pontos** contra os 300 do nível máximo. O último nó cai
+praticamente no último nível.
+
 ### A corrida ao vivo, e o que ela achou
 
 Medida com a MESMA semente do simulador (777), duas horas de jogo:

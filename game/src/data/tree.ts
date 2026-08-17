@@ -16,6 +16,36 @@ export interface TreeNode {
   stats: StatModifier[];
 }
 
+/**
+ * Custo de um nó, em pontos de patente.
+ *
+ * Derivado da DISTÂNCIA ao centro, não escrito nó a nó: a matriz é gerada, e
+ * uma coluna de custo à mão envelheceria no primeiro nó novo.
+ *
+ * Existe porque sem ele a Matriz saturava cedo demais. Eram 177 nós custando 1
+ * ponto cada, e o nível 300 entrega 300 pontos — do nível 178 ao 300, subir de
+ * nível não fazia NADA pela Matriz. Cento e vinte e três níveis sem efeito, num
+ * jogo em que chegar ao 300 é para custar semanas.
+ *
+ * Com o custo crescendo pela profundidade, o total se aproxima dos 300 pontos e
+ * o último nó cai perto do último nível — que é o que faz a Matriz acompanhar a
+ * progressão inteira em vez de só o começo dela.
+ */
+export function custoDoNo(n: TreeNode): number {
+  const raio = Math.hypot(n.x, n.y);
+  // Três faixas, e não uma fórmula contínua: o jogador precisa conseguir OLHAR
+  // a matriz e saber o que é caro, e uma escada de três degraus se lê de longe.
+  //
+  // Os limiares saíram de BUSCA sobre os raios reais, não de palpite: eles
+  // fecham o custo total em 297 pontos contra os 300 que o nível máximo
+  // entrega, o que põe o último nó praticamente no último nível. A primeira
+  // tentativa usou 2,2 e 4,2 — três ordens de grandeza erradas, porque supus a
+  // escala do espaço da matriz em vez de medi-la. O raio vai de 0 a 830.
+  if (raio < 500) return 1;
+  if (raio < 640) return 2;
+  return 3;
+}
+
 export interface TreeBranch {
   id: string;
   name: string;

@@ -5,7 +5,7 @@ import {
   BRANCHES, BRANCH_BY_ID, NODE_BY_ID, NODE_RADIUS, TREE_BOUNDS,
   TREE_EDGES, TREE_NODES, type TreeNode,
 } from '@data/tree';
-import { allocatedSet, frontier, pathTo, searchNodes, xpForLevel } from '@sim/tree';
+import { allocatedSet, frontier, pathTo, searchNodes, xpForLevel, custoDeNo } from '@sim/tree';
 import type { Sim } from '@sim/index';
 import { h, progressBar } from '../dom';
 import type { Panel } from './types';
@@ -272,7 +272,11 @@ export class TreePanel implements Panel {
     const sim = this.sim;
     const allocated = allocatedSet(sim.state).has(node.id);
     const branch = BRANCH_BY_ID.get(node.branch);
-    const cost = this.preview.length;
+    // Soma o CUSTO dos nós do caminho, não a contagem. Com custo por
+    // profundidade (nó de borda vale 3), contar nós dizia "clique para alocar
+    // 4 nós" e o clique falhava por faltarem pontos — a UI mentia sobre o
+    // preço.
+    const cost = this.preview.reduce((s, id) => s + custoDeNo(id), 0);
 
     const kindLabel =
       node.kind === 'chave' ? 'NÓ-CHAVE' :
@@ -301,7 +305,7 @@ export class TreePanel implements Panel {
           : cost > 0
             ? h('span', {
                 text: cost <= sim.matrixPoints
-                  ? `Clique para alocar ${cost} ${cost === 1 ? 'nó' : 'nós'}`
+                  ? `Clique para alocar · ${cost} ${cost === 1 ? 'ponto' : 'pontos'}`
                   : `Faltam ${cost - sim.matrixPoints} pontos`,
                 style: { color: cost <= sim.matrixPoints ? '#5ce08a' : '#ff8a9a' },
               })

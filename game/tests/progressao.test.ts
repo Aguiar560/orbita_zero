@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { TREE_NODES, custoDoNo } from '@data/tree';
+import { allocatePath, pointsAvailable, pointsForLevel } from '@sim/tree';
+import { NIVEL_MAX } from '@data/balance/curvas';
 import { Sim } from '@sim/index';
 import { buildEncounter } from '@sim/progression';
 import { createState } from '@sim/state';
@@ -142,5 +145,62 @@ describe('progresso do encontro (§16)', () => {
     expect(s.state.run.wave, 'o encontro precisa ter sido concluído').not.toBe(ondaAntes);
     expect(Math.abs(t / esperado - 1), `levou ${t.toFixed(1)}s contra ${esperado.toFixed(1)}s`)
       .toBeLessThan(0.15);
+  });
+});
+
+/**
+ * Custo de nó na Matriz (Fase 4).
+ *
+ * A Matriz saturava no nível 177: eram 177 nós custando 1 ponto cada, e o
+ * nível máximo entrega 300 pontos. Cento e vinte e três níveis não faziam NADA
+ * por ela, num jogo em que chegar ao 300 é para custar semanas.
+ */
+describe('a Matriz acompanha os 300 níveis', () => {
+  it('o custo total fica logo abaixo dos pontos do nível máximo', () => {
+    const total = TREE_NODES.reduce((s, n) => s + custoDoNo(n), 0);
+    const disponiveis = pointsForLevel(NIVEL_MAX);
+    expect(total).toBeLessThanOrEqual(disponiveis);
+    // E perto: sobrar muito significaria a Matriz enchendo cedo de novo.
+    expect(disponiveis - total).toBeLessThan(20);
+  });
+
+  it('o custo cresce com a distância ao centro', () => {
+    const porRaio = TREE_NODES
+      .map((n) => ({ raio: Math.hypot(n.x, n.y), custo: custoDoNo(n) }))
+      .sort((a, b) => a.raio - b.raio);
+    const perto = porRaio.slice(0, 30).reduce((s, n) => s + n.custo, 0) / 30;
+    const longe = porRaio.slice(-30).reduce((s, n) => s + n.custo, 0) / 30;
+    expect(longe).toBeGreaterThan(perto);
+  });
+
+  /**
+   * O contrato que a UI depende: alocar uma rota cobra o CUSTO, não a
+   * contagem. Comparar contagem com pontos deixaria alocar de graça.
+   */
+  it('alocar uma rota cobra o custo somado, não o número de nós', () => {
+    const s = createState(4242);
+    s.command.nivel = 300;
+
+    const alvo = [...TREE_NODES].sort(
+      (a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y),
+    )[0]!;
+
+    const antes = pointsAvailable(s);
+    const cobrado = allocatePath(s, alvo.id);
+    expect(cobrado).toBeGreaterThan(0);
+    expect(pointsAvailable(s)).toBe(antes - cobrado);
+    // A rota até a borda passa por nós caros, então custa mais que o número de
+    // nós que ela atravessa.
+    expect(cobrado).toBeGreaterThan(s.command.allocated.length - 1);
+  });
+
+  it('sem pontos suficientes, nada é alocado', () => {
+    const s = createState(99);
+    s.command.nivel = 1;
+    const alvo = [...TREE_NODES].sort(
+      (a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y),
+    )[0]!;
+    expect(allocatePath(s, alvo.id)).toBe(0);
+    expect(s.command.allocated).toHaveLength(0);
   });
 });
