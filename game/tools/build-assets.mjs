@@ -35,6 +35,11 @@ import {
   SPRITES_SHEET, PAINEL_PASSO, PAINEIS, SPRITE_FILEIRAS,
   TIRO_FILEIRAS, TIRO_BLOCO, TIRO_DESSATURA,
 } from './sprites.slices.mjs';
+import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
+import { extrairCelula, separarPorVales } from './lib/elemental.mjs';
+
+/** A folha elemental do §21. */
+const TIROS_SHEET = 'tiros e explosoes.png';
 import {
   toRaw, rawToSharp, unmatte, trimAlpha, crop, blit, blank, rowComponents,
   alphaOverDark, desaturate, sliceRow, expandToNeighbours, noteRead, readPaths,
@@ -1060,3 +1065,66 @@ main().catch((err) => {
   console.error('\n✖ falha no pipeline:', err);
   process.exit(1);
 });
+
+/**
+ * `tiros e explosoes.png` — 6 elementos × 8 categorias (§21).
+ *
+ * Não declara quantos sprites cada célula tem: as categorias variam de dois a
+ * seis por elemento, e uma tabela com 48 contagens à mão seria 48 chances de
+ * errar em silêncio. A segmentação decide, e o total medido vai para o log.
+ *
+ * A extração mora em `lib/elemental.mjs` e não em `lib/imaging.mjs` porque as
+ * duas suposições de lá falham nesta folha — fundo neutro e limiar absoluto.
+ */
+async function buildTiros(manifest) {
+  const file = path.join(RAW, TIROS_SHEET);
+  if (!existsSync(file)) {
+    console.warn(`   ! ${TIROS_SHEET} não encontrado — pulando folha elemental`);
+    return;
+  }
+
+  const { data, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+  log(`Tiros e explosões: ${TIROS_SHEET} (${info.width}x${info.height})`);
+
+  const sprites = [];
+  let vazias = 0;
+
+  for (const cat of CATEGORIAS) {
+    // A fileira de glifos ocupa a largura inteira: um recorte só, e os índices
+    // viram nome pela ORDEM DA FOLHA (seis grandes, depois seis pequenos).
+    const celulas = cat.largura === 'total'
+      ? [{ elemento: null, centro: null, x0: ROTULOS_ATE, w: info.width - ROTULOS_ATE }]
+      : COLUNAS.map((c) => ({
+        ...c,
+        x0: Math.max(ROTULOS_ATE, c.centro - MEIA_CELULA),
+        w: Math.min(info.width, c.centro + MEIA_CELULA) - Math.max(ROTULOS_ATE, c.centro - MEIA_CELULA),
+      }));
+
+    for (const col of celulas) {
+      const { x0, w } = col;
+      const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0]);
+
+      const faixas = separarPorVales(celula);
+      if (!faixas.length) { vazias++; continue; }
+
+      faixas.forEach(([a, z], i) => {
+        const cut = crop(celula, a, 0, z - a, celula.height);
+        const trimmed = trimAlpha(cut, 6);
+        if (!trimmed) return;
+        // Sem coluna, o nome sai do índice: 0..5 grandes, 6..11 pequenos.
+        const nome = col.elemento
+          ? `${col.elemento}_${i}`
+          : `${COLUNAS[i % COLUNAS.length].elemento}_${i < COLUNAS.length ? 'g' : 'p'}`;
+        sprites.push({
+          id: `${cat.id}/${nome}`,
+          raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
+          sw: cut.width, sh: cut.height,
+        });
+      });
+    }
+  }
+
+  if (vazias) console.warn(`   ! ${vazias} células saíram vazias`);
+  log(`   ${sprites.length} sprites elementais`);
+  await writeAtlas('elemental', sprites, manifest, 2048);
+}

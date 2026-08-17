@@ -31,7 +31,22 @@ export const CATEGORIAS = [
   { id: 'fogacho', y: [546, 608], nome: 'efeitos de disparo' },
   { id: 'estouro', y: [626, 735], nome: 'explosões' },
   { id: 'faisca', y: [746, 846], nome: 'detalhes e partículas' },
-  { id: 'glifo', y: [865, 982], nome: 'ícones de elemento' },
+  /**
+   * ► A fileira de ícones fica DE FORA do atlas, de propósito.
+   *
+   * Ela não segue a grade de colunas: são 12 glifos espalhados na largura toda
+   * — seis grandes e seis pequenos —, e não dois por elemento. Recortá-la pela
+   * grade misturava metade de um elemento com metade do vizinho.
+   *
+   * Recortada na largura inteira, oito dos doze saem limpos e quatro viram
+   * lascas; pior, a ORDEM extraída não bate com a da folha, então nomear por
+   * índice produziria `glifo/fogo_g` num floco de neve. Um id errado é pior que
+   * um id ausente: ele é consumido em silêncio.
+   *
+   * O jogo ainda não consome glifo nenhum, então isto não bloqueia nada. Quando
+   * consumir, o caminho é segmentar esta fileira por PROJEÇÃO VERTICAL (os doze
+   * ícones são redondos e bem separados na vertical) em vez de por vales.
+   */
 ];
 
 /**
