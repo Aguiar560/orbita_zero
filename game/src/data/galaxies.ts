@@ -12,6 +12,15 @@ export interface GalaxyInfo {
   name: string;
   /** Fundo 512×512 do pack "Large 1024x1024". */
   backdrop: string;
+  /**
+   * Id do cenário novo em `manifest.fundos`, quando existe.
+   *
+   * Fica ao lado de `backdrop` em vez de substituí-lo: são 19 conjuntos para
+   * 30 galáxias e mais as profundas, então o backdrop antigo continua sendo o
+   * caminho de quem não recebeu cenário novo. Trocar tudo de uma vez deixaria
+   * as galáxias profundas sem fundo.
+   */
+  fundoId: string | null;
   /** Retrato do comandante que domina a galáxia. */
   portrait: string;
   /** Frota dominante, para o texto de ambientação. */
@@ -57,6 +66,20 @@ const STARFIELDS = [
 /** Tintas de estrela, uma por identidade de galáxia. */
 const STAR_TINTS = ['#ffffff', '#bcd6ff', '#ffe2bc', '#d6c0ff', '#bfffe4', '#ffc9d8'];
 
+/**
+ * Os 19 cenários da pasta `backgrounds`, na ordem em que o pipeline os emite.
+ *
+ * Lista à mão e não leitura do manifesto porque `data/` é tabela pura e não
+ * conhece `render/` — a regra de camada do projeto. Um teste confere que os
+ * ids daqui existem no manifesto gerado, que é o que impede a lista de
+ * envelhecer em silêncio.
+ */
+const FUNDOS: readonly string[] = [
+  '01_crimson', '02_abyss', '03_emerald', '04_violet', '05_amber', '06_cyan',
+  '07_crimson', '08_abyss', '09_emerald', '10_violet', '11_amber', '12_cyan',
+  '13_aqua', '14_blue', '15_red', '16_stellar', '17_toxic', '18_vapor', '19_void',
+];
+
 export function describeGalaxy(index: number): GalaxyInfo {
   const rng = new Rng(hashString(`galaxia:${index}`));
   const family = BACKDROP_FAMILIES[index % BACKDROP_FAMILIES.length]!;
@@ -79,6 +102,7 @@ export function describeGalaxy(index: number): GalaxyInfo {
     index,
     name: index < NAMES.length ? NAMES[index]! : `Setor Profundo ${index + 1}`,
     backdrop: `galaxia/${family}_${variant}.png`,
+    fundoId: FUNDOS[index % FUNDOS.length] ?? null,
     // 210 retratos disponíveis; o índice determina qual, de forma estável.
     portrait: `retrato/${index % 21}_${rng.int(0, 9)}`,
     fleet: fleet.name,

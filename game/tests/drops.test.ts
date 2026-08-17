@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { describeGalaxy } from '@data/galaxies';
 import { REGRAS_DE_DROP, afinidadeDoAlvo, resolverDrop, type AlvoDoDrop } from '@data/balance/drops';
 import { Rng } from '@core/math';
 import { rollItem } from '@sim/loot';
@@ -362,6 +364,51 @@ describe('quem solta o quê', () => {
       const r = recursoDoChefe(id);
       expect(r, id).toBeTruthy();
       expect(r!.origens).toContain('chefe');
+    }
+  });
+});
+
+/**
+ * Os cenários de galáxia da pasta `backgrounds`.
+ *
+ * `data/galaxies.ts` lista os ids à mão porque `data/` é tabela pura e não
+ * conhece `render/`. Este teste é o que impede a lista de envelhecer em
+ * silêncio quando a pasta ganhar ou perder um conjunto.
+ */
+describe('os cenários de galáxia', () => {
+  const manifesto = JSON.parse(
+    readFileSync(new URL('../public/assets/manifest.json', import.meta.url), 'utf8'),
+  ) as { fundos?: { id: string; tipo: string }[] };
+
+  it('todo id que uma galáxia pede existe no manifesto', () => {
+    const disponiveis = new Set((manifesto.fundos ?? []).map((f) => f.id));
+    expect(disponiveis.size, 'rode `npm run assets`').toBeGreaterThan(0);
+
+    const faltando = new Set<string>();
+    for (let g = 0; g < 60; g++) {
+      const id = describeGalaxy(g).fundoId;
+      if (id && !disponiveis.has(id)) faltando.add(id);
+    }
+    expect([...faltando]).toEqual([]);
+  });
+
+  it('nenhum cenário fica sem galáxia que o use', () => {
+    const usados = new Set<string>();
+    for (let g = 0; g < 60; g++) {
+      const id = describeGalaxy(g).fundoId;
+      if (id) usados.add(id);
+    }
+    const orfaos = (manifesto.fundos ?? []).map((f) => f.id).filter((id) => !usados.has(id));
+    expect(orfaos).toEqual([]);
+  });
+
+  /**
+   * Os dois formatos convivem de propósito: a arte veio de packs diferentes, e
+   * uniformizar seria mentir sobre o que existe.
+   */
+  it('cada conjunto é parallax de três camadas ou chapado com variações', () => {
+    for (const f of manifesto.fundos ?? []) {
+      expect(['parallax', 'chapado'], f.id).toContain(f.tipo);
     }
   });
 });

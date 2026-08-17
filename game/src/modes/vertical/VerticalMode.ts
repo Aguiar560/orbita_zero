@@ -180,14 +180,27 @@ export class VerticalMode {
     // estrela: atravessar dez fases e ver o céu mudar é o que dá a sensação de
     // ter viajado. Antes as estrelas eram as mesmas do setor 1 ao 200.
     const galaxy = describeGalaxy(galaxyOfSector(e.sector));
-    if (galaxy.backdrop !== this.pendingBackdrop) {
-      this.pendingBackdrop = galaxy.backdrop;
+    /**
+     * Prefere o cenário novo (`backgrounds`) e cai no antigo quando não há.
+     *
+     * São 19 conjuntos para 30 galáxias mais as profundas, então o backdrop
+     * antigo continua atendendo quem sobra. Do conjunto de parallax entra a
+     * camada DISTANTE, que é a que faz papel de pano de fundo; as outras duas
+     * ficam no manifesto para quando a cena souber empilhá-las.
+     */
+    const novo = assets.manifest?.fundos?.find((f) => f.id === galaxy.fundoId);
+    const alvo = novo
+      ? (novo.tipo === 'parallax' ? novo.camadas.longe : novo.variacoes[0]!)
+      : galaxy.backdrop;
+
+    if (alvo !== this.pendingBackdrop) {
+      this.pendingBackdrop = alvo;
 
       // Só troca depois de carregar: assumir na hora deixava a tela preta por
       // um instante a cada mudança de galáxia, enquanto a imagem vinha.
-      void assets.image(galaxy.backdrop)
-        .then(() => { this.galaxyBackdrop = galaxy.backdrop; })
-        .catch(() => console.warn(`[cena] fundo ${galaxy.backdrop} indisponível`));
+      void assets.image(alvo)
+        .then(() => { this.galaxyBackdrop = alvo; })
+        .catch(() => console.warn(`[cena] fundo ${alvo} indisponível`));
 
       this.skyLayers.forEach((layer, i) => {
         const next = `bg/campo_${galaxy.starfields[i] ?? 'grandes'}.png`;

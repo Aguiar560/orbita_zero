@@ -24,6 +24,18 @@ export interface Manifest {
   skies: ParallaxLayerInfo[];
   /** Catálogo de campos de estrela; a cena escolhe dois por galáxia. */
   starfields: ParallaxLayerInfo[];
+  /**
+   * Cenários de galáxia da pasta `backgrounds` — 19 conjuntos.
+   *
+   * Dois formatos, porque a arte veio de packs diferentes: `parallax` tem três
+   * camadas nomeadas, `chapado` tem de duas a cinco variações completas do
+   * mesmo lugar. Uniformizar aqui seria mentir sobre o que existe — quem
+   * consome escolhe o que fazer com cada um.
+   */
+  fundos?: (
+    | { id: string; tipo: 'parallax'; camadas: { longe: string; nebulosa: string; estrelas: string } }
+    | { id: string; tipo: 'chapado'; variacoes: string[] }
+  )[];
 }
 
 const BASE = 'assets/';

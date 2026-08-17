@@ -97,6 +97,8 @@ async function main() {
   await buildTiros(manifest);
   await buildNovosItens(manifest);
   await buildRecursos(manifest);
+  await buildFundosDeGalaxia(manifest);
+  await buildDestrocos(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
   await buildDroneAtlas(manifest);
@@ -1218,4 +1220,132 @@ async function buildRecursos(manifest) {
   if (vazias) console.warn(`   ! ${vazias} células de recurso vazias`);
   log(`   ${sprites.length} ícones de recurso`);
   await writeAtlas('recursos', sprites, manifest, 2048);
+}
+
+/**
+ * `spaceships new/backgrounds` — 19 conjuntos de fundo, três camadas cada.
+ *
+ * Cada conjunto é `layer1_far`, `layer2_nebula` e `layer3_stars` em 1920×1080.
+ * Saem como IMAGENS e não como atlas: um atlas de 57 quadros de tela cheia
+ * daria 118 milhões de pixels, e nenhum deles é desenhado junto de outro — o
+ * fundo é uma camada por vez, e carregar sob demanda é o comportamento certo.
+ *
+ * Vão a 1280 de largura. Em 1920 o arquivo triplica e a cena nunca desenha o
+ * fundo maior que a coluna central, que no monitor mais largo previsto (§ do
+ * layout) fica em torno de 1180 px lógicos.
+ */
+async function buildFundosDeGalaxia(manifest) {
+  const dir = path.join(RAW, 'spaceships new', 'backgrounds');
+  if (!existsSync(dir)) {
+    console.warn('   ! backgrounds/ não encontrado — pulando fundos novos');
+    return;
+  }
+
+  const conjuntos = (await readdir(dir, { withFileTypes: true }))
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+
+  log(`Fundos de galáxia: ${conjuntos.length} conjuntos`);
+  manifest.fundos = [];
+
+  for (const nome of conjuntos) {
+    // O id é derivado do NOME DA PASTA, normalizado: as pastas vêm com hífen,
+    // espaço e numeração inconsistentes (`14-blue`, `17- toxic`), e um id com
+    // espaço quebraria o caminho no manifesto.
+    const id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    /**
+     * A convenção de três camadas vale para 12 dos 19 conjuntos.
+     *
+     * Os outros vieram de packs diferentes: uns têm cinco variações `_FLAT`,
+     * um tem duas imagens com nomes próprios, dois estão vazios. Exigir os três
+     * nomes canônicos descartava sete conjuntos em SILÊNCIO — medido, saíam 12
+     * de 19 e o log não dizia o que faltou.
+     *
+     * Então o recorte é por CONTEÚDO: se as três camadas existem, o conjunto é
+     * de parallax; se não, cada PNG vira uma variação chapada do mesmo lugar.
+     */
+    const arquivos = (await readdir(path.join(dir, nome))).filter((f) => /.png$/i.test(f));
+    if (!arquivos.length) {
+      console.warn(`   ! fundo ${nome}: pasta vazia`);
+      continue;
+    }
+
+    const emitir = async (arquivo, sufixo) => {
+      const src = path.join(dir, nome, arquivo);
+      noteRead(src);
+      // WEBP e não PNG: são 44 imagens de tela cheia, e em PNG davam 62 MB —
+      // inaceitável para um jogo que carrega no navegador. WebP aceita alfa
+      // (as camadas de nebulosa e estrela têm) e comprime uma ordem de grandeza
+      // melhor em arte com gradiente, que é exatamente o que um fundo é.
+      const rel = `fundo/${id}_${sufixo}.webp`;
+      await sharp(src)
+        .resize({ width: 1280, withoutEnlargement: true })
+        .webp({ quality: 82, effort: 5 })
+        .toFile(await ensureFile(rel));
+      return rel;
+    };
+
+    const temParallax = ['layer1_far.png', 'layer2_nebula.png', 'layer3_stars.png']
+      .every((f) => arquivos.includes(f));
+
+    if (temParallax) {
+      manifest.fundos.push({
+        id,
+        tipo: 'parallax',
+        camadas: {
+          longe: await emitir('layer1_far.png', 'longe'),
+          nebulosa: await emitir('layer2_nebula.png', 'nebulosa'),
+          estrelas: await emitir('layer3_stars.png', 'estrelas'),
+        },
+      });
+    } else {
+      // Variações chapadas: cada arquivo é um fundo completo do mesmo lugar, e
+      // a galáxia sorteia uma. Menos profundidade que o parallax, mas é a arte
+      // que existe — descartá-la seria perder sete cenários.
+      const variacoes = [];
+      for (const [i, f] of arquivos.sort().entries()) variacoes.push(await emitir(f, String(i)));
+      manifest.fundos.push({ id, tipo: 'chapado', variacoes });
+    }
+  }
+
+  const parallax = manifest.fundos.filter((f) => f.tipo === 'parallax').length;
+  log(`   ${parallax} em parallax, ${manifest.fundos.length - parallax} chapados`);
+}
+
+/**
+ * `spaceships new/Asteroids and junks` — 30 destroços de cenário.
+ *
+ * São 24×25 px cada, então vão para atlas: sprites minúsculos desenhados vários
+ * por quadro é exatamente o caso em que empacotar paga.
+ */
+async function buildDestrocos(manifest) {
+  const dir = path.join(RAW, 'spaceships new', 'Asteroids and junks');
+  if (!existsSync(dir)) {
+    console.warn('   ! Asteroids and junks/ não encontrado — pulando destroços');
+    return;
+  }
+
+  const arquivos = (await readdir(dir)).filter((f) => /\.png$/i.test(f)).sort();
+  const sprites = [];
+
+  for (const f of arquivos) {
+    const src = path.join(dir, f);
+    noteRead(src);
+    const raw = await toRaw(src);
+    const trimmed = trimAlpha(raw, 4);
+    if (!trimmed) continue;
+    // O id vem do NÚMERO no nome do arquivo, não do nome inteiro: os arquivos
+    // se chamam `Aestroid and space junk (7).png` — com erro de digitação e
+    // espaços —, e um id assim não sobrevive a uma renomeação da pasta.
+    const n = /\((\d+)\)/.exec(f)?.[1] ?? String(sprites.length);
+    sprites.push({
+      id: `destroco/${n.padStart(2, '0')}`,
+      raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy,
+      sw: raw.width, sh: raw.height,
+    });
+  }
+
+  log(`Destroços: ${sprites.length} peças de cenário`);
+  await writeAtlas('destrocos', sprites, manifest, 512);
 }
