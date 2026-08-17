@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 16/08/2026 · 121 testes passando · typecheck e build limpos.
+**Última atualização:** 16/08/2026 · 124 testes passando · typecheck e build limpos.
 
 ---
 
@@ -16,7 +16,7 @@ momento — o ponto de partida, que não se reescreve.
 
 ```
 Etapa 0  ██████████  concluída
-Fase 1   █████████░  6 de 7 tarefas
+Fase 1   ██████████  concluída
 Fase 1B  ██████████  concluída — morte, progresso e permanência
 Fase 2   ░░░░░░░░░░
 Fase 3   ░░░░░░░░░░
@@ -24,7 +24,7 @@ Fase 4   ░░░░░░░░░░
 Fase 5   ░░░░░░░░░░
 ```
 
-**Próxima:** fechar a 1.7 — normalizar as faixas de afixo. Depois, a Fase 2 (combate elemental).
+**Próxima:** Fase 2 — combate elemental (dano normal e elemental separados, matriz configurável, crítico elemental, penetração).
 
 
 
@@ -54,7 +54,7 @@ mudança de balanceamento seria fé.
 | — | Densidade e pressão como eixos de dificuldade (§16) | ✅ `82b4347` |
 | 1.5 | Sete raridades, Comum → Divino (§9) | ✅ |
 | 1.6 | ✅ Tiers de atributo T1–T10 (§6) | `data/balance/tiers.ts` |
-| 1.7 | Orçamento e peso de atributos (§7) | 🟡 medidor pronto; falta normalizar faixas |
+| 1.7 | Orçamento e peso de atributos (§7) | ✅ |
 | 1.8 | Nível de personagem 1–300 (§17) | ✅ com a 1B.3 |
 | 1.9 | Nível de nave 1–300, sem transferência (§17, §18) | ✅ com a 1B.3 |
 | ~~1.10~~ | ~~Save v4 + migração~~ — cancelado: o save é descartável no desenvolvimento | — |
@@ -127,7 +127,7 @@ etiqueta e sem erro — que é o contrato do `tier?` opcional.
 isso. Consertar a métrica é pré-requisito da **1.7**, senão o orçamento de poder
 será calibrado contra um medidor quebrado.
 
-### 1.7 — Orçamento e peso de atributos 🟡 metade
+### 1.7 — Orçamento e peso de atributos ✅
 
 **O medidor foi consertado e ele achou um buraco maior que o orçamento.**
 
@@ -166,19 +166,48 @@ existir.
 
 Nenhum setor fora da faixa, então **não** foi preciso recalibrar as curvas.
 
-#### O que falta na 1.7 — normalizar as faixas
+#### O medidor mentiu de novo — e o diagnóstico virou do avesso
 
-Com o medidor honesto, a dispersão real entre afixos aparece: **26,8× no ilvl 30
-e 35,5× no ilvl 270**. `dano_f` vale 23× a mediana; `crit_d` vale 0,50×.
+A primeira leitura ("afixo bruto escala com ilvl, fracionário não; a diversidade
+morre") estava **errada**. Era artefato de medir um afixo isolado sobre uma nave
+**nua**: afixo multiplicativo vale em proporção à base que multiplica, então
+`+15% de dano crítico` sobre dps quase zero parecia lixo.
 
-A causa é estrutural, não de tabela: afixo de valor BRUTO escala com o nível de
-item (`1 + ilvl × 0,32`, ou 87× ao longo do jogo) e afixo FRACIONÁRIO não —
-fração só cresce por tier, que para no 10. No fim do jogo só o bruto importa, e
-um Divino de sete linhas quer sete `dano_f`. A diversidade morre.
+Refeita a medição contra uma nave **montada no nível** — que é o contexto em que
+a escolha acontece —, tudo inverte:
 
-Normalizar as faixas é a segunda metade da etapa, e é calibragem grande: mexer
-em `dano_f` mexe na curva inteira. Fica separado de propósito — a primeira
-metade é uma correção de bug verificável sozinha.
+| afixo | nave nua | nave montada |
+|---|---|---|
+| `dano_f` | 22,96× a mediana | **1,67×** |
+| `pot_fogo` | 1,41× | **4,84×** |
+| `crit_d` | 0,50× | **2,47×** |
+
+**A causa real são CANAIS.** O dano tem três canais de multiplicação — `add
+dano`, `mul dano` e a potência elemental — e o valor de uma linha depende de
+quão cheio já está o canal que ela alimenta. `mul dano` acumula com casco,
+conjuntos e matriz num somatório grande, então mais 63% ali muda pouco. A
+potência elemental **não recebe de mais ninguém**: cada ponto quase dobra o dano
+sozinho. Ao consertar os seis `pot_*` na primeira metade, eu os tornei os
+afixos mais fortes do jogo sem perceber.
+
+Faixa de `pot_*` de 0,07–0,26 para **0,02–0,08**. Medido depois: 4,84× → **1,67×**,
+o mesmo que `dano_f`. Dispersão no fim do jogo 38,5× → **23,1×**, e o núcleo dos
+afixos (fora contagem e utilidade) fica entre 0,7× e 2,7× — cerca de 4×, faixa
+saudável. Curva conferida: 6,3×, zero setores fora da faixa.
+
+#### O que fica registrado e não foi mexido
+
+**Quatro afixos morrem no fim do jogo por saturação de teto.** Numa nave montada
+no ilvl 270, `cadencia_p`, `crit_c`, `expl_f` e `sorte_f` dão ganho **zero**: a
+nave já está em cadência 20, crítico 95%, explosão 260 e sorte 5, que são os
+tetos do §40. Um Divino de sete linhas pode rolar quatro linhas mortas.
+
+Não é bug de fórmula — os tetos são deliberados. É problema de *experiência de
+drop*, e a correção mexe em teto ou em elegibilidade de afixo por nível. Fica
+para a Fase 3 (orçamento de item), com o número já medido.
+
+Os afixos de **contagem** (`proj_f` 4,28×, `perf_f`, `expl_f`) ficam acima da
+faixa de propósito: pesos 9 contra 100 do `dano_f`. A raridade já os precifica.
 
 ---
 

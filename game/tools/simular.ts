@@ -21,11 +21,11 @@ import { WAVES_PER_SECTOR, buildEncounter } from '@sim/progression';
 import { powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import type { GameState, Item } from '@sim/types';
-import { AFFIXES, BASE_BY_ID } from '@data/items';
+import { AFFIXES } from '@data/items';
 import { fatorDoTier } from '@data/balance/tiers';
 import { AFIXO_ESCALA_POR_ILVL, ATRIBUTOS_FRACIONARIOS } from '@data/balance/curvas';
 import {
-  ajustarLeiDePotencia, diagnostico, divergencia, medirSetor, tentativasDoSetor,
+  ajustarLeiDePotencia, diagnostico, divergencia, equiparMelhor, medirSetor, tentativasDoSetor,
 } from './lib/balanco';
 
 // ── formatação ──────────────────────────────────────────────────────────────
@@ -240,25 +240,44 @@ function comandoOndas(de: number, ate: number): void {
  * refletir o afixo e não a sorte da rolagem.
  */
 function comandoAfixos(ilvl: number, tier: number): void {
-  const base = createState(1);
+  /**
+   * A base é uma nave MONTADA no nível, não uma nave nua.
+   *
+   * Foi o erro da primeira versão deste comando, e ele inverte o resultado.
+   * Afixo multiplicativo vale em proporção à base que multiplica: `+15% de dano
+   * crítico` sobre uma nave nua não vale quase nada, e sobre uma nave equipada
+   * vale muito. Medindo contra o zero, todo afixo de porcentagem parecia lixo e
+   * todo afixo de valor bruto parecia dominante — que foi exatamente a
+   * "assimetria estrutural" que a medição anterior acusou.
+   *
+   * A sonda ACRESCENTA uma linha à peça já equipada, em vez de trocar a peça.
+   * Trocar mediria o ganho da linha MENOS a perda do que saiu do slot, que é
+   * outra pergunta.
+   */
+  const base = equiparMelhor(ilvl, 'void_canhao', 1234, tentativasDoSetor(Math.round(ilvl / 0.9)));
   const notaBase = powerScore(resolveStats(base));
 
   const linhas = AFFIXES.map((def) => {
-    // Slot onde o afixo é permitido — alguns são restritos.
     const slot = def.slots?.[0] ?? 'principal';
+    const alvo = base.equipped[slot];
+    if (!alvo) return { def, ganho: 0 };
+
     const bruto = (def.min + def.max) / 2;
     const escalavel = def.kind === 'add' && !def.element && !ATRIBUTOS_FRACIONARIOS.has(def.stat);
     const escalado = escalavel ? bruto * (1 + ilvl * AFIXO_ESCALA_POR_ILVL) : bruto;
     const contagem = def.id === 'proj_f' || def.id === 'perf_f';
     const value = contagem ? Math.round(bruto) : escalado * fatorDoTier(tier);
 
-    const item = {
-      uid: 'sonda', baseId: BASE_BY_ID.keys().next().value as string, slot, rarity: 0 as const,
-      ilvl, element: (def.element ?? 'padrao'), icon: '', origin: 0,
-      affixes: [{ id: def.id, stat: def.stat, kind: def.kind, value, quality: 0.5, tier }],
-    } as unknown as Item;
+    const comLinha: Item = {
+      ...alvo,
+      // O afixo de potência elemental só age se a arma for daquele elemento —
+      // é a regra do próprio gerador. Sem isto, os seis `pot_*` mediriam zero
+      // por um motivo que não é o deles.
+      ...(def.element ? { element: def.element } : {}),
+      affixes: [...alvo.affixes, { id: def.id, stat: def.stat, kind: def.kind, value, quality: 0.5, tier }],
+    };
 
-    const sonda: GameState = { ...base, equipped: { ...base.equipped, [slot]: item } };
+    const sonda: GameState = { ...base, equipped: { ...base.equipped, [slot]: comLinha } };
     return { def, ganho: powerScore(resolveStats(sonda)) - notaBase };
   }).sort((a, b) => b.ganho - a.ganho);
 

@@ -176,3 +176,39 @@ describe('todo afixo precisa mover a nota de poder', () => {
     expect(zerados).toEqual([]);
   });
 });
+
+/**
+ * Canais de dano (§7).
+ *
+ * O dano tem três canais de multiplicação e o valor de uma linha depende de
+ * quão cheio já está o canal que ela alimenta. Foi a descoberta que reorientou
+ * a 1.7: medir um afixo sobre nave NUA inverte o resultado, porque afixo
+ * multiplicativo vale em proporção à base que multiplica.
+ */
+describe('a potência elemental não pode dominar o canal', () => {
+  const potencia = AFFIXES.filter((a) => a.id.startsWith('pot_'));
+
+  it('existe um afixo de potência para cada elemento', () => {
+    expect(potencia).toHaveLength(6);
+  });
+
+  /**
+   * O teto que impede a regressão: a potência elemental é dona de um canal que
+   * ninguém mais alimenta, então uma faixa larga a torna o afixo mais forte do
+   * jogo. Medido: com 0,07–0,26 valia 4,84× a mediana; com 0,02–0,08, 1,67×.
+   */
+  it('a faixa é estreita, porque o canal está vazio', () => {
+    for (const def of potencia) {
+      expect(def.max, def.id).toBeLessThanOrEqual(0.1);
+    }
+  });
+
+  /**
+   * Elas são fração consumida como `1 + x`, então precisam ser `add`. Como
+   * `mul` multiplicariam uma base zero e não fariam nada — o bug de nove afixos
+   * inertes.
+   */
+  it('são aditivas, nunca multiplicativas', () => {
+    for (const def of potencia) expect(def.kind, def.id).toBe('add');
+  });
+});

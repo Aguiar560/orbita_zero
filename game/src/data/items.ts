@@ -221,7 +221,21 @@ const ELEMENTAL_AFFIXES: readonly AffixDef[] = [
     // ficha e não faziam nada. Medido com `simular -- afixos`: ganho idêntico ao
     // de não equipar afixo nenhum.
     kind: 'add' as const,
-    min: 0.07, max: 0.26,
+    /**
+     * Faixa estreita porque este afixo é dono de um CANAL VAZIO.
+     *
+     * O dano tem três canais de multiplicação — `add dano`, `mul dano` e a
+     * potência elemental —, e o valor de uma linha depende de quão cheio já
+     * está o canal que ela alimenta. `mul dano` acumula com casco, conjuntos e
+     * matriz num somatório grande, então +63% ali muda pouco. A potência
+     * elemental não recebe de mais ninguém: cada ponto colocado nela quase
+     * dobra o dano sozinho.
+     *
+     * Medido em `simular -- afixos 270 10` contra uma nave montada: com a faixa
+     * original de 0,07–0,26 estes seis afixos valiam 4,84× a mediana e eram os
+     * mais fortes do jogo. Com 0,02–0,08 valem 1,67× — o mesmo que `dano_f`.
+     */
+    min: 0.02, max: 0.08,
     slots: ['principal', 'secundaria', 'reator'] as const,
     weight: 70,
     minIlvl: 3,
