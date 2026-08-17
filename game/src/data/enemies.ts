@@ -35,6 +35,14 @@ export interface EnemyDef {
   weaponClip?: string;
   /** Escudo animado, sobreposto em elites. */
   shieldClip?: string;
+  /**
+   * Marcadores livres, para as regras de drop (§10) casarem por GRUPO.
+   *
+   * O eixo pensado para conteúdo futuro: em vez de listar quarenta inimigos de
+   * uma facção nova numa regra, marca-se todos com a mesma tag e uma regra só
+   * os cobre. Inimigo sem tag continua funcionando — cai na regra base.
+   */
+  tags?: readonly string[];
   /** Raio de colisão em px lógicos. */
   radius: number;
   /** Escala de desenho. */

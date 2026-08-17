@@ -853,7 +853,13 @@ export class VerticalMode {
 
     // Loot físico: o item é rolado agora e vira uma cápsula na tela. Só entra
     // no inventário se a IA alcançar a cápsula.
-    const rolls = this.sim.rollDrops(e.boss ? 'chefe' : e.def.elite ? 'elite' : 'onda');
+    // Quem morreu vai junto: é o que permite à tabela do §10 favorecer slot e
+    // elemento por inimigo. Sem este argumento as regras por alvo existiriam e
+    // nunca casariam, que é a pior forma de um sistema estar "pronto".
+    const rolls = this.sim.rollDrops(
+      e.boss ? 'chefe' : e.def.elite ? 'elite' : 'onda',
+      { id: e.def.id, tags: e.def.tags, element: e.boss?.element ?? e.def.element },
+    );
     for (const item of rolls) this.spawnLoot(e.x, e.y, item);
   }
 

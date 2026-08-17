@@ -1,6 +1,8 @@
 ﻿import { Rng, clamp } from '@core/math';
 import { bus, toast } from '@app/Bus';
 import { getBiome, unlockedBiomes } from '@data/biomes';
+import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
+import { galaxyOfSector } from '@data/galaxies';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
 import { getHull, HULLS } from '@data/hulls';
 import {
@@ -595,19 +597,52 @@ export class Sim {
    * inventário quando a nave alcança a cápsula. Separar a rolagem da entrega é
    * o que permite que um drop seja perdido de verdade.
    */
-  rollDrops(kind: 'onda' | 'elite' | 'chefe'): Item[] {
+  rollDrops(kind: 'onda' | 'elite' | 'chefe', alvoDef?: { id?: string; tags?: readonly string[]; element?: ElementId }): Item[] {
     const e = this.encounter;
-    const luck = this.stats.sorte;
     const out: Item[] = [];
 
-    if (kind === 'chefe') {
-      const bonus = 2 + Math.floor(luck * 2);
-      for (let i = 0; i < bonus; i++) out.push(rollItem(this.rng, e.ilvl + 4, luck, this.state.universe.index));
-      return out;
-    }
-    if (this.rng.chance(dropChance(kind, luck))) {
-      out.push(rollItem(this.rng, kind === 'elite' ? e.ilvl + 2 : e.ilvl, luck, this.state.universe.index));
-    }
+    /**
+     * O drop passa pela tabela de regras (§10).
+     *
+     * Antes esta função ignorava quem morreu e onde: o chefe do setor 300
+     * soltava da mesma tabela que o caça do setor 1, com um `if` para chefe e
+     * outro para elite. As regras vivem em `data/balance/drops.ts` e casam por
+     * padrão, então conteúdo futuro — galáxia, inimigo, chefe — já cai numa
+     * regra sem precisar de cadastro.
+     */
+    const regra = resolverDrop({
+      setor: e.sector,
+      galaxia: galaxyOfSector(e.sector),
+      kind,
+      chefe: e.boss?.id ?? null,
+      inimigo: alvoDef?.id ?? null,
+      tags: alvoDef?.tags,
+      elemento: alvoDef?.element ?? e.boss?.element,
+    });
+
+    const luck = this.stats.sorte * regra.sorteMult;
+    const ilvl = e.ilvl + regra.ilvlBonus;
+    const opts = {
+      floor: regra.pisoDeRaridade,
+      slotFavorecido: regra.slotFavorecido,
+      elementoFavorecido: {
+        ...regra.elementoFavorecido,
+        ...afinidadeDoAlvo({
+          setor: e.sector, galaxia: galaxyOfSector(e.sector), kind,
+          elemento: alvoDef?.element ?? e.boss?.element,
+        }),
+      },
+    };
+
+    // Chefe e elite entregam sempre; a onda comum passa pela chance de drop.
+    // `itensExtras` é o que a regra concedeu além do normal.
+    const garantidos = regra.itensExtras > 0
+      ? regra.itensExtras + Math.floor(luck * 2) * (kind === 'chefe' ? 1 : 0)
+      : 0;
+    const sorteados = this.rng.chance(dropChance(kind, luck)) ? 1 : 0;
+    const total = Math.max(0, Math.round((garantidos + sorteados) * regra.quantidade));
+
+    for (let i = 0; i < total; i++) out.push(rollItem(this.rng, ilvl, luck, this.state.universe.index, opts));
     return out;
   }
 

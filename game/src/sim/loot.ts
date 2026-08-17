@@ -39,16 +39,29 @@ export function rollItem(
   ilvl: number,
   luck: number,
   origin: number,
-  opts: { slot?: SlotId; floor?: Rarity } = {},
+  opts: {
+    slot?: SlotId;
+    floor?: Rarity;
+    /** Viés de slot vindo da tabela de drop (§10). Multiplica o peso da base. */
+    slotFavorecido?: Partial<Record<SlotId, number>>;
+    /** Viés de elemento. Multiplica o peso na hora de sortear o elemento. */
+    elementoFavorecido?: Partial<Record<ElementId, number>>;
+  } = {},
 ): Item {
   // Bases são filtradas pelas três faixas mais altas disponíveis no nível: é o
   // que faz o inventário mudar de cara conforme o jogador avança, em vez de
   // continuar caindo o mesmo cano enferrujado no setor 60.
   const candidates = basesForIlvl(ilvl, opts.slot);
-  const base = rng.weighted(candidates, (b) => 1 + b.tier);
+  // O viés de slot vem do ALVO que morreu (§10): um encouraçado solta blindagem
+  // com mais frequência. É multiplicativo sobre o peso da base, não exclusivo —
+  // matar encouraçado nunca deixa de poder soltar arma.
+  const base = rng.weighted(
+    candidates,
+    (b) => (1 + b.tier) * (opts.slotFavorecido?.[b.slot] ?? 1),
+  );
   const rarity = rollRarity(rng, luck, opts.floor ?? 0);
   const info = rarityInfo(rarity);
-  const element = rollElement(rng, rarity);
+  const element = rollElement(rng, rarity, opts.elementoFavorecido);
 
   // Um item só rola afixos DO SEU elemento: "canhão de fogo com +18% de dano de
   // gelo" seria uma linha morta na ficha, já que a arma dispara fogo.
@@ -115,10 +128,19 @@ export function rollItem(
  * identidade tática —, e mantém o começo do jogo simples, sem o jogador ter que
  * entender o anel de vantagens no primeiro setor.
  */
-function rollElement(rng: Rng, rarity: Rarity): ElementId {
-  const chanceNeutro = [0.8, 0.62, 0.44, 0.26, 0.12][rarity] ?? 0.5;
+function rollElement(
+  rng: Rng,
+  rarity: Rarity,
+  favorecido?: Partial<Record<ElementId, number>>,
+): ElementId {
+  // Sete raridades, mas a tabela tinha cinco entradas: Mítico e Divino caíam no
+  // `?? 0.5`, MAIS neutros que o Lendário (0,12). A raridade máxima era a menos
+  // elemental do jogo, o oposto do pretendido.
+  const chanceNeutro = [0.8, 0.62, 0.44, 0.26, 0.12, 0.07, 0.03][rarity] ?? 0.03;
   if (rng.chance(chanceNeutro)) return 'padrao';
-  return rng.pick(ELEMENTS.filter((e) => e.id !== 'padrao')).id;
+
+  const elementais = ELEMENTS.filter((e) => e.id !== 'padrao');
+  return rng.weighted(elementais, (e) => favorecido?.[e.id] ?? 1).id;
 }
 
 function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affix {
