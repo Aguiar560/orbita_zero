@@ -494,6 +494,15 @@ export class VerticalMode {
    * uma decisão separada de atacar, e é o que faz o jogador trocar de escudo ao
    * mudar de galáxia em vez de carregar sempre o de maior número.
    */
+  /**
+   * Escala do reflexo.
+   *
+   * O dano do jogador é ordens de grandeza maior que o do chefe — devolver 12%
+   * dele sem escala mataria a nave num tiro. 0,004 põe o retorno na mesma faixa
+   * de um golpe inimigo, que é o que o modificador quer significar.
+   */
+  private static readonly REFLEXO_ESCALA = 0.004;
+
   /** Segundos sem levar dano até a regeneração do chefe voltar a contar. */
   private static readonly REGEN_APOS = 2.5;
 
@@ -1039,7 +1048,64 @@ export class VerticalMode {
     if (d && e.boss) {
       d.semDanoHa = 0;
       d.danoCausado += amount;
+
+      /**
+       * REFLEXO: parte do dano volta.
+       *
+       * Aplicado sobre o dano REAL, e não sobre o dano nominal do chefe: é o
+       * que faz o modificador punir a rajada e poupar quem bate devagar — a
+       * leitura que a descrição promete ("cuidado com a rajada").
+       *
+       * O retorno é neutro de propósito. Devolvê-lo no elemento do chefe faria
+       * a resistência do jogador anular o modificador inteiro para quem tivesse
+       * a peça certa, e um modificador que some com um item não é modificador.
+       */
+      if (d.efeitos.reflexo > 0) {
+        this.damagePlayer(amount * d.efeitos.reflexo * VerticalMode.REFLEXO_ESCALA);
+      }
+
+      // FRAGMENTAÇÃO: ao cruzar o limiar, o chefe se parte em dois.
+      if (d.efeitos.divideEm > 0 && !d.dividiu && e.hp > 0 && e.hp / e.maxHp <= d.efeitos.divideEm) {
+        d.dividiu = true;
+        this.fragmentarChefe(e);
+      }
     }
+  }
+
+  /**
+   * Parte o chefe em dois.
+   *
+   * Os dois pedaços dividem a vida RESTANTE, não recebem vida nova: fragmentar
+   * não pode ser uma segunda barra de vida disfarçada. O que muda é o problema —
+   * dois alvos ao mesmo tempo, cada um atirando.
+   *
+   * O clone não conta como unidade (`counts = false`): o encontro acaba quando
+   * o original cai, senão matar o clone e perder o original travaria a luta num
+   * estado sem saída.
+   */
+  private fragmentarChefe(original: Enemy): void {
+    const metade = original.hp / 2;
+    original.hp = metade;
+    original.maxHp = metade;
+
+    const clone = this.spawnEnemy(
+      original.def,
+      clamp(original.x + 180, 80, VIEW.w - 80),
+      original.y,
+      metade,
+      original.damage * 0.75,
+    );
+    if (!clone) return;
+    clone.boss = original.boss;
+    clone.radius = original.radius * 0.8;
+    clone.scale = original.scale * 0.8;
+    clone.share = 0;
+    clone.counts = false;
+    clone.entering = false;
+
+    this.setBanner('FRAGMENTAÇÃO');
+    this.shake = Math.max(this.shake, 12);
+    this.particles.shockwave(original.x, original.y, 260, 'rgba(255,180,90,.9)', 0.5);
   }
 
   // ── coletáveis ────────────────────────────────────────────────────────────

@@ -235,3 +235,61 @@ describe('a coerência dos efeitos no combate', () => {
     expect(d100.def.peso).toBeGreaterThan(d99.def.peso);
   });
 });
+
+describe('os três modificadores que faltavam', () => {
+  /**
+   * ESPELHO anula a vantagem elemental assumindo o elemento do JOGADOR.
+   *
+   * Resolvido na montagem do encontro, não a cada quadro: trocar o elemento no
+   * meio da luta faria o tiro mudar de cor sem explicação.
+   */
+  it('o espelho copia o elemento do jogador', () => {
+    const sim = simPronto();
+    const d = abrirDesafio(1);
+    const meu = sim.element;
+
+    const normal = bossDoPiso(d.chefe, d.efeitos, meu);
+    expect(normal.element).toBe(d.chefe.elemento);
+
+    const espelhado = bossDoPiso(d.chefe, { ...d.efeitos, espelhaElemento: true }, meu);
+    expect(espelhado.element).toBe(meu);
+  });
+
+  it('sem elemento do jogador, o espelho não quebra', () => {
+    const d = abrirDesafio(1);
+    const b = bossDoPiso(d.chefe, { ...d.efeitos, espelhaElemento: true }, undefined);
+    expect(b.element).toBe(d.chefe.elemento);
+  });
+
+  /** O piso 80 é marco e traz `espelho` — o caminho de verdade. */
+  it('o piso 80 espelha de fato', () => {
+    const sim = simPronto();
+    const d = abrirDesafio(80);
+    expect(d.efeitos.espelhaElemento).toBe(true);
+    const e = encontroDoDesafio(sim.state, d);
+    expect(e.boss!.element).toBe(sim.element);
+  });
+
+  it('a fragmentação começa desarmada e só dispara uma vez', () => {
+    // O marco 40 traz `fragmentador` — o piso 25 só o torna ELEGÍVEL, e o
+    // sorteio pode não o escolher.
+    const d = abrirDesafio(40);
+    expect(d.dividiu).toBe(false);
+    expect(d.efeitos.divideEm).toBeGreaterThan(0);
+  });
+
+  /** Reflexo e fragmentação só existem onde o modificador está. */
+  it('o piso sem o modificador não traz o efeito', () => {
+    const d = abrirDesafio(1);
+    expect(d.efeitos.reflexo).toBe(0);
+    expect(d.efeitos.divideEm).toBe(0);
+    expect(d.efeitos.espelhaElemento).toBe(false);
+  });
+
+  it('o reflexo tem teto e nunca devolve mais do que recebe', () => {
+    for (let n = 1; n <= 100; n++) {
+      const d = abrirDesafio(n);
+      expect(d.efeitos.reflexo, `piso ${n}`).toBeLessThanOrEqual(0.4);
+    }
+  });
+});

@@ -3,7 +3,8 @@ import { efeitosDoPiso, pisoDaProvacao, type PisoDef } from '@data/provacao';
 import { chefeDoPiso, type ChefeDaProvacao } from '@data/provacao-chefes';
 import { ESPECIAL_POR_ID, type EspecialDef } from '@data/provacao-especiais';
 import { sectorDamage, sectorHp, sectorIlvl, type Encounter } from './progression';
-import type { GameState } from './types';
+import { activeElement } from './stats';
+import type { ElementId, GameState } from './types';
 
 /**
  * A FRONTEIRA entre o Núcleo de Provação e o combate.
@@ -62,6 +63,8 @@ export interface DesafioAtivo {
    * imortal por aritmética, não por dificuldade.
    */
   semDanoHa: number;
+  /** O chefe já se partiu? Uma vez por luta. */
+  dividiu: boolean;
 }
 
 /**
@@ -102,7 +105,11 @@ export function setorEquivalente(piso: number): number {
  * `VerticalMode.updateBoss` já os executa. O que muda entre um piso e outro é o
  * elenco, os números e o especial — não a gramática do combate.
  */
-export function bossDoPiso(chefe: ChefeDaProvacao, efeitos: EfeitosDoDesafio): BossDef {
+export function bossDoPiso(
+  chefe: ChefeDaProvacao,
+  efeitos: EfeitosDoDesafio,
+  elementoDoJogador?: ElementId,
+): BossDef {
   const molde = BOSSES[(chefe.piso - 1) % BOSSES.length]!;
   return {
     ...molde,
@@ -110,7 +117,14 @@ export function bossDoPiso(chefe: ChefeDaProvacao, efeitos: EfeitosDoDesafio): B
     name: chefe.nome,
     title: chefe.caracteristica,
     sprite: chefe.sprite,
-    element: chefe.elemento,
+    /**
+     * O ESPELHO anula a vantagem elemental assumindo o elemento do jogador.
+     *
+     * Resolvido na montagem do encontro, não a cada quadro: trocar o elemento no
+     * meio da luta faria o jogador ver o tiro mudar de cor sem entender por quê,
+     * e obrigaria o combate a reconsultar o equipamento a cada disparo.
+     */
+    element: efeitos.espelhaElemento && elementoDoJogador ? elementoDoJogador : chefe.elemento,
     hp: molde.hp * chefe.vida * efeitos.vida,
     dano: molde.dano * chefe.dano * efeitos.dano,
     // As fases herdam a cadência e a velocidade do modificador. Multiplicar
@@ -131,7 +145,7 @@ export function bossDoPiso(chefe: ChefeDaProvacao, efeitos: EfeitosDoDesafio): B
 /** Monta o encontro do piso, na forma que `VerticalMode` já consome. */
 export function encontroDoDesafio(_state: GameState, d: DesafioAtivo): Encounter {
   const setor = setorEquivalente(d.piso);
-  const boss = bossDoPiso(d.chefe, d.efeitos);
+  const boss = bossDoPiso(d.chefe, d.efeitos, activeElement(_state));
 
   return {
     sector: setor,
@@ -182,6 +196,7 @@ export function abrirDesafio(piso: number): DesafioAtivo {
     danoCausado: 0,
     danoRecebido: 0,
     semDanoHa: 0,
+    dividiu: false,
   };
 }
 
