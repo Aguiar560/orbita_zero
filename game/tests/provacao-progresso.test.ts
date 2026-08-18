@@ -264,3 +264,68 @@ describe('o save (§56, §76)', () => {
     expect(m.provacao.registros).toEqual({});
   });
 });
+
+describe('a tela de resultado (§30–§33)', () => {
+  /**
+   * Repetir um piso NÃO libera nada.
+   *
+   * A primeira versão lia `pisoMax` depois de atualizá-lo, e por isso toda
+   * repetição anunciava "liberado o piso seguinte" — uma mentira que o jogador
+   * descobriria abrindo a tela e não achando o piso.
+   */
+  it('só anuncia liberação quando o piso era novo', () => {
+    const sim = simPronto(30);
+    sim.state.provacao.pisoMax = 9;
+
+    sim.concluirPisoDaProvacao(10, { tempo: 60, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.proximoPiso).toBe(11);
+
+    sim.concluirPisoDaProvacao(10, { tempo: 55, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.proximoPiso).toBe(0);
+  });
+
+  it('as camadas chegam ao resultado', () => {
+    const sim = simPronto(31);
+    sim.state.provacao.pisoMax = 9;
+    sim.concluirPisoDaProvacao(10, { tempo: 60, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.camadas).toEqual(['primeira', 'marco']);
+    expect(sim.resultadoProvacao!.venceu).toBe(true);
+  });
+
+  /**
+   * Recorde é NOVO só quando havia um anterior para bater. A primeira vitória
+   * já é comemorada por si; anunciá-la também como recorde diluiria as duas.
+   */
+  it('a primeira vitória não conta como recorde', () => {
+    const sim = simPronto(32);
+    sim.concluirPisoDaProvacao(1, { tempo: 40, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.recorde).toBe(false);
+
+    sim.concluirPisoDaProvacao(1, { tempo: 25, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.recorde).toBe(true);
+    expect(sim.resultadoProvacao!.recordeAnterior).toBe(40);
+
+    sim.concluirPisoDaProvacao(1, { tempo: 90, danoCausado: 10, danoRecebido: 1 });
+    expect(sim.resultadoProvacao!.recorde).toBe(false);
+  });
+
+  it('a derrota traz o quanto faltou', () => {
+    const sim = simPronto(33);
+    sim.falharPisoDaProvacao(1, { tempo: 30, danoCausado: 5, danoRecebido: 99 }, 0.42);
+    const r = sim.resultadoProvacao!;
+    expect(r.venceu).toBe(false);
+    expect(r.vidaRestanteDoChefe).toBe(0.42);
+    expect(r.ganhos.itens).toBe(0);
+  });
+
+  /** A dica aponta o PROBLEMA, não a solução — o §16 quer experimentação. */
+  it('a dica nunca entrega a resposta', () => {
+    const sim = simPronto(34);
+    for (let piso = 1; piso <= 100; piso += 7) {
+      sim.falharPisoDaProvacao(piso, { tempo: 10, danoCausado: 1, danoRecebido: 9 });
+      const d = sim.resultadoProvacao!.dica ?? '';
+      // Nunca manda usar um elemento específico.
+      expect(d.toLowerCase(), `piso ${piso}`).not.toMatch(/use |equipe |troque para/);
+    }
+  });
+});

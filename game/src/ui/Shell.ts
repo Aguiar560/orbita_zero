@@ -15,6 +15,7 @@ import { ArmazemPanel } from './panels/ArmazemPanel';
 import { FabricacaoPanel } from './panels/FabricacaoPanel';
 import { MissoesPanel } from './panels/MissoesPanel';
 import { ProvacaoPanel } from './panels/ProvacaoPanel';
+import { montarResultadoDaProvacao } from './ProvacaoResultado';
 import { TreePanel } from './panels/TreePanel';
 import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
@@ -59,6 +60,7 @@ export class Shell {
   private dirty = true;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
+  private resultadoHost: HTMLElement | null = null;
   private aoTeclar: ((e: KeyboardEvent) => void) | null = null;
 
   private readonly resourceNodes = new Map<ResourceId, HTMLElement>();
@@ -174,6 +176,13 @@ export class Shell {
 
     bus.on('sector:advanced', ({ sector }) => this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star'));
     bus.on('boss:defeated', ({ name }) => this.pushToast(`${name} destruído`, 'epic', 'fx/blast_fire_3'));
+    // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a
+    // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
+    // jogo. Os dois eventos caem no mesmo lugar porque o que muda entre eles e
+    // o conteudo, nao a moldura.
+    bus.on('provacao:vencido', () => this.mostrarResultadoDaProvacao());
+    bus.on('provacao:falhou', () => this.mostrarResultadoDaProvacao());
+
     bus.on('chest:granted', ({ tier, source }) => this.pushToast(`Baú ${tier}${source ? ` · ${source}` : ''}`, 'good', 'ui/icon_coin'));
   }
 
@@ -276,6 +285,21 @@ export class Shell {
       this.sim.encounterLabel,
       `Patente ${st.command.nivel}`,
     ].join('  ·  ');
+  }
+
+  /** Abre a tela de resultado da Provacao, se houver uma para mostrar. */
+  private mostrarResultadoDaProvacao(): void {
+    const r = this.sim.resultadoProvacao;
+    if (!r) return;
+    this.resultadoHost?.remove();
+
+    const fechar = () => {
+      this.resultadoHost?.remove();
+      this.resultadoHost = null;
+      this.sim.resultadoProvacao = null;
+    };
+    this.resultadoHost = montarResultadoDaProvacao(this.sim, r, fechar);
+    this.root.append(this.resultadoHost);
   }
 
   private pushToast(text: string, kind: 'info' | 'good' | 'bad' | 'epic', icon?: string): void {

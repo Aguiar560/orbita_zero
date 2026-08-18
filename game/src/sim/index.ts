@@ -11,6 +11,28 @@ import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import {
   abrirDesafio, encontroDoDesafio, tickDoDesafio, type DesafioAtivo,
 } from './desafio';
+
+/** O que as telas de vitória e derrota mostram (§30–§33). */
+export interface ResultadoDaProvacao {
+  venceu: boolean;
+  piso: number;
+  chefe: string;
+  camadas: CamadaDeRecompensa[];
+  tempo: number;
+  danoCausado: number;
+  danoRecebido: number;
+  recorde: boolean;
+  recordeAnterior: number;
+  ganhos: {
+    sucata: number; nucleos: number; itens: number; medalhas: number;
+    materiais: Record<string, number>;
+  };
+  /** Piso liberado por esta vitória. Zero quando não liberou nada novo. */
+  proximoPiso: number;
+  /** Fração de vida que sobrou ao chefe, na derrota. */
+  vidaRestanteDoChefe: number;
+  dica?: string;
+}
 import { chefeDoPiso } from '@data/provacao-chefes';
 import {
   FRACAO_REPETICAO, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
@@ -109,6 +131,15 @@ export class Sim {
    * guardar o meio da luta abriria a porta para reiniciá-la sem custo.
    */
   desafio: DesafioAtivo | null = null;
+
+  /**
+   * O resultado da última luta da Provação, para as telas do §30–§33.
+   *
+   * Em memória e não no save: é uma tela que se lê uma vez e se fecha. Guardá-lo
+   * faria o painel de vitória reaparecer no boot seguinte, comemorando algo que
+   * o jogador já viu.
+   */
+  resultadoProvacao: ResultadoDaProvacao | null = null;
 
   /**
    * Sinais vitais ao vivo da nave, escritos pela camada vertical a cada quadro.
@@ -550,6 +581,16 @@ export class Sim {
     const def = pisoDaProvacao(piso);
     const p = this.state.provacao;
     const camadas = camadasAPagar(this.state, piso);
+    // O recorde anterior é lido ANTES de registrar, senão a comparação seria
+    // sempre contra o próprio tempo desta corrida.
+    const recordeAntes = p.registros[piso]?.melhorTempo ?? Infinity;
+    // O maior piso ANTES desta vitória: sem isso, repetir um piso anunciaria
+    // "liberado o seguinte" toda vez, porque `pisoMax` já teria sido atualizado
+    // quando a tela fosse montada.
+    const pisoMaxAntes = p.pisoMax;
+    const nucleosAntes = this.state.resources.nucleo;
+    const sucataAntes = this.state.resources.sucata;
+    const itensAntes = this.state.stats.itemsFound;
 
     // MARCA PRIMEIRO. Se algo estourar na entrega, o jogador perde a recompensa
     // — e não ganha o direito de recebê-la duas vezes.
@@ -586,10 +627,35 @@ export class Sim {
       }
     }
 
+    const chefe = chefeDoPiso(piso);
+    this.resultadoProvacao = {
+      venceu: true,
+      piso,
+      chefe: chefe.nome,
+      camadas,
+      tempo: r.tempo,
+      danoCausado: r.danoCausado,
+      danoRecebido: r.danoRecebido,
+      // Recorde é NOVO só quando havia um anterior para bater. A primeira
+      // vitória já é comemorada por si; anunciá-la também como recorde diluiria
+      // as duas coisas.
+      recorde: Number.isFinite(recordeAntes) && r.tempo < recordeAntes,
+      recordeAnterior: Number.isFinite(recordeAntes) ? recordeAntes : 0,
+      ganhos: {
+        sucata: this.state.resources.sucata - sucataAntes,
+        nucleos: this.state.resources.nucleo - nucleosAntes,
+        itens: this.state.stats.itemsFound - itensAntes,
+        medalhas: camadas.includes('primeira') || camadas.includes('marco') ? (def.recompensa.medalhas ?? 0) : 0,
+        materiais: def.recompensa.materiais,
+      },
+      // Só anuncia liberação quando o piso era NOVO. Repetir não libera nada.
+      proximoPiso: piso > pisoMaxAntes ? Math.min(PROVACAO_PISOS, piso + 1) : 0,
+      vidaRestanteDoChefe: 0,
+    };
+
     this.desafio = null;
     this.encounterCache = null;
 
-    const chefe = chefeDoPiso(piso);
     bus.emit('provacao:vencido', { piso, chefeId: chefe.id, camadas });
     if (camadas.includes('marco')) bus.emit('provacao:marco', { piso });
 
@@ -605,7 +671,28 @@ export class Sim {
   falharPisoDaProvacao(
     piso: number,
     r: { tempo: number; danoCausado: number; danoRecebido: number },
+    vidaRestante = 0,
   ): void {
+    const chefe = chefeDoPiso(piso);
+    this.resultadoProvacao = {
+      venceu: false,
+      piso,
+      chefe: chefe.nome,
+      camadas: [],
+      tempo: r.tempo,
+      danoCausado: r.danoCausado,
+      danoRecebido: r.danoRecebido,
+      recorde: false,
+      recordeAnterior: 0,
+      ganhos: { sucata: 0, nucleos: 0, itens: 0, medalhas: 0, materiais: {} },
+      proximoPiso: 0,
+      vidaRestanteDoChefe: vidaRestante,
+      // A dica sai da RESISTÊNCIA real do chefe contra o elemento em uso. O §30
+      // pede que não seja explícita demais: ela aponta o problema, não a
+      // solução.
+      dica: this.dicaDaDerrota(piso),
+    };
+
     registrarTentativa(this.state, piso, {
       venceu: false, tempo: r.tempo,
       nave: this.state.hull, nivelDaNave: this.naveAtiva.nivel,
@@ -615,6 +702,29 @@ export class Sim {
     this.encounterCache = null;
     bus.emit('provacao:falhou', { piso });
     this.touch();
+  }
+
+  /**
+   * A recomendação da derrota (§30).
+   *
+   * Aponta o PROBLEMA, não a solução: "o chefe resiste ao seu elemento" ensina
+   * a olhar a ficha; "use gelo" resolveria por ele e mataria a experimentação
+   * que o §16 quer provocar. Devolve string vazia quando não há nada honesto a
+   * dizer — dica genérica é pior que silêncio.
+   */
+  private dicaDaDerrota(piso: number): string {
+    const chefe = chefeDoPiso(piso);
+    const meu = this.element;
+    const res = (chefe.resistencias as Record<string, number>)[meu] ?? 0;
+    if (res >= 0.35) return `${chefe.nome} resiste fortemente ao seu elemento.`;
+
+    const def = pisoDaProvacao(piso);
+    if (def.modificadores.includes('regenerador') || def.modificadores.includes('furia')) {
+      return 'Ele recupera vida — dano constante vale mais que rajada.';
+    }
+    if (def.modificadores.includes('refletor')) return 'Parte do seu dano está voltando.';
+    if (def.modificadores.includes('sufocante')) return 'Seu escudo não regenera nesta câmara.';
+    return '';
   }
 
   /**

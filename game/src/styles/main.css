@@ -2362,3 +2362,97 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .prv-iniciar.marco { border-color: #FFB638; color: #FFB638; }
 .prv-iniciar.marco:hover:not(:disabled) { box-shadow: 0 0 18px rgba(255, 182, 56, 0.45); }
 .prv-iniciar:disabled { border-color: var(--line); color: var(--muted); opacity: 0.55; }
+
+/* ── resultado da Provação (§30–§33) ─────────────────────────────────────── */
+/*
+ * z-index 80: acima da camada de painel (60) e do resultado da Fabricação (70).
+ * A luta acontece com tudo fechado, e este painel é a resposta a uma ação que o
+ * jogador acabou de tomar — ele vem por cima de qualquer coisa.
+ *
+ * A ESCALA é o que faz a vitória parecer vitória: piso comum tem selo discreto,
+ * primeira conclusão ganha faixa, marco muda de cor e de moldura. Se tudo
+ * comemorasse igual, nada comemoraria.
+ */
+.prv-res {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(2, 4, 10, 0.78);
+  backdrop-filter: blur(4px);
+  animation: camada-entra 0.18s ease;
+}
+
+.prv-res-caixa {
+  width: min(440px, 92vw);
+  display: grid; gap: 12px; padding: 18px 20px 20px;
+  background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(6, 10, 20, 0.98));
+  border: 1px solid var(--line-strong); border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+  animation: prv-res-entra 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes prv-res-entra {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.prv-res-caixa.venceu { border-color: var(--good); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 28px rgba(80, 227, 107, 0.2); }
+.prv-res-caixa.perdeu { border-color: var(--bad); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 28px rgba(255, 75, 75, 0.16); }
+/* O marco é OUTRA coisa: dourado, com brilho que pulsa por alguns segundos. */
+.prv-res-caixa.marco {
+  border-color: #FFB638;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75), 0 0 40px rgba(255, 182, 56, 0.4);
+  animation: prv-res-entra 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.2), prv-marco-pulsa 1.8s ease-in-out 3;
+}
+@keyframes prv-marco-pulsa {
+  0%, 100% { box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75), 0 0 40px rgba(255, 182, 56, 0.4); }
+  50% { box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75), 0 0 64px rgba(255, 182, 56, 0.7); }
+}
+
+.prv-res-topo { display: grid; gap: 3px; justify-items: center; text-align: center; }
+.prv-res-piso { font-size: 10px; letter-spacing: 3px; color: var(--muted); }
+.prv-res-tit { margin: 0; font-size: 17px; letter-spacing: 2px; }
+.venceu .prv-res-tit { color: var(--good); }
+.perdeu .prv-res-tit { color: var(--bad); }
+.marco .prv-res-tit { color: #FFB638; font-size: 15px; }
+.prv-res-camada { font-size: 10px; letter-spacing: 2px; margin-top: 2px; }
+
+.prv-res-numeros {
+  display: grid; gap: 4px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(3, 6, 14, 0.6);
+}
+.prv-res-linha { display: flex; justify-content: space-between; gap: 12px; }
+
+/* A faixa separa o que é EXTRA do que é rotina (§32). */
+.prv-res-faixa {
+  padding: 6px 10px; text-align: center;
+  font-size: 11px; letter-spacing: 2px; color: #FFB638;
+  border: 1px solid #FFB638; border-radius: 8px;
+  background: rgba(30, 22, 6, 0.5);
+}
+.prv-res-nota { text-align: center; }
+
+.prv-res-premios { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+
+/*
+ * O piso liberado é o que o jogador veio buscar — recompensa se guarda no
+ * inventário, progresso é o motivo de ter entrado. Por isso ele tem caixa
+ * própria em vez de virar mais uma linha.
+ */
+.prv-res-liberado {
+  display: grid; gap: 2px; justify-items: center; padding: 8px;
+  border: 1px solid var(--accent); border-radius: 8px;
+  background: rgba(79, 195, 255, 0.06);
+}
+.prv-res-liberado strong { font-size: 15px; letter-spacing: 2px; color: var(--accent); }
+
+/* A dica aponta o problema, não a solução (§30). */
+.prv-res-dica {
+  padding: 8px 10px; text-align: center;
+  border: 1px solid rgba(255, 182, 56, 0.35); border-radius: 8px;
+  background: rgba(30, 22, 6, 0.35); color: #FFB638;
+}
+
+.prv-res-ok { width: 100%; letter-spacing: 2px; }
+.venceu .prv-res-ok { border-color: var(--good); color: var(--good); }
+.perdeu .prv-res-ok { border-color: var(--line-strong); }
+.marco .prv-res-ok { border-color: #FFB638; color: #FFB638; }
