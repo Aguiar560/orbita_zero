@@ -59,12 +59,14 @@ export class MissoesPanel implements Panel {
     return h('.panel-body.mis', {},
       this.cabecalho(sim),
       this.aba === 'contratos'
+        // A ficha é filha DIRETA de `.mis-corpo`, não da coluna central: ela
+        // atravessa as colunas do meio e da direita, e é isso que faz "TIPOS DE
+        // MISSÃO" começar ABAIXO dela, alinhado com a lista de missões — como
+        // na referência. Aninhada na coluna central, a direita subia até o topo.
         ? h('.mis-corpo', {},
             this.colunaContatos(sim, contatos),
-            h('.mis-centro', {},
-              ativo ? this.ficha(sim, ativo) : h('p.muted.hint', { text: 'Nenhum contato disponível ainda.' }),
-              ativo ? this.listaDeMissoes(sim, ativo) : h('div'),
-            ),
+            ativo ? this.ficha(sim, ativo) : h('p.muted.hint', { text: 'Nenhum contato disponível ainda.' }),
+            h('.mis-centro', {}, ativo ? this.listaDeMissoes(sim, ativo) : h('div')),
             this.colunaDireita(sim),
           )
         : this.aba === 'rede'

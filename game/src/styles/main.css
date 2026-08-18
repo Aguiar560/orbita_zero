@@ -1890,3 +1890,66 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-ficha-dados > * { min-width: 0; overflow-wrap: anywhere; }
 .mis-selo-exchefe { font-size: 9px; padding: 2px 6px; white-space: normal; }
 .mis-ficha-dados .muted.tiny { line-height: 1.25; }
+
+/* ── três correções do screenshot ────────────────────────────────────────── */
+
+/*
+ * 1. O verde que engolia o contrato especial.
+ *
+ * `.mis-card.pronta` forçava `border-color: var(--good) !important`, de quando
+ * a borda era uma linha de 1 px. Com `border-image` a borda passou a ter 26-30
+ * px, e essa cor virou uma FAIXA verde sólida em volta do card — foi o que
+ * apareceu no screenshot. Pronta agora se anuncia só pelo brilho, que é o que a
+ * moldura desenhada permite.
+ */
+.mis-card.pronta { border-color: transparent !important; }
+.mis-card.pronta { box-shadow: 0 0 20px rgba(80, 227, 107, 0.35); }
+.mis-especial.pronta { box-shadow: 0 0 22px rgba(255, 182, 56, 0.4); }
+
+/*
+ * 2. A borda da ficha era agressiva demais.
+ *
+ * `mis_ficha.png` tem colchete grosso e brilho forte, desenhado para ser o
+ * bloco nobre da tela — e ao lado da lista de contatos ele briga em vez de
+ * conversar. Passa a usar a MESMA moldura dos contatos: a ficha é o contato
+ * selecionado ampliado, então compartilhar a moldura é coerente, não economia.
+ */
+.mis-ficha {
+  border-width: 22px;
+  border-image: url(assets/ui/mis_card_contato.png) 32 fill stretch;
+}
+
+/*
+ * 3. A grade em duas linhas: os tipos começam abaixo da ficha.
+ *
+ * A ficha atravessa as colunas do meio e da direita; a lista de missões e o
+ * painel de tipos dividem a linha de baixo. É a leitura da referência — o
+ * personagem manda na largura toda, e só depois dele o conteúdo se divide.
+ */
+.mis-corpo {
+  grid-template-columns: minmax(190px, 22%) minmax(0, 1fr) minmax(180px, 20%);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: start;
+}
+.mis-contatos { grid-row: 1 / span 2; }
+.mis-ficha { grid-column: 2 / span 2; grid-row: 1; }
+.mis-centro { grid-column: 2; grid-row: 2; }
+.mis-dir { grid-column: 3; grid-row: 2; }
+@media (max-width: 1180px) {
+  .mis-ficha { grid-column: 2; }
+  .mis-centro { grid-column: 2; }
+}
+
+/*
+ * `align-items: start` no corpo inteiro foi longe demais: ele faz TODO item
+ * dimensionar pelo conteúdo, e a coluna de missões passou de 670 px dentro de
+ * uma linha que tinha 337 — o conteúdo vazava para fora do modal.
+ *
+ * Só a FICHA precisa de `start`, porque ela é a única que deve manter a altura
+ * natural em vez de esticar. O resto volta a esticar e a rolar por dentro.
+ */
+.mis-corpo { align-items: stretch; }
+.mis-ficha { align-self: start; }
+.mis-centro, .mis-dir, .mis-contatos { min-height: 0; }
+.mis-cards { max-height: 100%; overflow-y: auto; }
+.mis-centro { overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); }
