@@ -46,6 +46,8 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
 
     chests: {},
     codex: [],
+    missoes: {},
+    medalhas: 0,
 
     stats: { kills: 0, bossKills: 0, deaths: 0, itemsFound: 0, chestsOpened: 0 },
 
@@ -96,6 +98,11 @@ export function migrate(raw: unknown): GameState | null {
     inventory: Array.isArray(data.inventory) ? data.inventory : [],
     fleet: Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet,
     codex: Array.isArray(data.codex) ? data.codex : [],
+    // Save anterior ao §27 não tem nem um nem outro. Ambos nascem vazios em vez
+    // de travar o boot — a regra que não se negocia é "save malformado não
+    // impede jogar".
+    missoes: (data.missoes && typeof data.missoes === 'object') ? data.missoes as GameState['missoes'] : {},
+    medalhas: Number.isFinite(data.medalhas) ? Number(data.medalhas) : 0,
   };
 
   if ((data.version ?? 0) < 2) {

@@ -388,6 +388,23 @@ export interface GameState {
   /** Chefes já derrotados alguma vez — alimenta o códex. */
   codex: string[];
 
+  /**
+   * Progresso das missões (§27), por id.
+   *
+   * Criado sob demanda: uma missão nova no catálogo nasce funcionando em save
+   * antigo, sem migração. Ver `sim/missoes.ts`.
+   */
+  missoes: Record<string, { passos: number[]; entregue: boolean }>;
+
+  /**
+   * Medalhas (§27).
+   *
+   * Contador próprio, FORA de `resources`: medalha não se gasta em loja nem
+   * entra em fórmula de poder. É registro de feito, e pô-la junto das três
+   * moedas obrigaria toda conta de economia a aprender a ignorá-la.
+   */
+  medalhas: number;
+
   stats: {
     kills: number;
     bossKills: number;

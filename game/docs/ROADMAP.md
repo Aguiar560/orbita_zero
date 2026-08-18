@@ -625,8 +625,49 @@ Verificado no jogo: dez Comuns viram uma peça, e a ferrita desce de 5.000 para
 4.810.
 
 
-Naves, inimigos, chefes, recursos por galáxia, crafting (§25), sacrifício e
-fusão de itens (§26), missões (§27) e o modo de chefes de 100 pisos (§32–§35).
+### §27 — Missões ✅
+
+**O §27 pede ARQUITETURA**, não um punhado de missões. O que decide o desenho é
+recusar o caminho óbvio: cada categoria pendurada onde seu evento acontece —
+"matar" no abate, "coletar" no drop, "concluir fase" no avanço de setor. Isso
+resolve as quatro categorias de hoje e cobra caro na quinta, porque cada ponto
+do `sim` passaria a saber que missões existem.
+
+Em vez disso, **um funil só**: o jogo reporta fatos em `Sim.registrar`, e cada
+missão declara — como DADO — qual fato conta e sob que filtro. Missão nova é
+linha de tabela. Dez tipos de fato ligados: abate, chefe, recurso, moeda, item,
+setor, galáxia, nível, fusão e baú.
+
+O preço é reportar fatos que ninguém consome ainda. É barato: um objeto por
+evento, descartado no mesmo quadro quando nenhuma missão ativa se importa.
+
+Recompensas cobrem tudo que o §27 lista — moedas, materiais, XP, medalhas,
+itens, baús — e mais a **concessão de carga**, que o registro do §28 previa como
+fonte `missao` desde a 3.7 e não tinha quem concedesse.
+
+Decisões que ficaram no código:
+
+- **Medalha é contador próprio**, fora de `resources`. Não se gasta em loja nem
+  entra em fórmula de poder; junto das três moedas, toda conta de economia teria
+  de aprender a ignorá-la.
+- **Missão oculta não acumula.** Sem isso, uma missão liberada no setor 25
+  nasceria completa com o que o jogador fez antes de ela existir.
+- **A checagem da entrega vem antes do pagamento.** Sem isso, entregar sem
+  material deixaria o jogador sem o material e sem a recompensa.
+- **Progresso criado sob demanda**, não semeado no save: missão nova nasce
+  funcionando em save antigo, sem migração.
+
+O ícone da aba expôs uma armadilha: `cat/*` são os nove slots de item, e o
+`cat/alvo` que inventei não existia — a aba nasceu sem arte, e só o navegador
+contou. Ficou com `aba/melhorias`, órfão desde que o menu Melhorias saiu (§31).
+
+20 testes novos. Verificado no jogo: 9 missões visíveis, "Linha de Suprimento"
+ficou pronta ao guardar 500 de ferrita, e o resgate pagou 5.000 de sucata.
+
+### Ainda na Fase 5
+
+Naves, inimigos, chefes e recursos por galáxia em volume, e o modo de chefes de
+100 pisos (§32–§35).
 É onde o `content-data-agent` trabalha em volume, a partir de schemas já
 aprovados.
 

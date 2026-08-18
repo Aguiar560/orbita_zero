@@ -13,6 +13,7 @@ import { ShopPanel } from './panels/ShopPanel';
 import { InventoryPanel } from './panels/InventoryPanel';
 import { ArmazemPanel } from './panels/ArmazemPanel';
 import { FabricacaoPanel } from './panels/FabricacaoPanel';
+import { MissoesPanel } from './panels/MissoesPanel';
 import { TreePanel } from './panels/TreePanel';
 import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
@@ -41,6 +42,7 @@ export class Shell {
     new InventoryPanel(),
     new ArmazemPanel(),
     new FabricacaoPanel(),
+    new MissoesPanel(),
     new TreePanel(),
     new FleetPanel(),
     new ChestsPanel(),

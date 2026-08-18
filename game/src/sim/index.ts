@@ -5,6 +5,8 @@ import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
+import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
+import { aplicarFato, fracaoDe, progressoDe, situacaoDe, type SituacaoDeMissao } from './missoes';
 import { rarityInfo } from '@data/rarity';
 
 /**
@@ -258,6 +260,7 @@ export class Sim {
     if (!(amount > 0)) return;
     this.state.resources[resource] += amount;
     this.state.lifetime[resource] += amount;
+    this.registrar({ tipo: 'moeda', moeda: resource, quantidade: amount });
     bus.emit('resources:changed');
   }
 
@@ -327,6 +330,90 @@ export class Sim {
    */
   get frotaDisponivel(): readonly string[] {
     return this.testMode ? HULLS.map((h) => h.id) : this.state.fleet;
+  }
+
+  // ── missões (§27) ─────────────────────────────────────────────────────────
+
+  /**
+   * O funil ÚNICO por onde o jogo reporta o que aconteceu.
+   *
+   * Missão não observa o jogo em vários lugares: o jogo reporta aqui e cada
+   * missão declara, como dado, qual fato conta. A alternativa — cada categoria
+   * pendurada onde seu evento acontece — funciona para as quatro de hoje e cobra
+   * caro na quinta: cada ponto do `sim` passaria a saber que missões existem.
+   * Assim, missão nova é linha de tabela.
+   *
+   * Barato o bastante para chamar em todo abate: quando nenhuma missão ativa se
+   * importa, o objeto é descartado no mesmo quadro.
+   */
+  registrar(fato: FatoDeJogo): void {
+    const prontas = aplicarFato(this.state, fato, this.alcanceLiberado);
+    for (const m of prontas) toast(`Missão concluída: ${m.nome}`, 'epic');
+    if (prontas.length) this.touch();
+  }
+
+  /**
+   * Resgata a recompensa de uma missão pronta.
+   *
+   * Devolve `false` sem cobrar nada quando falta o que a entrega consome — a
+   * checagem vem ANTES de qualquer pagamento, senão uma entrega parcial deixaria
+   * o jogador sem o material e sem a recompensa.
+   */
+  resgatarMissao(id: string): boolean {
+    const def = MISSAO_POR_ID.get(id);
+    if (!def) return false;
+    if (situacaoDe(this.state, def, this.alcanceLiberado) !== 'pronta') return false;
+
+    if (def.consomeNaEntrega) {
+      for (const [rec, n] of Object.entries(def.consomeNaEntrega)) {
+        if (this.materialDisponivel(rec) < n) return false;
+      }
+      for (const [rec, n] of Object.entries(def.consomeNaEntrega)) this.gastarMaterial(rec, n);
+    }
+
+    const r = def.recompensa;
+    for (const [moeda, n] of Object.entries(r.moedas ?? {})) this.grant(moeda as ResourceId, n);
+    for (const [rec, n] of Object.entries(r.materiais ?? {})) this.guardarMaterial(rec, n);
+    if (r.xp) this.grantXp(r.xp);
+    if (r.medalhas) this.state.medalhas += r.medalhas;
+    for (const [tier, n] of Object.entries(r.baus ?? {})) this.grantChest(tier, n, def.nome);
+    if (r.itens) {
+      for (let i = 0; i < r.itens.quantidade; i++) {
+        this.acquire(rollItem(
+          this.rng,
+          this.encounter.ilvl + (r.itens.ilvlBonus ?? 0),
+          this.stats.sorte,
+          this.state.universe.index,
+          r.itens.raridadeMin !== undefined ? { floor: r.itens.raridadeMin } : {},
+        ));
+      }
+    }
+    // Concessão é idempotente por id: repetir a missão não amplia de novo.
+    if (r.concessao) this.concederCarga(r.concessao);
+
+    progressoDe(this.state, def).entregue = true;
+    toast(`${def.nome} — recompensa recebida`, 'epic');
+    this.touch();
+    return true;
+  }
+
+  /** Missões visíveis, na ordem em que a tela deve mostrá-las. */
+  get missoes(): { def: MissaoDef; situacao: SituacaoDeMissao; fracao: number }[] {
+    const alcance = this.alcanceLiberado;
+    return MISSOES
+      .map((def) => ({
+        def,
+        situacao: situacaoDe(this.state, def, alcance),
+        fracao: fracaoDe(this.state, def),
+      }))
+      // Prontas primeiro — é a única linha em que o jogador tem o que fazer.
+      .filter((m) => m.situacao !== 'oculta')
+      .sort((a, b) => ordemDaSituacao(a.situacao) - ordemDaSituacao(b.situacao) || b.fracao - a.fracao);
+  }
+
+  /** Quantas missões esperam resgate. Alimenta o selo da aba. */
+  get missoesProntas(): number {
+    return this.missoes.filter((m) => m.situacao === 'pronta').length;
   }
 
   /** No modo de teste tudo é pagável, sem alterar o saldo mostrado. */
@@ -418,6 +505,14 @@ export class Sim {
     // combate, não o tamanho do alvo.
     this.grantXp(2 + e.bounty * 0.25);
     this.state.stats.kills++;
+    // O fato do abate. O elemento sai do ENCONTRO e não do alvo individual
+    // porque `rewardKill` recebe só a fração; levar a def do inimigo até aqui é
+    // trabalho para quando existir missão de inimigo específico. O campo
+    // `inimigo` já está no fato para essa hora não exigir mudar o formato.
+    this.registrar({
+      tipo: 'abate', inimigo: '', elemento: this.threatElement,
+      chefe: e.kind === 'chefe', setor: e.sector,
+    });
     // O loot deste abate é rolado pela cena (`rollDrops`) e vira uma cápsula
     // física — nada é entregue aqui, senão o item cairia duas vezes.
   }
@@ -458,6 +553,7 @@ export class Sim {
         this.grantChest('prata', 1, e.boss.name);
       }
       bus.emit('boss:defeated', { id: e.boss.id, name: e.boss.name, sector: e.sector });
+      this.registrar({ tipo: 'chefe', chefeId: e.boss.id, setor: e.sector });
     }
 
     if (abstract) {
@@ -519,6 +615,10 @@ export class Sim {
       if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
       run.falhasNoSetor = 0;
 
+      // O setor CONCLUIDO, nao o proximo: a missao pede 'concluir o setor 10',
+      // e com a trava de repetir a fase run.sector nem chega a mudar.
+      this.registrar({ tipo: 'setor', setor: e.sector, galaxia: galaxyOfSector(e.sector) });
+      this.registrar({ tipo: 'galaxia', galaxia: galaxyOfSector(this.state.universe.bestSectorEver) });
       bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
     } else {
       run.wave++;
@@ -644,6 +744,8 @@ export class Sim {
       toast(`${this.hull.name} nível ${nave.nivel}`, 'good', 'node/exp');
     }
 
+    if (subiu > 0) this.registrar({ tipo: 'nivel', qual: 'personagem', nivel: cmd.nivel });
+    if (subiuNave > 0) this.registrar({ tipo: 'nivel', qual: 'nave', nivel: nave.nivel });
     if (subiu > 0 || subiuNave > 0) this.touch();
   }
 
@@ -816,6 +918,7 @@ export class Sim {
     const cabe = Math.max(0, Math.min(quantidade, PILHA_MAX - atual));
     if (cabe <= 0) return 0;
     this.state.armazem[id] = atual + cabe;
+    this.registrar({ tipo: 'recurso', recurso: id, quantidade: cabe });
     this.touch();
     return cabe;
   }
@@ -936,6 +1039,10 @@ export class Sim {
       { exata: saida },
     );
     this.acquire(item);
+    this.registrar({
+      tipo: 'fusao', entrada: receita.entrada, saida,
+      subiu: saida > receita.entrada,
+    });
     toast(`${receita.nome}: ${rarityInfo(item.rarity).name}!`);
     this.touch();
     return { item, receita: receita.id };
@@ -944,6 +1051,9 @@ export class Sim {
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
     this.state.stats.itemsFound++;
+    // Antes de qualquer automacao: o item foi OBTIDO mesmo que o auto-desmanche
+    // o desfaca no passo seguinte, e a missao de coleta conta o que caiu.
+    this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
 
     if (this.state.settings.autoEquip && scoreItem(this.state, item) > 0) {
       const previous = this.state.equipped[item.slot];
@@ -1067,6 +1177,7 @@ export class Sim {
 
     for (const item of items) this.acquire(item);
     this.state.stats.chestsOpened++;
+    this.registrar({ tipo: 'bau', tier });
     bus.emit('chest:opened', { tier, items });
     this.touch();
     return items;
@@ -1221,4 +1332,15 @@ export class Sim {
   get sectorProgress(): number {
     return clamp(1 - this.state.run.restam / Math.max(1, this.state.run.unidades), 0, 1);
   }
+}
+
+/**
+ * Ordem de exibição das missões.
+ *
+ * Pronta primeiro: é a única situação em que o jogador tem algo a fazer, e
+ * enterrá-la no meio de vinte ativas transformaria a recompensa em algo que se
+ * esquece de resgatar.
+ */
+function ordemDaSituacao(s: SituacaoDeMissao): number {
+  return s === 'pronta' ? 0 : s === 'ativa' ? 1 : 2;
 }

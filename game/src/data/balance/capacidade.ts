@@ -82,6 +82,12 @@ export const CONCESSOES: readonly ConcessaoDeCarga[] = [
   { id: 'chefe_g10', fonte: 'chefe', itens: 5, recursos: 5, nota: 'Chefe da décima galáxia' },
   { id: 'universo_2', fonte: 'universo', itens: 10, recursos: 10, nota: 'Segundo universo' },
   { id: 'universo_3', fonte: 'universo', itens: 10, recursos: 10, nota: 'Terceiro universo' },
+  // Missões (§27). A fonte já estava prevista aqui desde a 3.7 — faltava quem
+  // concedesse. As três somam 15 e são a via mais barata de ampliar a carga, o
+  // que é de propósito: missão é a fonte que o jogador CONTROLA.
+  { id: 'missao_carga_1', fonte: 'missao', itens: 5, recursos: 5, nota: 'Linha de Suprimento' },
+  { id: 'missao_carga_2', fonte: 'missao', itens: 5, recursos: 5, nota: 'Encomenda da Doca' },
+  { id: 'missao_carga_3', fonte: 'missao', itens: 5, recursos: 5, nota: 'Salto Interestelar' },
 ];
 
 export const CONCESSAO_POR_ID = new Map(CONCESSOES.map((c) => [c.id, c]));

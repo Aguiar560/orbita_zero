@@ -1313,3 +1313,43 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 }
 .fab-res-destino { text-align: center; }
 .fab-res .fab-acao { width: 100%; }
+
+/* ── missões (§27) ───────────────────────────────────────────────────────── */
+.missoes { display: grid; gap: 14px; align-content: start; }
+.missoes-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.missoes-medalhas {
+  display: grid; gap: 2px; padding: 6px 14px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: rgba(4, 8, 18, 0.6);
+}
+.missoes-medalhas strong { color: var(--accent-2); font-size: 18px; }
+.missoes-filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+.missoes-lista { display: grid; gap: 10px; }
+
+.missao {
+  display: grid; gap: 8px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: rgba(6, 11, 24, 0.55);
+}
+/* A pronta se destaca de longe: é a única linha acionável da lista. */
+.missao.pronta {
+  border-color: var(--good);
+  box-shadow: 0 0 18px rgba(92, 224, 138, 0.14);
+  background: rgba(10, 26, 18, 0.5);
+}
+.missao.entregue { opacity: 0.45; }
+.missao-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.missao-titulo { display: grid; gap: 1px; }
+.missao-desc { margin: 0; }
+.missao-selo { color: var(--good); font-size: 11px; letter-spacing: 1px; }
+.missao-resgatar { border-color: var(--good); color: var(--good); }
+.missao-resgatar:disabled { opacity: 0.5; border-color: var(--line); color: var(--muted); }
+.missao-obj { display: grid; gap: 3px; }
+.missao-obj-linha { display: flex; justify-content: space-between; gap: 10px; }
+.missao-premio { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.missao-ficha {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; font-size: 11px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  color: var(--text);
+}
