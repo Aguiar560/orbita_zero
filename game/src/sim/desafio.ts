@@ -154,15 +154,15 @@ export function encontroDoDesafio(_state: GameState, d: DesafioAtivo): Encounter
     wave: 99,
     kind: 'chefe',
     /**
-     * SEM  aqui.
+     * SEM a `escala` do piso aqui.
      *
-     *  ja avanca 2,9 setores por piso, e  e
-     * exponencial no setor — multiplicar tambem pela escala do piso contava a
-     * progressao DUAS VEZES. Medido antes da correcao: a luta ia de 16 s no
+     * `setorEquivalente` já avança 2,9 setores por piso, e `sectorHp` é
+     * exponencial no setor — multiplicar também pela escala do piso contava a
+     * progressão DUAS VEZES. Medido antes da correção: a luta ia de 16 s no
      * piso 1 a 244 s no piso 10, quando deveria ficar mais ou menos constante,
-     * ja que o equipamento do jogador cresce junto.
+     * já que o equipamento do jogador cresce junto.
      *
-     * A escala continua existindo para a RECOMPENSA, que e onde ela nunca
+     * A escala continua existindo para a RECOMPENSA, que é onde ela nunca
      * duplicou nada.
      */
     hpPool: sectorHp(setor) * boss.hp * VIDA_DO_CHEFE,

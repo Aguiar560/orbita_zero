@@ -306,8 +306,28 @@ export const PERFIS_DE_ONDA: readonly PerfilDeOnda[] = [
  * ► Primeira passada. Precisa de simulação contra as metas de tempo do §2.
  */
 export const NIVEL_MAX = 300;
-export const PERSONAGEM_XP_BASE = 90;
-export const PERSONAGEM_XP_EXPO = 1.75;
+/**
+ * Curva de XP do personagem: 20 x nivel^2,46.
+ *
+ * Era 90 x nivel^1,75, e com ela o teto de 300 niveis era batido por volta do
+ * SETOR 140 — mais da metade da campanha sem dar nivel nenhum, com XP virando
+ * lixo para missao, bau, patrulha e Provacao, e a Matriz parando de ganhar
+ * pontos.
+ *
+ * Os valores sao resultado de busca numerica contra tres alvos declarados:
+ * nivel acompanhando o setor ate o 180, e o nivel 300 chegando por volta do
+ * setor 270 — dai em diante a progressao e por ITENS, nao por nivel.
+ *
+ * Medido com a curva nova: setor 140 -> nivel 144, setor 180 -> 199,
+ * setor 270 -> 300.
+ *
+ * O comeco continua atras do alvo (setor 10 da nivel 7, nao 10) e a curva NAO
+ * conserta isso: quatro variantes testadas moveram de 6 para 8. O comeco e
+ * lento porque a RENDA de XP e baixa, nao porque o nivel e caro — e o lever
+ * disso e o multiplicador por onda, nao o expoente.
+ */
+export const PERSONAGEM_XP_BASE = 20;
+export const PERSONAGEM_XP_EXPO = 2.46;
 
 /**
  * XP para subir um nível de NAVE.

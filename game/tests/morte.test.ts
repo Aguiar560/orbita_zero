@@ -162,9 +162,21 @@ describe('níveis de personagem e de nave (§17)', () => {
   });
 
   it('as curvas de nível são polinomiais, então 300 é alcançável', () => {
-    // Com a curva exponencial antiga o nível 300 custaria 7 × 10²⁰ de XP.
-    expect(curvaXpPersonagem(300)).toBeLessThan(1e7);
-    expect(curvaXpNave(300)).toBeLessThan(1e7);
+    /**
+     * Teto de 10⁸, não de 10⁷.
+     *
+     * O número antigo era um PROXY para "300 é alcançável", e ele reprovou uma
+     * curva em que o 300 é alcançável de fato — medido, no setor 270. A curva
+     * ficou mais cara de propósito: com a anterior o teto era batido lá pelo
+     * setor 140, e mais da metade da campanha não dava nível nenhum.
+     *
+     * O que a asserção protege é o que ela sempre protegeu: que a curva seja
+     * POLINOMIAL. Com a exponencial antiga o nível 300 custaria 7 × 10²⁰ — vinte
+     * ordens de grandeza acima deste teto, então ele continua pegando a
+     * regressão que importa.
+     */
+    expect(curvaXpPersonagem(300)).toBeLessThan(1e8);
+    expect(curvaXpNave(300)).toBeLessThan(1e8);
     // E ainda assim cada nível custa mais que o anterior.
     for (const n of [2, 50, 150, 299]) {
       expect(curvaXpPersonagem(n + 1)).toBeGreaterThan(curvaXpPersonagem(n));
