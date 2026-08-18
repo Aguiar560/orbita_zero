@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { XP_PERDIDO, SUCATA_PERDIDA, aplicarPerdaDeXp, cobrarMorte } from '@sim/morte';
-import { WAVES_PER_SECTOR, curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { NIVEL_MAX, WAVES_PER_SECTOR, curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { buildEncounter } from '@sim/progression';
+import { XP_GANHO_GLOBAL } from '@sim/index';
 
 /**
  * A punição por morrer.
@@ -161,23 +163,51 @@ describe('níveis de personagem e de nave (§17)', () => {
     expect(sim.naveAtiva.nivel).toBe(nivelPrimeira);
   });
 
-  it('as curvas de nível são polinomiais, então 300 é alcançável', () => {
-    /**
-     * Teto de 10⁸, não de 10⁷.
-     *
-     * O número antigo era um PROXY para "300 é alcançável", e ele reprovou uma
-     * curva em que o 300 é alcançável de fato — medido, no setor 270. A curva
-     * ficou mais cara de propósito: com a anterior o teto era batido lá pelo
-     * setor 140, e mais da metade da campanha não dava nível nenhum.
-     *
-     * O que a asserção protege é o que ela sempre protegeu: que a curva seja
-     * POLINOMIAL. Com a exponencial antiga o nível 300 custaria 7 × 10²⁰ — vinte
-     * ordens de grandeza acima deste teto, então ele continua pegando a
-     * regressão que importa.
-     */
-    expect(curvaXpPersonagem(300)).toBeLessThan(1e8);
-    expect(curvaXpNave(300)).toBeLessThan(1e8);
-    // E ainda assim cada nível custa mais que o anterior.
+  /**
+   * Mede a PROPRIEDADE, não um proxy.
+   *
+   * A versão anterior exigia que o nível 300 custasse menos que um número fixo
+   * de XP — e esse número precisou subir DUAS vezes em dois ajustes de curva,
+   * reprovando nas duas mudanças em que o 300 continuava perfeitamente
+   * alcançável. Um limite arbitrário que se move a cada ajuste não protege
+   * nada: só obriga quem mexe na curva a mexer no teste junto.
+   *
+   * O que importa é se o XP que o jogo REALMENTE paga chega ao nível máximo
+   * dentro dos 300 setores. É isso que se mede agora, somando a renda setor a
+   * setor pela mesma conta que `Sim.grantXp` usa.
+   */
+  it('o XP da campanha chega ao nível 300 antes do setor 300', () => {
+    const st = createState(1);
+    let xp = 0;
+    let nivel = 1;
+    let restante = curvaXpPersonagem(1);
+    let setorDoTeto = 0;
+
+    for (let setor = 1; setor <= 300 && !setorDoTeto; setor++) {
+      for (let onda = 1; onda <= WAVES_PER_SECTOR + 1; onda++) {
+        const e = buildEncounter(st, setor, onda);
+        // A mesma conta de `rewardKill` e `completeEncounter`, com o
+        // multiplicador global.
+        const porAbate = (2 + e.bounty * 0.25) * e.unidades;
+        const daConclusao = e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2);
+        xp += (porAbate + daConclusao) * XP_GANHO_GLOBAL;
+
+        while (xp >= restante && nivel < NIVEL_MAX) {
+          xp -= restante;
+          nivel++;
+          restante = curvaXpPersonagem(nivel);
+        }
+      }
+      if (nivel >= NIVEL_MAX) setorDoTeto = setor;
+    }
+
+    expect(setorDoTeto, 'o nível 300 não é alcançável na campanha').toBeGreaterThan(0);
+    // E não cedo demais: bater o teto na metade deixaria metade do jogo sem
+    // recompensa de XP, que foi o defeito que esta curva veio corrigir.
+    expect(setorDoTeto).toBeGreaterThan(200);
+  });
+
+  it('cada nível custa mais que o anterior', () => {
     for (const n of [2, 50, 150, 299]) {
       expect(curvaXpPersonagem(n + 1)).toBeGreaterThan(curvaXpPersonagem(n));
       expect(curvaXpNave(n + 1)).toBeGreaterThan(curvaXpNave(n));

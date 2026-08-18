@@ -314,20 +314,22 @@ export const NIVEL_MAX = 300;
  * lixo para missao, bau, patrulha e Provacao, e a Matriz parando de ganhar
  * pontos.
  *
- * Os valores sao resultado de busca numerica contra tres alvos declarados:
- * nivel acompanhando o setor ate o 180, e o nivel 300 chegando por volta do
- * setor 270 — dai em diante a progressao e por ITENS, nao por nivel.
+ * Os valores saem de busca numérica CONJUNTA com o multiplicador de renda
+ * (`XP_GANHO_GLOBAL`), contra oito alvos: nível acompanhando o setor do 5 ao
+ * 180, e o nível 300 chegando por volta do setor 270 — daí em diante a
+ * progressão é por ITENS, não por nível.
  *
- * Medido com a curva nova: setor 140 -> nivel 144, setor 180 -> 199,
- * setor 270 -> 300.
+ * Buscar as duas coisas juntas foi o que resolveu. Separadas, elas brigavam:
+ * ajustar só a renda corrigia o começo e estourava o meio (setor 180 dava 232
+ * em vez de 180), e ajustar só a curva não movia o começo (quatro variantes
+ * levaram o setor 10 de nível 6 a 8, contra o alvo de 10). O erro médio caiu de
+ * 12,8% para 7,2% quando os quatro parâmetros foram buscados de uma vez.
  *
- * O comeco continua atras do alvo (setor 10 da nivel 7, nao 10) e a curva NAO
- * conserta isso: quatro variantes testadas moveram de 6 para 8. O comeco e
- * lento porque a RENDA de XP e baixa, nao porque o nivel e caro — e o lever
- * disso e o multiplicador por onda, nao o expoente.
+ * Medido: setor 5 → 6, 10 → 10, 20 → 18, 30 → 27, 60 → 57, 100 → 103,
+ * 180 → 198, 270 → 300.
  */
-export const PERSONAGEM_XP_BASE = 20;
-export const PERSONAGEM_XP_EXPO = 2.46;
+export const PERSONAGEM_XP_BASE = 10;
+export const PERSONAGEM_XP_EXPO = 2.88;
 
 /**
  * XP para subir um nível de NAVE.
