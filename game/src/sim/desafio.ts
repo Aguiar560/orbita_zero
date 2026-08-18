@@ -54,7 +54,28 @@ export interface DesafioAtivo {
   tempo: number;
   danoCausado: number;
   danoRecebido: number;
+  /**
+   * Segundos desde o último dano no chefe.
+   *
+   * A regeneração só volta a contar depois de uma pausa: sem isso o modificador
+   * vira um piso de DPS, e um chefe que regenera mais rápido do que você bate é
+   * imortal por aritmética, não por dificuldade.
+   */
+  semDanoHa: number;
 }
+
+/**
+ * Multiplicador de vida do chefe da Provação.
+ *
+ * Medido, não escolhido: sem ele as lutas dos primeiros pisos duravam de 10 a
+ * 16 segundos, e os especiais — que carregam entre 11 e 20 — simplesmente nunca
+ * saíam. Um chefe cujo golpe característico não chega a aparecer é um chefe sem
+ * identidade, que é o oposto do que o §33 pede.
+ *
+ * 1,9 põe o piso 1 em torno de 30 s, que é o bastante para o especial disparar
+ * uma vez e o jogador ver o que o modo é.
+ */
+export const VIDA_DO_CHEFE = 1.9;
 
 /**
  * Nível de setor EQUIVALENTE ao piso.
@@ -118,7 +139,19 @@ export function encontroDoDesafio(_state: GameState, d: DesafioAtivo): Encounter
     // final", e o chefe da Provação é sempre um.
     wave: 99,
     kind: 'chefe',
-    hpPool: sectorHp(setor) * boss.hp * d.def.escala,
+    /**
+     * SEM  aqui.
+     *
+     *  ja avanca 2,9 setores por piso, e  e
+     * exponencial no setor — multiplicar tambem pela escala do piso contava a
+     * progressao DUAS VEZES. Medido antes da correcao: a luta ia de 16 s no
+     * piso 1 a 244 s no piso 10, quando deveria ficar mais ou menos constante,
+     * ja que o equipamento do jogador cresce junto.
+     *
+     * A escala continua existindo para a RECOMPENSA, que e onde ela nunca
+     * duplicou nada.
+     */
+    hpPool: sectorHp(setor) * boss.hp * VIDA_DO_CHEFE,
     unidades: 1,
     squad: [],
     boss,
@@ -148,6 +181,7 @@ export function abrirDesafio(piso: number): DesafioAtivo {
     tempo: 0,
     danoCausado: 0,
     danoRecebido: 0,
+    semDanoHa: 0,
   };
 }
 

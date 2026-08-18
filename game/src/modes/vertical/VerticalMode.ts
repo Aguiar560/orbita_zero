@@ -494,6 +494,9 @@ export class VerticalMode {
    * uma decisão separada de atacar, e é o que faz o jogador trocar de escudo ao
    * mudar de galáxia em vez de carregar sempre o de maior número.
    */
+  /** Segundos sem levar dano até a regeneração do chefe voltar a contar. */
+  private static readonly REGEN_APOS = 2.5;
+
   private damagePlayer(amount: number, element: ElementId = 'padrao'): void {
     const p = this.player;
     if (!p.alive || p.invuln > 0) return;
@@ -1028,6 +1031,15 @@ export class VerticalMode {
    */
   private applyDamage(e: Enemy, amount: number): void {
     e.hp -= amount;
+
+    // Zera a pausa da regeneração e alimenta o registro do piso. Aqui, e não em
+    // , porque este é o ponto por onde TODO dano passa — inclusive o
+    // de explosão e o de perfuração.
+    const d = this.sim.desafio;
+    if (d && e.boss) {
+      d.semDanoHa = 0;
+      d.danoCausado += amount;
+    }
   }
 
   // ── coletáveis ────────────────────────────────────────────────────────────
@@ -1153,9 +1165,24 @@ export class VerticalMode {
 
     const chefe = this.enemies.items.find((x) => x.alive && !!x.boss) ?? null;
 
-    // Regeneração e escudo travado valem enquanto a luta dura, não no disparo.
+    /**
+     * A regeneração PAUSA enquanto o chefe está levando dano.
+     *
+     * Sem a pausa ela vira um piso de DPS: se o seu dano por segundo for menor
+     * que a regeneração, o chefe é literalmente imortal e nenhuma habilidade
+     * resolve. Medido no simulador antes da correção: o piso 20 pedia
+     * 15 milhões de segundos. O §87 proíbe exatamente isso — "transformar cada
+     * piso em DPS check".
+     *
+     * Com a pausa, o modificador passa a significar o que a descrição dele
+     * sempre disse: "exige dano SUSTENTADO". Quem mantém pressão nunca vê a
+     * regeneração; quem para para desviar do especial paga o preço.
+     */
     if (chefe && d.efeitos.regen > 0) {
-      chefe.hp = Math.min(chefe.maxHp, chefe.hp + chefe.maxHp * d.efeitos.regen * dt);
+      d.semDanoHa += dt;
+      if (d.semDanoHa >= VerticalMode.REGEN_APOS) {
+        chefe.hp = Math.min(chefe.maxHp, chefe.hp + chefe.maxHp * d.efeitos.regen * dt);
+      }
     }
     if (d.efeitos.travaEscudo) this.player.shieldLock = 0.25;
 

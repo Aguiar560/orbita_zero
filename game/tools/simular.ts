@@ -14,6 +14,7 @@
  *   npm run simular -- drops 200000
  *   npm run simular -- item 30
  */
+import { diagnosticoDoPiso, medirPiso } from './lib/provacao-balanco';
 import { Rng } from '@core/math';
 import { RARITIES } from '@data/rarity';
 import { rollItem, rollRarity } from '@sim/loot';
@@ -345,6 +346,10 @@ switch (comando) {
   case 'calibrar':
     comandoCalibrar(Number(args[0] ?? 0.6));
     break;
+  case 'provacao':
+    provacao(Number(args[0] ?? 1), Number(args[1] ?? 20));
+    break;
+
   case 'afixos':
     comandoAfixos(Number(args[0] ?? 30), Number(args[1] ?? 5));
     break;
@@ -424,4 +429,34 @@ function comandoCalibrar(forca: number): void {
   tabela(['afixo', 'ganho', 'x mediana', 'calibre', 'sugerido'], linhas);
   console.log(`\namortecimento ${forca} · mediana ${n(mediana)}`);
   console.log('Cole os `sugerido` em `calibre` nos afixos de `data/items.ts` e remeça.');
+}
+
+
+/**
+ * Mede os pisos da Provação.
+ *
+ * Existe para responder três perguntas antes de expandir o modo, como o §84
+ * manda: o piso 1 é factível, onde bate a parede, e a luta dura o bastante para
+ * o especial aparecer.
+ */
+function provacao(de: number, ate: number): void {
+  console.log('piso  setor  dur(s)  golpes  disp  especial               modificadores / diagnóstico');
+  const medidas = [];
+  for (let n = de; n <= ate; n++) {
+    const m = medirPiso(n);
+    medidas.push(m);
+    const marca = m.marco ? '*' : ' ';
+    console.log(
+      (String(n) + marca).padStart(5),
+      String(m.setorEquiv).padStart(6),
+      m.segParaMatar.toFixed(1).padStart(7),
+      m.golpesAteMorrer.toFixed(1).padStart(7),
+      String(m.disparosDoEspecial).padStart(5),
+      '  ' + m.especial.padEnd(22),
+      (m.modificadores.join(',') || '-').padEnd(28),
+      diagnosticoDoPiso(m),
+    );
+  }
+  const ruins = medidas.filter((m) => diagnosticoDoPiso(m) !== 'ok');
+  console.log(`\n${ruins.length} de ${medidas.length} pisos fora da faixa saudável.`);
 }
