@@ -359,14 +359,9 @@ export class MissoesPanel implements Panel {
         );
       }),
 
-      h('.mis-secao-tit', { text: 'RECOMPENSAS GERAIS' }),
-      h('.mis-premio-grade', {},
-        h('span.mis-pilula', { text: 'XP' }),
-        h('span.mis-pilula', { text: 'SUCATA' }),
-        h('span.mis-pilula', { text: 'RECURSOS' }),
-        h('span.mis-pilula', { text: 'ITENS' }),
-        h('span.mis-pilula', { text: '◈ MEDALHAS', style: { borderColor: 'var(--accent-2)', color: 'var(--accent-2)' } }),
-      ),
+      // "RECOMPENSAS GERAIS" saiu daqui. Era legenda de ícones que já aparecem,
+      // com valor, em cada card de missão a dois centímetros de distância —
+      // repetir a legenda ao lado da coisa legendada é ruído, não ajuda.
 
       h('button.btn.mis-entregar-tudo', {
         disabled: n === 0,

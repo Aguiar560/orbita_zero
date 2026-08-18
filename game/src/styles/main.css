@@ -1798,3 +1798,95 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-premio.r-espaco { background-image: url(assets/ui/rec_espaco.png); }
 .mis-premio.r-exclusivo { background-image: url(assets/ui/rec_exclusivo.png); }
 .mis-premio.r-vazio { background-image: url(assets/ui/rec_moldura.png); }
+
+/* ── correções de layout depois da arte ──────────────────────────────────── */
+/*
+ * As margens negativas foram um erro.
+ *
+ * `border-image` ocupa a caixa, então cada card cresceu; eu compensei puxando
+ * as margens para dentro, e o efeito foi os cards se SOBREPOREM — a lista de
+ * contatos virou uma pilha e as missões colaram umas nas outras.
+ *
+ * O certo é o inverso: deixar a borda fazer parte do card e tirar o espaço do
+ * GAP, que existe justamente para isso. A moldura já é o respiro visual.
+ */
+.mis-contato { margin: 0; padding: 4px 10px; }
+.mis-ficha { margin: 0; padding: 6px 10px; }
+.mis-confianca { margin: 0; padding: 4px 10px; }
+.mis-card { margin: 0; padding: 6px 12px; }
+.mis-especial { margin: 0; padding: 8px 14px; }
+
+/* Com a borda ocupando espaço, o gap entre cards fica menor — senão sobra vão. */
+.mis-lista-contatos { gap: 0; }
+.mis-cards { gap: 2px; }
+.mis-corpo { gap: 8px; }
+
+/* ── a confiança volta para o lado do personagem ─────────────────────────── */
+/*
+ * Como na referência: retrato, dados e a escada I–V na MESMA linha. Não cabia
+ * antes porque a escada pedia 240 px de piso; com nó de 26 px e fio de 12 ela
+ * cabe em 190, e a coluna central tem 564.
+ */
+.mis-ficha {
+  grid-template-columns: auto minmax(0, 1fr) minmax(190px, 0.8fr);
+  gap: 10px;
+}
+.mis-confianca { grid-column: auto; }
+.mis-ficha-retrato { width: 104px; height: 104px; }
+.mis-ficha-nome { font-size: 20px; }
+.mis-nos { gap: 0; }
+.mis-no { width: 26px; height: 30px; }
+.mis-fio { width: 12px; }
+.mis-no-rom { font-size: 9px; padding-left: 2px; }
+.mis-confianca p { font-size: 10px; line-height: 1.3; }
+
+/* ── coluna direita: os tipos descem ─────────────────────────────────────── */
+/*
+ * Com a legenda de recompensas fora, sobra altura. Os quatro tipos descem para
+ * o meio da coluna e o "entregar tudo" fica ancorado embaixo, que é onde a
+ * referência o coloca e onde a mão procura por um botão de ação.
+ */
+.mis-dir { align-content: start; grid-template-rows: auto repeat(4, auto) 1fr auto; }
+.mis-dir > .mis-secao-tit:first-child { margin-bottom: 4px; }
+.mis-entregar-tudo { align-self: end; margin-top: 0; }
+
+/* ── contadores do topo ──────────────────────────────────────────────────── */
+/*
+ * Estavam tortos: o `span` interno era um filho de fluxo dentro de uma caixa
+ * com fundo de imagem esticado, e o texto não tinha como se centrar na altura.
+ */
+.mis-cont {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 54px; height: 30px; padding: 0 14px; line-height: 1;
+}
+.mis-cont > span { display: block; line-height: 1; }
+.mis-contadores { align-items: center; }
+.mis-abas { align-items: center; }
+.mis-aba { line-height: 1; padding: 10px 24px; }
+
+/*
+ * A borda de 30 px comia 60 px de largura da ficha, e os dados do personagem
+ * sobravam com 159 px — estreito demais para o título ("COORDENADOR DA FROTA DE
+ * PARTIDA") e para as três linhas de atributo. Borda menor e piso menor na
+ * confiança devolvem o espaço à coluna do meio, que é a que tem texto.
+ */
+.mis-ficha { border-width: 20px; padding: 4px 8px; }
+.mis-ficha { grid-template-columns: auto minmax(0, 1.2fr) minmax(168px, 0.7fr); }
+.mis-ficha-retrato { width: 92px; height: 92px; }
+.mis-no { width: 24px; height: 28px; }
+.mis-fio { width: 10px; }
+
+/* Últimos 59 px: a soma das três trilhas ainda passava da caixa da ficha. */
+.mis-ficha { grid-template-columns: auto minmax(0, 1.2fr) minmax(150px, 0.62fr); gap: 8px; }
+.mis-confianca { border-width: 16px; padding: 2px 6px; }
+.mis-confianca .mis-secao-tit { font-size: 10px; letter-spacing: 1px; }
+
+/*
+ * Estreitar as trilhas não resolvia — o estouro subiu de 59 para 67 px, sinal
+ * de que a culpa não era da grade e sim de conteúdo que não quebra linha. O
+ * selo "ANTIGO CHEFE — AGORA ALIADO" e o título do personagem são frases longas
+ * sem ponto de quebra natural.
+ */
+.mis-ficha-dados > * { min-width: 0; overflow-wrap: anywhere; }
+.mis-selo-exchefe { font-size: 9px; padding: 2px 6px; white-space: normal; }
+.mis-ficha-dados .muted.tiny { line-height: 1.25; }
