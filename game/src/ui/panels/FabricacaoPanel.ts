@@ -4,6 +4,7 @@ import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import type { Sim } from '@sim/index';
 import type { Item, Rarity } from '@sim/types';
+import { buildItemCard } from '../ItemCard';
 import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
 
@@ -33,6 +34,14 @@ export class FabricacaoPanel implements Panel {
   private slots: (string | null)[] = [];
   /** Filtro do inventário. `-1` = tudo. */
   private filtro: Rarity | -1 = -1;
+  /**
+   * Resultado da última fusão, enquanto o modal dele estiver aberto.
+   *
+   * Guarda o ITEM, e não o uid: o item pode ter sido desmanchado na hora pela
+   * automação, e nesse caso não há uid que se possa procurar no inventário —
+   * mas o jogador continua tendo o direito de ver o que ele era.
+   */
+  private resultado: { item: Item | null; entrada: Rarity; destino: Destino } | null = null;
 
   render(sim: Sim): HTMLElement {
     const receita = this.receita();
@@ -42,7 +51,65 @@ export class FabricacaoPanel implements Panel {
       this.inventario(sim, receita),
       this.camara(sim, receita),
       this.tipos(sim),
+      // Segundo nível de modal, por cima da camada da Fabricação. Fica dentro
+      // do painel (e não no Shell) porque o resultado é assunto DESTE painel:
+      // o Shell não deveria aprender o vocabulário da fusão para exibi-lo.
+      ...(this.resultado ? [this.modalResultado(sim)] : []),
     );
+  }
+
+  /**
+   * O que saiu da fusão.
+   *
+   * Mostra também o FRACASSO. A tentação era só celebrar o acerto, mas falhar
+   * consome os dez itens e o custo — é o desfecho mais caro dos dois, e o que o
+   * jogador mais precisa ver com clareza. Um modal que só aparece quando dá
+   * certo ensinaria que fusão não tem risco.
+   */
+  private modalResultado(sim: Sim): HTMLElement {
+    const r = this.resultado!;
+    const fechar = () => { this.resultado = null; sim.touch(); };
+    const info = r.item ? rarityInfo(r.item.rarity) : null;
+    const subiu = !!r.item && r.item.rarity > r.entrada;
+
+    const fundo = h('.fab-res', {
+      onclick: (e: Event) => { if (e.target === fundo) fechar(); },
+    },
+      h(`.fab-res-caixa${r.item ? '' : '.falhou'}`, {
+        style: info ? { borderColor: info.color } : {},
+      },
+        h('.fab-res-topo', {},
+          h('strong', {
+            text: !r.item ? 'A SÍNTESE FALHOU' : subiu ? 'RARIDADE SUPERIOR' : 'SÍNTESE CONCLUÍDA',
+            style: { color: info?.color ?? 'var(--bad)' },
+          }),
+          h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', onclick: fechar }),
+        ),
+
+        r.item
+          ? h('.fab-res-corpo', {}, buildItemCard(sim, r.item, { compare: true }))
+          : h('.fab-res-corpo', {},
+              h('p.tiny', {
+                text: `Os ${RECEITAS.find((x) => x.entrada === r.entrada)?.quantidade ?? 10} itens e o custo foram consumidos. A chance era de ${pct(r.entrada)}.`,
+              }),
+            ),
+
+        ...(r.item ? [h('span.muted.tiny.fab-res-destino', { text: DESTINO_TEXTO[r.destino] })] : []),
+        h('button.fab-acao.pronta', { text: 'CONTINUAR', onclick: fechar }),
+      ),
+    );
+
+    // Esc fecha só este nível — sem isto, o Esc do Shell fecharia a Fabricação
+    // inteira por baixo e o resultado sumiria junto.
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      window.removeEventListener('keydown', esc, true);
+      fechar();
+    };
+    window.addEventListener('keydown', esc, true);
+
+    return fundo;
   }
 
   private receita(): ReceitaDeFusao {
@@ -186,8 +253,15 @@ export class FabricacaoPanel implements Panel {
         disabled: !pode,
         onclick: () => {
           if (!pode) return;
-          sim.fundirItens(cheios);
+          const r = sim.fundirItens(cheios);
           this.slots = this.slots.map(() => null);
+          if (!r) return;
+          // Onde o item parou depende dos ajustes de automação: `acquire` pode
+          // equipar na hora, guardar, ou desmanchar por raridade baixa. Ler o
+          // destino DEPOIS do fato é mais confiável que reproduzir a regra aqui
+          // — ela mora em `sim` e pode mudar sem este painel saber.
+          this.resultado = { item: r.item, entrada: receita.entrada, destino: r.item ? destinoDe(sim, r.item) : 'nenhum' };
+          sim.touch();
         },
       }),
       h('.fab-dica', { text: faltas[0] ?? 'Pronto para sintetizar' }),
@@ -312,4 +386,34 @@ function anelDeChance(fracao: number, cor: string): HTMLElement {
       <text x="16" y="16" class="fab-anelinho-txt" fill="${cor}">${Math.round(fracao * 100)}%</text>
     </svg>`;
   return el;
+}
+
+/** Para onde o item recém-fabricado foi. */
+type Destino = 'equipado' | 'guardado' | 'desmanchado' | 'nenhum';
+
+const DESTINO_TEXTO: Record<Destino, string> = {
+  equipado: 'Equipado automaticamente na nave.',
+  guardado: 'Guardado no inventário.',
+  // Vale avisar: o item saiu bom e a automação o desfez mesmo assim. Sem esta
+  // linha, o jogador veria um Épico na tela e não o acharia em lugar nenhum.
+  desmanchado: 'Desmanchado na hora pelos ajustes de automação — virou núcleos.',
+  nenhum: '',
+};
+
+/**
+ * Onde o item parou, lido do estado DEPOIS de `acquire`.
+ *
+ * Preferido a reproduzir a regra de automação aqui: ela mora em `sim` e pode
+ * ganhar um caso novo sem que este painel fique sabendo.
+ */
+function destinoDe(sim: Sim, item: Item): Destino {
+  if (Object.values(sim.state.equipped).some((i) => i?.uid === item.uid)) return 'equipado';
+  if (sim.state.inventory.some((i) => i.uid === item.uid)) return 'guardado';
+  return 'desmanchado';
+}
+
+/** A chance de subir da receita daquela raridade, já em texto. */
+function pct(entrada: Rarity): string {
+  const r = RECEITAS.find((x) => x.entrada === entrada);
+  return r ? `${(chanceDeSubir(r) * 100).toFixed(0)}%` : '—';
 }

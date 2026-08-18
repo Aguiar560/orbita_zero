@@ -1273,3 +1273,42 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 
 /* O miolo do modal escurece um pouco, para a arte ter contra o que aparecer. */
 .camada-caixa { background: rgba(4, 8, 18, 0.72); }
+
+/* ── resultado da fabricação: segundo nível de modal ─────────────────────── */
+/*
+ * z-index 70 contra os 60 da `.camada`: este modal nasce POR CIMA da
+ * Fabricação, que continua visível atrás. Fechar volta para o anel já vazio,
+ * pronto para a próxima tentativa — e é por isso que ele não substitui a
+ * camada, empilha sobre ela.
+ */
+.fab-res {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(2, 4, 10, 0.72);
+  backdrop-filter: blur(4px);
+  animation: camada-entra 0.16s ease;
+}
+.fab-res-caixa {
+  width: min(420px, 92vw);
+  display: grid; gap: 12px;
+  padding: 16px 18px 18px;
+  background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(6, 10, 20, 0.98));
+  border: 1px solid var(--line-strong); border-radius: 14px;
+  /* O brilho segue a cor da raridade, aplicada em `style` pelo painel. */
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65), 0 0 26px rgba(79, 195, 255, 0.16);
+  animation: fab-res-entra 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.fab-res-caixa.falhou { box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65), 0 0 26px rgba(255, 90, 90, 0.16); }
+@keyframes fab-res-entra {
+  from { opacity: 0; transform: scale(0.9) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.fab-res-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fab-res-topo strong { font-size: 13px; letter-spacing: 2px; }
+.fab-res-corpo {
+  padding: 12px; border-radius: 10px;
+  background: rgba(4, 8, 18, 0.72);
+  border: 1px solid var(--line);
+}
+.fab-res-destino { text-align: center; }
+.fab-res .fab-acao { width: 100%; }
