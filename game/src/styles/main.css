@@ -2019,3 +2019,30 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
  */
 .mis-card > * { filter: none; }
 .mis-especial > * { filter: none; }
+
+/* ── contrato especial: duas colunas, botão sob a recompensa ─────────────── */
+/*
+ * Eram TRÊS colunas — texto, recompensa e botão — num card de ~480 px úteis. A
+ * recompensa pedia 240 de piso e o botão ~150, sobrando ~90 para o texto: o
+ * título quebrava em três linhas e colidia com a caixa da recompensa. Foi isso
+ * que apareceu embaralhado, e nenhum ajuste de margem resolveria, porque o
+ * problema era a divisão da largura.
+ *
+ * Com o botão EMBAIXO da recompensa, a largura se divide em dois e o texto
+ * recupera ~230 px. O botão também ganha a leitura certa: ele pertence à
+ * recompensa que está logo acima dele, não ao card inteiro.
+ */
+.mis-especial {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.95fr);
+  grid-template-rows: auto auto;
+  align-items: center; gap: 10px 14px;
+}
+.mis-esp-esq { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.mis-esp-dir { grid-column: 2; grid-row: 1; }
+.mis-especial > .mis-entregar.esp { grid-column: 2; grid-row: 2; width: 100%; }
+/* Sem botão (missão ainda em andamento), a recompensa ocupa as duas linhas. */
+.mis-especial > .mis-esp-dir:last-child { grid-row: 1 / span 2; }
+
+.mis-esp-txt strong { font-size: 15px; }
+.mis-esp-item { padding: 8px; }
+.mis-esp-info strong { font-size: 12px; line-height: 1.2; }
