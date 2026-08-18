@@ -674,20 +674,21 @@ contrato especial com recompensa exclusiva.
 fácil de escrever e responde à pergunta errada: o jogador não quer saber quais
 missões existem, quer saber com quem está progredindo.
 
-O chefe derrotado vira ALIADO — derivado de  e desbloqueado pelo
+O chefe derrotado vira ALIADO — derivado de `data/bosses.ts` e desbloqueado pelo
 CÓDEX, que já registrava quem caiu. Nenhum estado novo: save antigo com chefes
 derrotados já traz os contatos, sem migração.
 
-/ viraram , uma união de nove tipos resolvida
-num ponto só. A UI interpreta, não decide (§42).
+`requerSetor` e `requer` viraram `requisitos[]`, uma união de nove tipos
+resolvida num ponto só. A UI interpreta, não decide (§42).
 
-40 peças de arte recortadas de  por detecção, e as recompensas
+40 peças de arte recortadas de `missoes 3.png` por detecção, e as recompensas
 viraram ícone com o valor no canto.
 
-Duas armadilhas que custaram turnos e ficaram registradas:  são os nove
-slots de item, e o  que inventei nasceu sem arte passando por
-typecheck e por 324 testes; e ** num filho NÃO desfaz o filtro do
-pai** — o tingimento teve de ir para um  para os ícones manterem a cor.
+Duas armadilhas que custaram turnos e ficaram registradas: `cat/*` são os nove
+slots de item, e o `cat/alvo` que inventei nasceu sem arte passando por
+typecheck e por 324 testes; e **`filter: none` num filho NÃO desfaz o filtro do
+pai** — filtro CSS aplica ao elemento e a toda a subárvore como um grupo, então
+o tingimento teve de ir para um `::before` para os ícones manterem a cor real.
 
 ---
 
@@ -713,15 +714,15 @@ Os pisos MARCO, de dez em dez, fogem do sorteio e furam o teto de peso de
 propósito — é onde o modo ganha cara própria, e um pico dentro da média não
 seria pico.
 
-Medido nas dez voltas do Núcleo Ferrugem: , , ,
-, , , ,
-, , . Dez lutas
+Medido nas dez voltas do Núcleo Ferrugem: nenhum, `veloz`, `enxame`,
+`enxame+veloz`, `blindado+fragmentador`, `veloz+pressa`, `regenerador+enxame`,
+`veloz+blindado+enxame`, `enxame+sufocante`, `enxame+regenerador`. Dez lutas
 diferentes com a mesma criatura.
 
 A escala de vida sobe 166× em cem pisos — contida de propósito, porque a
 dificuldade tem de vir da mecânica.
 
-Os requisitos (§34) reaproveitam o  das missões: mesma união, mesmo
+Os requisitos (§34) reaproveitam o `Requisito` das missões: mesma união, mesmo
 resolvedor. Um segundo sistema com as mesmas variantes seria a duplicação que o
 §50 proíbe, e assim todo requisito novo das missões o Abismo herda.
 
