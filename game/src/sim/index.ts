@@ -1,8 +1,8 @@
 ﻿import { Rng, clamp } from '@core/math';
 import { bus, toast } from '@app/Bus';
-import { getBiome, unlockedBiomes } from '@data/biomes';
+import { BIOMES, getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
-import { CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
+import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import { rarityInfo } from '@data/rarity';
@@ -244,12 +244,11 @@ export class Sim {
 
   setTestMode(on: boolean): void {
     this.state.settings.testMode = on;
-    if (on) {
-      // Desbloqueia o hangar inteiro para o conteúdo ficar inspecionável.
-      for (const hull of HULLS) if (!this.state.fleet.includes(hull.id)) this.state.fleet.push(hull.id);
-    } else {
-      this.state.settings.speed = 1;
-    }
+    // Nada de escrever no save aqui. O hangar, os setores, a loja e a
+    // capacidade são liberados por LEITURA (ver `alcanceLiberado` e vizinhos),
+    // e é isso que faz desligar o modo devolver o save intacto. A versão
+    // anterior empurrava os cascos em `state.fleet` e não os tirava.
+    if (!on) this.state.settings.speed = 1;
     this.touch();
   }
 
@@ -290,6 +289,44 @@ export class Sim {
     const perdido = { ...this.state.run.carga };
     for (const id of RESOURCE_IDS) this.state.run.carga[id] = 0;
     return perdido;
+  }
+
+  // ── o que o modo de teste libera ──────────────────────────────────────────
+  //
+  // Todos estes acessores são de LEITURA e não gravam nada. É a regra que faz o
+  // modo de teste ser reversível: desligá-lo tem de devolver o save exatamente
+  // como estava. A versão anterior empurrava os cascos em `state.fleet` ao
+  // ligar e nunca os tirava — quem ligasse para "só dar uma olhada" ficava com
+  // o hangar inteiro no save de verdade, sem volta.
+  //
+  // Por isso as travas passaram a CONSULTAR estes acessores em vez de ler o
+  // progresso cru: liberar é uma resposta diferente à mesma pergunta, não uma
+  // escrita no estado.
+
+  /**
+   * Até que setor o jogador pode ir — a régua de TODA trava de conteúdo.
+   *
+   * Loja, cascos, códex e o mapa de galáxias liam `universe.bestSectorEver`
+   * cada um por conta própria. Agora leem isto, o que também significa que a
+   * próxima trava a nascer herda o modo de teste de graça.
+   */
+  get alcanceLiberado(): number {
+    return this.testMode ? NIVEL_MAX : this.state.universe.bestSectorEver;
+  }
+
+  /** Nível de comando para efeito de requisito. */
+  get nivelLiberado(): number {
+    return this.testMode ? NIVEL_MAX : this.state.command.nivel;
+  }
+
+  /**
+   * Cascos disponíveis para uso.
+   *
+   * No modo de teste, todos — sem escrever em `state.fleet`, que é o que torna
+   * o modo reversível.
+   */
+  get frotaDisponivel(): readonly string[] {
+    return this.testMode ? HULLS.map((h) => h.id) : this.state.fleet;
   }
 
   /** No modo de teste tudo é pagável, sem alterar o saldo mostrado. */
@@ -339,7 +376,8 @@ export class Sim {
     }
 
     // Bioma segue a distância acumulada: sempre o melhor liberado.
-    const best = unlockedBiomes(bar.distance).at(-1);
+    // No modo de teste todos os biomas ficam visíveis, sem mexer na distância.
+    const best = (this.testMode ? BIOMES : unlockedBiomes(bar.distance)).at(-1);
     if (best && best.id !== bar.biome) {
       bar.biome = best.id;
       toast(`Novo setor de patrulha: ${best.name}`, 'epic', 'powerup/icon_bounty');
@@ -812,7 +850,8 @@ export class Sim {
 
   /** Capacidade do depósito de RECURSOS (§29), separada da de itens. */
   get resourceSlots(): number {
-    return capacidadeDeRecursos(this.state.cargaLiberada);
+    // Modo de teste: depósito cheio, para o conteúdo caber sem farmar concessão.
+    return this.testMode ? CARGA_MAXIMA : capacidadeDeRecursos(this.state.cargaLiberada);
   }
 
   /**
@@ -1053,7 +1092,7 @@ export class Sim {
     // A capacidade vem das CONCESSÕES obtidas (§28), não de um número no save.
     // O jogador começa com 15 — grade 5 × 3 — e cresce até 70 por loja, chefe e
     // universo; missões e conquistas entram quando existirem, sem tocar aqui.
-    return capacidadeDeItens(this.state.cargaLiberada);
+    return this.testMode ? CARGA_MAXIMA : capacidadeDeItens(this.state.cargaLiberada);
   }
 
   /** Multiplicador do raio do ímã de coleta. */
@@ -1072,10 +1111,10 @@ export class Sim {
 
     const owned = this.shopOwned(id);
     if (def.max > 0 && owned >= def.max) return false;
-    if (this.state.universe.bestSectorEver < (def.requiresSector ?? 0)) return false;
+    if (this.alcanceLiberado < (def.requiresSector ?? 0)) return false;
     // Requisito de NÍVEL além do de setor (§17). Ver `nivelExigido`: quem
     // chegou jogando passa com folga; quem pulou, não.
-    if (this.state.command.nivel < nivelExigido(def.requiresSector ?? 0)) return false;
+    if (this.nivelLiberado < nivelExigido(def.requiresSector ?? 0)) return false;
     if (!this.spend(def.currency, shopCost(def, def.kind === 'consumivel' ? 0 : owned))) return false;
 
     // Consumíveis não acumulam nível: entregam o efeito e pronto.
@@ -1098,9 +1137,9 @@ export class Sim {
 
   buyHull(id: string): boolean {
     const hull = HULLS.find((h) => h.id === id);
-    if (!hull || this.state.fleet.includes(id)) return false;
-    if (this.state.universe.bestSectorEver < hull.requiresSector) return false;
-    if (this.state.command.nivel < nivelExigido(hull.requiresSector)) return false;
+    if (!hull || this.frotaDisponivel.includes(id)) return false;
+    if (this.alcanceLiberado < hull.requiresSector) return false;
+    if (this.nivelLiberado < nivelExigido(hull.requiresSector)) return false;
     if (!this.spend('cristal', hull.cost)) return false;
     this.state.fleet.push(id);
     this.touch();
@@ -1109,7 +1148,7 @@ export class Sim {
   }
 
   selectHull(id: string): boolean {
-    if (!this.state.fleet.includes(id)) return false;
+    if (!this.frotaDisponivel.includes(id)) return false;
     this.state.hull = id;
     this.touch();
     return true;

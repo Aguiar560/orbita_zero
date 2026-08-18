@@ -32,7 +32,7 @@ export class GalaxyPanel implements Panel {
 
   badge(sim: Sim): number {
     // Sinaliza quando há uma galáxia nova liberada e ainda não visitada.
-    const reached = galaxyOfSector(sim.state.universe.bestSectorEver);
+    const reached = galaxyOfSector(sim.alcanceLiberado);
     const current = galaxyOfSector(sim.state.run.sector);
     return reached > current ? 1 : 0;
   }
@@ -49,7 +49,7 @@ export class GalaxyPanel implements Panel {
     if (this.viewing < 0 || here !== this.followed) this.viewing = here;
     this.followed = here;
 
-    const best = sim.state.universe.bestSectorEver;
+    const best = sim.alcanceLiberado;
     const unlockedGalaxies = galaxyOfSector(best);
     const info = describeGalaxy(this.viewing);
     const phases = galaxyPhases(this.viewing);

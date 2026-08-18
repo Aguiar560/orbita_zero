@@ -47,7 +47,7 @@ export class ShopPanel implements Panel {
   }
 
   private visivel(sim: Sim, item: ShopItem): boolean {
-    return sim.state.universe.bestSectorEver >= (item.requiresSector ?? 0)
+    return sim.alcanceLiberado >= (item.requiresSector ?? 0)
       && sim.state.command.nivel >= nivelExigido(item.requiresSector ?? 0);
   }
 

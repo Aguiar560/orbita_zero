@@ -16,8 +16,8 @@ export class FleetPanel implements Panel {
 
   badge(sim: Sim): number {
     return HULLS.filter(
-      (hull) => !sim.state.fleet.includes(hull.id)
-        && sim.state.universe.bestSectorEver >= hull.requiresSector
+      (hull) => !sim.frotaDisponivel.includes(hull.id)
+        && sim.alcanceLiberado >= hull.requiresSector
         && sim.state.command.nivel >= nivelExigido(hull.requiresSector)
         && sim.can('cristal', hull.cost),
     ).length;
@@ -30,9 +30,9 @@ export class FleetPanel implements Panel {
           + 'e o elemento define o tipo de dano quando não há arma principal equipada.',
       }),
       h('.fleet-grid', {}, ...HULLS.map((hull) => {
-        const owned = sim.state.fleet.includes(hull.id);
+        const owned = sim.frotaDisponivel.includes(hull.id);
         const active = sim.state.hull === hull.id;
-        const revealed = sim.state.universe.bestSectorEver >= hull.requiresSector;
+        const revealed = sim.alcanceLiberado >= hull.requiresSector;
 
         if (!revealed && !owned) {
           return h('.fleet-card.locked', {},
@@ -41,7 +41,7 @@ export class FleetPanel implements Panel {
             h('span.muted', {
               // Diz QUAL requisito falta, não só que falta algum: um botão
               // cinza sem motivo manda o jogador adivinhar.
-              text: sim.state.universe.bestSectorEver < hull.requiresSector
+              text: sim.alcanceLiberado < hull.requiresSector
                 ? `Alcance o setor ${hull.requiresSector}`
                 : `Requer nível ${nivelExigido(hull.requiresSector)} de comando`,
             }),
