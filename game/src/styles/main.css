@@ -2148,3 +2148,217 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
   content: ''; position: absolute; inset: 6px; z-index: 0;
   background: rgba(4, 8, 18, 0.55); border-radius: 8px; pointer-events: none;
 }
+
+/* ── Núcleo de Provação (§34–§51) ────────────────────────────────────────── */
+/*
+ * Paleta cyan do §34, não o dourado da imagem de referência: a imagem serve de
+ * LAYOUT — torre ao centro, conceito à esquerda, detalhe à direita — e o
+ * dourado fica reservado ao que ele deve significar aqui, que é o marco.
+ *
+ * Glow só na borda (§51). Interior escuro, para o texto claro continuar legível.
+ */
+.prv {
+  display: grid; gap: 12px; align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: clamp(430px, 72vh, 780px);
+  overflow: hidden;
+}
+
+.prv-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.prv-titulo { display: grid; gap: 2px; }
+.prv-titulo h1 {
+  margin: 0; font-size: 20px; letter-spacing: 3px; color: var(--accent);
+}
+.prv-contadores { display: flex; align-items: center; gap: 10px; }
+
+/*
+ * As tentativas ganham destaque de recurso escasso: é o número que decide se o
+ * jogador entra agora ou volta depois, e escondê-lo faria o botão desabilitado
+ * parecer defeito.
+ */
+.prv-tentativas {
+  display: grid; gap: 3px; justify-items: center;
+  padding: 6px 14px; border: 1px solid var(--accent); border-radius: 8px;
+  background: rgba(4, 8, 18, 0.6);
+}
+.prv-tentativas.vazio { border-color: var(--bad); }
+.prv-pips { display: flex; gap: 4px; }
+.prv-pip {
+  width: 12px; height: 14px; border: 1px solid var(--line-strong);
+  clip-path: polygon(50% 0, 100% 28%, 100% 72%, 50% 100%, 0 72%, 0 28%);
+}
+.prv-pip.cheio { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.prv-relogio { color: var(--muted); }
+.prv-cont {
+  padding: 6px 14px; font-size: 12px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(4, 8, 18, 0.6);
+}
+
+/* Três regiões do §35–§38, com piso para as laterais não colapsarem. */
+.prv-corpo {
+  display: grid; gap: 12px; min-height: 0; min-width: 0;
+  grid-template-columns: minmax(190px, 22%) minmax(0, 1fr) minmax(230px, 26%);
+  align-items: stretch;
+}
+@media (max-width: 1180px) {
+  .prv-corpo { grid-template-columns: minmax(0, 1fr) minmax(230px, 30%); }
+  .prv-corpo > .prv-esq { display: none; }
+}
+.prv-col {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: 8px; align-content: start; min-width: 0; min-height: 0;
+}
+.prv-esq, .prv-dir { overflow-y: auto; padding-right: 4px; }
+
+.prv-secao-tit {
+  font-size: 11px; letter-spacing: 2px; color: var(--accent);
+  padding-left: 8px; border-left: 2px solid var(--accent);
+  margin-top: 4px;
+}
+.prv-linha { display: flex; justify-content: space-between; gap: 10px; }
+
+.prv-camada {
+  display: grid; gap: 2px; padding: 8px 10px;
+  border: 1px solid; border-radius: 8px; background: rgba(6, 11, 24, 0.55);
+}
+.prv-camada strong { font-size: 12px; letter-spacing: 1px; }
+
+/* Os dez marcos numa fita compacta (§46). */
+.prv-marcos { display: flex; gap: 5px; flex-wrap: wrap; }
+.prv-marco {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  font-size: 11px; color: var(--muted); cursor: pointer;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: rgba(4, 8, 18, 0.6);
+  transition: border-color 180ms, color 180ms, box-shadow 180ms;
+}
+.prv-marco:hover { border-color: var(--line-strong); color: var(--text); }
+.prv-marco.feito { border-color: #FFB638; color: #FFB638; box-shadow: 0 0 8px rgba(255, 182, 56, 0.3); }
+.prv-marco.proximo { border-color: var(--accent); color: var(--accent); }
+
+/* ── a coluna de câmaras ──────────────────────────────────────────────────── */
+.prv-centro { min-height: 0; }
+.prv-torre {
+  display: grid; gap: 6px; align-content: start;
+  overflow-y: auto; padding-right: 4px; min-height: 0;
+}
+.prv-piso {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(6, 11, 24, 0.55);
+  cursor: pointer;
+  transition: border-color 200ms, background 200ms, box-shadow 200ms, transform 200ms;
+}
+.prv-piso:hover { background: rgba(12, 20, 38, 0.7); }
+/* §50: o card selecionado expande LEVEMENTE — o suficiente para o olho achar. */
+.prv-piso.focado {
+  transform: scale(1.02);
+  box-shadow: 0 0 16px rgba(79, 195, 255, 0.22);
+  background: rgba(10, 18, 34, 0.8);
+}
+.prv-piso.e-travado { opacity: 0.42; cursor: default; }
+.prv-piso.e-vencido .prv-piso-n, .prv-piso.e-mestrado .prv-piso-n { color: var(--good); }
+
+/*
+ * O PISO DE MARCO é visivelmente outro: mais alto, moldura dourada, número
+ * maior e brilho próprio. O jogador precisa VER que a cada dez a coisa muda —
+ * descobrir isso apanhando seria a pior forma de aprender.
+ */
+.prv-piso.marco {
+  padding: 14px 12px;
+  background: linear-gradient(100deg, rgba(30, 22, 6, 0.55), rgba(6, 11, 24, 0.55));
+  box-shadow: 0 0 14px rgba(255, 182, 56, 0.16);
+}
+.prv-piso.marco .prv-piso-n { font-size: 22px; color: #FFB638; }
+.prv-piso.marco.focado { box-shadow: 0 0 22px rgba(255, 182, 56, 0.4); }
+.prv-piso.marco::before {
+  content: ''; grid-column: 1 / -1; height: 1px;
+  background: linear-gradient(90deg, transparent, #FFB638, transparent);
+  opacity: 0.5;
+}
+
+.prv-piso-n {
+  min-width: 34px; text-align: center;
+  font-size: 16px; letter-spacing: 1px; color: var(--text);
+}
+.prv-piso-arte {
+  width: 52px; height: 52px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(2, 5, 12, 0.8);
+}
+.prv-piso.marco .prv-piso-arte { width: 62px; height: 62px; border-color: rgba(255, 182, 56, 0.5); }
+.prv-cadeado { font-size: 18px; opacity: 0.6; }
+.prv-piso-txt { display: grid; gap: 1px; min-width: 0; }
+.prv-piso-txt strong { font-size: 13px; letter-spacing: 0.5px; }
+.prv-piso-txt span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prv-piso-sinais { display: flex; align-items: center; gap: 6px; }
+.prv-elem {
+  width: 20px; height: 20px; display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; color: #04060e; border-radius: 4px;
+}
+.prv-check { color: var(--good); font-size: 15px; }
+.prv-selo-marco { color: #FFB638; font-size: 14px; }
+
+/* ── o detalhe do piso ────────────────────────────────────────────────────── */
+.prv-dir.marco { border-left: 1px solid rgba(255, 182, 56, 0.25); padding-left: 10px; }
+
+.prv-chefe {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px;
+  padding: 10px; border: 1px solid; border-radius: 10px;
+  background: rgba(6, 11, 24, 0.6);
+}
+.prv-chefe-arte {
+  width: 78px; height: 78px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(2, 5, 12, 0.85);
+}
+.prv-chefe-txt { display: grid; gap: 3px; align-content: start; min-width: 0; }
+.prv-chefe-txt strong { font-size: 14px; letter-spacing: 1px; }
+.prv-tag-marco {
+  justify-self: start; padding: 1px 7px; font-size: 9px; letter-spacing: 1.5px;
+  color: #FFB638; border: 1px solid #FFB638; border-radius: 4px;
+}
+
+.prv-elemental {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(3, 6, 14, 0.6);
+}
+.prv-elem-lado { display: grid; gap: 1px; }
+.prv-vs { font-size: 16px; }
+.prv-vs.v-boa { color: var(--good); }
+.prv-vs.v-ruim { color: var(--bad); }
+.prv-vs.v-neutra { color: var(--muted); }
+
+.prv-especial {
+  display: grid; gap: 2px; padding: 8px 10px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(3, 6, 14, 0.6);
+}
+
+.prv-mods { display: flex; gap: 5px; flex-wrap: wrap; }
+.prv-mod {
+  padding: 3px 9px; font-size: 10px; letter-spacing: 0.4px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  background: rgba(4, 8, 18, 0.6);
+}
+
+.prv-premios { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.prv-iniciar {
+  margin-top: 8px; width: 100%;
+  border-color: var(--accent); color: var(--accent);
+  letter-spacing: 1.5px;
+}
+.prv-iniciar:hover:not(:disabled) { box-shadow: 0 0 16px rgba(79, 195, 255, 0.4); }
+.prv-iniciar.marco { border-color: #FFB638; color: #FFB638; }
+.prv-iniciar.marco:hover:not(:disabled) { box-shadow: 0 0 18px rgba(255, 182, 56, 0.45); }
+.prv-iniciar:disabled { border-color: var(--line); color: var(--muted); opacity: 0.55; }

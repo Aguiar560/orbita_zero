@@ -134,6 +134,15 @@ export interface ChefeDaProvacao {
    * especial for diferente.
    */
   especial: string;
+  /**
+   * Sprite do chefe.
+   *
+   * Vem em rodízio dos props já recortados de `data/bosses.ts`. Não é o ideal —
+   * cem criaturas merecem cem artes —, mas é um nome que COMPROVADAMENTE existe
+   * no atlas. Inventar um nome aqui daria piso sem arte passando por typecheck,
+   * que foi exatamente o erro do `cat/alvo` na aba de missões.
+   */
+  sprite: string;
 }
 
 /**
@@ -347,6 +356,17 @@ function especialDe(piso: number): string {
   return ESPECIAIS[(camada * 7 + posicao) % ESPECIAIS.length]!.id;
 }
 
+/**
+ * Sprites emprestados dos chefes de campanha.
+ *
+ * Provisório e declarado como tal: o elenco próprio pede arte própria, e esta
+ * constante é o lugar onde essa dívida fica visível em vez de espalhada.
+ */
+const SPRITES: readonly string[] = [
+  'prop/reactor_tower', 'prop/ring_station', 'prop/spike_rock',
+  'prop/wreck_beam', 'prop/mine_spike', 'prop/pillar_broken',
+];
+
 /** O elenco montado: cem chefes, um por piso. */
 export const CHEFES_DA_PROVACAO: readonly ChefeDaProvacao[] = ELENCO.flatMap((camada, ci) =>
   camada.map((linha, li) => {
@@ -368,6 +388,7 @@ export const CHEFES_DA_PROVACAO: readonly ChefeDaProvacao[] = ELENCO.flatMap((ca
       escudo: ajuste?.escudo ?? perfil.escudo,
       velocidade: ajuste?.velocidade ?? perfil.velocidade,
       especial: especial ?? especialDe(piso),
+      sprite: SPRITES[(piso - 1) % SPRITES.length]!,
     };
   }),
 );
