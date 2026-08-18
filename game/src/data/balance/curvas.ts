@@ -74,8 +74,8 @@ export const ILVL_POR_SETOR = 0.9;
  *   expoentes DESCREVEM o jogo; se o jogo mudar e eles não, o ritmo desanda em
  *   silêncio.
  */
-export const PODER_A = 0.527;
-export const PODER_P = 2.9279;
+export const PODER_A = 0.0602;
+export const PODER_P = 3.0655;
 
 export const DEFESA_A = 27.630;
 export const DEFESA_P = 1.2515;
@@ -99,10 +99,10 @@ export const DEFESA_C = 1.5;
  * crescimento por setor observado entre os setores 1 e 15. A lei de potência
  * assume o comando por volta do setor 19, quando passa a ser a menor das duas.
  */
-export const INICIO_BASE = 24;
-export const INICIO_RAZAO = 1.42;
-export const INICIO_DEFESA_BASE = 227;
-export const INICIO_DEFESA_RAZAO = 1.1;
+export const INICIO_BASE = 23.1;
+export const INICIO_RAZAO = 1.2296;
+export const INICIO_DEFESA_BASE = 162.1;
+export const INICIO_DEFESA_RAZAO = 1.0882;
 
 /**
  * A assimetria que a Fase 3 ainda precisa atacar: **2,76 contra 1,25**.
@@ -329,7 +329,7 @@ export const NIVEL_MAX = 300;
  * 180 → 198, 270 → 300.
  */
 export const PERSONAGEM_XP_BASE = 10;
-export const PERSONAGEM_XP_EXPO = 2.88;
+export const PERSONAGEM_XP_EXPO = 2.96;
 
 /**
  * XP para subir um nível de NAVE.

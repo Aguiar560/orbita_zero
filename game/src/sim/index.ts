@@ -88,7 +88,7 @@ import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigid
  * Fica aqui, num ponto único, e não espalhado pelas fontes de XP: assim missão,
  * baú, patrulha e Provação herdam o ajuste sem saber que ele existe.
  */
-export const XP_GANHO_GLOBAL = 4;
+export const XP_GANHO_GLOBAL = 24;
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';

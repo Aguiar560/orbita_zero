@@ -46,6 +46,7 @@ export function equiparMelhor(
   semente: number,
   tentativas = 40,
   slots = SLOT_IDS.length,
+  sorte = 0,
 ): GameState {
   const st = createState(semente);
   st.hull = hullId;
@@ -55,7 +56,7 @@ export function equiparMelhor(
     let melhor = null;
     let melhorNota = -Infinity;
     for (let i = 0; i < tentativas; i++) {
-      const item = rollItem(rng, ilvl, 0.3, 0, { slot });
+      const item = rollItem(rng, ilvl, sorte, 0, { slot });
       const sonda: GameState = { ...st, equipped: { ...st.equipped, [slot]: item } };
       const nota = powerScore(resolveStats(sonda));
       if (nota > melhorNota) {
@@ -127,6 +128,47 @@ export interface MedidaDeSetor {
  * A mediana também é mais honesta que a média aqui: uma rolagem excepcional não
  * deve puxar a expectativa de todos os jogadores.
  */
+/**
+ * A SORTE que o jogador daquele setor realmente tem.
+ *
+ * Era 0,3 fixo, cravado dentro de `equiparMelhor`, e isso desligava o medidor
+ * do jogo: a Sorte vem dos itens equipados e volta a decidir a raridade dos
+ * próximos, um laço que 0,3 não representa em ponto nenhum da curva. Medido, o
+ * jogador vai de 0,2 no setor 30 até saturar o teto de 5 — a diferença entre
+ * um extremo e outro multiplica por milhares a chance das raridades altas.
+ *
+ * Resolve o ponto fixo por iteração: equipa com uma sorte suposta, mede a que
+ * o conjunto resultante dá, repete até parar de se mover. Converge em poucas
+ * voltas porque a realimentação é forte mas saturada.
+ *
+ * O resultado é memorizado por setor: o laço é caro (dezenas de conjuntos
+ * completos) e o valor não muda dentro de uma execução.
+ */
+const sorteCache = new Map<number, number>();
+export function sorteDoSetor(setor: number): number {
+  const posto = sorteCache.get(setor);
+  if (posto !== undefined) return posto;
+
+  const ilvl = sectorIlvl(setor);
+  const casco = cascoDoSetor(setor).id;
+  const tent = tentativasDoSetor(setor);
+  const slots = slotsDoSetor(setor);
+
+  let sorte = 0.3;
+  for (let volta = 0; volta < 6; volta++) {
+    const v: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      v.push(resolveStats(equiparMelhor(ilvl, casco, 3300 + setor + i * 104729, tent, slots, sorte)).sorte);
+    }
+    v.sort((a, b) => a - b);
+    const proximo = v[5]!;
+    if (Math.abs(proximo - sorte) < 0.01) { sorte = proximo; break; }
+    sorte = proximo;
+  }
+  sorteCache.set(setor, sorte);
+  return sorte;
+}
+
 export function medirSetor(
   setor: number,
   tentativas = tentativasDoSetor(setor),
@@ -138,7 +180,7 @@ export function medirSetor(
   const slots = slotsDoSetor(setor);
   const amostras = Array.from({ length: repeticoes }, (_, i) => {
     const stats = resolveStats(
-      equiparMelhor(ilvl, casco.id, 1000 + setor + i * 7919, tentativas, slots),
+      equiparMelhor(ilvl, casco.id, 1000 + setor + i * 7919, tentativas, slots, sorteDoSetor(setor)),
     );
     return { dps: dps(stats), ehp: effectiveHp(stats) };
   });

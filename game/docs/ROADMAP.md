@@ -403,6 +403,7 @@ como ser dimensionado.
 | 3.7 | ✅ Carga 15 → 70 por conquista, filtro por elemento e favoritos, cinco ordens |
 | 3.8 | ✅ Armazém, e os 70 recursos de `Recursos.png` com origem por planeta, chefe, torre e missão |
 | 3.9 | ✅ Prefixo e sufixo: dois pools com piso garantido, e o ajuste da defesa que isso destapou |
+| 3.10 | ✅ A Sorte deixa de fabricar o topo — e o jogo inteiro foi reajustado contra o jogador de verdade |
 
 ---
 
@@ -475,6 +476,98 @@ intercaladas. O rótulo só aparece quando existem os dois: numa peça comum, de
 linha só, "Prefixos" sozinho é ruído.
 
 Cinco testes novos em `tests/afixos.test.ts`. 451 passando.
+
+---
+
+### 3.10 — A Sorte era um laço de realimentação ✅
+
+**A pergunta era de balanceamento e a resposta era um defeito estrutural.**
+
+A Sorte vem de itens. Itens de raridade alta trazem mais Sorte. Mais Sorte
+sorteia raridade mais alta. Ninguém tinha medido esse laço fechado. Fechando-o
+num ponto fixo, o conjunto EQUIPADO ficava assim:
+
+| setor | antes | depois |
+|---|---|---|
+| 60 | Épic 42% · Lend 37% · Míti 10% · Divi 2% | Raro 56% · **Épic 33%** |
+| 150 | Lend 6% · Míti 53% · **Divi 41%** | Raro 10% · **Épic 89%** |
+| 300 | Lend 2% · Míti 41% · **Divi 57%** | **Épic 94%** · Lend 1% |
+
+O jogador do setor 200 vestia **maioria de Divino**. O culpado: `sorteExpo`
+SUBIA com a raridade, até 5,2 no Divino. Com a Sorte no teto (fator 6), o peso
+do Divino era multiplicado por **11 mil**; o do Comum, por 1. E o teto de 5 era
+alcançado por volta do **setor 160**, ou seja metade do jogo colado nele.
+
+**Baixar o teto não resolvia.** Mesmo NO teto, o Divino saía 1 em 42; para
+mantê-lo raro o teto teria de ser 0,5, o que é o mesmo que não ter o atributo. O
+valor do teto nunca foi o problema — o sentido da escada era.
+
+#### A escada invertida
+
+Expoente **negativo embaixo**, **baixo em cima**: a Sorte limpa o chão e ajuda
+até o Lendário; no topo quase não atua.
+
+| | Comum | Incomum | Raro | Épico | Lendário | Mítico | Divino |
+|---|---|---|---|---|---|---|---|
+| `sorteExpo` antes | 0 | 1 | 2 | 3 | 4 | 4,6 | 5,2 |
+| `sorteExpo` depois | **−2,0** | **−0,5** | **0,5** | **1,4** | **2,0** | **1,0** | **0,4** |
+| peso antes | 10000 | 3400 | 960 | 220 | 40 | 5 | 0,4 |
+| peso depois | 10000 | **1166** | **292** | **42** | **0,0367** | **0,0132** | **0,00323** |
+
+Os pesos foram **resolvidos**, não escolhidos. O alvo veio do Rafael em forma de
+jogadores: *"se 1000 jogadores estiverem no teto, é para uns 20 terem 1
+divino"*. Medido o volume real de itens — 2.358 numa passada até o setor 160,
+795 por hora farmando no teto — o alvo vira 1 em 300 mil por sorteio.
+
+| por sorteio | Épico | Lendário | Mítico | Divino |
+|---|---|---|---|---|
+| antes, no teto | 1/4 | 1/4 | 1/10 | **1/42** |
+| depois, sem sorte | 1/264 | — | — | — |
+| depois, no teto | 1/4 | 1/1.508 | 1/37.500 | **1/300.000** |
+
+Conferido em 1000 jogadores: 982 com Lendário, 213 com Mítico, **20 com Divino**.
+A última linha foi medida no jogo rodando, pelo `rollRarity` real.
+
+O Lendário ficou com expoente 2,0 e não 1,2 — o que o torna inalcançável sem
+Sorte. Escolha do Rafael, explícita: *"o jogo é para ser dificil mesmo e ser
+jogado muitas vezes, a conquista de lendario para cima é para ser vitoriosa,
+comemorada"*.
+
+#### O medidor mentia há muito tempo
+
+`equiparMelhor` sorteava com `luck = 0.3` **cravado no código**, em todos os 300
+setores. O laço da Sorte simplesmente não existia para o medidor — ele modelava
+um jogador que nunca houve, em ponto nenhum da curva. Agora resolve o ponto fixo
+por setor (`sorteDoSetor`, memorizado), e a Sorte medida vai de 0,00 no setor 1
+a 3,68 no 300.
+
+Com o jogador honesto no lugar, **todas as curvas estavam erradas** — e o erro
+não era da mudança de hoje, era do medidor:
+
+| | antes | depois |
+|---|---|---|
+| `PODER_A` · `PODER_P` | 0,527 · 2,9279 | **0,0602** · **3,0655** |
+| `INICIO_BASE` · `INICIO_RAZAO` | 24 · 1,42 | **23,1** · **1,2296** |
+| `INICIO_DEFESA_BASE` · `_RAZAO` | 227 · 1,1 | **162,1** · **1,0882** |
+| `PERSONAGEM_XP_EXPO` | 2,88 | **2,96** |
+| `XP_GANHO_GLOBAL` | 4 | **24** |
+
+O XP subiu junto porque a recompensa deriva de `poderEsperado`: com o poder
+caindo 8,8×, o nível 300 deixou de ser alcançável. Reajustado, o nível volta a
+acompanhar o setor (10→11, 100→100, 180→192) e o teto chega no **setor 269** —
+o que o Rafael pediu em `4.x` ("chegar ali em 270").
+
+Ritmo final, os dois eixos contra o alvo do próprio setor:
+
+| setor | 12 | 50 | 120 | 220 | 300 |
+|---|---|---|---|---|---|
+| tempo de limpar | 0,82× | 1,03× | 0,91× | 0,95× | 1,03× |
+| golpes até morrer | 1,02× | 0,94× | 1,07× | 1,01× | 1,01× |
+
+**Decisão de desenho registrada:** os baús vão ser reformulados por inteiro e
+passarão a ter **percentuais próprios de raridade**, sem consultar a Sorte do
+jogador. Quando isso acontecer, `ChestDef.luck`, `ChestDef.floor` e o
+`SORTE_EFETIVA_MAX` ficam órfãos e saem juntos.
 
 ---
 
@@ -825,7 +918,7 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 |---|---|---|
 | **A galáxia 1 vem rápida demais no simulador** | 1,2 h contra a meta de ~10 h; as seguintes em 5,3 h, 10 h e 8,5 h. Ao vivo é bem mais lento: setor 5 em 2 h | Fase 4 — o simulador ainda corre ~2× à frente |
 | **O laço ocioso trava sozinho na parede do chefe** | ao vivo, setor 5 dos 90 aos 120 min, mortes de 20 para 31. Cruzamento de "chefe exige farm" (1B.4) com "sem recuo automático" | **decisão de design pendente** — três saídas listadas na Fase 4 |
-| **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
+| **Itemização torta na origem** | ofensiva 3,07 contra defensiva 1,25, agora medidas contra o jogador real | Fase 3 — a assimetria persiste, mas as duas curvas estão ajustadas |
 | **Dispersão de 135× entre itens da mesma raridade** | a métrica comparava SLOTS diferentes; por slot é 1,7× a 2,0× | ✅ era artefato de medição, não defeito |
 | **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | o sinal virou: com 41 amostras por setor a razão CAÍA (0,71 → 0,57), e a causa era `DEFESA_A` 55% alto | ✅ resolvido em `3.9` — refeito o ajuste, razão em 1,12 a 0,90 |
 | **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | ✅ resolvido em `1.7` — 27 de 27 atributos |

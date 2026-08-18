@@ -101,16 +101,53 @@ export interface RarityInfo {
  * resposta. Distingui-las exige outra régua que não a parede — provavelmente
  * tempo de limpeza no setor 300.
  */
+/**
+ * ## Peso e `sorteExpo`: a Sorte limpa o chão, não fabrica o topo
+ *
+ * O peso é a chance base; `sorteExpo` é o expoente com que a Sorte o multiplica
+ * — `peso × (1 + sorte)^sorteExpo`. A escada antiga SUBIA até 5,2 no Divino, e
+ * medir o laço fechado (a Sorte vem de itens, que vêm da Sorte) mostrou o
+ * estrago: no teto de Sorte o jogador vestia **57% de Divino** no setor 300, e
+ * o Divino saía **1 a cada 42 sorteios**.
+ *
+ * Agora o expoente é NEGATIVO embaixo e BAIXO no topo:
+ *
+ * - Comum −2,0 e Incomum −0,5: investir em Sorte faz o lixo parar de cair. É
+ *   aqui que o atributo se sente todo dia, sem tocar nas raridades de conquista.
+ * - Épico 1,4 e Lendário 2,0: a faixa que a Sorte de fato destrava.
+ * - Mítico 1,0 e Divino 0,4: a Sorte quase não atua. Sem isso, qualquer teto
+ *   vira fábrica — foi exatamente o que o 5,2 fazia.
+ *
+ * Os pesos foram RESOLVIDOS a partir do alvo, não escolhidos: "de 1000
+ * jogadores no teto, uns 20 com um Divino". Medido o volume real de itens —
+ * 2.358 numa passada até o setor 160, onde a Sorte satura, e 795 por hora
+ * farmando no teto — o alvo vira 1 em 300 mil por sorteio. Conferido depois:
+ * 982 jogadores com Lendário, 213 com Mítico, **20 com Divino**.
+ *
+ * | por sorteio | Épico | Lendário | Mítico | Divino |
+ * |---|---|---|---|---|
+ * | sem sorte | 1/274 | 1/313K | 1/869K | 1/3.561K |
+ * | no teto | 1/4 | 1/2K | 1/25K | 1/300K |
+ *
+ * O conjunto do fim do jogo passa a ser 95% Épico com talvez uma peça Lendária.
+ * É deliberado: o jogo se vence com Épico, e Lendário para cima é conquista
+ * comemorada, não degrau obrigatório da progressão.
+ *
+ * O Lendário ficou em 2,0 — e não em 1,2 — sabendo que isso o torna
+ * praticamente inalcançável sem Sorte (1 em 313 mil). É a escolha dura de
+ * propósito: o Lendário é algo que a Sorte destrava, não que o acaso entrega no
+ * primeiro setor.
+ */
 export const RARITIES: readonly RarityInfo[] = [
-  { id: 0, name: 'Comum', slug: 'comum',      color: '#a8b6c8', glow: 'rgba(168,182,200,.30)', gem: 'gem/0', afixos: 1, power: 0.60,  weight: 10000, sorteExpo: 0, tierMax: 3,  setChance: 0 },
-  { id: 1, name: 'Incomum', slug: 'incomum',    color: '#7ed957', glow: 'rgba(126,217,87,.38)',  gem: 'gem/1', afixos: 2, power: 1.90,  weight: 3400, sorteExpo: 1,  tierMax: 4,  setChance: 0.04 },
-  { id: 2, name: 'Raro', slug: 'raro',       color: '#38a9ff', glow: 'rgba(56,169,255,.44)',  gem: 'gem/2', afixos: 3, power: 2.20, weight: 960, sorteExpo: 2,   tierMax: 6,  setChance: 0.14 },
-  { id: 3, name: 'Épico', slug: 'epico',      color: '#c060ff', glow: 'rgba(192,96,255,.50)',  gem: 'gem/3', afixos: 4, power: 2.70,  weight: 220, sorteExpo: 3,   tierMax: 7,  setChance: 0.3 },
-  { id: 4, name: 'Lendário', slug: 'lendario',   color: '#ff9a1f', glow: 'rgba(255,154,31,.56)',  gem: 'gem/4', afixos: 5, power: 3.10,  weight: 40, sorteExpo: 4,    tierMax: 8,  setChance: 0.55 },
+  { id: 0, name: 'Comum', slug: 'comum',      color: '#a8b6c8', glow: 'rgba(168,182,200,.30)', gem: 'gem/0', afixos: 1, power: 0.60,  weight: 10000,   sorteExpo: -2.0, tierMax: 3,  setChance: 0 },
+  { id: 1, name: 'Incomum', slug: 'incomum',    color: '#7ed957', glow: 'rgba(126,217,87,.38)',  gem: 'gem/1', afixos: 2, power: 1.90,  weight: 1166,    sorteExpo: -0.5, tierMax: 4,  setChance: 0.04 },
+  { id: 2, name: 'Raro', slug: 'raro',       color: '#38a9ff', glow: 'rgba(56,169,255,.44)',  gem: 'gem/2', afixos: 3, power: 2.20,  weight: 292,     sorteExpo: 0.5,  tierMax: 6,  setChance: 0.14 },
+  { id: 3, name: 'Épico', slug: 'epico',      color: '#c060ff', glow: 'rgba(192,96,255,.50)',  gem: 'gem/3', afixos: 4, power: 2.70,  weight: 42,      sorteExpo: 1.4,  tierMax: 7,  setChance: 0.3 },
+  { id: 4, name: 'Lendário', slug: 'lendario',   color: '#ff9a1f', glow: 'rgba(255,154,31,.56)',  gem: 'gem/4', afixos: 5, power: 3.10,  weight: 0.0367,  sorteExpo: 2.0,  tierMax: 8,  setChance: 0.55 },
   // Mítico e Divino reaproveitam o hexágono do Lendário: a folha `Itens.png` só
   // tem cinco. As molduras próprias chegam na Fase 3, com `novos itens.png`.
-  { id: 5, name: 'Mítico', slug: 'mitico',     color: '#ff4d5e', glow: 'rgba(255,77,94,.62)',   gem: 'gem/4', afixos: 6, power: 4.90,  weight: 5, sorteExpo: 4.6,     tierMax: 9,  setChance: 0.75 },
-  { id: 6, name: 'Divino', slug: 'divino',     color: '#ffd76a', glow: 'rgba(255,215,106,.70)', gem: 'gem/4', afixos: 7, power: 7.00,  weight: 0.4, sorteExpo: 5.2,   tierMax: 10, setChance: 0.9 },
+  { id: 5, name: 'Mítico', slug: 'mitico',     color: '#ff4d5e', glow: 'rgba(255,77,94,.62)',   gem: 'gem/4', afixos: 6, power: 4.90,  weight: 0.0132,  sorteExpo: 1.0,  tierMax: 9,  setChance: 0.75 },
+  { id: 6, name: 'Divino', slug: 'divino',     color: '#ffd76a', glow: 'rgba(255,215,106,.70)', gem: 'gem/4', afixos: 7, power: 7.00,  weight: 0.00323, sorteExpo: 0.4,  tierMax: 10, setChance: 0.9 },
 ];
 
 export const rarityInfo = (r: Rarity): RarityInfo => RARITIES[r] ?? RARITIES[0]!;

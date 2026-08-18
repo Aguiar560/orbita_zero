@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/math';
 import { MAX_RARITY, RARITIES } from '@data/rarity';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, matchup } from '@data/elements';
-import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN } from '@data/balance/limites';
+import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN, SORTE_EFETIVA_MAX } from '@data/balance/limites';
 import { AFFIXES } from '@data/items';
 import { HULLS } from '@data/hulls';
 import { rollItem, rollRarity } from '@sim/loot';
@@ -212,32 +212,73 @@ describe('distribuição de raridade (§9)', () => {
     expect(MAX_RARITY).toBe(RARITIES.length - 1);
   });
 
-  /** §10: extremamente difícil, mas não impossível na vida útil do jogo. */
-  it('Divino sai entre 1 em 25.000 e 1 em 50.000 sem sorte', () => {
-    const rng = new Rng(2026);
-    const AMOSTRAS = 600_000;
-    let divinos = 0;
-    for (let i = 0; i < AMOSTRAS; i++) if (rollRarity(rng, 0, 0) === 6) divinos++;
-    const umEm = AMOSTRAS / Math.max(1, divinos);
-    expect(umEm, `1 em ${Math.round(umEm)}`).toBeGreaterThan(25_000);
-    expect(umEm, `1 em ${Math.round(umEm)}`).toBeLessThan(50_000);
+  /**
+   * A chance de Divino, medida ONDE ela importa.
+   *
+   * A versão anterior media a sorte ZERO e exigia 1 em 25 mil a 50 mil. O
+   * enquadramento estava errado por dois motivos. Primeiro, ninguém joga com
+   * sorte zero: o atributo sobe com o conjunto e satura o teto de 5 por volta
+   * do setor 160, ou seja, METADE do jogo acontece no teto. Segundo, sortear
+   * 600 mil vezes para medir um evento de 1 em 300 mil dá um número que oscila
+   * de zero a três — mediria ruído.
+   *
+   * Agora a conta é ANALÍTICA, direto dos pesos, e no teto. O alvo veio do
+   * Rafael em forma de jogadores, não de fração: "de 1000 jogadores no teto,
+   * uns 20 com um Divino". Medido o volume real de itens até lá — 2.358 numa
+   * passada até o setor 160 —, isso vira 1 em 300 mil por sorteio.
+   */
+  const chanceDe = (raridade: number, sorte: number) => {
+    const b = 1 + sorte;
+    const pesos = RARITIES.map((r) => r.weight * Math.pow(b, r.sorteExpo));
+    return pesos[raridade]! / pesos.reduce((a, v) => a + v, 0);
+  };
+
+  it('no teto da sorte, o Divino sai perto de 1 em 300 mil', () => {
+    const umEm = 1 / chanceDe(6, LIMITES.sorte.max);
+    expect(umEm, `1 em ${Math.round(umEm)}`).toBeGreaterThan(150_000);
+    expect(umEm, `1 em ${Math.round(umEm)}`).toBeLessThan(600_000);
+  });
+
+  /**
+   * A propriedade que o Rafael pediu, escrita como ele a disse.
+   *
+   * Com os ~6 mil itens que um jogador vê até saturar o teto, quantos de mil
+   * jogadores terminam com pelo menos um Divino. A faixa é larga porque o
+   * volume de itens é uma estimativa; o que o teste protege é a ORDEM DE
+   * GRANDEZA — dezenas, não centenas.
+   */
+  it('de 1000 jogadores no teto, algumas dezenas têm um Divino', () => {
+    const p = chanceDe(6, LIMITES.sorte.max);
+    const comUm = 1000 * (1 - Math.pow(1 - p, 6000));
+    expect(comUm, `${comUm.toFixed(0)} de 1000`).toBeGreaterThan(5);
+    expect(comUm, `${comUm.toFixed(0)} de 1000`).toBeLessThan(60);
   });
 
   /**
    * A sorte não pode comprar o topo.
    *
-   * O expoente da sorte estava amarrado ao ÍNDICE da raridade. Ao passar de
-   * cinco para sete, `sorte^6` virou 64 vezes mais forte que `sorte^4` e o baú
-   * de Singularidade passou a soltar Divino em um de cada seis itens. Este
-   * teste trava a separação entre expoente e índice.
+   * Duas vezes na história deste arquivo a sorte virou fábrica de Divino. A
+   * primeira, com o expoente amarrado ao ÍNDICE da raridade: passar de cinco
+   * para sete fez `sorte^6` valer 64 vezes `sorte^4` e o baú de Singularidade
+   * soltava Divino em um de cada seis. A segunda, com o expoente ainda SUBINDO
+   * até 5,2 no topo: fechando o laço da sorte (ela vem de itens, que vêm dela),
+   * o jogador do setor 300 vestia 57% de Divino.
+   *
+   * A correção foi inverter o sentido — expoente negativo embaixo, baixo em
+   * cima. Este teste trava as duas propriedades que sustentam isso.
    */
-  it('mesmo com sorte alta, Divino continua sendo minoria', () => {
-    const rng = new Rng(77);
-    const AMOSTRAS = 200_000;
-    let divinos = 0;
-    for (let i = 0; i < AMOSTRAS; i++) if (rollRarity(rng, 7, 0) === 6) divinos++;
-    const fracao = divinos / AMOSTRAS;
-    expect(fracao, `${(fracao * 100).toFixed(1)}% com sorte 7`).toBeLessThan(0.08);
+  it('a sorte ajuda a limpar o chão, não a fabricar o topo', () => {
+    // Embaixo, a sorte REDUZ a fatia: é o lixo parando de cair. Vale para o
+    // Comum e para o CHÃO INTEIRO — a fatia do Incomum sozinho sobe, e isso é
+    // correto: quando o Comum some, é o Incomum que vira o novo chão a limpar.
+    expect(chanceDe(0, 5)).toBeLessThan(chanceDe(0, 0));
+    const chao = (l: number) => chanceDe(0, l) + chanceDe(1, l);
+    expect(chao(5)).toBeLessThan(chao(0) / 2);
+    // No topo, o expoente não pode voltar a escalar com o índice.
+    expect(RARITIES[6]!.sorteExpo).toBeLessThan(RARITIES[4]!.sorteExpo);
+    expect(RARITIES[5]!.sorteExpo).toBeLessThan(RARITIES[4]!.sorteExpo);
+    // E nem o teto EFETIVO, que os baús alcançam, torna o Divino comum.
+    expect(1 / chanceDe(6, SORTE_EFETIVA_MAX)).toBeGreaterThan(100_000);
   });
 
   it('cada raridade dá mais afixos e tolera tier mais alto que a anterior', () => {
