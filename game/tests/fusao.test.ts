@@ -215,3 +215,35 @@ describe('fundir de verdade', () => {
     expect(sim.faltaParaFundir(uids).join()).toContain('10 itens');
   });
 });
+
+describe('modo de teste e o Armazém', () => {
+  /**
+   * O modo de teste já dava recursos infinitos pelos quatro do banco e pelos
+   * pontos de matriz, mas o Armazém veio depois (§29) e ficou de fora — com o
+   * modo ligado a fusão ainda travava por falta de Ferrita. Este teste existe
+   * para a próxima fonte de custo não repetir o esquecimento.
+   */
+  it('não trava a fusão por falta de material', () => {
+    const sim = new Sim();
+    sim.rng = new Rng(7);
+    sim.state.armazem = {}; // armazém VAZIO, de propósito
+    sim.setTestMode(true);
+
+    const itens = comItens(sim, 0, 10);
+    expect(sim.faltaParaFundir(itens)).toEqual([]);
+
+    expect(sim.materialDisponivel('ferrita')).toBe(Infinity);
+    // Gastar não pode quebrar nem criar chave no armazém vazio.
+    expect(sim.gastarMaterial('ferrita', 999_999)).toBe(true);
+    expect(sim.state.armazem.ferrita).toBeUndefined();
+  });
+
+  it('volta a cobrar material quando o modo de teste sai', () => {
+    const sim = new Sim();
+    sim.setTestMode(true);
+    sim.setTestMode(false);
+    sim.state.armazem = {};
+    expect(sim.materialDisponivel('ferrita')).toBe(0);
+    expect(sim.gastarMaterial('ferrita', 1)).toBe(false);
+  });
+});

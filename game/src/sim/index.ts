@@ -782,8 +782,25 @@ export class Sim {
     return cabe;
   }
 
+  /**
+   * Quanto se tem de um material.
+   *
+   * Existe para ser o ÚNICO ponto que responde a pergunta. O modo de teste já
+   * dava recursos infinitos pelos quatro do banco (`canAfford`/`spend`) e pelos
+   * pontos de matriz, mas o Armazém veio depois e ficou de fora — a fusão
+   * travava por falta de Ferrita com o modo de teste ligado. Espalhar um
+   * `if (testMode)` pelos três lugares que consultam o estoque seria pedir para
+   * o quarto lugar nascer errado, então a exceção mora aqui.
+   */
+  materialDisponivel(id: string): number {
+    if (this.testMode) return Infinity;
+    return this.state.armazem[id] ?? 0;
+  }
+
   /** Consome material. Zera a chave em vez de deixá-la em 0. */
   gastarMaterial(id: string, quantidade: number): boolean {
+    // No modo de teste o estoque é infinito, então não há o que descontar.
+    if (this.testMode) return true;
     const atual = this.state.armazem[id] ?? 0;
     if (atual < quantidade) return false;
     const resto = atual - quantidade;
@@ -841,9 +858,10 @@ export class Sim {
     // justamente para proteger uma peça de sumir por engano.
     if (itens.some((i) => i.favorite)) faltas.push('há favoritos na seleção');
 
-    if (this.state.resources.nucleo < receita.nucleos) faltas.push('núcleos insuficientes');
+    // `canAfford`, e não a comparação direta: é ele que conhece o modo de teste.
+    if (!this.can('nucleo', receita.nucleos)) faltas.push('núcleos insuficientes');
     for (const [id, n] of Object.entries(receita.custo)) {
-      if ((this.state.armazem[id] ?? 0) < n) faltas.push(`falta ${RECURSO_POR_ID.get(id)?.nome ?? id}`);
+      if (this.materialDisponivel(id) < n) faltas.push(`falta ${RECURSO_POR_ID.get(id)?.nome ?? id}`);
     }
     return faltas;
   }

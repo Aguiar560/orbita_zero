@@ -109,21 +109,23 @@ export class FabricacaoPanel implements Panel {
           // Verde quando bate a meta, vermelho quando falta. Branco não dizia
           // nada: obrigava a ler os dois números e comparar de cabeça, linha a
           // linha, para saber se dava para fabricar.
-          style: { color: sim.state.resources.nucleo >= receita.nucleos ? 'var(--good)' : 'var(--bad)' },
+          style: { color: sim.can('nucleo', receita.nucleos) ? 'var(--good)' : 'var(--bad)' },
         }),
       ),
     ];
 
     for (const [id, n] of Object.entries(receita.custo)) {
       const rec = RECURSO_POR_ID.get(id);
-      const tem = sim.state.armazem[id] ?? 0;
+      const tem = sim.materialDisponivel(id);
       linhas.push(h('.fab-custo-linha', { title: rec?.origens.join(' · ') ?? '' },
         h('.fab-custo-nome', {},
           rec ? spriteIcon(iconeDeRecurso(rec), 26) : h('span'),
           h('span.tiny', { text: rec?.nome ?? id }),
         ),
         h('span.tiny', {
-          text: `${fmt(tem)} / ${fmt(n)}`,
+          // `fmt` não sabe formatar Infinity, e o modo de teste devolve isso de
+          // propósito — melhor o símbolo do que um "NaN" ou um número gigante.
+          text: `${Number.isFinite(tem) ? fmt(tem) : '∞'} / ${fmt(n)}`,
           style: { color: tem >= n ? 'var(--good)' : 'var(--bad)' },
         }),
       ));
@@ -266,7 +268,7 @@ export class FabricacaoPanel implements Panel {
             // Custo em recurso resumido: o painel do meio mostra o detalhe.
             ...Object.keys(r.custo).slice(0, 2).map((id) => {
               const rec = RECURSO_POR_ID.get(id);
-              const temRec = (sim.state.armazem[id] ?? 0) >= (r.custo[id] ?? 0);
+              const temRec = sim.materialDisponivel(id) >= (r.custo[id] ?? 0);
               return rec
                 ? h('span.fab-tipo-rec', { title: `${rec.nome} · ${fmt(r.custo[id] ?? 0)}`, style: { opacity: temRec ? '1' : '0.35' } },
                   spriteIcon(iconeDeRecurso(rec), 18))
