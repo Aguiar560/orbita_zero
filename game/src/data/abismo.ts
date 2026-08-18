@@ -1,4 +1,4 @@
-import { BOSSES } from '@data/bosses';
+import { chefeDoPiso } from '@data/abismo-chefes';
 import type { Requisito } from '@data/missoes';
 import type { ElementId, Rarity } from '@sim/types';
 
@@ -376,9 +376,11 @@ export function pisoDoAbismo(piso: number): PisoDef {
 
   return {
     piso: p,
-    // Os dez chefes em rodízio. O modificador é o que impede o piso 47 de ser o
-    // piso 7 com mais vida.
-    chefeId: BOSSES[(p - 1) % BOSSES.length]!.id,
+    // Elenco PRÓPRIO: cem criaturas distintas, uma por piso. Antes eram os dez
+    // chefes de galáxia em rodízio, e a variedade vinha só do modificador — o
+    // que fazia o piso 47 ser o piso 7 com outro traje. Agora a mecânica
+    // diferente cai sobre uma criatura diferente.
+    chefeId: chefeDoPiso(p).id,
     escala: escalaDoPiso(p),
     modificadores: ids,
     peso,

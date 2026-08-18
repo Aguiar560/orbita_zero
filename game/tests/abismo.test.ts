@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOSSES } from '@data/bosses';
+import { CHEFES_DO_ABISMO, CHEFE_DO_ABISMO_POR_ID, chefeDoPiso } from '@data/abismo-chefes';
 import { RECURSO_POR_ID } from '@data/recursos';
 import {
   ABISMO_PISOS, MODIFICADORES, MODIFICADOR_POR_ID,
@@ -21,8 +21,9 @@ const todos = Array.from({ length: ABISMO_PISOS }, (_, i) => pisoDoAbismo(i + 1)
 describe('a geração dos pisos', () => {
   it('gera os cem, e cada um com um chefe que existe', () => {
     expect(todos).toHaveLength(100);
-    const ids = new Set(BOSSES.map((b) => b.id));
-    for (const p of todos) expect(ids.has(p.chefeId), `piso ${p.piso}`).toBe(true);
+    for (const p of todos) {
+      expect(CHEFE_DO_ABISMO_POR_ID.has(p.chefeId), `piso ${p.piso}`).toBe(true);
+    }
   });
 
   /**
@@ -46,19 +47,17 @@ describe('a geração dos pisos', () => {
   /**
    * O CONTRATO CENTRAL do §33: não pode ser "mesmo chefe + mais vida".
    *
-   * Os dez chefes se repetem a cada dez pisos. O que precisa DIFERIR entre duas
-   * aparições do mesmo chefe é a mecânica — os modificadores.
+   * A resposta mais forte possível: NENHUM chefe se repete. Antes eram dez
+   * chefes de galáxia em rodízio e a variedade vinha só do modificador; agora o
+   * elenco é próprio e cada piso tem criatura distinta.
    */
-  it('a mesma criatura pede resposta diferente em cada volta', () => {
-    for (const b of BOSSES) {
-      const aparicoes = todos.filter((p) => p.chefeId === b.id);
-      expect(aparicoes.length, b.id).toBeGreaterThanOrEqual(9);
+  it('nenhum chefe se repete nos cem pisos', () => {
+    const usados = todos.map((p) => p.chefeId);
+    expect(new Set(usados).size).toBe(100);
+  });
 
-      const combinacoes = new Set(aparicoes.map((p) => p.modificadores.join('+')));
-      // Dez aparições, ao menos cinco lutas diferentes. Menos que isso e o
-      // chefe vira repetição com número maior.
-      expect(combinacoes.size, `${b.id}: ${[...combinacoes].join(' | ')}`).toBeGreaterThanOrEqual(5);
-    }
+  it('o chefe do piso é o do elenco, na ordem', () => {
+    for (const p of todos) expect(p.chefeId).toBe(chefeDoPiso(p.piso).id);
   });
 
   it('o modificador respeita a profundidade mínima', () => {
