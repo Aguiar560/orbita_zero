@@ -6,6 +6,21 @@ import {
   VELOCIDADE_EFICACIA,
 } from '@data/balance/orcamento';
 import { COMANDO_IA_MAX, COMANDO_IA_POR_NIVEL, NAVE_GANHO_POR_NIVEL } from '@data/balance/curvas';
+import { rarityInfo } from '@data/rarity';
+
+/**
+ * O `power` da raridade que vale 1,0 contra a curva do inimigo.
+ *
+ * A curva de setor foi calibrada supondo o jogador com equipamento adequado, e
+ * adequado no FIM da curva é o Mítico. Sem normalizar, ligar o campo só
+ * empurrava todas as paredes para fora: o Comum continuava valendo 1,0 e o
+ * resto subia junto.
+ *
+ * Com o Mítico em 1,0, o Comum vale 0,20 e o Divino 1,43 — e a raridade volta a
+ * decidir até onde se vai.
+ */
+const RARIDADE_DE_REFERENCIA = 4.9;
+
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
 import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
@@ -136,7 +151,24 @@ export function resolveStats(state: GameState): Stats {
   for (const item of Object.values(state.equipped)) {
     if (!item) continue;
     const base = BASE_BY_ID.get(item.baseId);
-    if (base) acc[base.implicit.kind][base.implicit.stat] += base.implicit.per * item.ilvl;
+    /**
+     * O implícito escala com o NÍVEL e com a RARIDADE.
+     *
+     * Antes só com o nível — e o campo `power` da tabela de raridades, que
+     * existe desde sempre com a escada 1,0 / 1,3 / 1,75 / 2,4 / 3,4 / 4,9 / 7,0,
+     * NUNCA era lido por ninguém. Uma dimensão inteira de design declarada e
+     * ignorada.
+     *
+     * A consequência era grave e invisível: um Comum e um Divino do mesmo nível
+     * tinham o mesmo implícito, e como o implícito domina o item, a raridade
+     * quase não mudava o poder. Medido antes: um conjunto só de Comuns dava
+     * conta até o setor 180, e do Épico para cima nenhuma raridade travava
+     * dentro dos 300 — quando a intenção é que Comum não passe do chefe 10.
+     */
+    if (base) {
+      acc[base.implicit.kind][base.implicit.stat] +=
+        base.implicit.per * item.ilvl * (rarityInfo(item.rarity).power / RARIDADE_DE_REFERENCIA);
+    }
     for (const affix of item.affixes) acc[affix.kind][affix.stat] += affix.value;
   }
 

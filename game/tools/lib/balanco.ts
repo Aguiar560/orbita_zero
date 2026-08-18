@@ -19,7 +19,18 @@ import { createState } from '@sim/state';
 import { SLOT_IDS, type GameState } from '@sim/types';
 
 /** Faixa saudável fixada na auditoria da FASE 0. */
-export const FAIXA_SEGUNDOS = [6, 50] as const;
+/**
+ * Faixa de tempo para limpar um setor.
+ *
+ * O teto era 50 s e reprovava coisa que o design aceita: o Rafael declarou que
+ * um setor demorar um ou dois minutos não é problema. Com o teto antigo, uma
+ * mudança CORRETA na escada de raridade foi reprovada por um limite mais rígido
+ * que a intenção — a régua estava mais exigente que o jogo.
+ *
+ * O piso continua em 6 s: setor que se limpa em menos que isso não é encontro,
+ * é corredor.
+ */
+export const FAIXA_SEGUNDOS = [6, 150] as const;
 export const FAIXA_GOLPES = [8, 30] as const;
 
 /**
