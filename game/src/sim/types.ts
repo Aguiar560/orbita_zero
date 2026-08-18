@@ -414,6 +414,16 @@ export interface GameState {
    */
   confianca: Record<string, number>;
 
+  /**
+   * O Abismo Estelar (§32-35).
+   *
+   * So o piso MAXIMO vencido e as tentativas: o conteudo de cada piso e
+   * derivado por regra, nao guardado. Salvar cem pisos gerados seria salvar
+   * algo que o codigo recalcula de graca — e que ficaria velho no primeiro
+   * ajuste de balanceamento.
+   */
+  abismo: { pisoMax: number; tentativas: number; vitorias: number };
+
   stats: {
     kills: number;
     bossKills: number;

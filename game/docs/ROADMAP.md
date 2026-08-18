@@ -664,10 +664,80 @@ contou. Ficou com `aba/melhorias`, órfão desde que o menu Melhorias saiu (§31
 20 testes novos. Verificado no jogo: 9 missões visíveis, "Linha de Suprimento"
 ficou pronta ao guardar 500 de ferrita, e o resgate pagou 5.000 de sucata.
 
+### §27 — a Central de Contratos ✅
+
+A tela de missões foi reescrita a partir de um mockup: três colunas, três abas,
+contatos com retrato e escada de confiança I–V, quatro tipos visuais e o
+contrato especial com recompensa exclusiva.
+
+**O eixo é o PERSONAGEM, não a lista de contratos.** Uma lista plana é mais
+fácil de escrever e responde à pergunta errada: o jogador não quer saber quais
+missões existem, quer saber com quem está progredindo.
+
+O chefe derrotado vira ALIADO — derivado de  e desbloqueado pelo
+CÓDEX, que já registrava quem caiu. Nenhum estado novo: save antigo com chefes
+derrotados já traz os contatos, sem migração.
+
+/ viraram , uma união de nove tipos resolvida
+num ponto só. A UI interpreta, não decide (§42).
+
+40 peças de arte recortadas de  por detecção, e as recompensas
+viraram ícone com o valor no canto.
+
+Duas armadilhas que custaram turnos e ficaram registradas:  são os nove
+slots de item, e o  que inventei nasceu sem arte passando por
+typecheck e por 324 testes; e ** num filho NÃO desfaz o filtro do
+pai** — o tingimento teve de ir para um  para os ícones manterem a cor.
+
+---
+
+### §32–§35 — o Abismo Estelar ✅ (arquitetura)
+
+O modo de chefes do fim de jogo. O §32 proíbe o nome "torre";
+"Singularidade" e "Convergência" já estavam em uso (baú de topo e receita de
+fusão), e repetir nome entre sistemas confunde mais do que economiza.
+
+**O problema que decide o desenho:** há dez chefes e cem pisos. Sem cuidado o
+piso 47 é o piso 7 com mais vida — exatamente o que o §33 manda evitar.
+
+A saída são MODIFICADORES: onze efeitos que mudam COMO a luta funciona, não
+quanto ela demora. Regenerador exige dano sustentado; refletor exige ler a barra
+antes da rajada; enxame exige limpar antes de focar.
+
+Os pisos são GERADOS por regra, não escritos à mão — cem entradas seriam mil
+linhas que ninguém revisa e que divergem no primeiro ajuste de curva. O sorteio
+é determinístico por número do piso: o piso 63 é o mesmo para todo jogador e em
+toda sessão, senão não há como conversar sobre ele nem testá-lo.
+
+Os pisos MARCO, de dez em dez, fogem do sorteio e furam o teto de peso de
+propósito — é onde o modo ganha cara própria, e um pico dentro da média não
+seria pico.
+
+Medido nas dez voltas do Núcleo Ferrugem: , , ,
+, , , ,
+, , . Dez lutas
+diferentes com a mesma criatura.
+
+A escala de vida sobe 166× em cem pisos — contida de propósito, porque a
+dificuldade tem de vir da mecânica.
+
+Os requisitos (§34) reaproveitam o  das missões: mesma união, mesmo
+resolvedor. Um segundo sistema com as mesmas variantes seria a duplicação que o
+§50 proíbe, e assim todo requisito novo das missões o Abismo herda.
+
+A recompensa (§35) tem curva por LINHA: sucata segue a escala, cristal só a cada
+cinco pisos, medalha só nos marcos, raridade em degraus, exclusivo só do piso 20
+em diante. O peso dos modificadores entra na conta — dois pisos da mesma
+profundidade pagam diferente se um for mais difícil.
+
+32 testes. **Falta a camada de combate ler os efeitos e a tela do modo.**
+
+---
+
 ### Ainda na Fase 5
 
-Naves, inimigos, chefes e recursos por galáxia em volume, e o modo de chefes de
-100 pisos (§32–§35).
+A camada de combate do Abismo (ler os efeitos dos modificadores) e a tela do
+modo. Depois, naves, inimigos, chefes e recursos por galáxia em volume.
 É onde o `content-data-agent` trabalha em volume, a partir de schemas já
 aprovados.
 
