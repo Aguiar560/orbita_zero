@@ -144,7 +144,8 @@ function comandoItem(ilvl: number, amostras: number): void {
     }),
   );
   console.log(`\nnível de item ${ilvl} · ${n(amostras)} itens`);
-  console.log('máx/mín é a dispersão dentro da MESMA raridade — o §7 quer isso sob controle.');
+  console.log('ATENCAO: este numero compara SLOTS DIFERENTES e nao mede o que parece.
+Use `simular -- slot <ilvl>` para a dispersao real, dentro de cada slot.');
 }
 
 /**
@@ -263,11 +264,65 @@ export function medirAfixos(ilvl: number, tier: number): { def: typeof AFFIXES[n
    * outra pergunta.
    */
   const base = equiparMelhor(ilvl, 'void_canhao', 1234, tentativasDoSetor(Math.round(ilvl / 0.9)));
+
+  /**
+   * Uma segunda base, ELEMENTAL, para os afixos que só existem contra
+   * resistência.
+   *
+   * Penetração e crítico elemental valem ZERO numa nave de dano neutro — e isso
+   * é regra do jogo, não defeito: o §5 diz que dano normal nunca é resistido,
+   * então não há o que penetrar. Medi-los contra a nave neutra responde "quanto
+   * valem para quem nunca os usaria", quando a pergunta da calibragem é "quanto
+   * valem para a build que os leva".
+   *
+   * É o mesmo erro que já apareceu neste arquivo uma vez, medindo afixo
+   * multiplicativo contra nave nua. A régua tem de olhar o caso em que o afixo
+   * faz sentido.
+   */
+  const armaElemental = base.equipped.principal;
+  const baseElem: GameState = armaElemental
+    ? {
+      ...base,
+      equipped: {
+        ...base.equipped,
+        principal: {
+          ...armaElemental,
+          element: 'fogo',
+          // POTÊNCIA, e não só o elemento da arma:  monta o
+          // componente elemental a partir do ATRIBUTO , não do
+          // elemento da peça. Trocar só o elemento deixava o pacote 100% normal
+          // e os três afixos continuavam medindo zero — pelo motivo errado.
+          affixes: [
+            ...armaElemental.affixes,
+            { id: 'pot_fogo', stat: 'danoFogo', kind: 'add', value: 0.5, quality: 0.5, tier },
+          ],
+        },
+      },
+    }
+    : base;
+
   const notaBase = powerScore(resolveStats(base));
+  const notaBaseElem = powerScore(resolveStats(baseElem));
+
+  /** Afixos cujo valor depende de haver dano elemental para modificar. */
+  const dependeDeElemental = new Set(['pen_f', 'crite_c', 'crite_d']);
 
   const linhas = AFFIXES.map((def) => {
     const slot = def.slots?.[0] ?? 'principal';
-    const alvo = base.equipped[slot];
+
+    /**
+     * O fundo é escolhido ANTES de montar a peça.
+     *
+     * A primeira versão pegava a peça-alvo de `base` e só depois trocava o
+     * fundo — o que descartava a potência elemental que o fundo tinha, e os três
+     * afixos passaram a medir −1,7K. Trocar de fundo sem trocar a peça compara
+     * duas naves diferentes, e a diferença medida é a das naves, não a do afixo.
+     */
+    const usaElemental = dependeDeElemental.has(def.id);
+    const fundo = usaElemental ? baseElem : base;
+    const referencia = usaElemental ? notaBaseElem : notaBase;
+
+    const alvo = fundo.equipped[slot];
     if (!alvo) return { def, ganho: 0 };
 
     const bruto = (def.min + def.max) / 2;
@@ -294,8 +349,8 @@ export function medirAfixos(ilvl: number, tier: number): { def: typeof AFFIXES[n
       affixes: [...alvo.affixes, { id: def.id, stat: def.stat, kind: def.kind, value, quality: 0.5, tier }],
     };
 
-    const sonda: GameState = { ...base, equipped: { ...base.equipped, [slot]: comLinha } };
-    return { def, ganho: powerScore(resolveStats(sonda)) - notaBase };
+    const sonda: GameState = { ...fundo, equipped: { ...fundo.equipped, [slot]: comLinha } };
+    return { def, ganho: powerScore(resolveStats(sonda)) - referencia };
   }).sort((a, b) => b.ganho - a.ganho);
 
   return linhas;
