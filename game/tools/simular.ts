@@ -144,8 +144,19 @@ function comandoItem(ilvl: number, amostras: number): void {
     }),
   );
   console.log(`\nnível de item ${ilvl} · ${n(amostras)} itens`);
-  console.log('ATENCAO: este numero compara SLOTS DIFERENTES e nao mede o que parece.
-Use `simular -- slot <ilvl>` para a dispersao real, dentro de cada slot.');
+  /**
+   * O aviso existe porque este número ENGANA.
+   *
+   * Ele compara todos os slots de uma raridade juntos — uma arma Comum contra um
+   * par de asas Comuns —, e a arma vale mais por design. Medido por slot, a
+   * dispersão real fica entre 1,7× e 2,0×, que é saudável.
+   *
+   * Esse mal-entendido gerou uma dívida no ROADMAP ("135× de dispersão") que
+   * ninguém conseguia pagar, porque não havia o que pagar. Uma métrica que
+   * engana é pior que métrica nenhuma.
+   */
+  console.log('ATENÇÃO: este número compara SLOTS DIFERENTES.');
+  console.log('A dispersão real, medida dentro de cada slot, fica entre 1,7× e 2,0×.');
 }
 
 /**
