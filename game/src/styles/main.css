@@ -1953,3 +1953,69 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-centro, .mis-dir, .mis-contatos { min-height: 0; }
 .mis-cards { max-height: 100%; overflow-y: auto; }
 .mis-centro { overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); }
+
+/* ── ajustes finais da tela de Missões ───────────────────────────────────── */
+
+/*
+ * 1. A confiança cresce e perde a moldura.
+ *
+ * Ela está DENTRO da ficha, que já tem moldura: duas bordas aninhadas roubavam
+ * espaço dos nós e faziam a escada caber em 150 px. Sem a de dentro, sobram
+ * ~220 px para os cinco nós respirarem.
+ */
+.mis-confianca {
+  border: 0; border-image: none; background: none;
+  padding: 0 4px; margin: 0;
+}
+.mis-ficha { grid-template-columns: auto minmax(0, 1fr) minmax(230px, 0.85fr); }
+.mis-no { width: 34px; height: 39px; }
+.mis-fio { width: 16px; height: 7px; }
+.mis-no-rom { font-size: 11px; padding-left: 3px; }
+.mis-confianca p { font-size: 10px; }
+
+/*
+ * 2. O card especial parava de sobrepor.
+ *
+ * `.mis-esp-arte` tinha `margin: -22px` — resto da época em que a moldura do
+ * item era um `border-image` grosso. Com a moldura menor, essa margem só puxava
+ * a caixa da recompensa para cima do título, que foi o embaralhado do
+ * screenshot.
+ */
+.mis-esp-arte {
+  margin: 0; border-width: 14px; width: 56px; height: 56px;
+}
+.mis-especial {
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 1fr) auto;
+  gap: 14px; align-items: center;
+}
+.mis-esp-esq { align-items: center; }
+.mis-esp-txt strong { font-size: 14px; line-height: 1.15; }
+.mis-esp-item { padding: 6px; }
+
+/*
+ * 3. O dourado sai da moldura PRATA, tingida.
+ *
+ * `mis_card_especial.png` é ornamentado demais e brigava com o resto da tela.
+ * Agora o especial usa a mesma peça dos outros e ganha a cor por filtro, como o
+ * aliado e a galáxia — uma moldura para todos, quatro cores.
+ *
+ * `hue-rotate` sozinho não colore: girar a matiz de um cinza continua cinza.
+ * `sepia` primeiro dá a ele uma matiz para girar, e `saturate` a leva até a cor
+ * cheia. É a receita para tingir arte neutra sem gerar quatro arquivos.
+ */
+.mis-especial {
+  border-width: 26px;
+  border-image: url(assets/ui/mis_card.png) 42 fill stretch;
+  filter: sepia(1) saturate(4.2) hue-rotate(-14deg) brightness(1.12);
+}
+.mis-card.tipo-principal { filter: sepia(1) saturate(3.4) hue-rotate(160deg) brightness(1.05); }
+.mis-card.tipo-aliado { filter: sepia(1) saturate(4) hue-rotate(228deg) brightness(1.05); }
+.mis-card.tipo-galaxia { filter: sepia(1) saturate(5) hue-rotate(-32deg) brightness(1.05); }
+
+/*
+ * O filtro tinge a caixa INTEIRA, inclusive o texto e os ícones de recompensa.
+ * Devolver o conteúdo à cor original é o preço de tingir por filtro — e ainda
+ * assim sai mais barato que manter quatro cópias da mesma moldura.
+ */
+.mis-card > * { filter: none; }
+.mis-especial > * { filter: none; }
