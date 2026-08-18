@@ -2456,3 +2456,15 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .venceu .prv-res-ok { border-color: var(--good); color: var(--good); }
 .perdeu .prv-res-ok { border-color: var(--line-strong); }
 .marco .prv-res-ok { border-color: #FFB638; color: #FFB638; }
+
+/* O cabeçalho de PREFIXOS / SUFIXOS na ficha do item. Discreto de propósito:
+   ele organiza a leitura e não deve competir com as linhas que rotula. O
+   primeiro não leva margem superior porque a `.tip-affixes` já a tem. */
+.affix-grupo {
+  font-size: 9px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.affix-grupo:first-child { margin-top: 0; }

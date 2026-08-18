@@ -402,6 +402,79 @@ como ser dimensionado.
 | 3.6 | ✅ Upgrades Gerais como SLOT — décima categoria, com implícito multiplicativo |
 | 3.7 | ✅ Carga 15 → 70 por conquista, filtro por elemento e favoritos, cinco ordens |
 | 3.8 | ✅ Armazém, e os 70 recursos de `Recursos.png` com origem por planeta, chefe, torre e missão |
+| 3.9 | ✅ Prefixo e sufixo: dois pools com piso garantido, e o ajuste da defesa que isso destapou |
+
+---
+
+### 3.9 — Prefixos e sufixos, e o ajuste de defesa que eles destaparam ✅
+
+O pedido: *"as naves tem seus atributos bases, os itens vao ter seus atributos em
+cima da base da nave, afixos e sufixos, tiers dentro de cada sufixo e afixo"*.
+
+**Nenhum campo novo no item, e nenhuma migração de save.** `Affix` já guarda o
+`id`; o tipo se lê da tabela (`tipoDoAfixo`), derivado da família que já
+existia — ofensiva vira prefixo, defensiva e utilidade viram sufixo, 14 contra
+12. Dois campos dizendo a mesma coisa acabariam discordando um dia.
+
+**Três desenhos, e os dois primeiros a medição reprovou.**
+
+| desenho | setor 120 | 170 | 220 | 300 |
+|---|---|---|---|---|
+| antes da divisão | 10,03 | 8,57 | 7,00 | 6,10 |
+| metade a metade | 9,54 | 7,50 | 6,67 | 5,30 |
+| ímpar pela afinidade do slot | 9,82 | 8,12 | 7,07 | 5,86 |
+| **piso pelo tema do slot** | **9,98** | **8,09** | **7,20** | **5,82** |
+
+Golpes até morrer, mediana de 41 conjuntos por setor. Partir os afixos ao meio
+obriga um escudo Divino a carregar três linhas de dano: a `AFINIDADE` dava a uma
+blindagem 4,8 linhas defensivas em sete e a metade forçada derrubava para 3,3.
+Sobrevivência caindo até 13% enquanto o tempo de limpar melhorava — poder
+escorrendo da defesa para o ataque, exatamente o que a afinidade existe para
+impedir.
+
+O que ficou: o lado do TEMA do slot ganha piso 2, o outro ganha 1, e o resto
+continua sorteado pelo peso. A garantia que o pedido quer — nenhuma peça sai de
+uma natureza só — sem apagar a identidade dos nove slots.
+
+> **A medição de 5 amostras não servia.** O teste de regime reprovava em dois
+> setores por uma mudança de balanço nulo: mexer na ORDEM das chamadas ao RNG
+> reembaralha todos os itens, e com 5 amostras o mesmo setor 300 deu 5,3, 5,7 e
+> 5,9 golpes em três variantes de poder idêntico. Subiu para 41, ao custo de
+> menos de um segundo.
+
+#### E aí apareceu o buraco de verdade
+
+Com a régua boa, a razão entre o que o jogador aguenta e o que a curva pretende
+**decaía ao longo do jogo**: 0,71 · 0,69 · 0,67 · 0,57 nos setores 120, 170, 220
+e 300. Não era o setor 300 sendo especial — era a defesa perdendo terreno o jogo
+inteiro, e o 300 sendo onde cruzava o piso de 0,6 que o teste tolera.
+
+`defesaEsperada` é um AJUSTE do que o jogador realmente tem, e o dano do inimigo
+é derivado dele. Refazendo o ajuste por mínimos quadrados em 14 setores:
+
+| | antes | medido | depois |
+|---|---|---|---|
+| `DEFESA_A` | 42,902 | **27,6** | 27,630 |
+| `DEFESA_P` | 1,2541 | 1,2515 | 1,2515 |
+
+O coeficiente estava **55% alto**: o inimigo vinha batendo com força calibrada
+contra uma defesa que o jogador não tinha. A banda larga do teste (0,6 a 1,6)
+escondeu o erro por completo.
+
+**E não era desta etapa.** A mesma medição na versão anterior à divisão ajusta em
+27,076 — a divisão prefixo/sufixo é neutra, até 2% melhor. Os 55% já estavam lá.
+
+| razão golpes/alvo | 120 | 170 | 220 | 300 |
+|---|---|---|---|---|
+| antes | 0,71 | 0,69 | 0,67 | 0,57 |
+| **depois** | **1,12** | **1,08** | **1,05** | **0,90** |
+
+Na ficha, prefixos e sufixos saem em grupos rotulados — a ordem do array não
+serve, porque o sorteio preenche os dois pisos antes do resto e as linhas chegam
+intercaladas. O rótulo só aparece quando existem os dois: numa peça comum, de uma
+linha só, "Prefixos" sozinho é ruído.
+
+Cinco testes novos em `tests/afixos.test.ts`. 451 passando.
 
 ---
 
@@ -753,9 +826,9 @@ Coisas medidas e registradas, que ainda não têm etapa marcada.
 | **A galáxia 1 vem rápida demais no simulador** | 1,2 h contra a meta de ~10 h; as seguintes em 5,3 h, 10 h e 8,5 h. Ao vivo é bem mais lento: setor 5 em 2 h | Fase 4 — o simulador ainda corre ~2× à frente |
 | **O laço ocioso trava sozinho na parede do chefe** | ao vivo, setor 5 dos 90 aos 120 min, mortes de 20 para 31. Cruzamento de "chefe exige farm" (1B.4) com "sem recuo automático" | **decisão de design pendente** — três saídas listadas na Fase 4 |
 | **Itemização torta na origem** | ofensiva cresce com expoente 3,70, defensiva com 1,10 | Fase 3 (orçamento) |
-| **Dispersão de 135× entre itens da mesma raridade** | `simular item 30` | Fase 3 (orçamento) |
-| **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | medido em 8 setores do regime estável; pior ponto no setor 50 | Fase 3 (orçamento) — é viés SISTEMÁTICO, não ruído |
-| **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | Fase 3 |
+| **Dispersão de 135× entre itens da mesma raridade** | a métrica comparava SLOTS diferentes; por slot é 1,7× a 2,0× | ✅ era artefato de medição, não defeito |
+| **O jogador aguenta 1,09× a 1,50× os golpes que a curva pretende** | o sinal virou: com 41 amostras por setor a razão CAÍA (0,71 → 0,57), e a causa era `DEFESA_A` 55% alto | ✅ resolvido em `3.9` — refeito o ajuste, razão em 1,12 a 0,90 |
+| **`powerScore` é cego para vários atributos** | itens utilitários pontuam 0 e o auto-equipar erra | ✅ resolvido em `1.7` — 27 de 27 atributos |
 | **Anel elemental com deriva de 5%** | 1,5 × 0,7 = 1,05; a especificação propõe 1,25 × 0,80 | Fase 2 · decisão pendente |
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | Fase 4 |
 | **Nave nua trava em onda de elite** | setor 4: 90 min, 67 mortes, 0 itens — inimigos escapam pela base e a onda é reposta com vida cheia | Fase 1B.1 |

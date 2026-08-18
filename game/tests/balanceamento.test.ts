@@ -332,7 +332,23 @@ describe('matriz elemental (§5)', () => {
  */
 describe('ritmo do jogo (§2)', () => {
   const AMOSTRAS = [1, 12, 25, 50, 80, 120, 170, 220, 300];
-  const medidas = AMOSTRAS.map((s) => medirSetor(s, undefined, 5));
+
+  /**
+   * Quantos conjuntos por setor entram na mediana.
+   *
+   * Era 5, e 5 não bastava. A divisão prefixo/sufixo mudou a ORDEM das chamadas
+   * ao RNG sem mudar o balanço — medido em 41 amostras, os quatro setores do
+   * regime ficaram todos dentro de 4% do que eram antes. Ainda assim o teste
+   * reprovou em dois setores, porque com 5 amostras a mediana ainda é o retrato
+   * de um punhado de sorteios: o mesmo setor 300 deu 5,3, 5,7 e 5,9 golpes em
+   * três variantes cujo poder real era o mesmo.
+   *
+   * Um guardião que reprova por remexer o fluxo do RNG não protege o
+   * balanceamento — só cobra pedágio de quem mexe no gerador. 41 amostras
+   * custam cerca de um segundo e medem a PROPRIEDADE.
+   */
+  const REPETICOES = 41;
+  const medidas = AMOSTRAS.map((s) => medirSetor(s, undefined, REPETICOES));
 
   /**
    * O alvo declarado em `tempoAlvo` vai de 4 s a 34 s. A faixa aqui é mais
@@ -417,10 +433,17 @@ describe('ritmo do jogo (§2)', () => {
    * setor 50, logo depois da introdução. Todo setor acima disso era julgado por
    * uma régua feita para o vizinho.
    *
-   * Medido em oito setores do regime, o jogador aguenta de 1,09× a 1,50× o
-   * alvo. **O viés é sistemático, não ruído**, e o pior ponto é justamente o
-   * setor 50. Este teste tolera o viés; corrigi-lo é trabalho de orçamento de
-   * item, e está anotado como dívida com o número.
+   * O viés que este comentário registrava — "o jogador aguenta de 1,09× a
+   * 1,50× o alvo" — era do MEDIDOR. Com 5 conjuntos por setor o número era um
+   * punhado de sorteios; com 41 o sinal virou de sentido: a razão CAÍA ao longo
+   * do jogo (0,71 · 0,69 · 0,67 · 0,57 nos setores 120, 170, 220 e 300), e a
+   * causa era `DEFESA_A` 55% acima do que o jogador realmente tem. O dano do
+   * inimigo deriva desse ajuste, então o inimigo batia com força calibrada
+   * contra uma defesa inexistente.
+   *
+   * Refeito o ajuste, a razão ficou em 1,12 · 1,08 · 1,05 · 0,90. A faixa
+   * continua larga porque a dispersão entre itens da mesma raridade é real;
+   * o que ela não faz mais é esconder um erro de 55%.
    */
   it('no regime estável os golpes ficam perto do alvo do próprio setor', () => {
     const fora = medidas

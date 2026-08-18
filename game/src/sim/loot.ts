@@ -1,5 +1,15 @@
 import { Rng, clamp } from '@core/math';
-import { AFFIXES, BASE_BY_ID, ITEM_SETS, basesForIlvl, iconeDeItem, pesoNoSlot, type AffixDef } from '@data/items';
+import {
+  AFFIXES,
+  BASE_BY_ID,
+  ITEM_SETS,
+  basesForIlvl,
+  iconeDeItem,
+  pisoDeAfixos,
+  pesoNoSlot,
+  tipoDoAfixo,
+  type AffixDef,
+} from '@data/items';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { CHEST_BY_ID } from '@data/chests';
 import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
@@ -92,21 +102,48 @@ export function rollItem(
   // antes da correção: 23 peças em 89 mil com mais de um degrau. Empilhar entre
   // PEÇAS continua valendo; o que o grupo impede é o acúmulo dentro de uma.
   const grupos = new Set<string>();
-  for (let i = 0; i < info.afixos && used.size < eligible.length; i++) {
-    // O peso é o do afixo NAQUELE slot, não o global. É o que dá identidade às
-    // nove categorias: sem isso, medido, uma blindagem tinha 41,8% de linhas
-    // defensivas e um suporte 18% de utilidade — nove peças que eram a mesma
-    // peça com nomes diferentes.
-    const disponiveis = eligible.filter(
-      (a) => !used.has(a.id) && !(a.grupo && grupos.has(a.grupo)),
-    );
-    if (!disponiveis.length) break;
-    const def = rng.weighted(disponiveis, (a) => pesoNoSlot(a, base.slot));
-    if (!def) break;
-    used.add(def.id);
-    if (def.grupo) grupos.add(def.grupo);
-    affixes.push(rollAffix(rng, def, ilvl, info.tierMax));
-  }
+
+  // Sorteia até `quantos` afixos de um POOL, respeitando o que já saiu.
+  // Devolve quantos faltaram — é o que permite a sobra escorrer para o outro
+  // lado em vez de encolher o item.
+  //
+  // O peso é o do afixo NAQUELE slot, não o global. É o que dá identidade às
+  // nove categorias: sem isso, medido, uma blindagem tinha 41,8% de linhas
+  // defensivas e um suporte 18% de utilidade — nove peças que eram a mesma
+  // peça com nomes diferentes.
+  const sortear = (pool: readonly AffixDef[], quantos: number): number => {
+    let feitos = 0;
+    for (; feitos < quantos; feitos++) {
+      const disponiveis = pool.filter(
+        (a) => !used.has(a.id) && !(a.grupo && grupos.has(a.grupo)),
+      );
+      if (!disponiveis.length) break;
+      const def = rng.weighted(disponiveis, (a) => pesoNoSlot(a, base.slot));
+      if (!def) break;
+      used.add(def.id);
+      if (def.grupo) grupos.add(def.grupo);
+      affixes.push(rollAffix(rng, def, ilvl, info.tierMax));
+    }
+    return quantos - feitos;
+  };
+
+  // Dois orçamentos que não se emprestam por vontade do sorteio — só por falta
+  // de opção. Sem a divisão, um Divino podia sair com sete linhas ofensivas e
+  // zero defensivas, e a peça "certa" de cada slot seria sempre a mesma.
+  //
+  // A sobra escorre porque o pool pode acabar antes do orçamento: um slot com
+  // poucos sufixos elegíveis entregaria um Divino de quatro linhas, punindo a
+  // raridade mais rara do jogo por um acidente de tabela. Prefixos primeiro
+  // também fixa a ORDEM na ficha, sem o cartão precisar reordenar nada.
+  const prefixos = eligible.filter((a) => tipoDoAfixo(a) === 'prefixo');
+  const sufixos = eligible.filter((a) => tipoDoAfixo(a) === 'sufixo');
+  const piso = pisoDeAfixos(base.slot, info.afixos);
+  sortear(prefixos, piso.prefixos);
+  sortear(sufixos, piso.sufixos);
+  // O resto vem do bolo inteiro, pelo peso do slot — é aqui que a `AFINIDADE`
+  // continua desenhando a identidade da peça. A sobra dos pisos entra junto:
+  // se um slot não tinha sufixo elegível, o item não pode encolher por isso.
+  sortear(eligible, info.afixos - affixes.length);
 
   // Conjuntos só aparecem em raridades altas e apenas nos slots que o conjunto
   // cobre — juntar quatro peças precisa ser uma meta, não um acidente.

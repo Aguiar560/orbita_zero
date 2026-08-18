@@ -4,4 +4,10 @@
  * importação para o resto do jogo — `@data/rarity` é o nome que a UI, o loot e
  * a cena já usam, e renomear vinte importações não paga o ruído no histórico.
  */
-export { MAX_RARITY, PESO_TOTAL, RARITIES, rarityInfo, type RarityInfo } from './balance/raridades';
+export {
+  MAX_RARITY,
+  PESO_TOTAL,
+  RARITIES,
+  rarityInfo,
+  type RarityInfo,
+} from './balance/raridades';

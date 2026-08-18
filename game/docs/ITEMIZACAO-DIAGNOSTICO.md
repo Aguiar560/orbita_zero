@@ -98,32 +98,28 @@ Entregar a escada sem retunar a curva do inimigo trocaria um problema por outro.
 
 ---
 
-## 5. Prefixos e sufixos — ainda não existem
+## 5. Prefixos e sufixos ✅ (feito em `3.9`)
 
-A estrutura pedida — atributo base da nave, item somando por cima, **prefixo e
-sufixo separados**, com tier dentro de cada um — não é o que está implementado.
+Feito **sem campo novo no item e sem migração de save**: `Affix` já guarda o
+`id`, então o tipo se lê da tabela. Ofensiva vira prefixo, defensiva e utilidade
+viram sufixo — 14 contra 12.
 
-Hoje há **uma lista só** de `affixes`, cada um com `tier` de 1 a 10. Não existe
-distinção entre prefixo e sufixo, nem limite por família.
+O que a medição descartou pelo caminho está registrado na `3.9` do ROADMAP:
+partir os afixos ao meio custava até 13% de sobrevivência, porque forçava três
+linhas de dano num escudo. Ficou um PISO que pende para o tema do slot, e o
+resto continua sorteado pelo peso da afinidade.
 
-Isso é uma mudança de MODELO, não de número, e toca:
-
-- `Item.affixes` e o save (item antigo não tem a divisão);
-- `rollItem`, que hoje sorteia N linhas de um pool único;
-- a exibição no `ItemCard`;
-- a fusão, que gera itens;
-- os testes de tier e de exclusão mútua.
-
-Vale fazer **depois** dos quatro passos acima: mexer nas duas coisas ao mesmo
-tempo tornaria impossível saber qual delas moveu a curva.
+O refazer do ajuste de `DEFESA_A` que isso destapou — 55% alto, e **anterior a
+esta etapa** — está lá também.
 
 ---
 
 ## 6. Recomendação
 
-Fazer na ordem: primeiro a escada de raridade com a retuna da curva (passos 1 a
-4), medindo a cada passo; depois a divisão prefixo/sufixo.
+Cumprida, na ordem proposta. A escada de raridade saiu primeiro (Comum 0,60 ·
+Incomum 1,90 · Raro 2,20 · Épico 2,70 · Lendário 3,10 · Mítico 4,90 · Divino
+7,00, travando em 24 / 40 / 88 / 190), a divisão prefixo/sufixo depois.
 
-O primeiro bloco é o que resolve o problema que o Rafael descreveu — "um conjunto
-de Comuns não deveria passar do chefe 10". O segundo é profundidade de
-itemização, e depende do primeiro estar estável para ser medido.
+Fica em aberto o que a régua da "parede" não consegue separar: Lendário, Mítico
+e Divino travam todos além do setor 300. Distinguir os três precisa de outra
+medida — provavelmente tempo de limpeza no setor 300, e não o setor da parede.

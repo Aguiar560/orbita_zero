@@ -1,11 +1,11 @@
 import { fmt } from '@core/format';
-import { SET_BY_ID, SLOT_LABEL } from '@data/items';
+import { AFFIX_BY_ID, SET_BY_ID, SLOT_LABEL, tipoDoAfixo, type TipoDeAfixo } from '@data/items';
 import { rarityInfo } from '@data/rarity';
 import { TIERS } from '@data/balance/tiers';
 import { affixText, itemName, itemStats, salvageValue } from '@sim/loot';
 import { setCounts } from '@sim/stats';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
-import { DANO_STAT, RES_STAT, STAT_IDS, type Item, type StatId, type Stats } from '@sim/types';
+import { DANO_STAT, RES_STAT, STAT_IDS, type Affix, type Item, type StatId, type Stats } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from './dom';
 
@@ -87,13 +87,42 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
   // O tier vai numa etiqueta própria, e não embutido no texto, porque é o que o
   // jogador compara entre duas peças do mesmo nome — precisa ser varrível numa
   // coluna, não caçado no meio da frase.
-  frag.append(h('.tip-affixes', {}, ...item.affixes.map((a) => h('span.affix', {},
+  const linha = (a: Affix) => h('span.affix', {},
     ...(a.tier ? [h(`span.affix-tier${a.tier >= TIERS ? '.maximo' : ''}`, {
       text: `T${a.tier}`,
       title: a.tier >= TIERS ? 'Tier máximo' : `Tier ${a.tier} de ${TIERS}`,
     })] : []),
     h('span', { text: affixText(a) }),
-  ))));
+  );
+
+  // Prefixos e sufixos são grupos SEPARADOS na ficha, e a ordem do array não
+  // serve: o sorteio preenche primeiro os pisos das duas naturezas e só depois
+  // o resto, então as linhas chegam intercaladas. Quem compara duas peças lê a
+  // metade ofensiva contra a metade ofensiva — misturar obriga a reordenar de
+  // cabeça a cada leitura.
+  //
+  // O rótulo do grupo só aparece quando existem os DOIS; numa peça de raridade
+  // baixa, com uma linha só, "Prefixos" sozinho é ruído puro.
+  const porTipo = (t: TipoDeAfixo) =>
+    item.affixes.filter((a) => {
+      const def = AFFIX_BY_ID.get(a.id);
+      return def ? tipoDoAfixo(def) === t : t === 'prefixo';
+    });
+  const prefixos = porTipo('prefixo');
+  const sufixos = porTipo('sufixo');
+
+  if (prefixos.length && sufixos.length) {
+    frag.append(
+      h('.tip-affixes.tip-grupo', {},
+        h('span.affix-grupo', { text: 'Prefixos' }),
+        ...prefixos.map(linha),
+        h('span.affix-grupo', { text: 'Sufixos' }),
+        ...sufixos.map(linha),
+      ),
+    );
+  } else {
+    frag.append(h('.tip-affixes', {}, ...item.affixes.map(linha)));
+  }
 
   if (comparing && equipped) {
     frag.append(

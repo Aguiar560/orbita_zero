@@ -230,14 +230,81 @@ export const AFINIDADE: Record<SlotId, Record<FamiliaDeAfixo, number>> = {
   upgrade:    { ofensiva: 1.0, defensiva: 1.0, utilidade: 1.0 },
 };
 
+/**
+ * O PISO de prefixos e de sufixos que a peça carrega, garantido.
+ *
+ * Não é uma divisão meio a meio, e as duas tentativas descartadas dizem por quê.
+ * Partir os afixos ao meio obriga um escudo Divino a carregar três linhas de
+ * dano: a `AFINIDADE` dava a uma blindagem 4,8 linhas defensivas em sete, e a
+ * metade forçada derrubava para 3,3. Medido em 41 conjuntos por setor, a
+ * sobrevivência caía de 5% a 13% enquanto o tempo de limpar melhorava — poder
+ * escorrendo da defesa para o ataque. Inclinar só o ímpar pela afinidade
+ * reduziu o estrago mas não o eliminou.
+ *
+ * O piso entrega o que a divisão existe para entregar — nenhuma peça sai sendo
+ * SÓ ofensiva ou SÓ defensiva — sem apagar a identidade dos nove slots. O lado
+ * do TEMA do slot ganha o piso maior, o outro fica com um; o que sobra continua
+ * sorteado pelo peso, como sempre foi. Assim medido, o balanço ficou dentro de
+ * 4% do que era antes da divisão.
+ *
+ *   1 afixo → 0+0 (Comum: com uma linha só, garantir as duas naturezas é
+ *   impossível, e forçá-la a ser ofensiva tornaria toda peça comum idêntica)
+ *   2 afixos → 1+1 · 3 ou mais → 2 do lado do tema, 1 do outro
+ *
+ * "Lado do tema" sai da própria `AFINIDADE`: a peça é ofensiva quando puxa mais
+ * ofensiva do que a média das outras duas famílias. `upgrade` empata de
+ * propósito (1,0 / 1,0 / 1,0) e cai no ramo do sufixo — o encaixe curinga não
+ * deveria ser o slot que mais bombeia dano.
+ */
+export function pisoDeAfixos(
+  slot: SlotId,
+  afixos: number,
+): { prefixos: number; sufixos: number } {
+  if (afixos < 2) return { prefixos: 0, sufixos: 0 };
+  const a = AFINIDADE[slot];
+  const ofensivo = a.ofensiva > (a.defensiva + a.utilidade) / 2;
+  const maior = afixos >= 3 ? 2 : 1;
+  return ofensivo
+    ? { prefixos: maior, sufixos: 1 }
+    : { prefixos: 1, sufixos: maior };
+}
+
 /** Peso efetivo de um afixo NAQUELE slot. */
 export function pesoNoSlot(def: AffixDef, slot: SlotId): number {
   return def.weight * (AFINIDADE[slot]?.[def.familia] ?? 1);
 }
 
+/**
+ * Prefixo ou sufixo.
+ *
+ * A divisão existe para uma coisa só: impedir que um item de raridade alta role
+ * SEIS linhas ofensivas. Com dois orçamentos separados, uma peça sempre carrega
+ * as duas naturezas — que é o que o §16 pede quando diz para não existir build
+ * universal.
+ */
+export type TipoDeAfixo = 'prefixo' | 'sufixo';
+
+/**
+ * De qual pool o afixo sai.
+ *
+ * DERIVADO da família, não um campo novo. As três famílias já dividiam os
+ * afixos — 14 ofensivos, 7 defensivos, 5 de utilidade — e criar um segundo
+ * campo para dizer a mesma coisa abriria a porta para os dois discordarem.
+ *
+ * Ofensiva vira prefixo; defensiva e utilidade viram sufixo. Dá 14 contra 12,
+ * pools de tamanho parecido.
+ *
+ * `tipo` no próprio afixo existe como ESCAPE para o dia em que uma linha
+ * precisar fugir do padrão — hoje ninguém usa.
+ */
+export const tipoDoAfixo = (a: AffixDef): TipoDeAfixo =>
+  a.tipo ?? (a.familia === 'ofensiva' ? 'prefixo' : 'sufixo');
+
 export interface AffixDef {
   id: string;
   label: string;
+  /** Fuga explícita do padrão de `tipoDoAfixo`. Raro, e por isso opcional. */
+  tipo?: TipoDeAfixo;
   /** Eixo do jogo a que pertence — decide a afinidade com cada slot. */
   familia: FamiliaDeAfixo;
   /**

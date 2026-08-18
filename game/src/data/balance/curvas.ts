@@ -77,8 +77,8 @@ export const ILVL_POR_SETOR = 0.9;
 export const PODER_A = 0.527;
 export const PODER_P = 2.9279;
 
-export const DEFESA_A = 42.902;
-export const DEFESA_P = 1.2541;
+export const DEFESA_A = 27.630;
+export const DEFESA_P = 1.2515;
 
 export const PODER_C = 3;
 export const DEFESA_C = 1.5;
