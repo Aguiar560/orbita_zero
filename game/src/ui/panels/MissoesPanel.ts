@@ -8,7 +8,7 @@ import {
   STATUS_LABEL, type PersonagemDef,
 } from '@data/personagens';
 import { CONCESSAO_POR_ID } from '@data/balance/capacidade';
-import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
+import { RECURSO_POR_ID } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
 import {
   confiancaDe, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
@@ -143,7 +143,7 @@ export class MissoesPanel implements Panel {
         h('strong', { text: c.def.nome }),
         h('span.muted.tiny', { text: c.def.faccao }),
       ),
-      sinal ? h('span.mis-sinal', { text: sinal.glifo, style: { color: sinal.cor }, title: sinal.titulo }) : h('span'),
+      sinal ? h('span.mis-sinal.s-' + c.sinal, { title: sinal.titulo }) : h('span'),
     );
   }
 
@@ -235,8 +235,8 @@ export class MissoesPanel implements Panel {
     const prog = progressoDe(sim.state, def);
     const pronta = situacao === 'pronta';
 
-    return h(`.mis-card${pronta ? '.pronta' : ''}`, { style: { borderColor: t.cor } },
-      h('.mis-card-icone', { style: { borderColor: t.cor, color: t.cor } }, h('span', { text: t.glifo })),
+    return h(`.mis-card.tipo-${def.tipo ?? 'principal'}${pronta ? '.pronta' : ''}`, {},
+      h('.mis-card-icone.i-' + (def.tipo ?? 'principal')),
 
       h('.mis-card-txt', {},
         h('strong', { text: def.nome.toUpperCase(), style: { color: t.cor } }),
@@ -256,7 +256,7 @@ export class MissoesPanel implements Panel {
 
       h('.mis-card-premio', {},
         h('span.muted.tiny', { text: 'RECOMPENSAS' }),
-        h('.mis-fichas', {}, ...this.premios(def)),
+        h('.mis-premio-grade', {}, ...this.premios(def)),
       ),
 
       pronta
@@ -283,7 +283,7 @@ export class MissoesPanel implements Panel {
 
     return h(`.mis-card.mis-especial${pronta ? '.pronta' : ''}`, {},
       h('.mis-esp-esq', {},
-        h('.mis-card-icone.grande', { style: { borderColor: t.cor, color: t.cor } }, h('span', { text: t.glifo })),
+        h('.mis-card-icone.grande.i-especial'),
         h('.mis-esp-txt', {},
           h('span.mis-esp-tag', { text: 'CONTRATO ESPECIAL' }),
           h('strong', { text: def.nome.toUpperCase() }),
@@ -303,7 +303,7 @@ export class MissoesPanel implements Panel {
               h('.mis-esp-info', {},
                 h('strong', { text: ex.nome, style: { color: t.cor } }),
                 ...(ex.de ? [h('span.mis-esp-dono', { text: `★ ITEM EXCLUSIVO DE ${ex.de}` })] : []),
-                h('.mis-fichas', {}, ...this.premios(def)),
+                h('.mis-premio-grade', {}, ...this.premios(def)),
               ),
             ),
           )]
@@ -321,7 +321,7 @@ export class MissoesPanel implements Panel {
   private cardBloqueado(sim: Sim, def: MissaoDef): HTMLElement {
     const faltam = requisitosPendentes(sim.state, def, sim.alcanceLiberado);
     return h('.mis-card.mis-travada', {},
-      h('.mis-card-icone', {}, h('span', { text: '🔒' })),
+      h('.mis-card-icone.i-travado'),
       h('.mis-card-txt', {},
         h('strong', { text: def.nome.toUpperCase() }),
         h('span.muted.tiny', { text: def.descricao }),
@@ -351,7 +351,7 @@ export class MissoesPanel implements Panel {
           // de cores e serve para reduzir a lista.
           onclick: () => { this.filtroTipo = ativo ? 'todos' : id; sim.touch(); },
         },
-          h('.mis-tipo-icone', { style: { borderColor: t.cor, color: t.cor } }, h('span', { text: t.glifo })),
+          h('.mis-tipo-icone.i-' + id),
           h('.mis-tipo-txt', {},
             h('strong', { text: t.nome, style: { color: t.cor } }),
             h('span.muted.tiny', { text: t.explicacao }),
@@ -360,7 +360,7 @@ export class MissoesPanel implements Panel {
       }),
 
       h('.mis-secao-tit', { text: 'RECOMPENSAS GERAIS' }),
-      h('.mis-fichas', {},
+      h('.mis-premio-grade', {},
         h('span.mis-pilula', { text: 'XP' }),
         h('span.mis-pilula', { text: 'SUCATA' }),
         h('span.mis-pilula', { text: 'RECURSOS' }),
@@ -404,7 +404,7 @@ export class MissoesPanel implements Panel {
           h('strong', { text: c.def.nome, style: { color: c.def.cor } }),
           h('span.muted.tiny', { text: c.def.titulo }),
           h('.mis-nos.compacto', {}, ...Array.from({ length: CONFIANCA_MAX }, (_, i) =>
-            h('.mis-no.mini', {
+            h(`.mis-no.mini${c.confianca > i ? '.aceso' : ''}`, {
               style: {
                 borderColor: c.confianca > i ? c.def.cor : 'var(--line)',
                 background: c.confianca > i ? c.def.cor : 'transparent',
@@ -429,12 +429,12 @@ export class MissoesPanel implements Panel {
             const p = def.giverId ? PERSONAGEM_POR_ID.get(def.giverId) : undefined;
             // Discreto de propósito (§23): é histórico, não chamada para ação.
             return h('.mis-card.mis-feita', {},
-              h('.mis-card-icone', {}, h('span', { text: '✓' })),
+              h('.mis-card-icone.i-feita'),
               h('.mis-card-txt', {},
                 h('strong', { text: def.nome.toUpperCase() }),
                 h('span.muted.tiny', { text: p ? `${p.nome} · ${TIPO_DE_MISSAO[def.tipo ?? 'principal'].nome}` : '' }),
               ),
-              h('.mis-fichas', {}, ...this.premios(def)),
+              h('.mis-premio-grade', {}, ...this.premios(def)),
             );
           }))
         : h('p.muted.hint', { text: 'Nenhuma missão concluída ainda.' }),
@@ -443,32 +443,52 @@ export class MissoesPanel implements Panel {
 
   // ── recompensas em fichas ─────────────────────────────────────────────────
 
+  /**
+   * As recompensas, como ÍCONE com o valor no canto.
+   *
+   * A versão anterior era uma pílula de texto por recompensa — "2K sucata",
+   * "400 XP" — e cinco delas viravam uma parede de palavras dentro de um card
+   * que já tem nome, descrição e progresso. Com ícone, o quadrado diz o QUE e o
+   * número diz QUANTO, e a linha inteira se lê de relance.
+   *
+   * O `title` carrega o texto completo: o ícone é reconhecível depois da
+   * primeira vez, e antes disso o passar do mouse resolve.
+   */
   private premios(def: MissaoDef): HTMLElement[] {
     const r = def.recompensa;
     const out: HTMLElement[] = [];
-    const ficha = (texto: string, cor?: string) =>
-      h('span.mis-pilula', { text: texto, style: cor ? { borderColor: cor, color: cor } : {} });
+    const premio = (classe: string, valor: string, titulo: string) =>
+      h(`.mis-premio.r-${classe}`, { title: titulo }, h('span.mis-premio-n', { text: valor }));
 
-    if (r.xp) out.push(ficha(`${fmt(r.xp)} XP`));
-    for (const [moeda, n] of Object.entries(r.moedas ?? {})) out.push(ficha(`${fmt(n)} ${moeda}`));
+    if (r.xp) out.push(premio('xp', fmt(r.xp), `${fmt(r.xp)} de experiência`));
+    for (const [moeda, n] of Object.entries(r.moedas ?? {})) {
+      // Cada moeda tem ícone próprio; recurso do Armazém cai no genérico.
+      const classe = moeda === 'sucata' ? 'sucata' : moeda === 'nucleo' ? 'nucleo' : 'cristal';
+      out.push(premio(classe, fmt(n), `${fmt(n)} de ${moeda}`));
+    }
     for (const [rec, n] of Object.entries(r.materiais ?? {})) {
       const d = RECURSO_POR_ID.get(rec);
-      out.push(h('span.mis-pilula', {},
-        d ? spriteIcon(iconeDeRecurso(d), 16) : h('span'),
-        h('span', { text: `${fmt(n)} ${d?.nome ?? rec}` }),
-      ));
+      out.push(premio('recurso', fmt(n), `${fmt(n)} de ${d?.nome ?? rec}`));
     }
-    if (r.medalhas) out.push(ficha(`◈ ${r.medalhas}`, 'var(--accent-2)'));
-    for (const [tier, n] of Object.entries(r.baus ?? {})) out.push(ficha(`${n}× ${tier}`));
+    if (r.medalhas) out.push(premio('medalha', String(r.medalhas), `${r.medalhas} medalha(s)`));
+    for (const [tier, n] of Object.entries(r.baus ?? {})) {
+      out.push(premio('bau', String(n), `${n}× baú ${tier}`));
+    }
     if (r.itens && !def.recompensaExclusiva) {
       const piso = r.itens.raridadeMin !== undefined ? rarityInfo(r.itens.raridadeMin) : null;
-      out.push(ficha(`${r.itens.quantidade}× item${piso ? ` ${piso.name}+` : ''}`, piso?.color));
+      out.push(premio('item', String(r.itens.quantidade),
+        `${r.itens.quantidade}× item${piso ? ` ${piso.name} ou melhor` : ''}`));
     }
     if (r.concessao) {
       const c = CONCESSAO_POR_ID.get(r.concessao);
-      out.push(ficha(`+${c?.itens ?? 0} espaços`, 'var(--good)'));
+      out.push(premio('espaco', `+${c?.itens ?? 0}`, `+${c?.itens ?? 0} espaços de carga`));
     }
-    if (def.confianca) out.push(ficha(`+${def.confianca} confiança`, '#B45CFF'));
+    if (def.confianca) {
+      out.push(premio('confianca', `+${def.confianca}`, `+${def.confianca} de confiança`));
+    }
+    if (def.recompensaExclusiva) {
+      out.push(premio('exclusivo', '★', def.recompensaExclusiva.nome));
+    }
     return out;
   }
 }

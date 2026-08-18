@@ -1630,3 +1630,171 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 @media (max-width: 1180px) {
   .mis-corpo > .mis-dir { display: none; }
 }
+
+/* ── Missões: a arte da chapa `missoes 3.png` ────────────────────────────── */
+/*
+ * `border-image` é 9-slice nativo do navegador: a peça é recortada em nove
+ * pedaços, os quatro cantos ficam fixos e as faixas do meio esticam. O número
+ * depois da URL é a margem EM PIXELS DA ARTE, e ela precisa conter o ornamento
+ * de canto inteiro — cortar no meio joga o resto na faixa que estica.
+ *
+ * `border-width` tem de acompanhar a `slice`, senão a arte renderiza com
+ * espessura quase zero e some. Foi o que aconteceu na Fabricação.
+ */
+
+/* ── molduras ─────────────────────────────────────────────────────────────── */
+.mis-contato {
+  border: 20px solid transparent;
+  border-image: url(assets/ui/mis_card_contato.png) 32 fill stretch;
+  background: none;
+  /*
+   * O border-image OCUPA a caixa: 20 px de borda em cima e embaixo somam 40 ao
+   * card. A margem negativa devolve esse espaco ao layout, senao a linha de
+   * contato passa de 64 px para 112 e a coluna vira uma torre. Medido.
+   */
+  padding: 0 6px; margin: -14px 0;
+}
+.mis-contato.sel { border-image: url(assets/ui/mis_card_contato_sel.png) 32 fill stretch; }
+.mis-contato.travado { border-image: url(assets/ui/mis_card_contato.png) 32 fill stretch; }
+
+.mis-ficha {
+  border: 30px solid transparent;
+  border-image: url(assets/ui/mis_ficha.png) 48 fill stretch;
+  background: none; padding: 0 4px; margin: -24px 0;
+}
+.mis-confianca {
+  border: 22px solid transparent;
+  border-image: url(assets/ui/mis_confianca.png) 32 fill stretch;
+  background: none; padding: 0 6px; margin: -16px 0;
+}
+
+.mis-card {
+  border: 26px solid transparent;
+  border-image: url(assets/ui/mis_card.png) 42 fill stretch;
+  background: none; padding: 0 8px; margin: -20px 0;
+}
+/*
+ * O card comum é BRANCO na arte, então recebe a cor do tipo por filtro.
+ * `border-image` não aceita `border-color`, e tingir no build exigiria quatro
+ * cópias do mesmo arquivo — uma por tipo.
+ */
+.mis-card.tipo-principal { filter: hue-rotate(0deg); }
+.mis-card.tipo-aliado { filter: hue-rotate(58deg) saturate(1.4); }
+.mis-card.tipo-galaxia { filter: hue-rotate(150deg) saturate(1.6); }
+.mis-card.mis-travada { filter: grayscale(0.7) brightness(0.7); }
+
+.mis-especial {
+  border: 30px solid transparent;
+  border-image: url(assets/ui/mis_card_especial.png) 50 fill stretch;
+  background: none; box-shadow: none; filter: none;
+  padding: 0 10px; margin: -22px 0;
+}
+.mis-esp-arte {
+  border: 36px solid transparent;
+  border-image: url(assets/ui/mis_moldura_item.png) 36 fill stretch;
+  background: none; width: 60px; height: 60px; padding: 0; margin: -22px;
+}
+
+/* ── abas, botões e contadores ────────────────────────────────────────────── */
+.mis-aba {
+  border: 0; clip-path: none; background: none;
+  border-image: none;
+  padding: 12px 26px;
+  background-image: url(assets/ui/mis_aba.png);
+  background-size: 100% 100%; background-repeat: no-repeat;
+}
+.mis-aba.ativa { background-image: url(assets/ui/mis_aba_ativa.png); box-shadow: none; }
+.mis-cont {
+  border: 0; background: none;
+  padding: 7px 16px;
+  background-image: url(assets/ui/mis_cont_cyan.png);
+  background-size: 100% 100%; background-repeat: no-repeat;
+}
+.mis-cont.pronta { background-image: url(assets/ui/mis_cont_verde.png); }
+.mis-cont.medalha { background-image: url(assets/ui/mis_cont_ambar.png); }
+
+.mis-entregar-tudo, .mis-entregar {
+  border: 0; background: none;
+  background-image: url(assets/ui/mis_aba_ativa.png);
+  background-size: 100% 100%; background-repeat: no-repeat;
+}
+.mis-entregar-tudo:disabled { background-image: url(assets/ui/mis_aba.png); }
+
+/* ── nós da confiança ─────────────────────────────────────────────────────── */
+/*
+ * Sem `clip-path`: a silhueta agora vem da própria arte, e manter o recorte
+ * hexagonal por cima cortaria o brilho da borda.
+ */
+.mis-no {
+  border: 0; clip-path: none; background: none;
+  width: 34px; height: 38px;
+  background-image: url(assets/ui/mis_no.png);
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+  box-shadow: none;
+}
+.mis-no.aberto { background-image: url(assets/ui/mis_no_aberto.png); box-shadow: none; }
+.mis-no.travado { background-image: url(assets/ui/mis_no_travado.png); }
+/* O glifo interno some: a arte já traz o símbolo. */
+.mis-no > span { display: none; }
+.mis-no.mini { width: 14px; height: 16px; background-image: url(assets/ui/mis_no.png); }
+.mis-no.mini.aceso { background-image: url(assets/ui/mis_no_aberto.png); }
+.mis-fio {
+  width: 22px; height: 6px; background: none;
+  background-image: url(assets/ui/mis_fio.png);
+  background-size: 100% 100%; background-repeat: no-repeat;
+}
+.mis-fio.aceso { background-image: url(assets/ui/mis_fio_aceso.png); }
+
+/* ── ícones de tipo e sinais ──────────────────────────────────────────────── */
+.mis-tipo-icone, .mis-card-icone {
+  border: 0; clip-path: none; background: none;
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+  color: transparent; /* o glifo de texto sai; a arte o substitui */
+}
+.mis-tipo-icone.i-principal, .mis-card-icone.i-principal { background-image: url(assets/ui/mis_tipo_principal.png); }
+.mis-tipo-icone.i-aliado, .mis-card-icone.i-aliado { background-image: url(assets/ui/mis_tipo_aliado.png); }
+.mis-tipo-icone.i-galaxia, .mis-card-icone.i-galaxia { background-image: url(assets/ui/mis_tipo_galaxia.png); }
+.mis-tipo-icone.i-especial, .mis-card-icone.i-especial { background-image: url(assets/ui/mis_tipo_especial.png); }
+.mis-card-icone.i-travado { background-image: url(assets/ui/mis_sinal_travado.png); }
+.mis-card-icone.i-feita { background-image: url(assets/ui/mis_sinal_pronta.png); }
+.mis-card-icone.grande { width: 56px; height: 56px; }
+
+.mis-sinal {
+  width: 20px; height: 20px; display: inline-block; color: transparent;
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+}
+.mis-sinal.s-nova { background-image: url(assets/ui/mis_sinal_nova.png); }
+.mis-sinal.s-pronta { background-image: url(assets/ui/mis_sinal_pronta.png); }
+.mis-sinal.s-especial { background-image: url(assets/ui/mis_sinal_especial.png); }
+.mis-sinal.s-travado { background-image: url(assets/ui/mis_sinal_travado.png); }
+
+/* ── recompensas: ÍCONE em vez de texto ───────────────────────────────────── */
+/*
+ * A pílula de texto vira ficha de ícone. O valor fica por cima, no canto —
+ * é a leitura do mockup: o ícone diz O QUE é, o número diz QUANTO, e os dois
+ * ocupam um quadrado só em vez de uma linha de texto por recompensa.
+ */
+.mis-premio-grade { display: flex; gap: 4px; flex-wrap: wrap; }
+.mis-premio {
+  position: relative; width: 34px; height: 34px;
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+}
+.mis-premio-n {
+  position: absolute; right: -2px; bottom: -3px;
+  font-size: 9px; line-height: 1; padding: 1px 3px;
+  color: var(--text); background: rgba(2, 5, 12, 0.9);
+  border: 1px solid var(--line-strong); border-radius: 4px;
+}
+.mis-premio.r-xp { background-image: url(assets/ui/rec_xp.png); }
+.mis-premio.r-sucata { background-image: url(assets/ui/rec_sucata.png); }
+.mis-premio.r-nucleo { background-image: url(assets/ui/rec_nucleo.png); }
+.mis-premio.r-cristal { background-image: url(assets/ui/rec_cristal.png); }
+.mis-premio.r-recurso { background-image: url(assets/ui/rec_recurso.png); }
+.mis-premio.r-item { background-image: url(assets/ui/rec_item.png); }
+.mis-premio.r-bau { background-image: url(assets/ui/rec_bau.png); }
+.mis-premio.r-medalha { background-image: url(assets/ui/rec_medalha.png); }
+.mis-premio.r-blueprint { background-image: url(assets/ui/rec_blueprint.png); }
+.mis-premio.r-confianca { background-image: url(assets/ui/rec_confianca.png); }
+.mis-premio.r-espaco { background-image: url(assets/ui/rec_espaco.png); }
+.mis-premio.r-exclusivo { background-image: url(assets/ui/rec_exclusivo.png); }
+.mis-premio.r-vazio { background-image: url(assets/ui/rec_moldura.png); }

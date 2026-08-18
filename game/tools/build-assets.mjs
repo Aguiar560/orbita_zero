@@ -40,6 +40,7 @@ import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
 import { RECURSOS_SHEET, celulas as celulasDeRecurso } from './recursos.slices.mjs';
 import { INTERFACE_SHEET, PECAS, PECAS_SOLTAS } from './interface.slices.mjs';
+import { MISSOES_SHEET, PECAS_MISSOES } from './missoes.slices.mjs';
 
 /** O catálogo novo do §23. */
 const NOVOS_ITENS_SHEET = 'novos itens.png';
@@ -1451,12 +1452,34 @@ async function buildInterface(manifest) {
   log(`Interface: ${INTERFACE_SHEET} (${folha.width}x${folha.height})`);
 
   manifest.interface = {};
-  for (const p of PECAS) {
-    const rel = `ui/${p.id}.png`;
-    await rawToSharp(crop(folha, p.x, p.y, p.w, p.h))
-      .png({ compressionLevel: 9 })
-      .toFile(await ensureFile(rel));
-    manifest.interface[p.id] = { src: rel, w: p.w, h: p.h, ...(p.slice ? { slice: p.slice } : {}) };
+  const recortar = async (chapa, pecas) => {
+    for (const p of pecas) {
+      const rel = `ui/${p.id}.png`;
+      await rawToSharp(crop(chapa, p.x, p.y, p.w, p.h))
+        .png({ compressionLevel: 9 })
+        .toFile(await ensureFile(rel));
+      manifest.interface[p.id] = { src: rel, w: p.w, h: p.h, ...(p.slice ? { slice: p.slice } : {}) };
+    }
+  };
+  await recortar(folha, PECAS);
+
+  // Segunda chapa: as peças de Missões. Duas folhas em vez de uma porque foram
+  // geradas em pedidos diferentes — forçar a segunda de volta para dentro da
+  // primeira seria retrabalho sem ganho nenhum.
+  let missoes = 0;
+  {
+    const m1 = path.join(RAW, 'spaceships new', MISSOES_SHEET);
+    const m2 = path.join(RAW, MISSOES_SHEET);
+    const alvo = existsSync(m1) ? m1 : existsSync(m2) ? m2 : null;
+    if (!alvo) {
+      console.warn(`   ! ${MISSOES_SHEET} não encontrado — pulando peças de missões`);
+    } else {
+      noteRead(alvo);
+      const chapa = await toRaw(alvo);
+      log(`Interface: ${MISSOES_SHEET} (${chapa.width}x${chapa.height})`);
+      await recortar(chapa, PECAS_MISSOES);
+      missoes = PECAS_MISSOES.length;
+    }
   }
 
   // Peças que vieram em arquivo próprio.
@@ -1472,5 +1495,5 @@ async function buildInterface(manifest) {
     soltas++;
   }
 
-  log(`   ${PECAS.length + soltas} peças de interface`);
+  log(`   ${PECAS.length + soltas + missoes} peças de interface`);
 }
