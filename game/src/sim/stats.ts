@@ -165,11 +165,23 @@ export function resolveStats(state: GameState): Stats {
      * conta até o setor 180, e do Épico para cima nenhuma raridade travava
      * dentro dos 300 — quando a intenção é que Comum não passe do chefe 10.
      */
+    /**
+     * A raridade multiplica o item INTEIRO — implícito e afixos.
+     *
+     * Aplicá-la só ao implícito foi a primeira tentativa e quase não funcionou:
+     * medido, reduzir o implícito 36 vezes moveu a parede do conjunto Comum de
+     * 32 para 28. O implícito é parcela pequena do poder de um item; quem manda
+     * são os afixos.
+     *
+     * Com o item inteiro escalado, a raridade volta a ser o eixo de progressão
+     * que a tabela sempre descreveu — e continua sendo UM número por raridade,
+     * em vez de tier, contagem de afixo e magnitude puxando cada um para um lado.
+     */
+    const fatorDaRaridade = rarityInfo(item.rarity).power / RARIDADE_DE_REFERENCIA;
     if (base) {
-      acc[base.implicit.kind][base.implicit.stat] +=
-        base.implicit.per * item.ilvl * (rarityInfo(item.rarity).power / RARIDADE_DE_REFERENCIA);
+      acc[base.implicit.kind][base.implicit.stat] += base.implicit.per * item.ilvl * fatorDaRaridade;
     }
-    for (const affix of item.affixes) acc[affix.kind][affix.stat] += affix.value;
+    for (const affix of item.affixes) acc[affix.kind][affix.stat] += affix.value * fatorDaRaridade;
   }
 
   for (const bonus of activeSetBonuses(state)) {
