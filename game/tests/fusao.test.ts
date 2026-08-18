@@ -51,11 +51,10 @@ describe('as receitas', () => {
    * de virar uma esteira de conversão até o topo.
    */
   /**
-   * Compara a chance REAL de subir, não o campo `chance`.
+   * Compara a chance de SUBIR, derivada dos pesos.
    *
-   * Os dois divergem nos degraus com consolação, e comparar o campo cru deixaria
-   * passar uma escada em que um degrau parece mais fácil que o anterior mas
-   * entrega menos.
+   * A escada tem de ser monótona: um degrau nunca pode parecer mais fácil que o
+   * anterior e entregar menos.
    */
   it('a chance cai e o custo sobe a cada degrau', () => {
     for (let i = 1; i < RECEITAS.length; i++) {
@@ -79,18 +78,35 @@ describe('as receitas', () => {
   });
 
   /**
-   * A consolação existe só onde a chance é generosa.
+   * O que não sobe volta na raridade de ENTRADA — em todo degrau.
    *
-   * Nos degraus baratos ela faz a fusão bem-sucedida ser boa notícia sem ser
-   * garantia. Nos degraus de 7% e 3% ela sairia — dividir um sucesso já raro
-   * tornaria o número ANUNCIADO uma mentira: o jogador leria 3% e receberia
-   * menos que isso.
+   * É a regra que substituiu a perda seca: dez Lendários que não viram Mítico
+   * devolvem um Lendário. Sem consolação em algum degrau, aquele degrau voltaria
+   * a confiscar tudo, que é exatamente o que se removeu.
    */
-  it('consolação só nas receitas generosas', () => {
+  it('toda receita devolve a raridade de entrada quando não sobe', () => {
     for (const r of RECEITAS) {
-      const temConsolacao = r.resultados.some((x) => x.raridade === r.entrada);
-      expect(temConsolacao, `${r.id} (chance ${r.chance})`).toBe(r.chance >= 0.15);
+      const consolo = r.resultados.find((x) => x.raridade === r.entrada);
+      expect(consolo, `${r.id} não tem consolação`).toBeDefined();
+
+      const total = r.resultados.reduce((s, x) => s + x.peso, 0);
+      // Só duas saídas: sobe um degrau, ou fica. Nada de pular raridade nem de
+      // descer.
+      for (const x of r.resultados) {
+        expect(x.raridade === r.entrada || x.raridade === r.entrada + 1).toBe(true);
+      }
+      // Os pesos e a chance anunciada têm de ser a MESMA coisa: é o que impede
+      // a tela de dizer 7% enquanto a tabela sorteia outro número.
+      expect(consolo!.peso / total).toBeCloseTo(1 - chanceDeSubir(r), 10);
     }
+  });
+
+  /** As chances pedidas, degrau a degrau. */
+  it('as chances de subir são as combinadas', () => {
+    const esperado = [0.72, 0.48, 0.3, 0.15, 0.07, 0.03];
+    RECEITAS.forEach((r, i) => {
+      expect(chanceDeSubir(r), r.id).toBeCloseTo(esperado[i]!, 10);
+    });
   });
 
   /**
@@ -145,37 +161,66 @@ describe('fundir de verdade', () => {
   });
 
   /**
-   * O contrato mais delicado: falhar CONSOME. É o que dá peso à decisão — sem
-   * risco, fundir seria uma conversão com um passo a mais.
+   * O contrato que substituiu a perda seca: SEMPRE sai um item, e cada tentativa
+   * cobra igual.
+   *
+   * O peso da decisão passou a morar na razão dez para um — dez entram, um sai —
+   * e não num desfecho vazio. Sem a cobrança em toda tentativa, incluindo as que
+   * não sobem, fundir viraria conversão de graça.
    */
-  it('falhar consome os itens e o custo', () => {
+  it('sempre devolve um item, e toda tentativa cobra', () => {
     const sim = new Sim(createState(2));
     /**
-     * Semente FIXA no rng do `Sim`.
-     *
-     * Ele nasce sem semente — o jogo real quer imprevisibilidade —, e sem isto
-     * o teste dependia de sorte: ele falhou uma vez e passou na seguinte. Um
-     * teste instável é pior que nenhum, porque ensina a ignorar vermelho.
+     * Semente FIXA no rng do `Sim`, que nasce sem uma — o jogo real quer
+     * imprevisibilidade. Um teste instável é pior que nenhum: ensina a ignorar
+     * vermelho.
      */
     (sim as unknown as { rng: Rng }).rng = new Rng(20260817);
     abastecer(sim, 0);
     const receita = receitaPara(0)!;
-    const nucleosAntes = sim.state.resources.nucleo;
 
-    let houveFalha = false;
-    for (let tentativa = 0; tentativa < 60 && !houveFalha; tentativa++) {
+    /**
+     * Automação DESLIGADA e inventário limpo a cada volta.
+     *
+     * Sem isso a bagagem enche, `acquire` desmancha o item recém-criado e
+     * DEVOLVE núcleos — o saldo subia de 360 para 489 e a conta do custo não
+     * fechava. O reembolso é comportamento correto do jogo; ele é que não pode
+     * se misturar com a cobrança que este teste mede.
+     */
+    sim.state.settings.autoEquip = false;
+    sim.state.settings.autoSalvage = 0;
+
+    let subiu = 0;
+    let manteve = 0;
+    const TENTATIVAS = 60;
+    for (let t = 0; t < TENTATIVAS; t++) {
+      // Reabastece a cada volta: `abastecer` dá dez receitas de núcleos, e o
+      // teste agora faz sessenta tentativas inteiras em vez de parar na
+      // primeira falha. Sem isto ele fica sem núcleo na décima e a fusão passa a
+      // ser RECUSADA — que é outra coisa, e não o que se está medindo.
+      sim.state.inventory = [];
+      abastecer(sim, 0);
+      const nucleosAntes = sim.state.resources.nucleo;
       const uids = comItens(sim, 0, 10);
       const r = sim.fundirItens(uids);
-      if (r && !r.item) {
-        houveFalha = true;
-        for (const u of uids) expect(sim.state.inventory.some((i) => i.uid === u)).toBe(false);
-      }
+
+      expect(r, 'a fusão devolveu null com a receita satisfeita').not.toBeNull();
+      expect(r!.item, 'saiu sem item — a perda seca não existe mais').toBeTruthy();
+      // Os dez entram sempre, subindo ou não.
+      for (const u of uids) expect(sim.state.inventory.some((i) => i.uid === u)).toBe(false);
+      expect(sim.state.resources.nucleo).toBe(nucleosAntes - receita.nucleos);
+
+      if (r!.item.rarity > 0) subiu++;
+      else manteve++;
+      // Nunca desce de raridade.
+      expect(r!.item.rarity).toBeGreaterThanOrEqual(0);
     }
-    expect(houveFalha, 'nenhuma falha em 60 tentativas com 85% de chance').toBe(true);
-    // No MÁXIMO o que sobrou: cada tentativa cobra uma receita, e a falha pode
-    // vir logo na primeira — foi o que a semente fixa expôs. A asserção pedia
-    // gasto ESTRITAMENTE maior que uma receita e quebrava nesse caso.
-    expect(sim.state.resources.nucleo).toBeLessThanOrEqual(nucleosAntes - receita.nucleos);
+
+    expect(subiu + manteve).toBe(TENTATIVAS);
+    // Com 72% e semente fixa, os dois desfechos têm de aparecer — se um sumisse,
+    // o sorteio estaria preso num deles.
+    expect(manteve, 'nenhuma fusão manteve a raridade em 60 tentativas').toBeGreaterThan(0);
+    expect(subiu, 'nenhuma fusão subiu em 60 tentativas').toBeGreaterThan(0);
   });
 
   it('recusa seleção com raridades misturadas', () => {
@@ -245,5 +290,45 @@ describe('modo de teste e o Armazém', () => {
     sim.state.armazem = {};
     expect(sim.materialDisponivel('ferrita')).toBe(0);
     expect(sim.gastarMaterial('ferrita', 1)).toBe(false);
+  });
+});
+
+/**
+ * A raridade sorteada pela receita é a raridade que SAI.
+ *
+ * A fusão passava o resultado como `floor` — piso —, e o sorteio natural subia
+ * por cima dele. Medido: o Divino anunciado a 3% saía a 10,4%, 3,47× mais, e o
+ * Mítico a 18,1% em vez de 7%. Justamente as duas raridades que o §26 manda ser
+ * extremamente difíceis eram as mais infladas, porque quanto mais baixa a chance
+ * anunciada, maior o peso relativo do vazamento.
+ */
+describe('a raridade que sai é a sorteada', () => {
+  it('não sobe além do que a receita decidiu', () => {
+    const rng = new Rng(4242);
+    for (const r of RECEITAS) {
+      const N = 4000;
+      let subiu = 0;
+      for (let i = 0; i < N; i++) {
+        const saida = rng.weighted(r.resultados, (x) => x.peso).raridade;
+        const item = rollItem(rng, 100, 0, 0, { exata: saida });
+        // A raridade pedida é a entregue — sem sorteio por cima.
+        expect(item.rarity).toBe(saida);
+        if (item.rarity > r.entrada) subiu++;
+      }
+      // E o agregado bate com o anunciado, dentro do ruído de 4 mil amostras.
+      const desvio = Math.abs(subiu / N - chanceDeSubir(r));
+      expect(desvio, `${r.id}: ${(subiu / N * 100).toFixed(1)}% vs ${(chanceDeSubir(r) * 100).toFixed(0)}%`)
+        .toBeLessThan(0.03);
+    }
+  });
+
+  /** `floor` continua sendo piso para quem realmente quer piso — os baús. */
+  it('floor continua deixando subir', () => {
+    const rng = new Rng(7);
+    let acima = 0;
+    for (let i = 0; i < 3000; i++) {
+      if (rollItem(rng, 100, 0, 0, { floor: 1 }).rarity > 1) acima++;
+    }
+    expect(acima).toBeGreaterThan(0);
   });
 });

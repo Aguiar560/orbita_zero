@@ -41,7 +41,7 @@ export class FabricacaoPanel implements Panel {
    * automação, e nesse caso não há uid que se possa procurar no inventário —
    * mas o jogador continua tendo o direito de ver o que ele era.
    */
-  private resultado: { item: Item | null; entrada: Rarity; destino: Destino } | null = null;
+  private resultado: { item: Item; entrada: Rarity; destino: Destino } | null = null;
 
   render(sim: Sim): HTMLElement {
     const receita = this.receita();
@@ -61,40 +61,39 @@ export class FabricacaoPanel implements Panel {
   /**
    * O que saiu da fusão.
    *
-   * Mostra também o FRACASSO. A tentação era só celebrar o acerto, mas falhar
-   * consome os dez itens e o custo — é o desfecho mais caro dos dois, e o que o
-   * jogador mais precisa ver com clareza. Um modal que só aparece quando dá
-   * certo ensinaria que fusão não tem risco.
+   * Não há caso de fracasso: a fusão sempre devolve um item. O que muda é se
+   * ele SUBIU de raridade. Os dois títulos precisam se distinguir de longe —
+   * "não subiu" é o desfecho comum em todo degrau alto, e confundi-lo com o bom
+   * faria o jogador achar que conseguiu o Mítico.
    */
   private modalResultado(sim: Sim): HTMLElement {
     const r = this.resultado!;
     const fechar = () => { this.resultado = null; sim.touch(); };
-    const info = r.item ? rarityInfo(r.item.rarity) : null;
-    const subiu = !!r.item && r.item.rarity > r.entrada;
+    const info = rarityInfo(r.item.rarity);
+    const subiu = r.item.rarity > r.entrada;
 
     const fundo = h('.fab-res', {
       onclick: (e: Event) => { if (e.target === fundo) fechar(); },
     },
-      h(`.fab-res-caixa${r.item ? '' : '.falhou'}`, {
-        style: info ? { borderColor: info.color } : {},
-      },
+      h(`.fab-res-caixa${subiu ? '.subiu' : '.manteve'}`, { style: { borderColor: info.color } },
         h('.fab-res-topo', {},
           h('strong', {
-            text: !r.item ? 'A SÍNTESE FALHOU' : subiu ? 'RARIDADE SUPERIOR' : 'SÍNTESE CONCLUÍDA',
-            style: { color: info?.color ?? 'var(--bad)' },
+            text: subiu ? `${info.name.toUpperCase()} OBTIDO` : 'NÃO SUBIU DE RARIDADE',
+            style: { color: subiu ? info.color : 'var(--muted)' },
           }),
           h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', onclick: fechar }),
         ),
 
-        r.item
-          ? h('.fab-res-corpo', {}, buildItemCard(sim, r.item, { compare: true }))
-          : h('.fab-res-corpo', {},
-              h('p.tiny', {
-                text: `Os ${RECEITAS.find((x) => x.entrada === r.entrada)?.quantidade ?? 10} itens e o custo foram consumidos. A chance era de ${pct(r.entrada)}.`,
-              }),
-            ),
+        // A chance aparece nos DOIS casos: no bom porque contextualiza a sorte,
+        // no comum porque lembra que o degrau é longo e não que algo quebrou.
+        h('span.muted.tiny.fab-res-chance', {
+          text: subiu
+            ? `Saiu na chance de ${pct(r.entrada)}.`
+            : `Voltou um ${rarityInfo(r.entrada).name}. A chance de subir era de ${pct(r.entrada)}.`,
+        }),
 
-        ...(r.item ? [h('span.muted.tiny.fab-res-destino', { text: DESTINO_TEXTO[r.destino] })] : []),
+        h('.fab-res-corpo', {}, buildItemCard(sim, r.item, { compare: true })),
+        h('span.muted.tiny.fab-res-destino', { text: DESTINO_TEXTO[r.destino] }),
         h('button.fab-acao.pronta', { text: 'CONTINUAR', onclick: fechar }),
       ),
     );
@@ -260,7 +259,7 @@ export class FabricacaoPanel implements Panel {
           // equipar na hora, guardar, ou desmanchar por raridade baixa. Ler o
           // destino DEPOIS do fato é mais confiável que reproduzir a regra aqui
           // — ela mora em `sim` e pode mudar sem este painel saber.
-          this.resultado = { item: r.item, entrada: receita.entrada, destino: r.item ? destinoDe(sim, r.item) : 'nenhum' };
+          this.resultado = { item: r.item, entrada: receita.entrada, destino: destinoDe(sim, r.item) };
           sim.touch();
         },
       }),
@@ -389,7 +388,7 @@ function anelDeChance(fracao: number, cor: string): HTMLElement {
 }
 
 /** Para onde o item recém-fabricado foi. */
-type Destino = 'equipado' | 'guardado' | 'desmanchado' | 'nenhum';
+type Destino = 'equipado' | 'guardado' | 'desmanchado';
 
 const DESTINO_TEXTO: Record<Destino, string> = {
   equipado: 'Equipado automaticamente na nave.',
@@ -397,7 +396,6 @@ const DESTINO_TEXTO: Record<Destino, string> = {
   // Vale avisar: o item saiu bom e a automação o desfez mesmo assim. Sem esta
   // linha, o jogador veria um Épico na tela e não o acharia em lugar nenhum.
   desmanchado: 'Desmanchado na hora pelos ajustes de automação — virou núcleos.',
-  nenhum: '',
 };
 
 /**

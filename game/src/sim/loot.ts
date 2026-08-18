@@ -42,6 +42,16 @@ export function rollItem(
   opts: {
     slot?: SlotId;
     floor?: Rarity;
+    /**
+     * Raridade EXATA, sem sorteio.
+     *
+     * Diferente de `floor`, que é piso e deixa o item subir sozinho. A fusão
+     * precisa disto: ela já sorteou a raridade pela tabela da receita, e passar
+     * esse resultado como piso deixava a natureza sortear de novo por cima. O
+     * Divino anunciado a 3% saía a 10,4% — 3,47× — porque a consolação Mítica
+     * rolava para cima por conta própria.
+     */
+    exata?: Rarity;
     /** Viés de slot vindo da tabela de drop (§10). Multiplica o peso da base. */
     slotFavorecido?: Partial<Record<SlotId, number>>;
     /** Viés de elemento. Multiplica o peso na hora de sortear o elemento. */
@@ -59,7 +69,7 @@ export function rollItem(
     candidates,
     (b) => (1 + b.tier) * (opts.slotFavorecido?.[b.slot] ?? 1),
   );
-  const rarity = rollRarity(rng, luck, opts.floor ?? 0);
+  const rarity = opts.exata ?? rollRarity(rng, luck, opts.floor ?? 0);
   const info = rarityInfo(rarity);
   const element = rollElement(rng, rarity, opts.elementoFavorecido);
 

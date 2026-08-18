@@ -906,13 +906,15 @@ export class Sim {
   }
 
   /**
-   * Funde itens (§26). Devolve o item gerado, ou `null` quando a fusão falha.
+   * Funde itens (§26). Devolve o item gerado, ou `null` se a receita nem podia
+   * rodar — que é recusa, não fracasso.
    *
-   * Falhar CONSOME os itens e o custo — é o que dá peso à decisão. Sem risco,
-   * fundir seria só uma conversão com um passo a mais, e o jogador faria a
-   * conta uma vez e nunca mais pensaria no assunto.
+   * SEMPRE sai um item: ou da raridade superior, ou da mesma que entrou. O peso
+   * da decisão está na razão dez para um, não num desfecho vazio. A versão
+   * anterior tinha perda seca, e no topo ela era o resultado provável: 93% das
+   * vezes dez Lendários viravam nada, o que fazia do último degrau uma parede.
    */
-  fundirItens(uids: readonly string[]): { item: Item | null; receita: string } | null {
+  fundirItens(uids: readonly string[]): { item: Item; receita: string } | null {
     if (this.faltaParaFundir(uids).length) return null;
 
     const itens = uids.map((u) => this.state.inventory.find((i) => i.uid === u)!);
@@ -923,19 +925,15 @@ export class Sim {
     for (const [id, n] of Object.entries(receita.custo)) this.gastarMaterial(id, n);
     this.state.inventory = this.state.inventory.filter((i) => !uids.includes(i.uid));
 
-    if (!this.rng.chance(receita.chance)) {
-      toast(`${receita.nome} falhou — os itens foram consumidos.`);
-      this.touch();
-      return { item: null, receita: receita.id };
-    }
-
     const saida = this.rng.weighted(receita.resultados, (r) => r.peso).raridade;
     const item = rollItem(
       this.rng,
       ilvlDaFusao(itens.map((i) => i.ilvl)),
       this.stats.sorte,
       this.state.universe.index,
-      { floor: saida },
+      // `exata` e não `floor`: a receita JÁ sorteou a raridade, e usá-la como
+      // piso deixava o sorteio natural subir por cima dela.
+      { exata: saida },
     );
     this.acquire(item);
     toast(`${receita.nome}: ${rarityInfo(item.rarity).name}!`);
