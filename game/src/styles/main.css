@@ -1325,7 +1325,20 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
  * única com conteúdo que reflui. As laterais têm largura de leitura, e
  * espremê-las quebraria o card de contato antes de quebrar o de missão.
  */
-.mis { display: grid; gap: 12px; align-content: start; min-height: 0; }
+/*
+ * Altura FIXA para o modal não pular de tamanho ao trocar de aba.
+ *
+ * As três abas têm quantidades de conteúdo bem diferentes, e deixar a caixa se
+ * ajustar a cada uma fazia o modal crescer e encolher sob o cursor — o botão
+ * que estava debaixo do mouse mudava de lugar. A altura é do MODAL, não da aba.
+ */
+.mis {
+  display: grid; gap: 12px; align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  height: clamp(430px, 70vh, 760px);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
 
 .mis-topo {
   display: flex; align-items: center; justify-content: space-between;
@@ -1358,16 +1371,28 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 
 /* 22% / 58% / 20% do §5, com piso para as laterais não colapsarem. */
 .mis-corpo {
-  display: grid; gap: 12px; min-height: 0;
-  grid-template-columns: minmax(210px, 22%) minmax(0, 1fr) minmax(190px, 20%);
+  display: grid; gap: 12px; min-height: 0; min-width: 0;
+  grid-template-columns: minmax(190px, 22%) minmax(0, 1fr) minmax(180px, 20%);
 }
 @media (max-width: 1180px) {
   /* A coluna direita é legenda e ação: primeira a sair quando falta espaço. */
   .mis-corpo { grid-template-columns: minmax(190px, 26%) minmax(0, 1fr); }
   .mis-dir { display: none; }
 }
-.mis-col { display: grid; gap: 8px; align-content: start; min-width: 0; }
-.mis-centro { display: grid; gap: 12px; align-content: start; min-width: 0; }
+/*
+ * `grid-template-columns: minmax(0, 1fr)`, e não só `min-width: 0`.
+ *
+ * Sem a trilha declarada, a coluna implícita do grid é `auto` — que dimensiona
+ * pelo CONTEÚDO, não pelo contêiner. Medido: os filhos ficavam com 952 px dentro
+ * de uma coluna de 564, e o modal ganhava 174 px de rolagem lateral. O
+ * `min-width: 0` do pai não alcança isso: ele libera o item a encolher, mas quem
+ * decidia a largura era a trilha.
+ */
+.mis-col, .mis-centro {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: 8px; align-content: start; min-width: 0;
+}
+.mis-centro { gap: 12px; }
 
 .mis-secao-tit {
   font-size: 11px; letter-spacing: 2px; color: var(--accent);
@@ -1523,7 +1548,13 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-tipo-txt strong { font-size: 11px; letter-spacing: 1px; }
 
 .mis-fichas { display: flex; gap: 5px; flex-wrap: wrap; }
-.mis-ficha {
+/*
+ * Pilula de recompensa. Chamava-se .mis-ficha e colidia com a FICHA do
+ * personagem: as duas regras batiam no mesmo seletor, a da pilula vinha depois
+ * e transformava a ficha num inline-flex. Medido: o retrato caia para 2px de
+ * largura e os dados para 0.
+ */
+.mis-pilula {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 8px; font-size: 10px; letter-spacing: 0.4px;
   border: 1px solid var(--line-strong); border-radius: 999px;
@@ -1549,3 +1580,53 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-no-rede.travado { opacity: 0.45; }
 .mis-no-rede strong { font-size: 12px; letter-spacing: 1px; }
 .mis-no-rede .mis-retrato { width: 66px; height: 66px; }
+
+/* ── as três abas ocupam a MESMA caixa ───────────────────────────────────── */
+/*
+ * O conteúdo de cada aba preenche a segunda linha de `.mis`, que tem altura
+ * fixa. Antes cada aba dimensionava a caixa, e trocar de aba fazia o modal
+ * crescer e encolher sob o cursor.
+ *
+ * A rolagem é INTERNA (§36): cada lista rola dentro do seu painel, o modal não
+ * rola nem na vertical nem na horizontal.
+ */
+.mis-corpo, .mis-rede, .mis-concluidas { min-height: 0; overflow: hidden; }
+.mis-rede, .mis-concluidas {
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px; align-content: stretch;
+}
+.mis-rede-grade, .mis-concluidas .mis-cards { overflow-y: auto; padding-right: 4px; }
+.mis-rede-grade { align-content: start; }
+
+/* Com a altura do modal fixa, os tetos passam a ser do PAI e não da viewport. */
+.mis-lista-contatos { max-height: 100%; }
+.mis-centro { min-height: 0; overflow-y: auto; padding-right: 4px; }
+.mis-cards { max-height: none; overflow: visible; }
+.mis-concluidas .mis-cards { max-height: 100%; }
+
+/* ── ficha: confiança em LINHA própria ───────────────────────────────────── */
+/*
+ * Três colunas não cabem na coluna central de ~560 px. Medido depois de
+ * estreitar a grade: o retrato ficou com 2 px de largura e os dados com 0 — a
+ * trilha `minmax(240px, 0.9fr)` da confiança venceu as outras duas e as
+ * esmagou.
+ *
+ * Media query resolveria mal aqui: ela mede a JANELA, e a caixa é
+ * `min(1180px, 96vw)` — a partir de ~1240 px de janela a largura da caixa para
+ * de mudar, então a regra dispararia na hora errada. Duas colunas com a
+ * confiança abaixo é correto em qualquer largura, sem depender de limiar.
+ */
+.mis-ficha { grid-template-columns: auto minmax(0, 1fr); }
+.mis-confianca { grid-column: 1 / -1; }
+
+/*
+ * A coluna direita some MESMO em tela estreita.
+ *
+ * A regra da media query tem a mesma especificidade de `.mis-col` e vem antes
+ * dela na folha, então perdia e a coluna reaparecia empilhada abaixo, fora das
+ * duas trilhas. `.mis-corpo > .mis-dir` ganha por especificidade em vez de por
+ * ordem — ordem é frágil quando o arquivo cresce por acréscimo.
+ */
+@media (max-width: 1180px) {
+  .mis-corpo > .mis-dir { display: none; }
+}

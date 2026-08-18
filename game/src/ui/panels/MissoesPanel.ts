@@ -361,11 +361,11 @@ export class MissoesPanel implements Panel {
 
       h('.mis-secao-tit', { text: 'RECOMPENSAS GERAIS' }),
       h('.mis-fichas', {},
-        h('span.mis-ficha', { text: 'XP' }),
-        h('span.mis-ficha', { text: 'SUCATA' }),
-        h('span.mis-ficha', { text: 'RECURSOS' }),
-        h('span.mis-ficha', { text: 'ITENS' }),
-        h('span.mis-ficha', { text: '◈ MEDALHAS', style: { borderColor: 'var(--accent-2)', color: 'var(--accent-2)' } }),
+        h('span.mis-pilula', { text: 'XP' }),
+        h('span.mis-pilula', { text: 'SUCATA' }),
+        h('span.mis-pilula', { text: 'RECURSOS' }),
+        h('span.mis-pilula', { text: 'ITENS' }),
+        h('span.mis-pilula', { text: '◈ MEDALHAS', style: { borderColor: 'var(--accent-2)', color: 'var(--accent-2)' } }),
       ),
 
       h('button.btn.mis-entregar-tudo', {
@@ -447,13 +447,13 @@ export class MissoesPanel implements Panel {
     const r = def.recompensa;
     const out: HTMLElement[] = [];
     const ficha = (texto: string, cor?: string) =>
-      h('span.mis-ficha', { text: texto, style: cor ? { borderColor: cor, color: cor } : {} });
+      h('span.mis-pilula', { text: texto, style: cor ? { borderColor: cor, color: cor } : {} });
 
     if (r.xp) out.push(ficha(`${fmt(r.xp)} XP`));
     for (const [moeda, n] of Object.entries(r.moedas ?? {})) out.push(ficha(`${fmt(n)} ${moeda}`));
     for (const [rec, n] of Object.entries(r.materiais ?? {})) {
       const d = RECURSO_POR_ID.get(rec);
-      out.push(h('span.mis-ficha', {},
+      out.push(h('span.mis-pilula', {},
         d ? spriteIcon(iconeDeRecurso(d), 16) : h('span'),
         h('span', { text: `${fmt(n)} ${d?.nome ?? rec}` }),
       ));
