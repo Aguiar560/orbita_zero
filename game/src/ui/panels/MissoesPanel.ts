@@ -484,7 +484,15 @@ export class MissoesPanel implements Panel {
       out.push(premio('confianca', `+${def.confianca}`, `+${def.confianca} de confiança`));
     }
     if (def.recompensaExclusiva) {
-      out.push(premio('exclusivo', '★', def.recompensaExclusiva.nome));
+      /**
+       * No contrato especial: TRÊS recompensas mais o item exclusivo.
+       *
+       * Cinco fichas não cabiam na largura do bloco e a quinta quebrava para uma
+       * segunda linha sozinha, que era o que entortava o card. Cortar em três é
+       * melhor que apertar as cinco: o exclusivo é o que importa ali, e as
+       * demais continuam no `title` de cada ficha e no resgate.
+       */
+      return [...out.slice(0, 3), premio('exclusivo', '★', def.recompensaExclusiva.nome)];
     }
     return out;
   }

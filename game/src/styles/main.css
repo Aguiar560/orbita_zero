@@ -2046,3 +2046,45 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .mis-esp-txt strong { font-size: 15px; }
 .mis-esp-item { padding: 8px; }
 .mis-esp-info strong { font-size: 12px; line-height: 1.2; }
+
+/* ── o vão entre "MISSÕES DISPONÍVEIS" e o primeiro card ─────────────────── */
+/*
+ * `.mis-missoes` é um grid de duas linhas (título e lista) dentro de um espaço
+ * mais alto que o conteúdo. Sem `align-content`, o padrão distribui a sobra
+ * ESTICANDO as linhas automáticas — a do título crescia e empurrava o primeiro
+ * card para o meio da coluna. Com um contato de uma missão só, o efeito ficava
+ * escandaloso.
+ *
+ * `auto minmax(0, 1fr)` fixa o título no tamanho dele e dá o resto à lista, que
+ * já alinha os cards no topo.
+ */
+.mis-missoes {
+  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.mis-cards { align-content: start; }
+
+/* ── contrato especial: alinhamento interno ──────────────────────────────── */
+/*
+ * O bloco da recompensa era um grid de duas colunas com a arte de 84 px (56 +
+ * 14 de borda dos dois lados) disputando espaço com o texto e as fichas na
+ * mesma linha — as fichas espremiam e passavam por baixo da arte.
+ *
+ * Agora a arte fica à esquerda em linha própria, o nome e o dono acima, e as
+ * fichas embaixo ocupando a largura toda. Cada coisa tem sua faixa.
+ */
+.mis-esp-dir { align-self: stretch; display: grid; align-content: start; gap: 6px; }
+.mis-esp-item {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center; gap: 10px; padding: 8px 10px;
+}
+.mis-esp-info { align-content: center; gap: 4px; }
+.mis-esp-info .mis-premio-grade { grid-column: 1 / -1; margin-top: 2px; }
+.mis-esp-arte { width: 52px; height: 52px; border-width: 12px; align-self: center; }
+
+/* A coluna da esquerda centrada na altura do card, junto com o ícone. */
+.mis-esp-esq { align-items: center; align-content: center; }
+.mis-esp-txt { align-content: center; }
+
+/* Quatro fichas em uma linha só, sem quebra — é o que cabe no bloco. */
+.mis-esp-info .mis-premio-grade { flex-wrap: nowrap; gap: 5px; }
