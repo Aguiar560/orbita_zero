@@ -2088,3 +2088,63 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 
 /* Quatro fichas em uma linha só, sem quebra — é o que cabe no bloco. */
 .mis-esp-info .mis-premio-grade { flex-wrap: nowrap; gap: 5px; }
+
+/* ── recompensa exclusiva: arte à esquerda, texto e fichas à direita ─────── */
+/*
+ * O que continuava torto: a arte, o nome, a assinatura e as quatro fichas
+ * disputavam a mesma grade de duas colunas, e as fichas caíam por baixo da arte
+ * em vez de ficarem sob o texto.
+ *
+ * Agora a arte ocupa uma coluna inteira, das duas linhas; o nome e a assinatura
+ * vão na linha de cima da coluna direita e as fichas na de baixo, alinhadas
+ * pela esquerda com o texto. Cada elemento tem faixa própria e nada divide
+ * espaço com nada.
+ */
+.mis-esp-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center; gap: 4px 10px; padding: 8px 10px;
+}
+.mis-esp-arte { grid-column: 1; grid-row: 1 / span 2; align-self: center; margin: 0; }
+.mis-esp-info { grid-column: 2; grid-row: 1; display: grid; gap: 2px; align-content: center; }
+.mis-esp-info .mis-premio-grade { grid-column: 2; grid-row: 2; margin: 0; }
+.mis-esp-item > .mis-premio-grade { grid-column: 2; grid-row: 2; }
+.mis-premio { width: 30px; height: 30px; }
+.mis-premio-n { font-size: 8px; padding: 0 2px; }
+
+/* ── o tingimento vai para a MOLDURA, não para o card ────────────────────── */
+/*
+ * Erro conceitual meu: `filter: none` num filho NÃO desfaz o filtro do pai.
+ * Filtro CSS aplica ao elemento e a toda a sua subárvore como um grupo — o
+ * reset que eu tinha escrito não fazia nada, e por isso os ícones de recompensa
+ * e o item saíam amarelos junto com a borda.
+ *
+ * A saída é tingir só a moldura. Ela passa para um `::before` que cobre o card
+ * inteiro e carrega o `border-image`; o filtro fica nele. O conteúdo é irmão
+ * desse pseudo-elemento, não descendente, então nunca é alcançado — cada ícone
+ * de recompensa mantém a cor real.
+ */
+.mis-card, .mis-especial {
+  position: relative; border: 0; background: none; filter: none;
+  padding: 26px 30px;
+}
+.mis-card::before, .mis-especial::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border: 26px solid transparent;
+  border-image: url(assets/ui/mis_card.png) 42 fill stretch;
+}
+.mis-card > *, .mis-especial > * { position: relative; z-index: 1; }
+
+.mis-card.tipo-principal::before { filter: sepia(1) saturate(3.4) hue-rotate(160deg) brightness(1.05); }
+.mis-card.tipo-aliado::before { filter: sepia(1) saturate(4) hue-rotate(228deg) brightness(1.05); }
+.mis-card.tipo-galaxia::before { filter: sepia(1) saturate(5) hue-rotate(-32deg) brightness(1.05); }
+.mis-especial::before { filter: sepia(1) saturate(4.2) hue-rotate(-14deg) brightness(1.12); }
+.mis-card.mis-travada::before { filter: grayscale(0.8) brightness(0.6); }
+.mis-card.mis-feita::before { filter: grayscale(0.6) brightness(0.7); }
+
+/* O contorno da moldura já marca o card; o miolo volta a ser escuro e neutro. */
+.mis-card::after, .mis-especial::after {
+  content: ''; position: absolute; inset: 6px; z-index: 0;
+  background: rgba(4, 8, 18, 0.55); border-radius: 8px; pointer-events: none;
+}

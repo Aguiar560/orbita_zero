@@ -236,6 +236,8 @@ export interface MissaoDef {
     nome: string;
     /** "ITEM EXCLUSIVO DE VARKH-7" — de quem é a assinatura. */
     de?: string;
+    /** Slot do item, para a tela desenhar o icone real da peca. */
+    slot?: SlotId;
     icone?: string;
     raridadeMin?: Rarity;
   };
@@ -437,6 +439,11 @@ export const MISSOES: readonly MissaoDef[] = [
       nome: 'REATOR DO NÚCLEO FERRUGEM',
       de: 'NÚCLEO FERRUGEM',
       raridadeMin: 5,
+      // O SLOT mostra o item que vai sair, nao um simbolo generico: e a peca
+      // que da razao ao contrato existir. O sprite vem de `iconeDeItem`, a
+      // mesma funcao que nomeia o icone de qualquer item do jogo — inventar um
+      // nome aqui daria slot vazio, que foi o erro do `cat/alvo`.
+      slot: 'reator',
     },
     recompensa: {
       itens: { quantidade: 1, raridadeMin: 5, ilvlBonus: 20 },

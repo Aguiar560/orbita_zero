@@ -10,10 +10,12 @@ import {
 import { CONCESSAO_POR_ID } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
+import { iconeDeItem } from '@data/items';
 import {
   confiancaDe, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
   type SinalDeContato, type SituacaoDeMissao,
 } from '@sim/missoes';
+import type { Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon, progressBar } from '../dom';
 import type { Panel } from './types';
@@ -301,12 +303,15 @@ export class MissoesPanel implements Panel {
         ? [h('.mis-esp-dir', {},
             h('span.muted.tiny', { text: 'RECOMPENSA EXCLUSIVA' }),
             h('.mis-esp-item', {},
-              h('.mis-esp-arte', {}, spriteIcon(iconeExclusivo(ex.raridadeMin), 54)),
+              h('.mis-esp-arte', {}, spriteIcon(iconeExclusivo(ex), 44)),
               h('.mis-esp-info', {},
                 h('strong', { text: ex.nome, style: { color: t.cor } }),
                 ...(ex.de ? [h('span.mis-esp-dono', { text: `★ ITEM EXCLUSIVO DE ${ex.de}` })] : []),
-                h('.mis-premio-grade', {}, ...this.premios(def)),
               ),
+              // As fichas são IRMÃS da arte, não filhas do texto: só assim elas
+              // ocupam a linha de baixo da coluna direita em vez de caírem por
+              // baixo da arte, que era o desalinhamento que sobrava.
+              h('.mis-premio-grade', {}, ...this.premios(def)),
             ),
           )]
         : []),
@@ -519,6 +524,10 @@ const SINAL: Record<SinalDeContato, { glifo: string; cor: string; titulo: string
  * passaria por typecheck e nasceria sem arte — foi assim que a aba de missões
  * apareceu vazia na etapa anterior.
  */
-function iconeExclusivo(raridade?: number): string {
-  return `gem/${Math.min(4, Math.max(0, raridade ?? 4))}`;
+function iconeExclusivo(ex: { slot?: SlotId; icone?: string; raridadeMin?: Rarity }): string {
+  if (ex.icone) return ex.icone;
+  // `iconeDeItem` e a mesma funcao que nomeia o icone de qualquer peca do jogo,
+  // entao o slot mostra a PECA que vai sair e nao um simbolo generico.
+  if (ex.slot) return iconeDeItem(ex.slot, (ex.raridadeMin ?? 5) as Rarity, 0);
+  return 'novo/reator_mitico_0';
 }
