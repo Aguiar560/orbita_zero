@@ -415,14 +415,36 @@ export interface GameState {
   confianca: Record<string, number>;
 
   /**
-   * O Abismo Estelar (§32-35).
+   * O Núcleo de Provação (§32–35 e o prompt do modo).
    *
-   * So o piso MAXIMO vencido e as tentativas: o conteudo de cada piso e
-   * derivado por regra, nao guardado. Salvar cem pisos gerados seria salvar
-   * algo que o codigo recalcula de graca — e que ficaria velho no primeiro
-   * ajuste de balanceamento.
+   * Guarda PROGRESSO, não conteúdo: o piso é recalculado por regra a cada
+   * abertura da tela. Salvar os cem pisos gerados seria salvar o que o código
+   * refaz de graça — e que ficaria velho no primeiro ajuste de balanceamento.
+   *
+   * `primeiraConclusao` e `marcos` são listas de piso, não booleanos por piso:
+   * o §74 chama de crítico que recarregar, morrer ou fechar o modal não pague a
+   * recompensa de primeira conclusão outra vez, e uma lista responde essa
+   * pergunta sem depender de nada em memória.
    */
-  abismo: { pisoMax: number; tentativas: number; vitorias: number };
+  provacao: {
+    /** Maior piso VENCIDO. O seguinte é o próximo desafio (§8). */
+    pisoMax: number;
+    vitorias: number;
+    /** Pisos cuja recompensa de primeira conclusão já foi paga. */
+    primeiraConclusao: number[];
+    /** Marcos (10, 20, …) cuja recompensa já foi paga. */
+    marcos: number[];
+    /** Pisos concluídos em modo mestre (§70). Vazio por enquanto. */
+    mestrados: number[];
+    /** Registros por piso — tempo, nave, dano (§27). */
+    registros: Record<number, {
+      melhorTempo: number; nave: string; nivelDaNave: number;
+      danoCausado: number; danoRecebido: number; primeiraEm: number; tentativas: number;
+    }>;
+    /** Tentativas em estoque e o instante em que a recuperação começou. */
+    tentativas: number;
+    tentativasEm: number;
+  };
 
   stats: {
     kills: number;

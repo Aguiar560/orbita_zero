@@ -7,6 +7,13 @@ import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recurso
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
+import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
+import { chefeDoPiso } from '@data/provacao-chefes';
+import {
+  FRACAO_REPETICAO, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
+  registrar as registrarTentativa, segundosParaProximaTentativa, tentativasDisponiveis,
+  type CamadaDeRecompensa, type EstadoDoPiso,
+} from './provacao';
 import {
   aplicarFato, confiancaDe, contatoDesbloqueado, fracaoDe, progressoDe, situacaoDe,
   sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
@@ -473,6 +480,127 @@ export class Sim {
   /** Quantas missões esperam resgate. Alimenta o selo da aba. */
   get missoesProntas(): number {
     return this.missoes.filter((m) => m.situacao === 'pronta').length;
+  }
+
+
+  // ── Núcleo de Provação (§32–35) ───────────────────────────────────────────
+
+  /** Tentativas em estoque agora, e quanto falta para a próxima. */
+  get provacaoTentativas(): { tem: number; segundosParaProxima: number } {
+    return {
+      tem: tentativasDisponiveis(this.state),
+      segundosParaProxima: segundosParaProximaTentativa(this.state),
+    };
+  }
+
+  /** Estado de um piso, para a tela desenhar. */
+  estadoDoPisoDaProvacao(piso: number): EstadoDoPiso {
+    return estadoDoPiso(this.state, piso);
+  }
+
+  /**
+   * Começa uma tentativa. Devolve `false` quando o piso está travado ou não há
+   * tentativa em estoque.
+   *
+   * Cobra a tentativa AQUI, na entrada, e não na derrota: cobrar ao perder faria
+   * do fechamento da aba uma forma de jogar de graça, e premiaria justamente o
+   * jogador que desiste no meio.
+   */
+  iniciarPisoDaProvacao(piso: number): boolean {
+    if (!pisoLiberado(this.state, piso)) return false;
+    if (!gastarTentativa(this.state)) return false;
+
+    bus.emit('provacao:iniciado', { piso });
+    this.touch();
+    return true;
+  }
+
+  /**
+   * Conclui um piso e paga o que ele deve.
+   *
+   * O §74 chama de TESTE CRÍTICO que recarregar, morrer ou fechar o modal não
+   * pague a primeira conclusão outra vez. A garantia é a ordem: a marcação é
+   * gravada ANTES de qualquer entrega, e a pergunta "já paguei?" é feita contra
+   * o save, nunca contra algo em memória.
+   *
+   * Devolve as camadas pagas, para a tela do §31 saber o que celebrar.
+   */
+  concluirPisoDaProvacao(
+    piso: number,
+    r: { tempo: number; danoCausado: number; danoRecebido: number },
+  ): CamadaDeRecompensa[] {
+    const def = pisoDaProvacao(piso);
+    const p = this.state.provacao;
+    const camadas = camadasAPagar(this.state, piso);
+
+    // MARCA PRIMEIRO. Se algo estourar na entrega, o jogador perde a recompensa
+    // — e não ganha o direito de recebê-la duas vezes.
+    if (camadas.includes('primeira')) p.primeiraConclusao.push(piso);
+    if (camadas.includes('marco')) p.marcos.push(piso);
+
+    p.vitorias++;
+    p.pisoMax = Math.max(p.pisoMax, piso);
+    registrarTentativa(this.state, piso, {
+      venceu: true, tempo: r.tempo,
+      nave: this.state.hull, nivelDaNave: this.naveAtiva.nivel,
+      danoCausado: r.danoCausado, danoRecebido: r.danoRecebido,
+    });
+
+    // A repetição paga uma fração; a primeira e o marco pagam inteiro.
+    const fator = camadas.includes('primeira') ? 1 : FRACAO_REPETICAO;
+    const rec = def.recompensa;
+    this.grant('sucata', Math.round(rec.sucata * fator));
+    this.grant('nucleo', Math.round(rec.nucleos * fator));
+    if (rec.cristais) this.grant('cristal', Math.round(rec.cristais * fator));
+    for (const [id, n] of Object.entries(rec.materiais)) {
+      this.guardarMaterial(id, Math.max(1, Math.round(n * fator)));
+    }
+
+    // Item e medalha SÓ na primeira conclusão e no marco: repetir um piso não
+    // pode ser a melhor fonte de equipamento do jogo (§22, §67).
+    if (camadas.includes('primeira') || camadas.includes('marco')) {
+      if (rec.medalhas) this.state.medalhas += rec.medalhas;
+      for (let i = 0; i < rec.itens.quantidade; i++) {
+        this.acquire(rollItem(
+          this.rng, this.encounter.ilvl, this.stats.sorte,
+          this.state.universe.index, { floor: rec.itens.raridadeMin },
+        ));
+      }
+    }
+
+    const chefe = chefeDoPiso(piso);
+    bus.emit('provacao:vencido', { piso, chefeId: chefe.id, camadas });
+    if (camadas.includes('marco')) bus.emit('provacao:marco', { piso });
+
+    // O funil de fatos leva isso às missões sem que elas precisem de gancho
+    // próprio (§60).
+    this.registrar({ tipo: 'chefe', chefeId: chefe.id, setor: piso });
+
+    this.touch();
+    return camadas;
+  }
+
+  /** Registra uma derrota — alimenta o painel do §30 e a telemetria do §77. */
+  falharPisoDaProvacao(
+    piso: number,
+    r: { tempo: number; danoCausado: number; danoRecebido: number },
+  ): void {
+    registrarTentativa(this.state, piso, {
+      venceu: false, tempo: r.tempo,
+      nave: this.state.hull, nivelDaNave: this.naveAtiva.nivel,
+      danoCausado: r.danoCausado, danoRecebido: r.danoRecebido,
+    });
+    bus.emit('provacao:falhou', { piso });
+    this.touch();
+  }
+
+  /** Os pisos que a tela mostra, do 1 ao maior liberado mais alguns à frente. */
+  get pisosDaProvacao(): { piso: number; estado: EstadoDoPiso }[] {
+    const ate = Math.min(PROVACAO_PISOS, this.state.provacao.pisoMax + 6);
+    return Array.from({ length: ate }, (_, i) => ({
+      piso: i + 1,
+      estado: estadoDoPiso(this.state, i + 1),
+    }));
   }
 
   /** No modo de teste tudo é pagável, sem alterar o saldo mostrado. */

@@ -1,7 +1,7 @@
 /**
- * Os especiais dos chefes do Abismo.
+ * Os especiais dos chefes da Provação.
  *
- * Todo chefe do Abismo tem uma BARRA DE ESPECIAL que enche durante a luta.
+ * Todo chefe da Provação tem uma BARRA DE ESPECIAL que enche durante a luta.
  * Cheia, ele dispara um golpe próprio — e é o especial, não a barra de vida,
  * que dá identidade à criatura.
  *

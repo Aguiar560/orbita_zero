@@ -140,10 +140,10 @@ export type Requisito =
   | { tipo: 'missaoConcluida'; missaoId: string }
   | { tipo: 'confianca'; personagem: string; valor: number }
   | { tipo: 'recurso'; recurso: string; valor: number }
-  // O Abismo (§34) usa a MESMA união de requisitos das missões, em vez de um
+  // O Núcleo (§34) usa a MESMA união de requisitos das missões, em vez de um
   // sistema paralelo com as mesmas variantes. Todo requisito novo que as
-  // missões ganharem, o Abismo herda de graça.
-  | { tipo: 'abismoPiso'; valor: number };
+  // missões ganharem, o Núcleo herda de graça.
+  | { tipo: 'provacaoPiso'; valor: number };
 
 // ── as missões ──────────────────────────────────────────────────────────────
 

@@ -1,28 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { CHEFES_DO_ABISMO, CHEFE_DO_ABISMO_POR_ID, chefeDoPiso } from '@data/abismo-chefes';
+import { CHEFES_DA_PROVACAO, CHEFE_DA_PROVACAO_POR_ID, chefeDoPiso } from '@data/provacao-chefes';
 import { RECURSO_POR_ID } from '@data/recursos';
 import {
-  ABISMO_PISOS, MODIFICADORES, MODIFICADOR_POR_ID,
-  efeitosDoPiso, escalaDoPiso, ignoraTetoDePeso, nivelExigidoNoPiso, pisoDoAbismo, tetoDePeso,
-} from '@data/abismo';
+  PROVACAO_PISOS, MODIFICADORES, MODIFICADOR_POR_ID,
+  efeitosDoPiso, escalaDoPiso, ignoraTetoDePeso, nivelExigidoNoPiso, pisoDaProvacao, tetoDePeso,
+} from '@data/provacao';
 import { createState, migrate } from '@sim/state';
 import { requisitoSatisfeito, textoDoRequisito } from '@sim/missoes';
 
 /**
- * O Abismo Estelar (§32–§35).
+ * O Núcleo de Provação (§32–§35).
  *
  * O que estes testes guardam não é o conteúdo dos cem pisos — é o que a
  * especificação PROÍBE: piso que seja o mesmo chefe com mais vida (§33) e
  * recompensa que suba tudo linearmente (§35).
  */
 
-const todos = Array.from({ length: ABISMO_PISOS }, (_, i) => pisoDoAbismo(i + 1));
+const todos = Array.from({ length: PROVACAO_PISOS }, (_, i) => pisoDaProvacao(i + 1));
 
 describe('a geração dos pisos', () => {
   it('gera os cem, e cada um com um chefe que existe', () => {
     expect(todos).toHaveLength(100);
     for (const p of todos) {
-      expect(CHEFE_DO_ABISMO_POR_ID.has(p.chefeId), `piso ${p.piso}`).toBe(true);
+      expect(CHEFE_DA_PROVACAO_POR_ID.has(p.chefeId), `piso ${p.piso}`).toBe(true);
     }
   });
 
@@ -34,14 +34,14 @@ describe('a geração dos pisos', () => {
    */
   it('o mesmo piso sai sempre igual', () => {
     for (const n of [1, 7, 33, 63, 99, 100]) {
-      expect(JSON.stringify(pisoDoAbismo(n))).toBe(JSON.stringify(pisoDoAbismo(n)));
+      expect(JSON.stringify(pisoDaProvacao(n))).toBe(JSON.stringify(pisoDaProvacao(n)));
     }
   });
 
   it('recorta piso fora da faixa em vez de estourar', () => {
-    expect(pisoDoAbismo(0).piso).toBe(1);
-    expect(pisoDoAbismo(-5).piso).toBe(1);
-    expect(pisoDoAbismo(999).piso).toBe(ABISMO_PISOS);
+    expect(pisoDaProvacao(0).piso).toBe(1);
+    expect(pisoDaProvacao(-5).piso).toBe(1);
+    expect(pisoDaProvacao(999).piso).toBe(PROVACAO_PISOS);
   });
 
   /**
@@ -137,13 +137,13 @@ describe('os efeitos somados', () => {
    * cresceria com a profundidade justamente onde ele dói mais.
    */
   it('multiplicadores compõem em vez de somar', () => {
-    const e = efeitosDoPiso({ ...pisoDoAbismo(50), modificadores: ['colosso', 'blindado'], peso: 6 });
+    const e = efeitosDoPiso({ ...pisoDaProvacao(50), modificadores: ['colosso', 'blindado'], peso: 6 });
     expect(e.vida).toBeCloseTo(2.2 * 1.2, 6);
   });
 
   it('a resistência tem teto e o chefe nunca fica imortal', () => {
     const e = efeitosDoPiso({
-      ...pisoDoAbismo(100),
+      ...pisoDaProvacao(100),
       modificadores: ['blindado', 'espelho', 'colosso', 'furia'], peso: 16,
     });
     expect(e.resistencia).toBeLessThanOrEqual(0.75);
@@ -162,7 +162,7 @@ describe('os efeitos somados', () => {
   });
 
   it('do intervalo de invocação vale o mais agressivo', () => {
-    const e = efeitosDoPiso({ ...pisoDoAbismo(70), modificadores: ['enxame', 'furia'], peso: 8 });
+    const e = efeitosDoPiso({ ...pisoDaProvacao(70), modificadores: ['enxame', 'furia'], peso: 8 });
     expect(e.invocaCada).toBe(6);
   });
 });
@@ -250,30 +250,30 @@ describe('os requisitos de acesso (§34)', () => {
 
   /** É uma escada: o piso anterior é porta obrigatória. */
   it('cada piso exige o anterior, menos o primeiro', () => {
-    expect(todos[0]!.requisitos.some((r) => r.tipo === 'abismoPiso')).toBe(false);
+    expect(todos[0]!.requisitos.some((r) => r.tipo === 'provacaoPiso')).toBe(false);
     for (const p of todos.slice(1)) {
-      const porta = p.requisitos.find((r) => r.tipo === 'abismoPiso');
+      const porta = p.requisitos.find((r) => r.tipo === 'provacaoPiso');
       expect(porta, `piso ${p.piso}`).toBeDefined();
       expect((porta as { valor: number }).valor).toBe(p.piso - 1);
     }
   });
 
   /**
-   * O requisito do Abismo passa pelo MESMO resolvedor das missões.
+   * O requisito da Provação passa pelo MESMO resolvedor das missões.
    *
    * É o que garante que o §34 ("configuráveis") não virou um segundo sistema
    * com as mesmas oito variantes.
    */
   it('resolve pelo mesmo caminho das missões', () => {
     const s = createState(1);
-    expect(requisitoSatisfeito(s, { tipo: 'abismoPiso', valor: 5 }, 1)).toBe(false);
-    s.abismo.pisoMax = 5;
-    expect(requisitoSatisfeito(s, { tipo: 'abismoPiso', valor: 5 }, 1)).toBe(true);
-    expect(requisitoSatisfeito(s, { tipo: 'abismoPiso', valor: 6 }, 1)).toBe(false);
+    expect(requisitoSatisfeito(s, { tipo: 'provacaoPiso', valor: 5 }, 1)).toBe(false);
+    s.provacao.pisoMax = 5;
+    expect(requisitoSatisfeito(s, { tipo: 'provacaoPiso', valor: 5 }, 1)).toBe(true);
+    expect(requisitoSatisfeito(s, { tipo: 'provacaoPiso', valor: 6 }, 1)).toBe(false);
   });
 
   it('o requisito tem texto legível para a tela', () => {
-    const t = textoDoRequisito({ tipo: 'abismoPiso', valor: 30 });
+    const t = textoDoRequisito({ tipo: 'provacaoPiso', valor: 30 });
     expect(t).toContain('30');
     expect(t).not.toContain('undefined');
   });
@@ -297,12 +297,13 @@ describe('o catálogo de modificadores', () => {
 });
 
 describe('o save', () => {
-  it('save anterior ao Abismo não trava o boot', () => {
+  it('save anterior ao Núcleo não trava o boot', () => {
     const antigo = createState(2) as Record<string, unknown>;
-    delete antigo.abismo;
+    delete antigo.provacao;
     const migrado = migrate(JSON.parse(JSON.stringify(antigo)));
     expect(migrado).not.toBeNull();
-    expect(migrado!.abismo).toEqual({ pisoMax: 0, tentativas: 0, vitorias: 0 });
+    expect(migrado!.provacao.pisoMax).toBe(0);
+    expect(migrado!.provacao.vitorias).toBe(0);
   });
 
   /**
@@ -313,6 +314,12 @@ describe('o save', () => {
    */
   it('o save guarda progresso, não conteúdo', () => {
     const s = createState(3);
-    expect(Object.keys(s.abismo).sort()).toEqual(['pisoMax', 'tentativas', 'vitorias']);
+    // Nenhuma chave descreve o CONTEÚDO do piso — ele é recalculado por regra.
+    // Salvar os cem pisos gerados seria salvar o que o código refaz de graça, e
+    // que ficaria velho no primeiro ajuste de balanceamento.
+    expect(Object.keys(s.provacao).sort()).toEqual([
+      'marcos', 'mestrados', 'pisoMax', 'primeiraConclusao',
+      'registros', 'tentativas', 'tentativasEm', 'vitorias',
+    ]);
   });
 });

@@ -49,7 +49,14 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     missoes: {},
     medalhas: 0,
     confianca: {},
-    abismo: { pisoMax: 0, tentativas: 0, vitorias: 0 },
+    provacao: {
+      pisoMax: 0, vitorias: 0,
+      primeiraConclusao: [], marcos: [], mestrados: [],
+      registros: {},
+      // Começa CHEIO: a primeira coisa que o jogador faz ao abrir o modo não
+      // pode ser esperar.
+      tentativas: 5, tentativasEm: now,
+    },
 
     stats: { kills: 0, bossKills: 0, deaths: 0, itemsFound: 0, chestsOpened: 0 },
 
@@ -106,7 +113,17 @@ export function migrate(raw: unknown): GameState | null {
     missoes: (data.missoes && typeof data.missoes === 'object') ? data.missoes as GameState['missoes'] : {},
     medalhas: Number.isFinite(data.medalhas) ? Number(data.medalhas) : 0,
     confianca: (data.confianca && typeof data.confianca === 'object') ? data.confianca as Record<string, number> : {},
-    abismo: { ...fresh.abismo, ...(data.abismo ?? {}) },
+    // Save anterior ao modo, ou de uma versão com menos campos: o espalhamento
+    // preenche o que falta com o padrão seguro do §56, sem descartar o que há.
+    provacao: {
+      ...fresh.provacao,
+      ...(data.provacao ?? {}),
+      primeiraConclusao: Array.isArray(data.provacao?.primeiraConclusao) ? data.provacao.primeiraConclusao : [],
+      marcos: Array.isArray(data.provacao?.marcos) ? data.provacao.marcos : [],
+      mestrados: Array.isArray(data.provacao?.mestrados) ? data.provacao.mestrados : [],
+      registros: (data.provacao?.registros && typeof data.provacao.registros === 'object')
+        ? data.provacao.registros : {},
+    },
   };
 
   if ((data.version ?? 0) < 2) {

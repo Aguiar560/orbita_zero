@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { BOSSES } from '@data/bosses';
 import { ELEMENT_IDS } from '@sim/types';
 import {
-  ARQUETIPOS, CAMADAS, CHEFES_DO_ABISMO, CHEFE_DO_ABISMO_POR_ID,
+  ARQUETIPOS, CAMADAS, CHEFES_DA_PROVACAO, CHEFE_DA_PROVACAO_POR_ID,
   camadaDoPiso, chefeDoPiso,
-} from '@data/abismo-chefes';
-import { ESPECIAIS, ESPECIAL_POR_ID, familiaDoEspecial } from '@data/abismo-especiais';
+} from '@data/provacao-chefes';
+import { ESPECIAIS, ESPECIAL_POR_ID, familiaDoEspecial } from '@data/provacao-especiais';
 
 /**
- * O elenco do Abismo: cem criaturas distintas.
+ * O elenco da Provação: cem criaturas distintas.
  *
  * O que estes testes guardam é a promessa que o elenco faz — cem chefes, nenhum
  * repetido, cada um com especial e números coerentes com o arquétipo.
@@ -16,7 +16,7 @@ import { ESPECIAIS, ESPECIAL_POR_ID, familiaDoEspecial } from '@data/abismo-espe
 
 describe('o elenco', () => {
   it('tem exatamente cem chefes, um por piso', () => {
-    expect(CHEFES_DO_ABISMO).toHaveLength(100);
+    expect(CHEFES_DA_PROVACAO).toHaveLength(100);
     for (let n = 1; n <= 100; n++) {
       expect(chefeDoPiso(n).piso, `piso ${n}`).toBe(n);
     }
@@ -24,29 +24,29 @@ describe('o elenco', () => {
 
   /** A exigência literal do pedido: não se pode repetir chefe. */
   it('nenhum id e nenhum NOME se repete', () => {
-    expect(new Set(CHEFES_DO_ABISMO.map((c) => c.id)).size).toBe(100);
-    expect(new Set(CHEFES_DO_ABISMO.map((c) => c.nome)).size).toBe(100);
+    expect(new Set(CHEFES_DA_PROVACAO.map((c) => c.id)).size).toBe(100);
+    expect(new Set(CHEFES_DA_PROVACAO.map((c) => c.nome)).size).toBe(100);
   });
 
   /**
-   * O elenco do Abismo é SEPARADO do da campanha.
+   * O elenco da Provação é SEPARADO do da campanha.
    *
    * Reaproveitar os chefes de galáxia foi o desenho anterior e é o que o §33
    * combate; um id em comum traria a confusão de volta pela porta dos fundos.
    */
   it('não colide com os chefes de galáxia', () => {
     const campanha = new Set(BOSSES.map((b) => b.id));
-    for (const c of CHEFES_DO_ABISMO) expect(campanha.has(c.id), c.id).toBe(false);
+    for (const c of CHEFES_DA_PROVACAO) expect(campanha.has(c.id), c.id).toBe(false);
   });
 
   it('todo id é estável e não-visual', () => {
-    for (const c of CHEFES_DO_ABISMO) {
-      expect(c.id, c.nome).toMatch(/^abismo_[a-z0-9_]+$/);
+    for (const c of CHEFES_DA_PROVACAO) {
+      expect(c.id, c.nome).toMatch(/^provacao_[a-z0-9_]+$/);
     }
   });
 
   it('todo chefe tem nome, característica e elemento válido', () => {
-    for (const c of CHEFES_DO_ABISMO) {
+    for (const c of CHEFES_DA_PROVACAO) {
       expect(c.nome.length, c.id).toBeGreaterThan(2);
       expect(c.caracteristica.length, c.id).toBeGreaterThan(10);
       expect(ELEMENT_IDS.includes(c.elemento), `${c.id}: ${c.elemento}`).toBe(true);
@@ -59,7 +59,7 @@ describe('o elenco', () => {
       expect(camadaDoPiso(n).indice, `piso ${n}`).toBe(Math.ceil(n / 10));
     }
     for (const cam of CAMADAS) {
-      expect(CHEFES_DO_ABISMO.filter((c) => c.camada === cam.indice)).toHaveLength(10);
+      expect(CHEFES_DA_PROVACAO.filter((c) => c.camada === cam.indice)).toHaveLength(10);
     }
   });
 
@@ -72,7 +72,7 @@ describe('o elenco', () => {
   it('nenhuma camada é monoelemental', () => {
     for (const cam of CAMADAS) {
       const elementos = new Set(
-        CHEFES_DO_ABISMO.filter((c) => c.camada === cam.indice).map((c) => c.elemento),
+        CHEFES_DA_PROVACAO.filter((c) => c.camada === cam.indice).map((c) => c.elemento),
       );
       expect(elementos.size, `camada ${cam.indice}`).toBeGreaterThan(1);
     }
@@ -81,7 +81,7 @@ describe('o elenco', () => {
 
 describe('os números', () => {
   it('saem do arquétipo, salvo ajuste explícito', () => {
-    for (const c of CHEFES_DO_ABISMO) {
+    for (const c of CHEFES_DA_PROVACAO) {
       const p = ARQUETIPOS[c.arquetipo];
       expect(p, `${c.id}: arquétipo ${c.arquetipo}`).toBeDefined();
       // Ou bate com o perfil, ou é um desvio declarado — nunca lixo.
@@ -93,7 +93,7 @@ describe('os números', () => {
   });
 
   it('nenhum multiplicador é zero, negativo ou absurdo', () => {
-    for (const c of CHEFES_DO_ABISMO) {
+    for (const c of CHEFES_DA_PROVACAO) {
       for (const [campo, v] of Object.entries({ vida: c.vida, dano: c.dano, escudo: c.escudo, velocidade: c.velocidade })) {
         expect(v, `${c.id}.${campo}`).toBeGreaterThan(0);
         expect(v, `${c.id}.${campo}`).toBeLessThanOrEqual(3);
@@ -103,7 +103,7 @@ describe('os números', () => {
 
   /** Resistência a 1 tornaria o chefe imune àquele elemento. */
   it('a resistência tem teto e o chefe resiste ao próprio elemento', () => {
-    for (const c of CHEFES_DO_ABISMO) {
+    for (const c of CHEFES_DA_PROVACAO) {
       for (const [el, v] of Object.entries(c.resistencias)) {
         expect(v, `${c.id}: ${el}`).toBeGreaterThan(0);
         expect(v, `${c.id}: ${el}`).toBeLessThanOrEqual(0.7);
@@ -116,7 +116,7 @@ describe('os números', () => {
   });
 
   it('os oito arquétipos são todos usados', () => {
-    const usados = new Set(CHEFES_DO_ABISMO.map((c) => c.arquetipo));
+    const usados = new Set(CHEFES_DA_PROVACAO.map((c) => c.arquetipo));
     for (const a of Object.keys(ARQUETIPOS)) {
       expect(usados.has(a as never), `arquétipo ${a} nunca aparece`).toBe(true);
     }
@@ -125,7 +125,7 @@ describe('os números', () => {
 
 describe('os especiais', () => {
   it('todo chefe tem um especial que existe', () => {
-    for (const c of CHEFES_DO_ABISMO) {
+    for (const c of CHEFES_DA_PROVACAO) {
       expect(ESPECIAL_POR_ID.has(c.especial), `${c.id} → ${c.especial}`).toBe(true);
     }
   });
@@ -167,13 +167,13 @@ describe('os especiais', () => {
    */
   it('não repete especial dentro da mesma camada', () => {
     for (const cam of CAMADAS) {
-      const ids = CHEFES_DO_ABISMO.filter((c) => c.camada === cam.indice).map((c) => c.especial);
+      const ids = CHEFES_DA_PROVACAO.filter((c) => c.camada === cam.indice).map((c) => c.especial);
       expect(new Set(ids).size, `camada ${cam.indice}: ${ids.join(', ')}`).toBe(ids.length);
     }
   });
 
   it('todo especial é usado por alguém', () => {
-    const usados = new Set(CHEFES_DO_ABISMO.map((c) => c.especial));
+    const usados = new Set(CHEFES_DA_PROVACAO.map((c) => c.especial));
     for (const e of ESPECIAIS) expect(usados.has(e.id), `${e.id} nunca aparece`).toBe(true);
   });
 

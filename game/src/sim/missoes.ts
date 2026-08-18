@@ -66,7 +66,7 @@ export function requisitoSatisfeito(
     case 'missaoConcluida': return !!state.missoes[req.missaoId]?.entregue;
     case 'confianca': return (state.confianca[req.personagem] ?? 0) >= req.valor;
     case 'recurso': return (state.armazem[req.recurso] ?? 0) >= req.valor;
-    case 'abismoPiso': return (state.abismo?.pisoMax ?? 0) >= req.valor;
+    case 'provacaoPiso': return (state.provacao?.pisoMax ?? 0) >= req.valor;
   }
 }
 
@@ -82,7 +82,7 @@ export function textoDoRequisito(req: Requisito): string {
     case 'confianca':
       return `Confiança nível ${ROMANOS[req.valor - 1] ?? req.valor} com ${PERSONAGEM_POR_ID.get(req.personagem)?.nome ?? req.personagem}`;
     case 'recurso': return `${req.valor} de ${req.recurso}`;
-    case 'abismoPiso': return `Vencer o piso ${req.valor} do Abismo`;
+    case 'provacaoPiso': return `Vencer o piso ${req.valor} da Provação`;
   }
 }
 

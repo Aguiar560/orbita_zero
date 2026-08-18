@@ -1,11 +1,11 @@
-import { ESPECIAIS } from '@data/abismo-especiais';
+import { ESPECIAIS } from '@data/provacao-especiais';
 import type { ElementId, ElementoResistivel } from '@sim/types';
 
 /**
- * Os cem chefes do Abismo Estelar (§32–§35).
+ * Os cem chefes do Núcleo de Provação (§32–§35).
  *
  * **Cem criaturas DISTINTAS, uma por piso.** Não são os chefes de galáxia — o
- * `data/bosses.ts` continua servindo à campanha e não é tocado aqui. O Abismo
+ * `data/bosses.ts` continua servindo à campanha e não é tocado aqui. O Núcleo
  * tem elenco próprio, e nenhum nome se repete.
  *
  * Antes desta tabela, o piso pegava um dos dez chefes de galáxia em rodízio, e
@@ -16,7 +16,7 @@ import type { ElementId, ElementoResistivel } from '@sim/types';
  * ## Dez camadas de dez
  *
  * Cada camada tem tema, elemento dominante e uma pergunta tática própria. Isso
- * dá ao Abismo um arco em vez de cem entradas soltas: o jogador atravessa o
+ * dá ao Núcleo um arco em vez de cem entradas soltas: o jogador atravessa o
  * Cinturão de Sucata, depois o Berçário, depois a Mortalha — e sente que está
  * indo a algum lugar.
  *
@@ -101,7 +101,7 @@ export const CAMADAS: readonly CamadaDef[] = [
   { indice: 7, nome: 'Praga Antiga', tema: 'Correr contra o relógio.', elemento: 'quimico', cor: '#9BE04F' },
   { indice: 8, nome: 'Fenda Colapsante', tema: 'Escolher o alvo certo.', elemento: 'cosmico', cor: '#C77DFF' },
   { indice: 9, nome: 'Ruína dos Arquitetos', tema: 'Tudo que veio antes, junto.', elemento: 'padrao', cor: '#FF4B4B' },
-  { indice: 10, nome: 'Ápice', tema: 'O que o Abismo guardava.', elemento: 'cosmico', cor: '#FFB638' },
+  { indice: 10, nome: 'Ápice', tema: 'O que o Núcleo guardava.', elemento: 'cosmico', cor: '#FFB638' },
 ];
 
 export const camadaDoPiso = (piso: number): CamadaDef =>
@@ -109,7 +109,7 @@ export const camadaDoPiso = (piso: number): CamadaDef =>
 
 // ── os chefes ───────────────────────────────────────────────────────────────
 
-export interface ChefeDoAbismo {
+export interface ChefeDaProvacao {
   id: string;
   nome: string;
   /** O que ele é, em uma linha. Aparece na tela antes da luta. */
@@ -149,7 +149,7 @@ type Linha = [
   caracteristica: string,
   arquetipo: Arquetipo,
   elemento?: ElementId,
-  ajuste?: Partial<Pick<ChefeDoAbismo, 'vida' | 'dano' | 'escudo' | 'velocidade'>>,
+  ajuste?: Partial<Pick<ChefeDaProvacao, 'vida' | 'dano' | 'escudo' | 'velocidade'>>,
   /** Especial escolhido à mão. Ausente = derivado, ver `especialDe`. */
   especial?: string,
 ];
@@ -288,11 +288,11 @@ const ELENCO: readonly (readonly Linha[])[] = [
     ['juiz_frio', 'Juiz Frio', 'Decide quem sobe. Costuma decidir que não.', 'artilheiro', 'gelo'],
     ['legiao_de_um', 'Legião de Um', 'Sozinho, e ainda assim cercado.', 'invocador'],
     ['ultimo_farol', 'Último Farol', 'Aponta para fora. Ninguém saiu.', 'orbital', 'raio'],
-    ['peso_do_abismo', 'Peso do Abismo', 'Tudo que caiu aqui, comprimido.', 'fortaleza', 'cosmico', { vida: 2.2 }],
+    ['peso_do_abismo', 'Peso da Provação', 'Tudo que caiu aqui, comprimido.', 'fortaleza', 'cosmico', { vida: 2.2 }],
     ['ceifa_silenciosa', 'Ceifa Silenciosa', 'Não persegue. Espera no lugar certo.', 'cacador'],
     ['aurora_negra', 'Aurora Negra', 'A luz que vem antes do fim de tudo.', 'dispersor', 'fogo'],
     ['penultimo', 'Penúltimo', 'Sabe que não é o último. Isso o irrita.', 'espectro', 'quimico', { dano: 1.5 }],
-    ['coracao_do_abismo', 'Coração do Abismo', 'O que os cem pisos existiam para guardar.', 'fortaleza', 'cosmico', { vida: 2.5, dano: 1.6, escudo: 2.0, velocidade: 0.9 }],
+    ['coracao_do_abismo', 'Coração da Provação', 'O que os cem pisos existiam para guardar.', 'fortaleza', 'cosmico', { vida: 2.5, dano: 1.6, escudo: 2.0, velocidade: 0.9 }],
   ],
 ];
 
@@ -348,14 +348,14 @@ function especialDe(piso: number): string {
 }
 
 /** O elenco montado: cem chefes, um por piso. */
-export const CHEFES_DO_ABISMO: readonly ChefeDoAbismo[] = ELENCO.flatMap((camada, ci) =>
+export const CHEFES_DA_PROVACAO: readonly ChefeDaProvacao[] = ELENCO.flatMap((camada, ci) =>
   camada.map((linha, li) => {
     const [id, nome, caracteristica, arquetipo, elemento, ajuste, especial] = linha;
     const piso = ci * 10 + li + 1;
     const elem = elemento ?? CAMADAS[ci]!.elemento;
     const perfil = ARQUETIPOS[arquetipo];
     return {
-      id: `abismo_${id}`,
+      id: `provacao_${id}`,
       nome,
       caracteristica,
       piso,
@@ -372,8 +372,8 @@ export const CHEFES_DO_ABISMO: readonly ChefeDoAbismo[] = ELENCO.flatMap((camada
   }),
 );
 
-export const CHEFE_DO_ABISMO_POR_ID = new Map(CHEFES_DO_ABISMO.map((c) => [c.id, c]));
+export const CHEFE_DA_PROVACAO_POR_ID = new Map(CHEFES_DA_PROVACAO.map((c) => [c.id, c]));
 
 /** O chefe daquele piso. Recorta em vez de estourar. */
-export const chefeDoPiso = (piso: number): ChefeDoAbismo =>
-  CHEFES_DO_ABISMO[Math.min(99, Math.max(0, Math.floor(piso) - 1))]!;
+export const chefeDoPiso = (piso: number): ChefeDaProvacao =>
+  CHEFES_DA_PROVACAO[Math.min(99, Math.max(0, Math.floor(piso) - 1))]!;

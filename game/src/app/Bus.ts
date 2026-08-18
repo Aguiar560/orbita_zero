@@ -15,6 +15,13 @@ export interface GameEvents {
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };
 
+  // Núcleo de Provação (§61). Existem para as missões e a telemetria futura
+  // ouvirem o modo sem que ele precise conhecê-las.
+  'provacao:iniciado': { piso: number };
+  'provacao:vencido': { piso: number; chefeId: string; camadas: string[] };
+  'provacao:falhou': { piso: number };
+  'provacao:marco': { piso: number };
+
   'loot:dropped': { item: Item };
   'chest:granted': { tier: string; source: string };
   'chest:opened': { tier: string; items: Item[] };

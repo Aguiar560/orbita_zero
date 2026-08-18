@@ -1,14 +1,14 @@
-import { chefeDoPiso } from '@data/abismo-chefes';
+import { chefeDoPiso } from '@data/provacao-chefes';
 import type { Requisito } from '@data/missoes';
 import type { ElementId, Rarity } from '@sim/types';
 
 /**
- * O Abismo Estelar — o modo de chefes do fim de jogo (§32–§35).
+ * O Núcleo de Provação — o modo de chefes do fim de jogo (§32–§35).
  *
  * Cem pisos, um chefe por piso. O §32 proíbe o nome "torre" e pede algo do
  * universo do jogo; das opções listadas, "Singularidade" e "Convergência" já
  * estão em uso (o baú de topo e a receita de fusão Lendário→Mítico), e repetir
- * nome entre sistemas confunde mais do que economiza. Sobrou Abismo Estelar.
+ * nome entre sistemas confunde mais do que economiza. Sobrou Núcleo de Provação.
  *
  * ## O problema que decide o desenho
  *
@@ -36,8 +36,8 @@ import type { ElementId, Rarity } from '@sim/types';
  * própria em vez de textura procedural.
  */
 
-export const ABISMO_NOME = 'ABISMO ESTELAR';
-export const ABISMO_PISOS = 100;
+export const PROVACAO_NOME = 'NÚCLEO DE PROVAÇÃO';
+export const PROVACAO_PISOS = 100;
 
 // ── modificadores ───────────────────────────────────────────────────────────
 
@@ -231,7 +231,7 @@ function hash(piso: number, sal: number): number {
  * Nível de comando exigido no piso.
  *
  * Linear e não exponencial: o §34 quer o requisito como PORTA, não como segunda
- * curva de progressão. Cem pisos cobrindo do nível 40 ao 297 mantêm o Abismo à
+ * curva de progressão. Cem pisos cobrindo do nível 40 ao 297 mantêm o Núcleo à
  * frente da campanha sem virar um segundo jogo para nivelar.
  */
 export function nivelExigidoNoPiso(piso: number): number {
@@ -354,13 +354,13 @@ export function recompensaDoPiso(piso: number, peso: number): RecompensaDePiso {
  * resolvedor em `sim/missoes.ts`. O §34 pede que sejam CONFIGURÁVEIS, e um
  * segundo sistema de requisito com as mesmas variantes seria a duplicação que o
  * §50 manda evitar; de quebra, todo requisito novo que as missões ganharem o
- * Abismo herda de graça.
+ * Provação herda de graça.
  */
 export function requisitosDoPiso(piso: number): readonly Requisito[] {
   const req: Requisito[] = [{ tipo: 'nivelPersonagem', valor: nivelExigidoNoPiso(piso) }];
-  // O piso anterior é porta obrigatória — é o que faz do Abismo uma escada, e
+  // O piso anterior é porta obrigatória — é o que faz da Provação uma escada, e
   // não uma lista de desafios avulsos.
-  if (piso > 1) req.push({ tipo: 'abismoPiso', valor: piso - 1 });
+  if (piso > 1) req.push({ tipo: 'provacaoPiso', valor: piso - 1 });
   return req;
 }
 
@@ -370,8 +370,8 @@ export function requisitosDoPiso(piso: number): readonly Requisito[] {
  * Sem cache: a função é pura e barata, e um cache aqui só criaria a chance de a
  * tela mostrar um piso diferente do que a simulação usou.
  */
-export function pisoDoAbismo(piso: number): PisoDef {
-  const p = Math.max(1, Math.min(ABISMO_PISOS, Math.floor(piso)));
+export function pisoDaProvacao(piso: number): PisoDef {
+  const p = Math.max(1, Math.min(PROVACAO_PISOS, Math.floor(piso)));
   const { ids, peso } = modificadoresDoPiso(p);
 
   return {
