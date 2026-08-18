@@ -129,7 +129,7 @@ export class VerticalMode {
     x: VIEW.w / 2, y: VIEW.h * 0.75, vx: 0, vy: 0,
     hp: 1, hpMax: 1, shield: 0, shieldMax: 0, shieldLock: 0,
     radius: 15, fireTimer: 0, invuln: 1.2, bank: 0,
-    alive: true, deathTimer: 0,
+    alive: true, deathTimer: 0, stun: 0, slow: 0, slowFor: 0,
   };
 
   constructor(
@@ -315,6 +315,7 @@ export class VerticalMode {
 
     this.elapsed += dt;
     this.advanceSky(dt);
+    this.tickDesafio(dt);
 
     this.shake = damp(this.shake, 0, 0.09, dt);
     this.flash = damp(this.flash, 0, 0.07, dt);
@@ -335,6 +336,14 @@ export class VerticalMode {
   private updatePlayer(dt: number): void {
     const p = this.player;
     const stats = this.sim.stats;
+
+    // Relógios dos especiais. Decaem sempre, inclusive na morte, para não
+    // sobreviverem a um encontro e contaminarem o seguinte.
+    if (p.stun > 0) p.stun = Math.max(0, p.stun - dt);
+    if (p.slowFor > 0) {
+      p.slowFor = Math.max(0, p.slowFor - dt);
+      if (p.slowFor === 0) p.slow = 0;
+    }
 
     // Espelha os vitais na simulação para a interface ler sem tocar na cena.
     const vitals = this.sim.vitals;
@@ -370,12 +379,21 @@ export class VerticalMode {
     const cmd = this.ai.update(dt, p, this.enemies, this.bullets, this.pickups, stats.iaSkill, this.sim.state.settings.pilot);
     this.threat = damp(this.threat, cmd.threat, 0.12, dt);
 
-    const speed = stats.velocidade;
+    /**
+     * Atordoamento ZERA o comando; lentidão só corta a velocidade.
+     *
+     * A diferença importa: atordoado o jogador não decide nada, e é por isso
+     * que os especiais que atordoam têm a telegrafia mais longa do catálogo.
+     * Lento ele ainda joga, só pior — a decisão continua sendo dele.
+     */
+    const speed = stats.velocidade * (1 - (p.slowFor > 0 ? p.slow : 0));
     const accel = speed * 7.5;
-    p.vx += cmd.dx * accel * dt;
-    p.vy += cmd.dy * accel * dt;
+    if (p.stun <= 0) {
+      p.vx += cmd.dx * accel * dt;
+      p.vy += cmd.dy * accel * dt;
+    }
 
-    if (cmd.dash) {
+    if (cmd.dash && p.stun <= 0) {
       const len = Math.hypot(cmd.dx, cmd.dy) || 1;
       p.vx += (cmd.dx / len) * speed * 2.1;
       p.vy += (cmd.dy / len) * speed * 2.1;
@@ -479,6 +497,9 @@ export class VerticalMode {
   private damagePlayer(amount: number, element: ElementId = 'padrao'): void {
     const p = this.player;
     if (!p.alive || p.invuln > 0) return;
+    // Alimenta o registro do piso (§27) sem que a Provação precise observar o
+    // combate de fora.
+    if (this.sim.desafio) this.sim.desafio.danoRecebido += amount;
 
     /**
      * O tiro inimigo também vira pacote (§3).
@@ -1119,9 +1140,94 @@ export class VerticalMode {
     this.beginVictory();
   }
 
+  /**
+   * A barra de especial do chefe da Provação.
+   *
+   * Todo o vocabulário do modo mora em `sim/desafio.ts`; aqui só se traduz o
+   * que ele devolve em coisas que a cena sabe fazer — aviso, dano, partícula.
+   * É a fronteira que mantém este arquivo sem `if (estáNaProvação)` espalhado.
+   */
+  private tickDesafio(dt: number): void {
+    const d = this.sim.desafio;
+    if (!d) return;
+
+    const chefe = this.enemies.items.find((x) => x.alive && !!x.boss) ?? null;
+
+    // Regeneração e escudo travado valem enquanto a luta dura, não no disparo.
+    if (chefe && d.efeitos.regen > 0) {
+      chefe.hp = Math.min(chefe.maxHp, chefe.hp + chefe.maxHp * d.efeitos.regen * dt);
+    }
+    if (d.efeitos.travaEscudo) this.player.shieldLock = 0.25;
+
+    switch (this.sim.tickDesafio(dt)) {
+      case 'aviso': {
+        // O AVISO é o que separa dificuldade de imposto: sem ele o jogador
+        // perde sem ter tido o que fazer.
+        this.setBanner(d.especial.nome.toUpperCase());
+        this.flash = Math.max(this.flash, 0.35);
+        if (chefe) this.particles.shockwave(chefe.x, chefe.y, 140, d.especial.cor, d.especial.aviso);
+        break;
+      }
+      case 'dispara': {
+        this.dispararEspecial(d, chefe);
+        break;
+      }
+      case 'tempo': {
+        // Estourar o limite conta como derrota, e não como saída silenciosa.
+        this.sim.falharPisoDaProvacao(d.piso, {
+          tempo: d.tempo, danoCausado: d.danoCausado, danoRecebido: d.danoRecebido,
+        });
+        this.damagePlayer(this.player.hp + this.player.shield + 1);
+        break;
+      }
+      default: break;
+    }
+  }
+
+  /** Aplica o efeito do especial. Cada família bate de um jeito. */
+  private dispararEspecial(d: NonNullable<Sim['desafio']>, chefe: Enemy | null): void {
+    const ef = d.especial.efeito;
+    const base = this.sim.encounter.damage;
+
+    this.shake = Math.max(this.shake, 14);
+    this.flash = Math.max(this.flash, 0.6);
+    if (chefe) this.particles.shockwave(chefe.x, chefe.y, 320, d.especial.cor, 0.5);
+
+    if (ef.quebraEscudo) this.player.shield = 0;
+    if (ef.selaEscudo) this.player.shieldLock = ef.selaEscudo;
+    if (ef.atordoa) this.player.stun = Math.max(this.player.stun, ef.atordoa);
+    if (ef.lentidao) {
+      this.player.slow = ef.lentidao;
+      this.player.slowFor = ef.lentidaoDuracao ?? 2;
+    }
+    if (ef.dano) this.damagePlayer(base * ef.dano, d.chefe.elemento);
+
+    if (chefe) {
+      if (ef.cura) chefe.hp = Math.min(chefe.maxHp, chefe.hp + chefe.maxHp * ef.cura);
+      if (ef.escudaSe) chefe.hp = Math.min(chefe.maxHp, chefe.hp + chefe.maxHp * ef.escudaSe * 0.5);
+      if (ef.invoca) this.summonMinions('drone', ef.invoca, chefe);
+    }
+  }
+
   /** Prepara o painel de vitória e começa a contagem. */
   private beginVictory(): void {
     const e = this.sim.encounter;
+
+    /**
+     * Vitória na Provação: conclui o piso ANTES de montar o painel.
+     *
+     * A ordem importa porque `concluirPisoDaProvacao` fecha o desafio, e o
+     * painel precisa ler o encontro enquanto ele ainda existe — daí a cópia de
+     * `e` acima, feita antes.
+     */
+    const d = this.sim.desafio;
+    if (d) {
+      const camadas = this.sim.concluirPisoDaProvacao(d.piso, {
+        tempo: d.tempo, danoCausado: d.danoCausado, danoRecebido: d.danoRecebido,
+      });
+      // O marco merece mais barulho: é o pico que o jogador vai lembrar.
+      this.setBanner(camadas.includes('marco') ? 'MARCO CONQUISTADO' : 'PISO CONCLUÍDO');
+    }
     this.victory = VICTORY_HOLD;
     this.victoryKind = e.kind;
     this.victoryLabel = e.kind === 'chefe' ? (e.boss?.name ?? 'Chefe') : e.kind === 'elite' ? 'Guarda de Elite' : `Onda ${e.wave}`;

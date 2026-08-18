@@ -8,6 +8,9 @@ import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
+import {
+  abrirDesafio, encontroDoDesafio, tickDoDesafio, type DesafioAtivo,
+} from './desafio';
 import { chefeDoPiso } from '@data/provacao-chefes';
 import {
   FRACAO_REPETICAO, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
@@ -99,6 +102,15 @@ export class Sim {
   private saveTimer = 0;
 
   /**
+   * Desafio da Provação em andamento, ou `null`.
+   *
+   * Vive em MEMÓRIA e não no save: uma luta interrompida por fechar a aba não
+   * deve poder ser retomada no ponto — a tentativa já foi cobrada na entrada, e
+   * guardar o meio da luta abriria a porta para reiniciá-la sem custo.
+   */
+  desafio: DesafioAtivo | null = null;
+
+  /**
    * Sinais vitais ao vivo da nave, escritos pela camada vertical a cada quadro.
    *
    * Ficam aqui para que a interface leia o estado do combate sem depender do
@@ -119,6 +131,10 @@ export class Sim {
   }
 
   get encounter(): Encounter {
+    // Com desafio ativo, o encontro é o DELE. É assim que `VerticalMode`
+    // continua lendo o mesmo lugar de sempre e não precisa saber que a Provação
+    // existe — a substituição acontece aqui, num ponto só.
+    if (this.desafio) return (this.encounterCache ??= encontroDoDesafio(this.state, this.desafio));
     return (this.encounterCache ??= buildEncounter(this.state, this.state.run.sector, this.state.run.wave));
   }
 
@@ -510,6 +526,8 @@ export class Sim {
     if (!pisoLiberado(this.state, piso)) return false;
     if (!gastarTentativa(this.state)) return false;
 
+    this.desafio = abrirDesafio(piso);
+    this.encounterCache = null;
     bus.emit('provacao:iniciado', { piso });
     this.touch();
     return true;
@@ -568,6 +586,9 @@ export class Sim {
       }
     }
 
+    this.desafio = null;
+    this.encounterCache = null;
+
     const chefe = chefeDoPiso(piso);
     bus.emit('provacao:vencido', { piso, chefeId: chefe.id, camadas });
     if (camadas.includes('marco')) bus.emit('provacao:marco', { piso });
@@ -590,8 +611,21 @@ export class Sim {
       nave: this.state.hull, nivelDaNave: this.naveAtiva.nivel,
       danoCausado: r.danoCausado, danoRecebido: r.danoRecebido,
     });
+    this.desafio = null;
+    this.encounterCache = null;
     bus.emit('provacao:falhou', { piso });
     this.touch();
+  }
+
+  /**
+   * Avança o relógio do desafio. Chamado pela cena a cada quadro.
+   *
+   * Devolve o que o combate deve fazer: nada, começar a telegrafia, disparar o
+   * especial, ou encerrar por tempo.
+   */
+  tickDesafio(dt: number): 'nada' | 'aviso' | 'dispara' | 'tempo' {
+    if (!this.desafio) return 'nada';
+    return tickDoDesafio(this.desafio, dt);
   }
 
   /** Os pisos que a tela mostra, do 1 ao maior liberado mais alguns à frente. */

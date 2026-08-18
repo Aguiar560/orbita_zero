@@ -171,6 +171,17 @@ export interface Player {
   bank: number;
   alive: boolean;
   deathTimer: number;
+  /**
+   * Segundos sem responder a comando. Vem dos especiais da Provação.
+   *
+   * Atordoar é a única coisa que um chefe faz que o jogador não pode contornar
+   * com atributo — por isso os especiais que atordoam têm a telegrafia mais
+   * longa do catálogo.
+   */
+  stun: number;
+  /** Corte de velocidade, 0..1, enquanto `slowFor` durar. */
+  slow: number;
+  slowFor: number;
 }
 
 export function createBulletPool(capacity = 1400): Pool<Bullet> {
