@@ -35,7 +35,9 @@ describe('o catálogo', () => {
   /** Pré-requisito para missão que não existe travaria a cadeia para sempre. */
   it('todo pré-requisito existe', () => {
     for (const m of MISSOES) {
-      for (const id of m.requer ?? []) expect(MISSAO_POR_ID.has(id), `${m.id} → ${id}`).toBe(true);
+      for (const r of m.requisitos ?? []) {
+        if (r.tipo === 'missaoConcluida') expect(MISSAO_POR_ID.has(r.missaoId), m.id + ' -> ' + r.missaoId).toBe(true);
+      }
     }
   });
 
@@ -68,7 +70,9 @@ describe('o catálogo', () => {
       if (pronto.has(id)) return;
       expect(visitando.has(id), `ciclo em ${id}`).toBe(false);
       visitando.add(id);
-      for (const p of MISSAO_POR_ID.get(id)?.requer ?? []) desce(p);
+      for (const r of MISSAO_POR_ID.get(id)?.requisitos ?? []) {
+        if (r.tipo === 'missaoConcluida') desce(r.missaoId);
+      }
       visitando.delete(id);
       pronto.add(id);
     };
@@ -140,7 +144,8 @@ describe('o progresso', () => {
    */
   it('missão ainda travada não acumula', () => {
     const state = createState(2);
-    const def = MISSOES.find((m) => m.requerSetor === 10)!;
+    const def = MISSOES.find((m) =>
+      m.requisitos?.some((r) => r.tipo === 'setorAlcancado' && r.valor === 10))!;
     for (let i = 0; i < 200; i++) aplicarFato(state, abate({ elemento: 'fogo' }), 1);
     expect(progressoDe(state, def).passos[0]).toBe(0);
 

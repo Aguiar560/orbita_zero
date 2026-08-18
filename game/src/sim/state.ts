@@ -48,6 +48,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     codex: [],
     missoes: {},
     medalhas: 0,
+    confianca: {},
 
     stats: { kills: 0, bossKills: 0, deaths: 0, itemsFound: 0, chestsOpened: 0 },
 
@@ -103,6 +104,7 @@ export function migrate(raw: unknown): GameState | null {
     // impede jogar".
     missoes: (data.missoes && typeof data.missoes === 'object') ? data.missoes as GameState['missoes'] : {},
     medalhas: Number.isFinite(data.medalhas) ? Number(data.medalhas) : 0,
+    confianca: (data.confianca && typeof data.confianca === 'object') ? data.confianca as Record<string, number> : {},
   };
 
   if ((data.version ?? 0) < 2) {

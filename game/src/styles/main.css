@@ -1314,42 +1314,238 @@ h1, h2, h3 { font-family: 'Chakra Petch', 'Rajdhani', sans-serif; margin: 0; let
 .fab-res-destino { text-align: center; }
 .fab-res .fab-acao { width: 100%; }
 
-/* ── missões (§27) ───────────────────────────────────────────────────────── */
-.missoes { display: grid; gap: 14px; align-content: start; }
-.missoes-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.missoes-medalhas {
-  display: grid; gap: 2px; padding: 6px 14px;
-  border: 1px solid var(--line-strong); border-radius: 10px;
-  background: rgba(4, 8, 18, 0.6);
-}
-.missoes-medalhas strong { color: var(--accent-2); font-size: 18px; }
-.missoes-filtros { display: flex; gap: 6px; flex-wrap: wrap; }
-.missoes-lista { display: grid; gap: 10px; }
 
-.missao {
-  display: grid; gap: 8px; padding: 12px 14px;
-  border: 1px solid var(--line); border-radius: 12px;
+/* ── Missões: a Central de Contratos (§27) ───────────────────────────────── */
+/*
+ * Glow SÓ na borda (§31). O interior de todo painel fica escuro e de baixo
+ * contraste, que é o que mantém o texto claro legível — card inteiro iluminado
+ * é bonito em captura de tela e ilegível em uso.
+ *
+ * Grade em minmax() e clamp() (§34): a coluna do meio é a que cede, porque é a
+ * única com conteúdo que reflui. As laterais têm largura de leitura, e
+ * espremê-las quebraria o card de contato antes de quebrar o de missão.
+ */
+.mis { display: grid; gap: 12px; align-content: start; min-height: 0; }
+
+.mis-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.mis-abas { display: flex; gap: 4px; }
+.mis-aba {
+  padding: 7px 20px; font-size: 12px; letter-spacing: 1.5px;
+  color: var(--muted); background: rgba(4, 8, 18, 0.6);
+  border: 1px solid var(--line);
+  /* Canto chanfrado (§32) — o corte é a assinatura do HUD. */
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+  cursor: pointer; transition: color 180ms, border-color 180ms, background 180ms;
+}
+.mis-aba:hover { color: var(--text); border-color: var(--line-strong); }
+.mis-aba.ativa {
+  color: var(--accent); border-color: var(--accent);
+  background: rgba(79, 195, 255, 0.08);
+  box-shadow: 0 0 12px rgba(79, 195, 255, 0.18);
+}
+.mis-contadores { display: flex; gap: 8px; }
+.mis-cont {
+  padding: 4px 12px; font-size: 12px;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: rgba(4, 8, 18, 0.6); color: var(--text);
+}
+.mis-cont.pronta { border-color: var(--good); color: var(--good); }
+.mis-cont.medalha { border-color: var(--accent-2); color: var(--accent-2); }
+
+/* 22% / 58% / 20% do §5, com piso para as laterais não colapsarem. */
+.mis-corpo {
+  display: grid; gap: 12px; min-height: 0;
+  grid-template-columns: minmax(210px, 22%) minmax(0, 1fr) minmax(190px, 20%);
+}
+@media (max-width: 1180px) {
+  /* A coluna direita é legenda e ação: primeira a sair quando falta espaço. */
+  .mis-corpo { grid-template-columns: minmax(190px, 26%) minmax(0, 1fr); }
+  .mis-dir { display: none; }
+}
+.mis-col { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.mis-centro { display: grid; gap: 12px; align-content: start; min-width: 0; }
+
+.mis-secao-tit {
+  font-size: 11px; letter-spacing: 2px; color: var(--accent);
+  padding-left: 8px; border-left: 2px solid var(--accent);
+}
+
+/* Scroll PRÓPRIO (§36): o modal não rola inteiro, cada lista rola sozinha. */
+.mis-lista-contatos {
+  display: grid; gap: 6px; align-content: start;
+  max-height: clamp(300px, 52vh, 560px); overflow-y: auto; padding-right: 4px;
+}
+.mis-contato {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(6, 11, 24, 0.6);
+  cursor: pointer; transition: border-color 180ms, background 180ms, box-shadow 180ms;
+}
+.mis-contato:hover { background: rgba(12, 20, 38, 0.7); border-color: var(--line-strong); }
+.mis-contato.sel { background: rgba(10, 18, 34, 0.85); box-shadow: 0 0 14px rgba(79, 195, 255, 0.12); }
+.mis-contato.travado { opacity: 0.5; cursor: default; }
+.mis-contato-txt { display: grid; gap: 1px; min-width: 0; }
+.mis-contato-txt strong { font-size: 13px; letter-spacing: 0.6px; }
+.mis-contato-txt span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mis-retrato {
+  width: 46px; height: 46px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: rgba(2, 5, 12, 0.8);
+}
+.mis-retrato.silhueta { color: var(--muted); font-size: 20px; }
+.mis-sinal { font-size: 14px; }
+
+.mis-ficha {
+  display: grid; gap: 14px; padding: 12px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(240px, 0.9fr);
+  border: 1px solid var(--line-strong); border-radius: 12px;
   background: rgba(6, 11, 24, 0.55);
 }
-/* A pronta se destaca de longe: é a única linha acionável da lista. */
-.missao.pronta {
-  border-color: var(--good);
-  box-shadow: 0 0 18px rgba(92, 224, 138, 0.14);
-  background: rgba(10, 26, 18, 0.5);
+@media (max-width: 1000px) { .mis-ficha { grid-template-columns: auto minmax(0, 1fr); } }
+.mis-ficha-retrato {
+  width: 120px; height: 120px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid; border-radius: 10px; background: rgba(2, 5, 12, 0.85);
 }
-.missao.entregue { opacity: 0.45; }
-.missao-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.missao-titulo { display: grid; gap: 1px; }
-.missao-desc { margin: 0; }
-.missao-selo { color: var(--good); font-size: 11px; letter-spacing: 1px; }
-.missao-resgatar { border-color: var(--good); color: var(--good); }
-.missao-resgatar:disabled { opacity: 0.5; border-color: var(--line); color: var(--muted); }
-.missao-obj { display: grid; gap: 3px; }
-.missao-obj-linha { display: flex; justify-content: space-between; gap: 10px; }
-.missao-premio { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
-.missao-ficha {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px; font-size: 11px;
+.mis-ficha-dados { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.mis-ficha-nome { font-size: 24px; letter-spacing: 2px; margin: 0; }
+.mis-ficha-linha { display: flex; gap: 12px; align-items: center; }
+.mis-ficha-linha > span:first-child { min-width: 74px; letter-spacing: 1px; }
+.mis-afinidade { display: flex; gap: 3px; }
+.mis-pip { width: 9px; height: 9px; border: 1px solid; transform: rotate(45deg); }
+.mis-selo-exchefe {
+  justify-self: start; margin-top: 4px; padding: 2px 8px;
+  font-size: 10px; letter-spacing: 1px; color: #FF4B4B;
+  border: 1px solid #FF4B4B; border-radius: 4px;
+}
+
+.mis-confianca {
+  display: grid; gap: 8px; align-content: start; padding: 10px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(3, 6, 14, 0.6);
+}
+.mis-nos { display: flex; align-items: center; justify-content: space-between; }
+.mis-no-wrap { display: grid; grid-auto-flow: column; align-items: center; }
+.mis-fio { width: 20px; height: 2px; }
+.mis-no {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid; font-size: 12px;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  background: rgba(2, 5, 12, 0.8);
+}
+.mis-no.aberto { box-shadow: 0 0 10px currentColor; }
+.mis-no.mini { width: 12px; height: 12px; }
+.mis-nos.compacto { justify-content: center; gap: 4px; }
+.mis-no-rom { font-size: 10px; letter-spacing: 1px; padding-left: 4px; }
+
+.mis-missoes { display: grid; gap: 8px; min-height: 0; }
+.mis-cards {
+  display: grid; gap: 8px; align-content: start;
+  max-height: clamp(220px, 40vh, 460px); overflow-y: auto; padding-right: 4px;
+}
+.mis-card {
+  display: grid; align-items: center; gap: 12px;
+  grid-template-columns: auto minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(120px, 0.9fr) auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(6, 11, 24, 0.55);
+  transition: border-color 180ms, background 180ms, box-shadow 180ms;
+}
+@media (max-width: 1300px) {
+  .mis-card { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .mis-card-prog, .mis-card-premio { grid-column: 2 / -1; }
+}
+.mis-card:hover { background: rgba(12, 20, 38, 0.65); }
+.mis-card.pronta { box-shadow: 0 0 16px rgba(80, 227, 107, 0.16); border-color: var(--good) !important; }
+.mis-card.mis-travada { opacity: 0.42; }
+.mis-card.mis-feita { opacity: 0.5; grid-template-columns: auto minmax(0, 1fr) auto; }
+.mis-card-icone {
+  width: 42px; height: 42px; display: grid; place-items: center; font-size: 18px;
+  border: 1px solid var(--line-strong);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  background: rgba(2, 5, 12, 0.8);
+}
+.mis-card-icone.grande { width: 56px; height: 56px; font-size: 24px; }
+.mis-card-txt { display: grid; gap: 2px; min-width: 0; }
+.mis-card-txt strong { font-size: 13px; letter-spacing: 1px; }
+.mis-card-prog, .mis-card-premio, .mis-card-req { display: grid; gap: 3px; min-width: 0; }
+.mis-obj { display: grid; gap: 2px; }
+.mis-obj-linha { display: flex; justify-content: space-between; gap: 8px; }
+.mis-req { color: var(--muted); }
+.mis-entregar { border-color: var(--good); color: var(--good); white-space: nowrap; }
+.mis-entregar:hover { box-shadow: 0 0 12px rgba(80, 227, 107, 0.3); }
+
+.mis-especial {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr) auto;
+  border-color: #FFB638;
+  background: linear-gradient(100deg, rgba(30, 22, 6, 0.6), rgba(6, 11, 24, 0.6));
+  box-shadow: 0 0 18px rgba(255, 182, 56, 0.14);
+}
+@media (max-width: 1100px) { .mis-especial { grid-template-columns: minmax(0, 1fr); } }
+.mis-esp-esq { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.mis-esp-txt { display: grid; gap: 3px; min-width: 0; }
+.mis-esp-txt strong { font-size: 16px; letter-spacing: 1.5px; color: #FFB638; }
+.mis-esp-tag { font-size: 10px; letter-spacing: 2px; color: #FFB638; opacity: 0.75; }
+.mis-esp-dir { display: grid; gap: 4px; align-content: start; }
+.mis-esp-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center;
+  padding: 8px; border: 1px solid rgba(255, 182, 56, 0.4); border-radius: 8px;
+  background: rgba(2, 5, 12, 0.6);
+}
+.mis-esp-arte {
+  width: 60px; height: 60px; display: grid; place-items: center;
+  border: 1px solid rgba(255, 182, 56, 0.3); border-radius: 6px;
+  background: rgba(20, 14, 4, 0.6);
+}
+.mis-esp-info { display: grid; gap: 3px; min-width: 0; }
+.mis-esp-info strong { font-size: 13px; letter-spacing: 0.5px; }
+.mis-esp-dono { font-size: 10px; letter-spacing: 0.5px; color: #FFB638; }
+.mis-entregar.esp { border-color: #FFB638; color: #FFB638; }
+
+.mis-tipo {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+  background: rgba(6, 11, 24, 0.5); cursor: pointer;
+  transition: background 180ms, box-shadow 180ms;
+}
+.mis-tipo:hover { background: rgba(12, 20, 38, 0.7); }
+.mis-tipo.ativo { box-shadow: 0 0 12px rgba(79, 195, 255, 0.2); background: rgba(12, 20, 38, 0.8); }
+.mis-tipo-icone {
+  width: 32px; height: 32px; display: grid; place-items: center; font-size: 15px;
+  border: 1px solid;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+.mis-tipo-txt { display: grid; gap: 1px; min-width: 0; }
+.mis-tipo-txt strong { font-size: 11px; letter-spacing: 1px; }
+
+.mis-fichas { display: flex; gap: 5px; flex-wrap: wrap; }
+.mis-ficha {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; font-size: 10px; letter-spacing: 0.4px;
   border: 1px solid var(--line-strong); border-radius: 999px;
-  color: var(--text);
+  color: var(--text); white-space: nowrap;
 }
+.mis-entregar-tudo {
+  margin-top: 6px; width: 100%;
+  border-color: var(--accent); color: var(--accent);
+}
+.mis-entregar-tudo:hover:not(:disabled) { box-shadow: 0 0 14px rgba(79, 195, 255, 0.35); }
+.mis-entregar-tudo:disabled { border-color: var(--line); color: var(--muted); opacity: 0.55; }
+
+.mis-rede, .mis-concluidas { display: grid; gap: 10px; align-content: start; }
+.mis-rede-grade {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.mis-no-rede {
+  display: grid; gap: 5px; justify-items: center; text-align: center;
+  padding: 12px 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(6, 11, 24, 0.55);
+}
+.mis-no-rede.travado { opacity: 0.45; }
+.mis-no-rede strong { font-size: 12px; letter-spacing: 1px; }
+.mis-no-rede .mis-retrato { width: 66px; height: 66px; }

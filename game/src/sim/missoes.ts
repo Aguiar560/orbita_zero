@@ -1,7 +1,10 @@
 import {
   MISSAO_POR_ID, MISSOES, quantoConta,
-  type FatoDeJogo, type MissaoDef,
+  type FatoDeJogo, type MissaoDef, type Requisito,
 } from '@data/missoes';
+import { BOSS_BY_ID } from '@data/bosses';
+import { PHASES_PER_GALAXY } from '@data/galaxies';
+import { CONFIANCA_MAX, PERSONAGEM_POR_ID, ROMANOS, type PersonagemDef } from '@data/personagens';
 import type { GameState } from './types';
 
 /**
@@ -41,17 +44,108 @@ export function progressoDe(state: GameState, def: MissaoDef): ProgressoDeMissao
   return novo;
 }
 
+/**
+ * Um requisito é satisfeito? Ponto ÚNICO onde isso se decide (§42).
+ *
+ * A UI nunca pergunta "o nível é maior que 30 e o chefe caiu?" — ela pergunta a
+ * situação da missão e desenha. Espalhar a regra pelos componentes é o que faz
+ * uma tela discordar da outra sobre o que está liberado.
+ */
+export function requisitoSatisfeito(
+  state: GameState,
+  req: Requisito,
+  alcance: number,
+): boolean {
+  switch (req.tipo) {
+    case 'nivelPersonagem': return state.command.nivel >= req.valor;
+    case 'nivelNave': return (state.naves[state.hull]?.nivel ?? 1) >= req.valor;
+    case 'setorAlcancado': return alcance >= req.valor;
+    // Galáxia CONCLUÍDA é ter passado do último setor dela, não estar nela.
+    case 'galaxiaConcluida': return alcance > (req.galaxia + 1) * PHASES_PER_GALAXY;
+    case 'chefeDerrotado': return state.codex.includes(req.chefeId);
+    case 'missaoConcluida': return !!state.missoes[req.missaoId]?.entregue;
+    case 'confianca': return (state.confianca[req.personagem] ?? 0) >= req.valor;
+    case 'recurso': return (state.armazem[req.recurso] ?? 0) >= req.valor;
+  }
+}
+
+/** Texto do requisito, para a tela do card bloqueado (§16). */
+export function textoDoRequisito(req: Requisito): string {
+  switch (req.tipo) {
+    case 'nivelPersonagem': return `Nível ${req.valor} de comando`;
+    case 'nivelNave': return `Nave nível ${req.valor}`;
+    case 'setorAlcancado': return `Alcançar o setor ${req.valor}`;
+    case 'galaxiaConcluida': return `Concluir a galáxia ${req.galaxia + 1}`;
+    case 'chefeDerrotado': return `Derrotar ${BOSS_BY_ID.get(req.chefeId)?.name ?? req.chefeId}`;
+    case 'missaoConcluida': return `Concluir "${MISSAO_POR_ID.get(req.missaoId)?.nome ?? req.missaoId}"`;
+    case 'confianca':
+      return `Confiança nível ${ROMANOS[req.valor - 1] ?? req.valor} com ${PERSONAGEM_POR_ID.get(req.personagem)?.nome ?? req.personagem}`;
+    case 'recurso': return `${req.valor} de ${req.recurso}`;
+  }
+}
+
 /** A missão está visível para o jogador? */
 export function estaLiberada(state: GameState, def: MissaoDef, alcance: number): boolean {
-  if (def.requerSetor !== undefined && alcance < def.requerSetor) return false;
-  if (def.requer) {
-    for (const id of def.requer) {
-      const pre = MISSAO_POR_ID.get(id);
-      if (!pre) continue;
-      if (!state.missoes[id]?.entregue) return false;
+  return (def.requisitos ?? []).every((r) => requisitoSatisfeito(state, r, alcance));
+}
+
+/** Os requisitos que ainda faltam — é o que o card bloqueado mostra. */
+export function requisitosPendentes(
+  state: GameState,
+  def: MissaoDef,
+  alcance: number,
+): Requisito[] {
+  return (def.requisitos ?? []).filter((r) => !requisitoSatisfeito(state, r, alcance));
+}
+
+// ── contatos e confiança ────────────────────────────────────────────────────
+
+/**
+ * O contato já apareceu na rede?
+ *
+ * Lê o CÓDEX para o ex-chefe, que já registra quem foi derrotado. Nenhum estado
+ * novo: converter um chefe em aliado é reinterpretar um dado que já existia, e
+ * é isso que faz a conversão funcionar em save antigo sem migração.
+ */
+export function contatoDesbloqueado(state: GameState, p: PersonagemDef): boolean {
+  return !p.requerChefe || state.codex.includes(p.requerChefe);
+}
+
+/** Confiança atual com um contato, 0..CONFIANCA_MAX. */
+export function confiancaDe(state: GameState, id: string): number {
+  return Math.min(CONFIANCA_MAX, Math.max(0, state.confianca[id] ?? 0));
+}
+
+/**
+ * Situação de um contato na lista, para o ícone do card (§8).
+ *
+ * Ordem de prioridade deliberada: "pronta para entrega" ganha de "nova missão",
+ * porque entregar é a ação que o jogador pode fazer AGORA. Um contato com as
+ * duas coisas mostra o ✓, não o !.
+ */
+export type SinalDeContato = 'bloqueado' | 'pronta' | 'especial' | 'nova' | 'nenhum';
+
+export function sinalDoContato(
+  state: GameState,
+  p: PersonagemDef,
+  alcance: number,
+): SinalDeContato {
+  if (!contatoDesbloqueado(state, p)) return 'bloqueado';
+
+  const minhas = MISSOES.filter((m) => m.giverId === p.id);
+  let temEspecial = false;
+  let temNova = false;
+  for (const m of minhas) {
+    const s = situacaoDe(state, m, alcance);
+    if (s === 'pronta') return 'pronta';
+    if (s === 'ativa') {
+      if (m.tipo === 'especial') temEspecial = true;
+      // "Nova" é a que ainda não saiu do zero: já vista e em andamento não
+      // merece chamar atenção toda vez que o painel abre.
+      if (fracaoDe(state, m) === 0) temNova = true;
     }
   }
-  return true;
+  return temEspecial ? 'especial' : temNova ? 'nova' : 'nenhum';
 }
 
 /** Todo objetivo batido? */

@@ -121,9 +121,60 @@ export interface Recompensa {
   concessao?: string;
 }
 
+// ── requisitos (§17) ────────────────────────────────────────────────────────
+
+/**
+ * O que precisa ser verdade para a missão aparecer.
+ *
+ * União discriminada, como os fatos, e pelo mesmo motivo: `trustLevel` precisa
+ * de `personagem` e `galaxyCompleted` não, e o compilador tem de saber a
+ * diferença. Um `{ type: string; value: any }` compilaria com requisito mal
+ * escrito e ele simplesmente nunca liberaria a missão — em silêncio.
+ */
+export type Requisito =
+  | { tipo: 'nivelPersonagem'; valor: number }
+  | { tipo: 'nivelNave'; valor: number }
+  | { tipo: 'setorAlcancado'; valor: number }
+  | { tipo: 'galaxiaConcluida'; galaxia: number }
+  | { tipo: 'chefeDerrotado'; chefeId: string }
+  | { tipo: 'missaoConcluida'; missaoId: string }
+  | { tipo: 'confianca'; personagem: string; valor: number }
+  | { tipo: 'recurso'; recurso: string; valor: number };
+
 // ── as missões ──────────────────────────────────────────────────────────────
 
 export type CategoriaDeMissao = 'eliminacao' | 'coleta' | 'entrega' | 'progressao';
+
+/** Classificação visual (§4). */
+export type TipoDeMissao = 'principal' | 'aliado' | 'galaxia' | 'especial';
+
+/**
+ * A identidade de cada tipo: cor, ícone e explicação.
+ *
+ * Tabela e não `switch` espalhado pela tela. E o ÍCONE não é enfeite: o §39
+ * proíbe depender só de cor, então cada tipo carrega um glifo próprio para quem
+ * não distingue roxo de vermelho continuar lendo a interface.
+ */
+export const TIPO_DE_MISSAO: Record<TipoDeMissao, {
+  nome: string; cor: string; glifo: string; explicacao: string;
+}> = {
+  principal: {
+    nome: 'PRINCIPAL', cor: '#4FC3FF', glifo: '◎',
+    explicacao: 'Missões que avançam a história principal.',
+  },
+  aliado: {
+    nome: 'DE ALIADO', cor: '#B45CFF', glifo: '⧉',
+    explicacao: 'Missões fornecidas por aliados.',
+  },
+  galaxia: {
+    nome: 'DA GALÁXIA', cor: '#FF4B4B', glifo: '✦',
+    explicacao: 'Missões ligadas à galáxia.',
+  },
+  especial: {
+    nome: 'ESPECIAL', cor: '#FFB638', glifo: '◆',
+    explicacao: 'Contratos únicos com recompensas exclusivas.',
+  },
+};
 
 /**
  * Ritmo da missão.
@@ -149,10 +200,49 @@ export interface MissaoDef {
    */
   objetivos: readonly Objetivo[];
   recompensa: Recompensa;
-  /** Só aparece a partir deste setor alcançado. */
-  requerSetor?: number;
-  /** Só aparece quando estas missões já foram entregues. */
-  requer?: readonly string[];
+  /**
+   * Requisitos, TODOS necessários (§17).
+   *
+   * Lista declarativa em vez dos campos soltos `requerSetor` e `requer` que
+   * existiam antes: cada requisito novo virava um campo novo na interface E um
+   * `if` novo em quem resolvia. Como lista, a UI só INTERPRETA — que é o que o
+   * §42 exige, nenhum componente decidindo sozinho se a missão liberou.
+   */
+  requisitos?: readonly Requisito[];
+
+  // ── quem dá, de onde vem, quanto vale (§4, §26) ───────────────────────────
+
+  /** Personagem que oferece a missão, por id de `personagens.ts`. */
+  giverId?: string;
+  /**
+   * Classificação VISUAL (§4).
+   *
+   * Separada de `categoria`: categoria diz o que se FAZ (eliminar, coletar),
+   * tipo diz o que a missão SIGNIFICA na progressão (história, aliado, região,
+   * contrato único). Uma missão de eliminação pode ser principal ou de galáxia,
+   * e juntar as duas num campo só perderia essa liberdade.
+   */
+  tipo?: TipoDeMissao;
+  /** Galáxia a que a missão pertence, para filtro e para a cor. */
+  galaxiaId?: number;
+  /**
+   * Recompensa ÚNICA e nomeada, exibida em destaque (§4.4).
+   *
+   * Separada de `recompensa.itens` porque não é "mais um item": é a peça que dá
+   * razão ao contrato especial existir, e a tela precisa mostrá-la grande, com
+   * nome próprio e o dono a que ela pertence.
+   */
+  recompensaExclusiva?: {
+    nome: string;
+    /** "ITEM EXCLUSIVO DE VARKH-7" — de quem é a assinatura. */
+    de?: string;
+    icone?: string;
+    raridadeMin?: Rarity;
+  };
+  /** Quanta confiança a entrega soma com o `giverId`. */
+  confianca?: number;
+  /** Missões que esta entrega libera. Informativo — o requisito manda. */
+  proximas?: readonly string[];
   /**
    * A entrega CONSOME o que foi acumulado.
    *
@@ -176,6 +266,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // ── eliminação ────────────────────────────────────────────────────────────
   {
     id: 'elim_primeiros',
+    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
     nome: 'Batismo de Fogo',
     descricao: 'A frota inimiga não se apresenta. Apresente-se você.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -184,15 +275,17 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'elim_chefes',
+    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
     nome: 'Caçador de Comandantes',
     descricao: 'Cada frota tem uma cabeça. Corte três.',
     categoria: 'eliminacao', ritmo: 'campanha',
     objetivos: [{ fato: 'chefe', alvo: 3, texto: 'Derrotar 3 chefes' }],
     recompensa: { moedas: { cristal: 40 }, medalhas: 1, baus: { ouro: 1 } },
-    requer: ['elim_primeiros'],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'elim_primeiros' }],
   },
   {
     id: 'elim_fogo',
+    giverId: 'char_nucleo_ferrugem', tipo: 'galaxia', confianca: 1,
     nome: 'Contrafogo',
     descricao: 'Frotas de fogo queimam o escudo antes do casco. Apague 60.',
     categoria: 'eliminacao', ritmo: 'semanal',
@@ -202,12 +295,13 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Abater 60 inimigos de fogo',
     }],
     recompensa: { moedas: { nucleo: 1_500 }, materiais: { titanio: 40 } },
-    requerSetor: 10,
+    requisitos: [{ tipo: 'setorAlcancado', valor: 10 }],
   },
 
   // ── coleta ────────────────────────────────────────────────────────────────
   {
     id: 'coleta_ferrita',
+    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
     nome: 'Linha de Suprimento',
     descricao: 'Ferrita é o que segura a fabricação de pé.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -220,6 +314,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'coleta_sucata',
+    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
     nome: 'Ferro-Velho Orbital',
     descricao: 'Nada se perde no vácuo — tudo se recolhe.',
     categoria: 'coleta', ritmo: 'diaria',
@@ -232,6 +327,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'coleta_raro',
+    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
     nome: 'Olho para o Raro',
     descricao: 'Dez peças raras. Não é sorte, é volume.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -241,12 +337,13 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Obter 10 itens Raros ou melhores',
     }],
     recompensa: { itens: { quantidade: 1, raridadeMin: 3 }, medalhas: 1 },
-    requerSetor: 15,
+    requisitos: [{ tipo: 'setorAlcancado', valor: 15 }],
   },
 
   // ── entrega ───────────────────────────────────────────────────────────────
   {
     id: 'entrega_titanio',
+    giverId: 'char_zyrak', tipo: 'aliado', confianca: 1,
     nome: 'Encomenda da Doca',
     descricao: 'A doca reforma o porão em troca de titânio. Bom negócio.',
     categoria: 'entrega', ritmo: 'campanha',
@@ -257,12 +354,13 @@ export const MISSOES: readonly MissaoDef[] = [
     }],
     consomeNaEntrega: { titanio: 120 },
     recompensa: { concessao: 'missao_carga_2', moedas: { cristal: 25 } },
-    requerSetor: 20,
+    requisitos: [{ tipo: 'setorAlcancado', valor: 20 }],
   },
 
   // ── progressão ────────────────────────────────────────────────────────────
   {
     id: 'prog_setor_10',
+    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
     nome: 'Fronteira Interior',
     descricao: 'Dez setores atrás de você.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -275,6 +373,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'prog_galaxia_2',
+    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
     nome: 'Salto Interestelar',
     descricao: 'A segunda galáxia não perdoa quem chegou cedo.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -284,10 +383,11 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Alcançar a galáxia 2',
     }],
     recompensa: { medalhas: 2, baus: { ouro: 1 }, concessao: 'missao_carga_3' },
-    requer: ['prog_setor_10'],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'prog_setor_10' }],
   },
   {
     id: 'prog_nivel_25',
+    giverId: 'char_zyrak', tipo: 'aliado', confianca: 1,
     nome: 'Patente de Comando',
     descricao: 'Nível 25 de comando. A frota começa a ouvir.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -300,6 +400,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'prog_fusao',
+    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
     nome: 'Mão de Artífice',
     descricao: 'Cinco sínteses que subiram de raridade. As que não subiram não contam.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -309,7 +410,50 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Concluir 5 fusões que subam de raridade',
     }],
     recompensa: { materiais: { cristal_quantico: 30 }, medalhas: 1 },
-    requerSetor: 25,
+    requisitos: [{ tipo: 'setorAlcancado', valor: 25 }],
+  },
+
+  // ── contrato especial e cadeia bloqueada (§4.4, §16) ──────────────────────
+  //
+  // Estes dois provam o que o formato precisa aguentar: um contrato com
+  // recompensa exclusiva NOMEADA e uma missão travada por CONFIANÇA, que é o
+  // requisito que só existe porque o personagem é entidade de primeira classe.
+  {
+    id: 'esp_coracao_ferrugem',
+    nome: 'Coração da Ferrugem',
+    descricao: 'Destrua o Protótipo NF-07 sem perder o escudo.',
+    categoria: 'eliminacao', ritmo: 'campanha',
+    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0, confianca: 2,
+    objetivos: [{
+      fato: 'chefe', alvo: 1,
+      filtro: { chefeId: 'nucleo_ferrugem' },
+      texto: 'Derrotar o Núcleo Ferrugem outra vez',
+    }],
+    requisitos: [
+      { tipo: 'chefeDerrotado', chefeId: 'nucleo_ferrugem' },
+      { tipo: 'confianca', personagem: 'char_nucleo_ferrugem', valor: 1 },
+    ],
+    recompensaExclusiva: {
+      nome: 'REATOR DO NÚCLEO FERRUGEM',
+      de: 'NÚCLEO FERRUGEM',
+      raridadeMin: 5,
+    },
+    recompensa: {
+      itens: { quantidade: 1, raridadeMin: 5, ilvlBonus: 20 },
+      moedas: { sucata: 40_000 },
+      materiais: { nucleo_de_energia: 20 },
+      medalhas: 3,
+    },
+  },
+  {
+    id: 'esp_segredos_enterrados',
+    nome: 'Segredos Enterrados',
+    descricao: 'Há registros do que o Núcleo era antes de acordar. Ele ainda não confia o bastante para mostrá-los.',
+    categoria: 'progressao', ritmo: 'campanha',
+    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0, confianca: 1,
+    objetivos: [{ fato: 'abate', alvo: 300, filtro: { elemento: 'fogo' }, texto: 'Abater 300 inimigos de fogo' }],
+    requisitos: [{ tipo: 'confianca', personagem: 'char_nucleo_ferrugem', valor: 4 }],
+    recompensa: { medalhas: 5, baus: { singularidade: 1 } },
   },
 ];
 

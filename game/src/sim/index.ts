@@ -6,7 +6,11 @@ import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
-import { aplicarFato, fracaoDe, progressoDe, situacaoDe, type SituacaoDeMissao } from './missoes';
+import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
+import {
+  aplicarFato, confiancaDe, contatoDesbloqueado, fracaoDe, progressoDe, situacaoDe,
+  sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
+} from './missoes';
 import { rarityInfo } from '@data/rarity';
 
 /**
@@ -391,10 +395,65 @@ export class Sim {
     // Concessão é idempotente por id: repetir a missão não amplia de novo.
     if (r.concessao) this.concederCarga(r.concessao);
 
+    // A confiança sobe DEPOIS do pagamento e antes do `touch`: subi-la primeiro
+    // deixaria o estado inconsistente se a entrega fosse recusada acima.
+    if (def.confianca && def.giverId) {
+      const atual = this.state.confianca[def.giverId] ?? 0;
+      const novo = Math.min(CONFIANCA_MAX, atual + def.confianca);
+      this.state.confianca[def.giverId] = novo;
+      if (novo > atual) {
+        const p = PERSONAGEM_POR_ID.get(def.giverId);
+        toast(`Confiança ${ROMANOS[novo - 1] ?? novo} com ${p?.nome ?? def.giverId}`, 'epic');
+      }
+    }
+
     progressoDe(this.state, def).entregue = true;
     toast(`${def.nome} — recompensa recebida`, 'epic');
     this.touch();
     return true;
+  }
+
+  /**
+   * Entrega todas as prontas de uma vez (§20).
+   *
+   * Pula o contrato ESPECIAL: ele tem recompensa exclusiva e assinatura de um
+   * personagem, e varrê-lo junto com as rotineiras faria o jogador perder a
+   * única parte da missão que existe para ser vista. O §20 pede exatamente essa
+   * exceção — entrega automática não vale para o que tem peso narrativo.
+   *
+   * Devolve quantas entregou.
+   */
+  entregarTudo(): number {
+    let n = 0;
+    for (const { def, situacao } of this.missoes) {
+      if (situacao !== 'pronta') continue;
+      if (def.tipo === 'especial') continue;
+      if (this.resgatarMissao(def.id)) n++;
+    }
+    return n;
+  }
+
+  /** Quantas o "entregar tudo" pegaria agora. Desabilita o botão quando zero. */
+  get entregaveisEmLote(): number {
+    return this.missoes.filter((m) => m.situacao === 'pronta' && m.def.tipo !== 'especial').length;
+  }
+
+  /** Contatos da rede, com o estado que a tela precisa (§7, §8). */
+  get contatos(): {
+    def: PersonagemDef; desbloqueado: boolean; sinal: SinalDeContato;
+    confianca: number; missoes: number;
+  }[] {
+    const alcance = this.alcanceLiberado;
+    return PERSONAGENS.map((def) => ({
+      def,
+      desbloqueado: contatoDesbloqueado(this.state, def),
+      sinal: sinalDoContato(this.state, def, alcance),
+      confianca: confiancaDe(this.state, def.id),
+      missoes: MISSOES.filter((m) => m.giverId === def.id).length,
+    }))
+      // Bloqueado desce, mas NÃO some: a silhueta é metade da razão de a tela
+      // existir — ver que há alguém a descobrir ali (§8).
+      .sort((a, b) => Number(b.desbloqueado) - Number(a.desbloqueado));
   }
 
   /** Missões visíveis, na ordem em que a tela deve mostrá-las. */
@@ -548,6 +607,11 @@ export class Sim {
       const first = !this.state.codex.includes(e.boss.id);
       if (first) {
         this.state.codex.push(e.boss.id);
+        // Chefe derrotado vira CONTATO (§29). O códex já é o registro de quem
+        // caiu, então a conversão não guarda estado novo — só avisa, porque um
+        // aliado que aparece calado na lista ninguém descobre.
+        const contato = contatoDoChefe(e.boss.id);
+        if (contato) toast(`Novo contato: ${contato.nome} — agora ALIADO`, 'epic');
         for (const g of e.boss.firstKill) this.grantChest(g.tier, g.count, `${e.boss.name} (primeira vitória)`);
       } else {
         this.grantChest('prata', 1, e.boss.name);

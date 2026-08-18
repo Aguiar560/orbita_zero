@@ -405,6 +405,15 @@ export interface GameState {
    */
   medalhas: number;
 
+  /**
+   * Confianca com cada contato (0..5), por id de personagem.
+   *
+   * Fora de `missoes` porque a confianca sobrevive as missoes: ela e do
+   * RELACIONAMENTO, e uma missao entregue e removida do catalogo nao pode
+   * apagar o grau que ela ajudou a construir.
+   */
+  confianca: Record<string, number>;
+
   stats: {
     kills: number;
     bossKills: number;
