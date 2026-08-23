@@ -2,12 +2,16 @@
 
 Esta pasta é o **depósito de arte crua**, não o projeto.
 
-- O projeto vive em [`game/`](game/). As instruções completas estão em
-  [`game/CLAUDE.md`](game/CLAUDE.md) — leia antes de mexer em qualquer coisa.
+- O projeto vive em [`game/`](game/). Comece por
+  [`game/docs/MAPA-DO-PROJETO.md`](game/docs/MAPA-DO-PROJETO.md) — a orientação
+  completa numa página. As regras do repositório estão em
+  [`game/CLAUDE.md`](game/CLAUDE.md).
 - A fonte de verdade de design é
   [`game/docs/ESPECIFICACAO-MESTRE.md`](game/docs/ESPECIFICACAO-MESTRE.md).
-- O estado do repositório no início da FASE 0 está em
-  [`game/docs/HANDOFF-FASE-0.md`](game/docs/HANDOFF-FASE-0.md).
+- O que falta fazer, em passos ordenados e com critério de aceite, está em
+  [`game/docs/PLANO.md`](game/docs/PLANO.md).
+- As telas estão em [`game/docs/TELAS.md`](game/docs/TELAS.md) e os sistemas por
+  dentro em [`game/docs/SISTEMAS.md`](game/docs/SISTEMAS.md).
 - Os agentes especializados estão em `.claude/agents/`.
 
 ## Regra que vale para esta pasta

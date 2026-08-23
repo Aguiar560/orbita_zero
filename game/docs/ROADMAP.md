@@ -14,17 +14,25 @@ momento — o ponto de partida, que não se reescreve.
 
 ## Onde estamos
 
+> **Entrando agora no projeto?** Leia [`MAPA-DO-PROJETO.md`](MAPA-DO-PROJETO.md)
+> primeiro. Este arquivo é o HISTÓRICO, com a medição de cada etapa; o que falta
+> fazer está em [`PLANO.md`](PLANO.md), as telas em [`TELAS.md`](TELAS.md) e os
+> sistemas por dentro em [`SISTEMAS.md`](SISTEMAS.md).
+
 ```
-Etapa 0  ██████████  concluída
-Fase 1   ██████████  concluída
+Etapa 0  ██████████  concluída — rede de segurança
+Fase 1   ██████████  concluída — fundação de dados
 Fase 1B  ██████████  concluída — morte, progresso e permanência
 Fase 2   ██████████  concluída — combate elemental
 Fase 3   ██████████  concluída — itemização
-Fase 4   ░░░░░░░░░░
-Fase 5   ░░░░░░░░░░
+Fase 4   ██████████  concluída — progressão, XP e curvas
+Fase 5   ██████░░░░  em andamento — conteúdo
 ```
 
-**Próxima:** Fase 4 — progressão: Matriz × nível, XP calibrado, e o ritmo das galáxias contra a meta do §2.
+**Próxima:** os quatro passos abertos da Fase 5 — reformar os baús, reformar a
+Loja, os 6 modificadores mecânicos da Provação e conteúdo em volume. Depois,
+o que separa "funciona" de "é um jogo": som, onboarding, acessibilidade e a
+volta da migração de save. Tudo detalhado em [`PLANO.md`](PLANO.md).
 
 
 
@@ -903,16 +911,28 @@ profundidade pagam diferente se um for mais difícil.
 
 ### Ainda na Fase 5
 
-A camada de combate do Abismo (ler os efeitos dos modificadores) e a tela do
-modo. Depois, naves, inimigos, chefes e recursos por galáxia em volume.
-É onde o `content-data-agent` trabalha em volume, a partir de schemas já
-aprovados.
+> **Corrigido em 23/08/2026.** Este bloco dizia que faltavam "a camada de combate
+> do Abismo (ler os efeitos dos modificadores) e a tela do modo". Auditado: os
+> **11 modificadores são todos consumidos** — `reflexo`, `divideEm`, `regen` e
+> `travaEscudo` no `VerticalMode`; `vida`, `dano`, `cadencia`, `velocidade`,
+> `invocaCada`, `espelhaElemento` e `limiteDeTempo` no `sim/desafio.ts` — e a
+> tela existe (`ui/panels/ProvacaoPanel.ts`, 319 linhas). O nome também mudou:
+> "Abismo Estelar" virou **Núcleo de Provação**.
+
+O que de fato falta está em [`PLANO.md`](PLANO.md), com critério de aceite:
+reformar os baús, reformar a Loja, os **6 modificadores mecânicos** do §14
+(invulnerabilidade, zonas de perigo, clones, barreira frontal, pontos fracos),
+arte dedicada dos 100 chefes, e conteúdo por galáxia em volume — que é onde o
+`content-data-agent` trabalha a partir de schema aprovado.
 
 ---
 
 ## Dívidas conhecidas
 
-Coisas medidas e registradas, que ainda não têm etapa marcada.
+Coisas medidas e registradas. **A lista viva, com as decisões pendentes do
+Rafael, está em [`PLANO.md`](PLANO.md)** — a tabela abaixo é o registro
+histórico, incluindo o que já foi resolvido e o que se revelou artefato de
+medição.
 
 | O quê | Evidência | Onde resolve |
 |---|---|---|

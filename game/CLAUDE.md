@@ -3,24 +3,44 @@
 Idle/progression shooter espacial. Camada vertical de combate pilotada por IA,
 progressão de longo prazo por itens, naves, Matriz e elementos.
 
+> ## 👉 Começando agora? Leia [`docs/MAPA-DO-PROJETO.md`](docs/MAPA-DO-PROJETO.md).
+>
+> Ele orienta em uma página: o que o jogo é, onde cada coisa mora, os
+> invariantes que não se negociam, e **como medir qualquer afirmação sem
+> confiar em documento nenhum**.
+
 | Documento | O quê |
 |---|---|
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | **Onde estamos e o que vem agora.** Vivo, atualizado a cada etapa |
+| [`docs/MAPA-DO-PROJETO.md`](docs/MAPA-DO-PROJETO.md) | **Entrada.** Arquitetura, invariantes, censo, como rodar e como medir |
+| [`docs/TELAS.md`](docs/TELAS.md) | Cada tela: o que faz, arquivo, o que lê e escreve, o que falta |
+| [`docs/SISTEMAS.md`](docs/SISTEMAS.md) | Cada sistema por dentro: fórmulas, fluxo de dados, decisões |
+| [`docs/PLANO.md`](docs/PLANO.md) | **Para onde vamos.** Passos ordenados, critérios de aceite, decisões pendentes |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Histórico do que foi feito, com a medição de cada etapa |
 | [`docs/ESPECIFICACAO-MESTRE.md`](docs/ESPECIFICACAO-MESTRE.md) | Fonte de verdade de design |
-| [`docs/FASE-0-AUDITORIA.md`](docs/FASE-0-AUDITORIA.md) | Diagnóstico do ponto de partida. Não se reescreve |
-| [`docs/HANDOFF-FASE-0.md`](docs/HANDOFF-FASE-0.md) | Inventário do repositório quando a especificação chegou |
+
+Registros de momento, que valem como história e **não** como estado atual:
+[`FASE-0-AUDITORIA`](docs/FASE-0-AUDITORIA.md) ·
+[`HANDOFF-FASE-0`](docs/HANDOFF-FASE-0.md) ·
+[`FASE-0-NEXO`](docs/FASE-0-NEXO.md) ·
+[`ITEMIZACAO-DIAGNOSTICO`](docs/ITEMIZACAO-DIAGNOSTICO.md) ·
+[`ARTE-UI-*`](docs/).
 
 Quando este arquivo e a especificação divergirem, a especificação vence — e a
 divergência deve ser corrigida aqui.
 
-**Ao concluir uma etapa, atualize o `ROADMAP.md`.** É o único documento que
-precisa acompanhar o código; os outros são registros de momento.
+**Ao concluir uma etapa:** atualize o `ROADMAP.md` (o que foi feito, com a
+medição) e o `PLANO.md` (o que deixou de faltar). Se a mudança alterou uma tela
+ou um sistema, atualize `TELAS.md` ou `SISTEMAS.md` junto — são eles que outra
+IA lê para não reinventar o que já existe.
 
 ## Como rodar
 
 ```bash
-npm run assets && npm run dev
+cd D:\bbb\game; npm run dev
 ```
+
+⚠️ O terminal é **PowerShell 5.1**, que **não aceita `&&`** — use `;`.
+Se mexeu em arte: `npm run assets; npm run dev`.
 
 | Comando | O quê |
 |---|---|
