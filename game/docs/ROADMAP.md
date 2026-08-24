@@ -629,7 +629,8 @@ em diante. Agora escolhe por NOTA: tier é rótulo, poder é medida.
 Consertá-la expôs o que ela escondia: quatro cascos legados fora de família.
 `aurora_x` entregava **5,46× o dano da curva** e dominava do setor 60 ao 194.
 Os quatro foram normalizados por medição (projéteis, cadência e perfuração para
-a faixa dos arquétipos), cada um resolvido por busca binária até ~1,25×.
+a faixa dos arquétipos), cada um resolvido por busca binária até ~1,25×. Medido
+depois: 1,27× · 1,23× · 1,44× · 0,76×. Nenhum casco legado ficou fora de família.
 
 #### O desenho
 

@@ -316,7 +316,6 @@ Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
 
 | dívida | evidência | onde resolve |
 |---|---|---|
-| **Três cascos legados fora de família** | `ignis4` 3,85× · `prisma_quimico` 2,51× · `prisma_cosmico` 2,47× de dano contra a curva no próprio setor. `aurora_x` (5,46×) já foi corrigido | retuna de conteúdo legado — 20 naves autorais, etapa própria |
 | **Setores 1 e 12 fora da faixa de ritmo** | 0,17× e 0,45× do tempo-alvo. É o regime de abertura, onde o casco vale de 99% a 43% do poder e nenhuma curva suave o descreve | curva de início — o setor 1 já estava assim antes da escada |
 | **Assimetria ofensiva/defensiva** | expoente 3,07 contra 1,25 — afixos ofensivos são multiplicativos, defensivos aditivos. Já foi 3,70 × 1,10 | orçamento de item (§7) |
 | **Lendário, Mítico e Divino são indistinguíveis pela régua da parede** | os três travam além do setor 300 | precisa de outra régua — provavelmente tempo de limpeza no setor 300 |
