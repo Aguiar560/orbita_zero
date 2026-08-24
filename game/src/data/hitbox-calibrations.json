@@ -1,0 +1,1037 @@
+{
+  "players": {
+    "arca_turquesa": {
+      "width": 27.5,
+      "height": 39.6,
+      "offsetX": -0.4,
+      "offsetY": 1.4,
+      "scale": 0.361
+    },
+    "ariete_vesper": {
+      "width": 26.9,
+      "height": 36,
+      "offsetX": -0.5,
+      "offsetY": 2.1,
+      "scale": 0.351
+    },
+    "arraia_boreal": {
+      "width": 31.6,
+      "height": 33.3,
+      "offsetX": 0.3,
+      "offsetY": 2.8,
+      "scale": 0.346
+    },
+    "asa_carmim": {
+      "width": 38.6,
+      "height": 35.1,
+      "offsetX": -2.2,
+      "offsetY": 2.8,
+      "scale": 0.398
+    },
+    "aurora_negra": {
+      "width": 30,
+      "height": 36,
+      "offsetX": -2.1,
+      "offsetY": 1.3,
+      "scale": 0.377
+    },
+    "aurora_x": {
+      "width": 29.2,
+      "height": 33.5,
+      "offsetX": -0.6,
+      "offsetY": 1.9,
+      "scale": 0.62
+    },
+    "aurora1": {
+      "width": 30.9,
+      "height": 33.8,
+      "offsetX": -0.9,
+      "offsetY": 0.9,
+      "scale": 0.62
+    },
+    "aurora2": {
+      "width": 30.2,
+      "height": 34,
+      "offsetX": -0.9,
+      "offsetY": 0.6,
+      "scale": 0.62
+    },
+    "aurora3": {
+      "width": 29.2,
+      "height": 33.5,
+      "offsetX": -0.6,
+      "offsetY": 1.9,
+      "scale": 0.62
+    },
+    "aurora4": {
+      "width": 25,
+      "height": 34.3,
+      "offsetX": -0.6,
+      "offsetY": 0.3,
+      "scale": 0.62
+    },
+    "bastiao_8": {
+      "width": 27.3,
+      "height": 39.6,
+      "offsetX": -2.2,
+      "offsetY": 1.3,
+      "scale": 0.359
+    },
+    "centuriao_atlas": {
+      "width": 38.5,
+      "height": 33.3,
+      "offsetX": 0.3,
+      "offsetY": 0.2,
+      "scale": 0.318
+    },
+    "cerbero_azul": {
+      "width": 33.8,
+      "height": 33.3,
+      "offsetX": -1.1,
+      "offsetY": -0.7,
+      "scale": 0.454
+    },
+    "condor_magma": {
+      "width": 37.1,
+      "height": 37.8,
+      "offsetX": 3.5,
+      "offsetY": 3.5,
+      "scale": 0.406
+    },
+    "custodio_vinte_tres": {
+      "width": 21.7,
+      "height": 39.6,
+      "offsetX": 0.9,
+      "offsetY": 0.2,
+      "scale": 0.362
+    },
+    "draco_viridiano": {
+      "width": 33.4,
+      "height": 33.3,
+      "offsetX": -1.8,
+      "offsetY": 0.6,
+      "scale": 0.3
+    },
+    "eclipse_rubro": {
+      "width": 27.2,
+      "height": 33.3,
+      "offsetX": 0.7,
+      "offsetY": 0.7,
+      "scale": 0.349
+    },
+    "falcao_b": {
+      "width": 25.8,
+      "height": 21.6,
+      "offsetX": -1,
+      "offsetY": -2.9,
+      "scale": 0.96
+    },
+    "falcao_r": {
+      "width": 25.8,
+      "height": 21.6,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 0.96
+    },
+    "fornalha_dezenove": {
+      "width": 24.7,
+      "height": 37.8,
+      "offsetX": -0.9,
+      "offsetY": 0.7,
+      "scale": 0.347
+    },
+    "horizonte_trinta": {
+      "width": 19.1,
+      "height": 36,
+      "offsetX": 0.5,
+      "offsetY": 0.2,
+      "scale": 0.332
+    },
+    "ignis1": {
+      "width": 30.6,
+      "height": 31.5,
+      "offsetX": -1.2,
+      "offsetY": 0.3,
+      "scale": 0.62
+    },
+    "ignis2": {
+      "width": 29.9,
+      "height": 31.5,
+      "offsetX": -0.6,
+      "offsetY": 0.3,
+      "scale": 0.62
+    },
+    "ignis4": {
+      "width": 24.7,
+      "height": 31,
+      "offsetX": -0.3,
+      "offsetY": 0.3,
+      "scale": 0.62
+    },
+    "lamina_kheiron": {
+      "width": 24,
+      "height": 33.3,
+      "offsetX": 0,
+      "offsetY": 0.4,
+      "scale": 0.389
+    },
+    "leviata_ferro": {
+      "width": 32.9,
+      "height": 39.6,
+      "offsetX": -1.5,
+      "offsetY": 2.6,
+      "scale": 0.37
+    },
+    "lince_polar": {
+      "width": 35.3,
+      "height": 34.8,
+      "offsetX": 0.2,
+      "offsetY": -0.5,
+      "scale": 0.46
+    },
+    "martelo_helios": {
+      "width": 31.9,
+      "height": 37.8,
+      "offsetX": 1.3,
+      "offsetY": 2.7,
+      "scale": 0.385
+    },
+    "navegante_nox": {
+      "width": 23.1,
+      "height": 35.1,
+      "offsetX": -0.2,
+      "offsetY": 1.9,
+      "scale": 0.322
+    },
+    "nemesis_alada": {
+      "width": 44.5,
+      "height": 37.8,
+      "offsetX": 0,
+      "offsetY": -1.6,
+      "scale": 0.393
+    },
+    "oraculo_safira": {
+      "width": 32.9,
+      "height": 35.1,
+      "offsetX": 2,
+      "offsetY": 0.3,
+      "scale": 0.332
+    },
+    "peregrina_sol": {
+      "width": 17.4,
+      "height": 37.8,
+      "offsetX": -0.4,
+      "offsetY": -2.5,
+      "scale": 0.353
+    },
+    "prisma_cosmico": {
+      "width": 28.3,
+      "height": 27.9,
+      "offsetX": -0.7,
+      "offsetY": 0.5,
+      "scale": 0.5
+    },
+    "prisma_fogo": {
+      "width": 28.8,
+      "height": 28.1,
+      "offsetX": 0.8,
+      "offsetY": 1.3,
+      "scale": 0.5
+    },
+    "prisma_gelo": {
+      "width": 24.6,
+      "height": 27.5,
+      "offsetX": 1,
+      "offsetY": 1.5,
+      "scale": 0.5
+    },
+    "prisma_padrao": {
+      "width": 24.6,
+      "height": 27.5,
+      "offsetX": -1,
+      "offsetY": 0,
+      "scale": 0.5
+    },
+    "prisma_quimico": {
+      "width": 24.1,
+      "height": 27.5,
+      "offsetX": -1.7,
+      "offsetY": 1,
+      "scale": 0.5
+    },
+    "prisma_raio": {
+      "width": 28.3,
+      "height": 27.9,
+      "offsetX": 0.5,
+      "offsetY": 1,
+      "scale": 0.5
+    },
+    "quimera_verde": {
+      "width": 25.3,
+      "height": 36,
+      "offsetX": -1.3,
+      "offsetY": 1.3,
+      "scale": 0.325
+    },
+    "rapina_ambar": {
+      "width": 31.1,
+      "height": 33.3,
+      "offsetX": -0.8,
+      "offsetY": 4.8,
+      "scale": 0.4
+    },
+    "seta_quantica": {
+      "width": 28.2,
+      "height": 33.3,
+      "offsetX": -0.2,
+      "offsetY": 2.9,
+      "scale": 0.381
+    },
+    "talon_ignifero": {
+      "width": 38.6,
+      "height": 36,
+      "offsetX": 3.6,
+      "offsetY": 3.2,
+      "scale": 0.396
+    },
+    "tridente_violeta": {
+      "width": 31,
+      "height": 35.1,
+      "offsetX": 0.4,
+      "offsetY": 4.1,
+      "scale": 0.371
+    },
+    "vanguarda_dez": {
+      "width": 17.1,
+      "height": 35.1,
+      "offsetX": 0,
+      "offsetY": 0.2,
+      "scale": 0.318
+    },
+    "vipera_helix": {
+      "width": 32.4,
+      "height": 37.8,
+      "offsetX": -0.2,
+      "offsetY": -0.6,
+      "scale": 0.422
+    },
+    "void_canhao": {
+      "width": 26.9,
+      "height": 18.7,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.6
+    },
+    "void_canhaozao": {
+      "width": 26.9,
+      "height": 18.7,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.6
+    },
+    "void_foguete": {
+      "width": 26.9,
+      "height": 18.7,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.6
+    },
+    "void_zapper": {
+      "width": 26.9,
+      "height": 18.7,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.6
+    }
+  },
+  "enemies": {
+    "agulha_vazio": {
+      "width": 38.4,
+      "height": 48.1,
+      "offsetX": 0.9,
+      "offsetY": -1.2,
+      "scale": 0.34
+    },
+    "arauto_nona": {
+      "width": 62,
+      "height": 60.5,
+      "offsetX": 1.1,
+      "offsetY": 0.4,
+      "scale": 0.449
+    },
+    "arraia_tetis": {
+      "width": 32.8,
+      "height": 47.9,
+      "offsetX": -0.5,
+      "offsetY": 0,
+      "scale": 0.34
+    },
+    "asteroide": {
+      "width": 28.4,
+      "height": 28.4,
+      "offsetX": 0,
+      "offsetY": 1.7,
+      "scale": 1.1
+    },
+    "baluarte": {
+      "width": 38.4,
+      "height": 43.5,
+      "offsetX": 0.3,
+      "offsetY": 0,
+      "scale": 0.68
+    },
+    "bastiao_raio": {
+      "width": 30.3,
+      "height": 38.6,
+      "offsetX": -0.7,
+      "offsetY": 0,
+      "scale": 0.45
+    },
+    "caldeireiro_asterion": {
+      "width": 29.1,
+      "height": 43.9,
+      "offsetX": 0,
+      "offsetY": -0.2,
+      "scale": 0.34
+    },
+    "carrasco_coroa": {
+      "width": 37.5,
+      "height": 56.6,
+      "offsetX": -0.8,
+      "offsetY": 1.9,
+      "scale": 0.34
+    },
+    "cometa": {
+      "width": 38.8,
+      "height": 35.9,
+      "offsetX": 1.5,
+      "offsetY": 0,
+      "scale": 0.6
+    },
+    "corsario_argenteo": {
+      "width": 44.4,
+      "height": 52.3,
+      "offsetX": -1,
+      "offsetY": -5.1,
+      "scale": 0.34
+    },
+    "corsario_fogo": {
+      "width": 23.9,
+      "height": 29.4,
+      "offsetX": 0.4,
+      "offsetY": -3.2,
+      "scale": 0.4
+    },
+    "corsario_gelo": {
+      "width": 30.3,
+      "height": 34.8,
+      "offsetX": -0.4,
+      "offsetY": 1.3,
+      "scale": 0.42
+    },
+    "corsario_lamina": {
+      "width": 26.9,
+      "height": 34,
+      "offsetX": 0.4,
+      "offsetY": 0.2,
+      "scale": 0.4
+    },
+    "corsario_padrao": {
+      "width": 28,
+      "height": 34.5,
+      "offsetX": 0,
+      "offsetY": 0.6,
+      "scale": 0.4
+    },
+    "corsario_raio": {
+      "width": 27.7,
+      "height": 32.1,
+      "offsetX": 0,
+      "offsetY": 0.4,
+      "scale": 0.4
+    },
+    "cultivador_oxido": {
+      "width": 56.5,
+      "height": 65.6,
+      "offsetX": -1.1,
+      "offsetY": -3.4,
+      "scale": 0.449
+    },
+    "custodio_oco": {
+      "width": 41.8,
+      "height": 54.6,
+      "offsetX": -0.8,
+      "offsetY": -0.7,
+      "scale": 0.34
+    },
+    "dardo": {
+      "width": 24.4,
+      "height": 33.6,
+      "offsetX": -0.3,
+      "offsetY": 1.8,
+      "scale": 0.52
+    },
+    "dobrador_janus": {
+      "width": 23.6,
+      "height": 45.1,
+      "offsetX": -0.3,
+      "offsetY": -0.5,
+      "scale": 0.34
+    },
+    "duplicata_eos": {
+      "width": 31.2,
+      "height": 48.6,
+      "offsetX": 1.7,
+      "offsetY": -2.7,
+      "scale": 0.34
+    },
+    "eclipse_umbra": {
+      "width": 26.8,
+      "height": 53.2,
+      "offsetX": -1.4,
+      "offsetY": -1.7,
+      "scale": 0.34
+    },
+    "embalsamador_khepri": {
+      "width": 33.5,
+      "height": 46.7,
+      "offsetX": -0.3,
+      "offsetY": -2.6,
+      "scale": 0.34
+    },
+    "engolidor_azul": {
+      "width": 37.7,
+      "height": 44.4,
+      "offsetX": 0.3,
+      "offsetY": -2.4,
+      "scale": 0.34
+    },
+    "enxame": {
+      "width": 26.2,
+      "height": 21.4,
+      "offsetX": -0.3,
+      "offsetY": 0.4,
+      "scale": 0.7
+    },
+    "escriba_terminal": {
+      "width": 43.7,
+      "height": 44.2,
+      "offsetX": -1.5,
+      "offsetY": -3.6,
+      "scale": 0.34
+    },
+    "espectro": {
+      "width": 33.3,
+      "height": 43.9,
+      "offsetX": 0,
+      "offsetY": 0.3,
+      "scale": 0.68
+    },
+    "executor_linha": {
+      "width": 43.7,
+      "height": 62.3,
+      "offsetX": 0,
+      "offsetY": 1.1,
+      "scale": 0.449
+    },
+    "ferrao": {
+      "width": 28.4,
+      "height": 23.5,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 0.72
+    },
+    "fiandeiro_nyx": {
+      "width": 23.6,
+      "height": 46.2,
+      "offsetX": -0.7,
+      "offsetY": -2.2,
+      "scale": 0.34
+    },
+    "klaed_batedor": {
+      "width": 21.8,
+      "height": 21.8,
+      "offsetX": 0,
+      "offsetY": 2.9,
+      "scale": 1.455
+    },
+    "klaed_bombardeiro": {
+      "width": 30.6,
+      "height": 27.5,
+      "offsetX": 0,
+      "offsetY": 2.3,
+      "scale": 1.5
+    },
+    "klaed_caca": {
+      "width": 22.8,
+      "height": 20.9,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.4
+    },
+    "klaed_cruzador": {
+      "width": 46.5,
+      "height": 56.8,
+      "offsetX": 0,
+      "offsetY": -6.6,
+      "scale": 0.95
+    },
+    "klaed_encouracado": {
+      "width": 51.4,
+      "height": 71.4,
+      "offsetX": 0,
+      "offsetY": -1,
+      "scale": 1.05
+    },
+    "klaed_fragata": {
+      "width": 36.7,
+      "height": 39.8,
+      "offsetX": 0,
+      "offsetY": -2.2,
+      "scale": 1.5
+    },
+    "klaed_suporte": {
+      "width": 28.6,
+      "height": 28.6,
+      "offsetX": 0,
+      "offsetY": -4.5,
+      "scale": 1.5
+    },
+    "klaed_torpedeiro": {
+      "width": 57.1,
+      "height": 22.4,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 1.5
+    },
+    "laminador_carbono": {
+      "width": 44,
+      "height": 59.5,
+      "offsetX": -0.7,
+      "offsetY": -2.7,
+      "scale": 0.449
+    },
+    "lanceiro": {
+      "width": 25.1,
+      "height": 34.8,
+      "offsetX": -0.8,
+      "offsetY": 0.3,
+      "scale": 0.55
+    },
+    "mina": {
+      "width": 20.4,
+      "height": 21.8,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scale": 2
+    },
+    "monolito_silencio": {
+      "width": 47.3,
+      "height": 51.6,
+      "offsetX": 0.2,
+      "offsetY": 1.1,
+      "scale": 0.449
+    },
+    "nairan_batedor": {
+      "width": 22.8,
+      "height": 20.9,
+      "offsetX": 0,
+      "offsetY": 2.8,
+      "scale": 1.4
+    },
+    "nairan_bombardeiro": {
+      "width": 32.6,
+      "height": 30.6,
+      "offsetX": 0,
+      "offsetY": 1.5,
+      "scale": 1.5
+    },
+    "nairan_caca": {
+      "width": 28.6,
+      "height": 25.7,
+      "offsetX": 0,
+      "offsetY": 2.1,
+      "scale": 1.4
+    },
+    "nairan_cruzador": {
+      "width": 40.1,
+      "height": 54.9,
+      "offsetX": 0,
+      "offsetY": -6.2,
+      "scale": 0.95
+    },
+    "nairan_encouracado": {
+      "width": 48.6,
+      "height": 70,
+      "offsetX": 0,
+      "offsetY": -2.1,
+      "scale": 1.05
+    },
+    "nairan_fragata": {
+      "width": 42.8,
+      "height": 42.8,
+      "offsetX": 0,
+      "offsetY": -3,
+      "scale": 1.5
+    },
+    "nairan_suporte": {
+      "width": 32.6,
+      "height": 27.5,
+      "offsetX": 0,
+      "offsetY": 2.3,
+      "scale": 1.5
+    },
+    "nairan_torpedeiro": {
+      "width": 55.1,
+      "height": 28.6,
+      "offsetX": 0,
+      "offsetY": 1.5,
+      "scale": 1.5
+    },
+    "nautolan_batedor": {
+      "width": 30.5,
+      "height": 26.7,
+      "offsetX": 0,
+      "offsetY": 5.6,
+      "scale": 1.4
+    },
+    "nautolan_bombardeiro": {
+      "width": 30.6,
+      "height": 24.5,
+      "offsetX": 0,
+      "offsetY": -1.5,
+      "scale": 1.5
+    },
+    "nautolan_caca": {
+      "width": 30.5,
+      "height": 25.7,
+      "offsetX": 0,
+      "offsetY": -0.7,
+      "scale": 1.4
+    },
+    "nautolan_cruzador": {
+      "width": 46.5,
+      "height": 57.5,
+      "offsetX": 0,
+      "offsetY": 0.5,
+      "scale": 0.95
+    },
+    "nautolan_encouracado": {
+      "width": 51.4,
+      "height": 69.3,
+      "offsetX": 0,
+      "offsetY": 3.7,
+      "scale": 1.05
+    },
+    "nautolan_fragata": {
+      "width": 46.9,
+      "height": 36.7,
+      "offsetX": 0,
+      "offsetY": -3,
+      "scale": 1.5
+    },
+    "nautolan_suporte": {
+      "width": 32.6,
+      "height": 34.7,
+      "offsetX": 0,
+      "offsetY": -1.5,
+      "scale": 1.5
+    },
+    "nautolan_torpedeiro": {
+      "width": 59.2,
+      "height": 19.4,
+      "offsetX": 0,
+      "offsetY": 3.8,
+      "scale": 1.5
+    },
+    "operario_icaro": {
+      "width": 28.7,
+      "height": 43.9,
+      "offsetX": 0.3,
+      "offsetY": -3.2,
+      "scale": 0.34
+    },
+    "paladino_caelum": {
+      "width": 40.3,
+      "height": 67.2,
+      "offsetX": 0.2,
+      "offsetY": -2.2,
+      "scale": 0.449
+    },
+    "quebragelo_forja": {
+      "width": 36.8,
+      "height": 42.1,
+      "offsetX": -0.8,
+      "offsetY": -4.2,
+      "scale": 0.34
+    },
+    "refeito_lazaro": {
+      "width": 41.8,
+      "height": 46.2,
+      "offsetX": -2.2,
+      "offsetY": 2.7,
+      "scale": 0.34
+    },
+    "sentinela": {
+      "width": 33.3,
+      "height": 33.8,
+      "offsetX": 0.7,
+      "offsetY": 0.4,
+      "scale": 0.72
+    },
+    "serafim": {
+      "width": 39.5,
+      "height": 51.4,
+      "offsetX": 1,
+      "offsetY": 0,
+      "scale": 0.7
+    },
+    "sombra_liturgica": {
+      "width": 38.1,
+      "height": 38.6,
+      "offsetX": 0.2,
+      "offsetY": -0.2,
+      "scale": 0.34
+    },
+    "tecelao": {
+      "width": 29.7,
+      "height": 36.2,
+      "offsetX": 0,
+      "offsetY": 2.5,
+      "scale": 0.56
+    },
+    "temperador_antares": {
+      "width": 29.1,
+      "height": 50.9,
+      "offsetX": -0.3,
+      "offsetY": -3.1,
+      "scale": 0.34
+    },
+    "vespa_ambar": {
+      "width": 48.6,
+      "height": 54.8,
+      "offsetX": 0.5,
+      "offsetY": 0.3,
+      "scale": 0.34
+    },
+    "vigia_rhodes": {
+      "width": 42.3,
+      "height": 54.8,
+      "offsetX": -2.4,
+      "offsetY": 0,
+      "scale": 0.34
+    }
+  },
+  "bosses": {
+    "almirante_argenteo": {
+      "width": 103.8,
+      "height": 124.5,
+      "offsetX": 0.4,
+      "offsetY": -2.1,
+      "scale": 0.7
+    },
+    "anel_kessler": {
+      "width": 77.6,
+      "height": 121,
+      "offsetX": -0.7,
+      "offsetY": 0,
+      "scale": 1.4
+    },
+    "arquiteto": {
+      "width": 87.5,
+      "height": 136.8,
+      "offsetX": -0.9,
+      "offsetY": 0.9,
+      "scale": 1.712
+    },
+    "catedral_corrosao": {
+      "width": 107.6,
+      "height": 113.8,
+      "offsetX": 0,
+      "offsetY": -0.3,
+      "scale": 0.67
+    },
+    "colmeia_verdante": {
+      "width": 101.6,
+      "height": 132.2,
+      "offsetX": 2.6,
+      "offsetY": 0,
+      "scale": 1.7
+    },
+    "destroco_vivo": {
+      "width": 124.5,
+      "height": 98.3,
+      "offsetX": 2,
+      "offsetY": -0.6,
+      "scale": 1.3
+    },
+    "devorador": {
+      "width": 100.2,
+      "height": 123.3,
+      "offsetX": -0.8,
+      "offsetY": 0.8,
+      "scale": 1.6
+    },
+    "escaravelho_khepri": {
+      "width": 96.3,
+      "height": 126,
+      "offsetX": 1.4,
+      "offsetY": -1.7,
+      "scale": 0.7
+    },
+    "fundidor_asterion": {
+      "width": 111.9,
+      "height": 113.4,
+      "offsetX": -2,
+      "offsetY": 3.4,
+      "scale": 0.67
+    },
+    "gume_negro": {
+      "width": 87.3,
+      "height": 119.2,
+      "offsetX": -2,
+      "offsetY": -1.3,
+      "scale": 0.67
+    },
+    "heliarca_nove": {
+      "width": 110.9,
+      "height": 121,
+      "offsetX": -0.3,
+      "offsetY": -2.4,
+      "scale": 0.7
+    },
+    "icaro_coletivo": {
+      "width": 99.5,
+      "height": 116.6,
+      "offsetX": -1.9,
+      "offsetY": -0.6,
+      "scale": 0.64
+    },
+    "janus_bifronte": {
+      "width": 85.4,
+      "height": 93.7,
+      "offsetX": -3.4,
+      "offsetY": -7.1,
+      "scale": 0.674
+    },
+    "lazaro_refeito": {
+      "width": 87.6,
+      "height": 111.5,
+      "offsetX": 2.2,
+      "offsetY": -1.6,
+      "scale": 0.64
+    },
+    "leviata_tetis": {
+      "width": 98.3,
+      "height": 115.4,
+      "offsetX": -0.3,
+      "offsetY": 7.4,
+      "scale": 0.7
+    },
+    "marechal_nival": {
+      "width": 94.5,
+      "height": 109.2,
+      "offsetX": -2.2,
+      "offsetY": 0,
+      "scale": 0.64
+    },
+    "martelo_antares": {
+      "width": 85.8,
+      "height": 93.7,
+      "offsetX": 0.7,
+      "offsetY": -5.4,
+      "scale": 0.681
+    },
+    "mina_prima": {
+      "width": 92.2,
+      "height": 93.6,
+      "offsetX": 1.9,
+      "offsetY": 0.9,
+      "scale": 1.884
+    },
+    "nucleo_ferrugem": {
+      "width": 65.1,
+      "height": 125.4,
+      "offsetX": -0.7,
+      "offsetY": 0.7,
+      "scale": 1.35
+    },
+    "obelisco": {
+      "width": 73.1,
+      "height": 136.8,
+      "offsetX": 0,
+      "offsetY": 0.7,
+      "scale": 1.45
+    },
+    "refracao_eos": {
+      "width": 116.9,
+      "height": 109.9,
+      "offsetX": 1.4,
+      "offsetY": 1.4,
+      "scale": 0.7
+    },
+    "regente_sem_rosto": {
+      "width": 92.1,
+      "height": 118.7,
+      "offsetX": 1.3,
+      "offsetY": -1.7,
+      "scale": 0.67
+    },
+    "sentinela_vazia": {
+      "width": 95.6,
+      "height": 108.3,
+      "offsetX": 0.8,
+      "offsetY": 0,
+      "scale": 1.6
+    },
+    "sereia_ions": {
+      "width": 108.3,
+      "height": 115.2,
+      "offsetX": 0,
+      "offsetY": 1.9,
+      "scale": 0.64
+    },
+    "soberano_caelum": {
+      "width": 99.8,
+      "height": 106.8,
+      "offsetX": -1.4,
+      "offsetY": -2.8,
+      "scale": 0.7
+    },
+    "tecela_nyx": {
+      "width": 102.3,
+      "height": 98.6,
+      "offsetX": 0.6,
+      "offsetY": -4.8,
+      "scale": 0.64
+    },
+    "terminal_zero": {
+      "width": 95.8,
+      "height": 115.7,
+      "offsetX": -0.3,
+      "offsetY": -1.6,
+      "scale": 0.64
+    },
+    "tita_rochoso": {
+      "width": 113.4,
+      "height": 121,
+      "offsetX": 0.8,
+      "offsetY": 1.5,
+      "scale": 1.5
+    },
+    "umbra_terminal": {
+      "width": 98.9,
+      "height": 106.6,
+      "offsetX": 2.3,
+      "offsetY": -1.7,
+      "scale": 0.67
+    },
+    "vertebrador": {
+      "width": 89.2,
+      "height": 120.6,
+      "offsetX": -1,
+      "offsetY": 2,
+      "scale": 0.67
+    }
+  }
+}

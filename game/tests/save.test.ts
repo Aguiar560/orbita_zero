@@ -2,22 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/math';
 import { rollItem } from '@sim/loot';
 import { SAVE_VERSION, createState, exportSave, importSave, migrate } from '@sim/state';
+import { SPACESHIPS2_HULLS } from '@data/hulls-spaceships2';
 import type { GameState } from '@sim/types';
 
 /**
  * ESCOPO DESTA SUÍTE, durante o desenvolvimento.
  *
- * Compatibilidade entre versões de save NÃO é restrição agora: o esquema vai
- * mudar muitas vezes até a Fase 4 e o save será zerado junto, de propósito.
- * Testar migração v1→v4 hoje só criaria atrito — cada mudança de campo
- * quebraria testes que ninguém quer manter.
- *
- * O que continua valendo é mais estreito e mais importante: **um save
- * malformado não pode travar o boot**. Isso vale em qualquer fase, porque o
- * sintoma é o jogo não abrir, e o custo de garantir é quase zero.
- *
- * Antes do lançamento isto volta a crescer, e aí o `save-migration-reviewer`
- * entra em cena. Até lá ele fica dormente.
+ * A migração é contrato de lançamento: uma atualização não pode apagar uma
+ * frota, nem fazer o jogo deixar de abrir por causa de uma preferência nova.
  */
 
 describe('o boot sobrevive a qualquer entrada', () => {
@@ -58,6 +50,65 @@ describe('o boot sobrevive a qualquer entrada', () => {
 });
 
 describe('normalização de save adulterado', () => {
+  it('migra v3 para a versão atual preservando progresso e adotando preferências seguras', () => {
+    const s = migrate({
+      version: 3,
+      hull: 'batedor', fleet: ['batedor'],
+      resources: { sucata: 321, nucleo: 45, cristal: 6 },
+      settings: { controlMode: 'qualquer_coisa' },
+    } as unknown)!;
+    expect(s.version).toBe(SAVE_VERSION);
+    expect(s.resources).toMatchObject({ sucata: 321, nucleo: 45, cristal: 6 });
+    expect(s.settings.controlMode).toBe('idle');
+    expect(s.settings.highContrast).toBe(false);
+    expect(s.settings.pinnedMissions).toEqual([]);
+  });
+
+  it('mantém somente missões rastreáveis e no máximo quatro atalhos', () => {
+    const s = migrate({
+      version: SAVE_VERSION,
+      settings: { pinnedMissions: ['elim_primeiros', 'nao-existe', 'elim_primeiros', 'elim_chefes', 'elim_fogo', 'coleta_ferrita'] },
+    } as unknown)!;
+    expect(s.settings.pinnedMissions).not.toContain('nao-existe');
+    expect(s.settings.pinnedMissions).toContain('elim_primeiros');
+    expect(new Set(s.settings.pinnedMissions).size).toBe(s.settings.pinnedMissions.length);
+    expect(s.settings.pinnedMissions.length).toBeLessThanOrEqual(4);
+  });
+
+  it('ainda aceita o formato v1 e conserva recursos e setor conquistado', () => {
+    const s = migrate({
+      version: 1, hull: 'batedor', fleet: ['batedor'],
+      resources: { sucata: 900, nucleo: 80, cristal: 7 },
+      lifetime: { sucata: 1000, nucleo: 90, cristal: 8 },
+      run: { sector: 12, wave: 2 },
+    } as unknown)!;
+    expect(s.version).toBe(SAVE_VERSION);
+    expect(s.resources.sucata).toBe(900);
+    expect(s.run.sector).toBe(12);
+    expect(s.settings.controlMode).toBe('idle');
+  });
+
+  it('mantém somente cascos conhecidos e preferências válidas', () => {
+    const s = migrate({
+      version: SAVE_VERSION,
+      fleet: ['batedor', 'nao-existe'], hull: 'nao-existe',
+      settings: { controlMode: 'manual', pilot: 'invalido' },
+    } as unknown)!;
+    expect(s.fleet).not.toContain('nao-existe');
+    expect(s.fleet).toContain(s.hull);
+    expect(s.settings.controlMode).toBe('manual');
+    expect(s.settings.pilot).toBe('equilibrado');
+  });
+
+  it('entrega os 29 cascos liberados a campanhas novas e existentes', () => {
+    const nova = createState(2026);
+    const antiga = migrate({ version: SAVE_VERSION, fleet: ['batedor'], hull: 'batedor' })!;
+    for (const hull of SPACESHIPS2_HULLS) {
+      expect(nova.fleet, `nova: ${hull.id}`).toContain(hull.id);
+      expect(antiga.fleet, `migrada: ${hull.id}`).toContain(hull.id);
+    }
+  });
+
   it('conserta setor e onda fora de faixa', () => {
     const s = migrate({ version: SAVE_VERSION, run: { sector: -50, wave: 9999 } })!;
     expect(s.run.sector).toBeGreaterThanOrEqual(1);

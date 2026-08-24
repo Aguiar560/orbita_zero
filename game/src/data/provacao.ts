@@ -86,6 +86,23 @@ export interface ModificadorDef {
   espelhaElemento?: boolean;
   /** Elemento forçado, no lugar do natural do chefe. */
   elemento?: ElementId;
+  /** A cada N segundos, o chefe fica invulnerável por uma janela curta. */
+  invulneravelCada?: number;
+  invulneravelPor?: number;
+  /** Cria zonas estáticas que causam dano enquanto a nave permanece nelas. */
+  zonaCada?: number;
+  zonaPor?: number;
+  zonaRaio?: number;
+  zonaDano?: number;
+  /** Quantos ecos do chefe entram na arena; ecos não dão progresso. */
+  clones?: number;
+  /** Redução de dano enquanto a barreira frontal está ligada, 0..1. */
+  barreiraFrontal?: number;
+  barreiraCada?: number;
+  barreiraPor?: number;
+  /** Vulnerabilidade móvel: acerto no núcleo exposto recebe este multiplicador. */
+  pontoFraco?: number;
+  pontoFracoRaio?: number;
 }
 
 /**
@@ -135,6 +152,31 @@ export const MODIFICADORES: readonly ModificadorDef[] = [
     id: 'sufocante', nome: 'Sufocante', profundidadeMin: 40, peso: 4,
     descricao: 'Seu escudo não regenera durante a luta.',
     travaEscudo: true,
+  },
+  {
+    id: 'invulneravel', nome: 'Fase Nula', profundidadeMin: 22, peso: 4,
+    descricao: 'Alterna brevemente para invulnerabilidade. Espere a abertura.',
+    invulneravelCada: 10, invulneravelPor: 2.2,
+  },
+  {
+    id: 'zonas_perigo', nome: 'Campo Instável', profundidadeMin: 30, peso: 4,
+    descricao: 'Deixa zonas energizadas no campo. Saia do círculo marcado.',
+    zonaCada: 7.5, zonaPor: 5, zonaRaio: 76, zonaDano: 0.28,
+  },
+  {
+    id: 'clones', nome: 'Ecos de Guerra', profundidadeMin: 38, peso: 4,
+    descricao: 'Projeta dois ecos que atiram junto com o chefe.',
+    clones: 2,
+  },
+  {
+    id: 'barreira_frontal', nome: 'Barreira Frontal', profundidadeMin: 48, peso: 4,
+    descricao: 'Ergue uma barreira que reduz dano, mas abre em ciclos curtos.',
+    barreiraFrontal: 0.72, barreiraCada: 8, barreiraPor: 4,
+  },
+  {
+    id: 'ponto_fraco', nome: 'Núcleo Exposto', profundidadeMin: 55, peso: 4,
+    descricao: 'Um núcleo móvel recebe dano ampliado; o casco ainda sofre dano normal.',
+    pontoFraco: 2.3, pontoFracoRaio: 28,
   },
   {
     id: 'colosso', nome: 'Colosso', profundidadeMin: 50, peso: 4,
@@ -235,6 +277,10 @@ function hash(piso: number, sal: number): number {
  * frente da campanha sem virar um segundo jogo para nivelar.
  */
 export function nivelExigidoNoPiso(piso: number): number {
+  // O primeiro piso é a porta de entrada e precisa funcionar como apresentação
+  // do modo. Exigir nível 40 aqui fazia a Provação aparecer com tentativas
+  // cheias, mas sem nenhuma câmara jogável em um save em progressão.
+  if (piso <= 1) return 1;
   return Math.min(300, 40 + Math.round((piso - 1) * 2.6));
 }
 
@@ -258,14 +304,14 @@ export function escalaDoPiso(piso: number): number {
 const MARCOS: Record<number, string[]> = {
   10: ['blindado'],
   20: ['regenerador', 'enxame'],
-  30: ['refletor', 'veloz'],
-  40: ['fragmentador', 'pressa'],
-  50: ['colosso'],
-  60: ['sufocante', 'regenerador'],
-  70: ['furia'],
-  80: ['espelho', 'refletor'],
-  90: ['furia', 'sufocante'],
-  100: ['espelho', 'colosso', 'furia'],
+  30: ['refletor', 'invulneravel'],
+  40: ['fragmentador', 'pressa', 'zonas_perigo'],
+  50: ['colosso', 'clones'],
+  60: ['sufocante', 'barreira_frontal'],
+  70: ['furia', 'ponto_fraco'],
+  80: ['espelho', 'refletor', 'invulneravel'],
+  90: ['furia', 'zonas_perigo', 'clones'],
+  100: ['espelho', 'colosso', 'barreira_frontal', 'ponto_fraco'],
 };
 
 /** Escolhe os modificadores do piso, respeitando profundidade e teto de peso. */
@@ -304,16 +350,24 @@ function pisoDeRaridade(piso: number): Rarity {
   return 0;
 }
 
-/** Materiais de crafting, na família que a profundidade libera. */
+/**
+ * Essências exclusivas da Provação, liberadas em pares por faixa.
+ *
+ * Antes esta tabela entregava Ferrita, Titânio e materiais de chefe. Isso
+ * apagava a identidade dos outros modos. Agora cada degrau introduz uma moeda
+ * de craft própria e os marcos profundos alimentam as operações mais fortes.
+ */
 function materiaisDoPiso(piso: number): Record<string, number> {
   const n = Math.max(1, Math.round(piso * 0.4));
-  if (piso >= 80) {
-    return { essencia_primordial: Math.max(1, Math.round(n * 0.2)), fragmento_divino: Math.max(1, Math.round(n * 0.3)) };
-  }
-  if (piso >= 60) return { nucleo_de_energia: Math.max(1, Math.round(n * 0.5)), aco_estelar: n };
-  if (piso >= 35) return { aco_estelar: Math.max(1, Math.round(n * 0.6)), cristal_quantico: n };
-  if (piso >= 15) return { cristal_quantico: Math.max(1, Math.round(n * 0.5)), titanio: n };
-  return { titanio: Math.max(1, Math.round(n * 0.6)), ferrita: n * 2 };
+  if (piso >= 95) return {
+    essencia_primordial: Math.max(1, Math.round(n * 0.2)),
+    fragmento_temporal: Math.max(1, Math.round(n * 0.35)),
+  };
+  if (piso >= 80) return { fragmento_temporal: Math.max(1, Math.round(n * 0.4)), atomo_raro: n };
+  if (piso >= 60) return { lagrima_galactica: Math.max(1, Math.round(n * 0.5)), sangue_de_estrela: n };
+  if (piso >= 40) return { crista_meteorica: Math.max(1, Math.round(n * 0.6)), cinzas_cosmicas: n };
+  if (piso >= 20) return { areia_estelar: Math.max(1, Math.round(n * 0.6)), rolha_de_asteroide: n };
+  return { po_lunar: n };
 }
 
 /**
@@ -396,12 +450,22 @@ export function efeitosDoPiso(piso: PisoDef): {
   regen: number; reflexo: number; resistencia: number;
   invocaCada: number; divideEm: number; limiteDeTempo: number;
   travaEscudo: boolean; espelhaElemento: boolean;
+  invulneravelCada: number; invulneravelPor: number;
+  zonaCada: number; zonaPor: number; zonaRaio: number; zonaDano: number;
+  clones: number;
+  barreiraFrontal: number; barreiraCada: number; barreiraPor: number;
+  pontoFraco: number; pontoFracoRaio: number;
 } {
   const e = {
     vida: 1, dano: 1, velocidade: 1, cadencia: 1,
     regen: 0, reflexo: 0, resistencia: 0,
     invocaCada: 0, divideEm: 0, limiteDeTempo: 0,
     travaEscudo: false, espelhaElemento: false,
+    invulneravelCada: 0, invulneravelPor: 0,
+    zonaCada: 0, zonaPor: 0, zonaRaio: 0, zonaDano: 0,
+    clones: 0,
+    barreiraFrontal: 0, barreiraCada: 0, barreiraPor: 0,
+    pontoFraco: 0, pontoFracoRaio: 0,
   };
   for (const id of piso.modificadores) {
     const m = MODIFICADOR_POR_ID.get(id);
@@ -421,10 +485,26 @@ export function efeitosDoPiso(piso: PisoDef): {
     if (m.limiteDeTempo) e.limiteDeTempo = e.limiteDeTempo ? Math.min(e.limiteDeTempo, m.limiteDeTempo) : m.limiteDeTempo;
     e.travaEscudo ||= !!m.travaEscudo;
     e.espelhaElemento ||= !!m.espelhaElemento;
+    if (m.invulneravelCada) e.invulneravelCada = e.invulneravelCada ? Math.min(e.invulneravelCada, m.invulneravelCada) : m.invulneravelCada;
+    e.invulneravelPor = Math.max(e.invulneravelPor, m.invulneravelPor ?? 0);
+    if (m.zonaCada) e.zonaCada = e.zonaCada ? Math.min(e.zonaCada, m.zonaCada) : m.zonaCada;
+    e.zonaPor = Math.max(e.zonaPor, m.zonaPor ?? 0);
+    e.zonaRaio = Math.max(e.zonaRaio, m.zonaRaio ?? 0);
+    e.zonaDano = Math.max(e.zonaDano, m.zonaDano ?? 0);
+    e.clones = Math.max(e.clones, m.clones ?? 0);
+    e.barreiraFrontal = Math.max(e.barreiraFrontal, m.barreiraFrontal ?? 0);
+    if (m.barreiraCada) e.barreiraCada = e.barreiraCada ? Math.min(e.barreiraCada, m.barreiraCada) : m.barreiraCada;
+    e.barreiraPor = Math.max(e.barreiraPor, m.barreiraPor ?? 0);
+    e.pontoFraco = Math.max(e.pontoFraco, m.pontoFraco ?? 0);
+    e.pontoFracoRaio = Math.max(e.pontoFracoRaio, m.pontoFracoRaio ?? 0);
   }
   // Teto de sanidade, como toda fórmula do projeto: resistência somada de três
   // modificadores não pode chegar a 1 e tornar o chefe imortal.
   e.resistencia = Math.min(0.75, e.resistencia);
   e.reflexo = Math.min(0.4, e.reflexo);
+  e.barreiraFrontal = Math.min(0.85, e.barreiraFrontal);
+  // A janela sempre fica menor que o ciclo: não há invulnerabilidade permanente.
+  if (e.invulneravelCada > 0) e.invulneravelPor = Math.min(e.invulneravelPor, e.invulneravelCada * 0.45);
+  if (e.barreiraCada > 0) e.barreiraPor = Math.min(e.barreiraPor, e.barreiraCada * 0.7);
   return e;
 }

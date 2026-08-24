@@ -1,4 +1,5 @@
 import type { ElementId } from '@sim/types';
+import { getElement } from './elements';
 import type { AttackPattern } from './enemies';
 
 export interface BossPhase {
@@ -38,7 +39,7 @@ export interface BossDef {
   firstKill: { tier: string; count: number }[];
 }
 
-export const BOSSES: readonly BossDef[] = [
+const BOSSES_BASE: readonly BossDef[] = [
   {
     id: 'nucleo_ferrugem', element: 'fogo',
     name: 'Núcleo Ferrugem',
@@ -181,6 +182,79 @@ export const BOSSES: readonly BossDef[] = [
     firstKill: [{ tier: 'singularidade', count: 3 }],
   },
 ];
+
+interface BossExpansionSpec {
+  id: string;
+  name: string;
+  title: string;
+  element: ElementId;
+  sprite: string;
+  summon: string;
+}
+
+/**
+ * Chefes das galáxias 11–30.
+ *
+ * O id descreve a identidade do encontro, nunca o arquivo de arte. Os números
+ * derivam da posição na campanha; a tabela curta abaixo guarda somente o que
+ * precisa de autoria — nome, fantasia, elemento, nave e lacaio temático.
+ */
+const BOSS_EXPANSION: readonly BossExpansionSpec[] = [
+  { id: 'marechal_nival', name: 'Marechal Nival', title: 'A forja congelou; o comandante continuou marchando', element: 'gelo', sprite: 's2/boss/n_1', summon: 'corsario_gelo' },
+  { id: 'catedral_corrosao', name: 'Catedral da Corrosão', title: 'Cada torre é um reator que reza em ácido', element: 'quimico', sprite: 's2/boss/n_2', summon: 'tecelao' },
+  { id: 'leviata_tetis', name: 'Leviatã de Tétis', title: 'A lua oceânica construiu sua própria marinha', element: 'gelo', sprite: 's2/boss/n_4', summon: 'enxame' },
+  { id: 'sereia_ions', name: 'Sereia de Íons', title: 'Seu chamado atravessa casco, rádio e memória', element: 'raio', sprite: 's2/boss/n_6', summon: 'corsario_raio' },
+  { id: 'vertebrador', name: 'O Vertebrador', title: 'Coleciona quilhas para alongar a espinha do Vazio', element: 'cosmico', sprite: 's2/boss/n_7', summon: 'espectro' },
+  { id: 'heliarca_nove', name: 'Heliarca Nove', title: 'O último sol artificial exige obediência absoluta', element: 'fogo', sprite: 's2/boss/d_base', summon: 'ferrao' },
+  { id: 'lazaro_refeito', name: 'Lázaro Refeito', title: 'Cada derrota deixa uma peça melhor no lugar', element: 'quimico', sprite: 's2/boss/d_1', summon: 'serafim' },
+  { id: 'regente_sem_rosto', name: 'Regente Sem Rosto', title: 'O trono pilota a nave; o ocupante é decorativo', element: 'cosmico', sprite: 's2/boss/d_2', summon: 'lanceiro' },
+  { id: 'almirante_argenteo', name: 'Almirante Argênteo', title: 'Uma frota líquida obedecendo a uma única vontade', element: 'padrao', sprite: 's2/boss/d_3', summon: 'baluarte' },
+  { id: 'terminal_zero', name: 'Terminal Zero', title: 'Toda rota termina em sua bateria de execução', element: 'raio', sprite: 's2/boss/d_4', summon: 'sentinela' },
+  { id: 'fundidor_asterion', name: 'Fundidor Asterion', title: 'Transforma estrelas menores em munição de cerco', element: 'fogo', sprite: 's2/boss/d_7', summon: 'corsario_fogo' },
+  { id: 'escaravelho_khepri', name: 'Escaravelho Khepri', title: 'Empurra um cemitério inteiro rumo ao próximo amanhecer', element: 'padrao', sprite: 's2/boss/d_8', summon: 'asteroide' },
+  { id: 'tecela_nyx', name: 'Tecelã de Nyx', title: 'Costura destroços até que aprendam a caçar', element: 'quimico', sprite: 's2/boss/d_9', summon: 'tecelao' },
+  { id: 'gume_negro', name: 'Gume Negro', title: 'Uma lâmina de carbono com motores e rancor', element: 'raio', sprite: 's2/boss/d_10', summon: 'corsario_lamina' },
+  { id: 'refracao_eos', name: 'Refração de Eos', title: 'Cada futuro possível dispara ao mesmo tempo', element: 'cosmico', sprite: 's2/boss/d_11', summon: 'espectro' },
+  { id: 'icaro_coletivo', name: 'Ícaro Coletivo', title: 'Mil operários, uma mente e nenhuma rota de fuga', element: 'quimico', sprite: 's2/boss/d_13', summon: 'enxame' },
+  { id: 'martelo_antares', name: 'Martelo de Antares', title: 'Temperado dentro de uma tempestade solar viva', element: 'fogo', sprite: 's2/boss/d_24', summon: 'ferrao' },
+  { id: 'soberano_caelum', name: 'Soberano Caelum', title: 'Sua coroa altera a massa de tudo que alcança', element: 'gelo', sprite: 's2/boss/d_27', summon: 'corsario_gelo' },
+  { id: 'janus_bifronte', name: 'Janus Bifronte', title: 'Ataca da direção que ainda não existe', element: 'cosmico', sprite: 's2/boss/d_28', summon: 'lanceiro' },
+  { id: 'umbra_terminal', name: 'Umbra Terminal', title: 'Depois dela, até a luz deixa de registrar progresso', element: 'cosmico', sprite: 's2/boss/d_29', summon: 'espectro' },
+];
+
+const EXPANSION_ATTACKS: readonly AttackPattern[] = ['mirado', 'leque', 'espiral', 'teleguiado'];
+
+const NOVOS_CHEFES: readonly BossDef[] = BOSS_EXPANSION.map((spec, index) => {
+  const element = getElement(spec.element);
+  const rank = index + BOSSES_BASE.length;
+  const attackA = EXPANSION_ATTACKS[index % EXPANSION_ATTACKS.length]!;
+  const attackB = EXPANSION_ATTACKS[(index + 1) % EXPANSION_ATTACKS.length]!;
+  const attackC = EXPANSION_ATTACKS[(index + 2) % EXPANSION_ATTACKS.length]!;
+  return {
+    ...spec,
+    scale: 0.64 + (index % 3) * 0.03,
+    radius: 54 + (index % 5) * 3,
+    hp: 2.12 + index * 0.13,
+    dano: 3.5 + index * 0.15,
+    reward: 230 + index * 28,
+    bulletSprite: element.bullet[0],
+    bulletColor: element.color,
+    blast: element.blast,
+    phases: [
+      { at: 1, attack: attackA, fireRate: 2.2 + index * 0.035, shots: 3 + index % 4, bulletSpeed: 250 + index * 3, strafe: 100 + index * 4 },
+      { at: 0.62, attack: attackB, fireRate: 2.7 + index * 0.04, shots: 6 + index % 6, bulletSpeed: 265 + index * 3, strafe: 130 + index * 4, summon: { enemy: spec.summon, every: Math.max(3.2, 6 - index * 0.08), count: 1 + index % 3 }, telegraph: `Protocolo ${rank + 1}: ruptura` },
+      { at: 0.24, attack: attackC, fireRate: 3.5 + index * 0.045, shots: 9 + index % 7, bulletSpeed: 280 + index * 3, strafe: 165 + index * 4, telegraph: `Protocolo ${rank + 1}: aniquilação` },
+    ],
+    firstKill: index < 5
+      ? [{ tier: 'ouro', count: 2 }]
+      : index < 15
+        ? [{ tier: 'singularidade', count: 1 }]
+        : [{ tier: 'singularidade', count: 2 }],
+  };
+});
+
+/** Trinta chefes: exatamente um para cada galáxia escrita da campanha. */
+export const BOSSES: readonly BossDef[] = [...BOSSES_BASE, ...NOVOS_CHEFES];
 
 export const BOSS_BY_ID = new Map(BOSSES.map((b) => [b.id, b]));
 

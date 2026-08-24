@@ -1,6 +1,6 @@
 import { fmt } from '@core/format';
 import { rarityInfo } from '@data/rarity';
-import { FAMILIAS_ORDENADAS, FAMILIA_LABEL, RECURSOS, iconeDeRecurso } from '@data/recursos';
+import { ESCOPO_LABEL, FAMILIAS_ORDENADAS, FAMILIA_LABEL, RECURSOS, iconeDeRecurso } from '@data/recursos';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
@@ -46,7 +46,10 @@ export class ArmazemPanel implements Panel {
         ...linhas.map((m) => {
           const n = armazem[m.id] ?? 0;
           const cor = rarityInfo(m.raridade).color;
-          return h(`.armazem-linha${n > 0 ? '' : '.vazia'}`, { title: m.origens.join(', ') },
+          const status = `${m.dropEstado === 'ativo' ? 'drop ativo' : 'drop planejado'} · ${m.arte === 'final' ? 'arte 2.0' : 'arte provisória'}`;
+          return h(`.armazem-linha${n > 0 ? '' : '.vazia'}`, {
+            title: `${m.drop}\nUso: ${m.funcao}\n${status}`,
+          },
             /**
              * 44 px e não 26.
              *
@@ -59,7 +62,10 @@ export class ArmazemPanel implements Panel {
             spriteIcon(iconeDeRecurso(m), 44),
             h('.armazem-texto', {},
               h('strong', { text: m.nome, style: { color: n > 0 ? cor : 'var(--muted)' } }),
-              h('span.muted.tiny', { text: m.origens.join(' · ') }),
+              h('span.armazem-origem.tiny', {
+                text: `${ESCOPO_LABEL[m.escopo]} · ${m.dropEstado === 'ativo' ? 'disponível' : 'planejado'}`,
+              }),
+              h('span.muted.tiny.armazem-funcao', { text: m.funcao }),
             ),
             h('span.armazem-qtd', {
               text: n > 0 ? fmt(n) : '—',

@@ -142,25 +142,29 @@ export class FabricacaoPanel implements Panel {
 
     return h('.fab-col.fab-inv', {},
       placa('INVENTÁRIO'),
-      h('.fab-grade', {}, ...lista.slice(0, 24).map((it) => this.pecaDoInventario(sim, it, receita))),
-
-      placa('FILTROS'),
-      h('.fab-filtros', {},
-        this.chip(sim, -1, 'Todos', '#9fb0c4'),
-        ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
+      h('.fab-bloco.fab-inventario-bloco', {},
+        h('.fab-grade', {}, ...lista.slice(0, 24).map((it) => this.pecaDoInventario(sim, it, receita))),
+      ),
+      h('.fab-bloco', {},
+        subtitulo('FILTROS'),
+        h('.fab-filtros', {},
+          this.chip(sim, -1, 'Todos', '#9fb0c4'),
+          ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
+        ),
       ),
 
       // O custo mora AQUI, e não na coluna do meio, por dois motivos: a coluna
       // esquerda tem espaço sobrando abaixo dos filtros, e o custo é da mesma
       // natureza do inventário — é o que você TEM contra o que precisa. Junto
       // dele, a decisão de fabricar se lê num lugar só.
-      placa('MATERIAIS'),
-      this.custo(sim, receita),
-
-      h('.fab-info', {},
-        h('span.tiny', {
-          text: 'Combine 10 itens da mesma raridade para ter chance de obter um item de raridade superior.',
-        }),
+      h('.fab-bloco.fab-materiais', {},
+        subtitulo('MATERIAIS'),
+        this.custo(sim, receita),
+        h('.fab-info', {},
+          h('span.tiny', {
+            text: 'Combine 10 itens da mesma raridade para ter chance de obter um item de raridade superior.',
+          }),
+        ),
       ),
     );
   }
@@ -245,38 +249,44 @@ export class FabricacaoPanel implements Panel {
 
     return h('.fab-col.fab-centro', {},
       placa('SÍNTESE DE ITENS'),
-      h('.fab-anel', {}, ...this.encaixes(sim, receita, saida)),
-
-      h(`button.fab-acao${pode ? '.pronta' : ''}`, {
-        text: pode ? 'FABRICAR' : 'FABRICAR',
-        disabled: !pode,
-        onclick: () => {
-          if (!pode) return;
-          const r = sim.fundirItens(cheios);
-          this.slots = this.slots.map(() => null);
-          if (!r) return;
-          // Onde o item parou depende dos ajustes de automação: `acquire` pode
-          // equipar na hora, guardar, ou desmanchar por raridade baixa. Ler o
-          // destino DEPOIS do fato é mais confiável que reproduzir a regra aqui
-          // — ela mora em `sim` e pode mudar sem este painel saber.
-          this.resultado = { item: r.item, entrada: receita.entrada, destino: destinoDe(sim, r.item) };
-          sim.touch();
-        },
-      }),
-      h('.fab-dica', { text: faltas[0] ?? 'Pronto para sintetizar' }),
-
-      h('button.fab-encher', {
-        text: 'Encher com as piores peças',
-        title: 'Comodidade — a escolha continua sendo sua, peça a peça.',
-        onclick: () => {
-          const noAnel = new Set(this.slots.filter(Boolean) as string[]);
-          const disponiveis = sim.state.inventory
-            .filter((i) => i.rarity === receita.entrada && !i.favorite && !noAnel.has(i.uid))
-            .sort((a, b) => a.ilvl - b.ilvl);
-          this.slots = this.slots.map((u) => u ?? disponiveis.shift()?.uid ?? null);
-          sim.touch();
-        },
-      }),
+      h('.fab-reator', {},
+        h('.fab-reator-topo', {},
+          h('span', { text: `${cheios.length}/${receita.quantidade} COMPONENTES` }),
+          h('span', { text: `ALVO · ${saida.name.toUpperCase()}`, style: { color: saida.color } }),
+        ),
+        h('.fab-anel', {}, ...this.encaixes(sim, receita, saida)),
+        h('.fab-reator-rodape', {},
+          h('.fab-dica', { text: faltas[0] ?? 'Pronto para sintetizar' }),
+          h(`button.fab-acao${pode ? '.pronta' : ''}`, {
+            text: 'FABRICAR',
+            disabled: !pode,
+            onclick: () => {
+              if (!pode) return;
+              const r = sim.fundirItens(cheios);
+              this.slots = this.slots.map(() => null);
+              if (!r) return;
+              // Onde o item parou depende dos ajustes de automação: `acquire` pode
+              // equipar na hora, guardar, ou desmanchar por raridade baixa. Ler o
+              // destino DEPOIS do fato é mais confiável que reproduzir a regra aqui
+              // — ela mora em `sim` e pode mudar sem este painel saber.
+              this.resultado = { item: r.item, entrada: receita.entrada, destino: destinoDe(sim, r.item) };
+              sim.touch();
+            },
+          }),
+          h('button.fab-encher', {
+            text: 'Encher com as piores peças',
+            title: 'Comodidade — a escolha continua sendo sua, peça a peça.',
+            onclick: () => {
+              const noAnel = new Set(this.slots.filter(Boolean) as string[]);
+              const disponiveis = sim.state.inventory
+                .filter((i) => i.rarity === receita.entrada && !i.favorite && !noAnel.has(i.uid))
+                .sort((a, b) => a.ilvl - b.ilvl);
+              this.slots = this.slots.map((u) => u ?? disponiveis.shift()?.uid ?? null);
+              sim.touch();
+            },
+          }),
+        ),
+      ),
     );
   }
 
@@ -313,7 +323,7 @@ export class FabricacaoPanel implements Panel {
   private tipos(sim: Sim): HTMLElement {
     return h('.fab-col.fab-tipos', {},
       placa('TIPOS DE FABRICAÇÃO'),
-      ...RECEITAS.map((r) => {
+      h('.fab-receitas-lista', {}, ...RECEITAS.map((r) => {
         const info = rarityInfo(r.entrada);
         const tem = sim.state.inventory.filter((i) => i.rarity === r.entrada && !i.favorite).length;
         const pronto = tem >= r.quantidade;
@@ -349,7 +359,7 @@ export class FabricacaoPanel implements Panel {
             }),
           ),
         );
-      }),
+      })),
     );
   }
 }
@@ -364,6 +374,11 @@ export class FabricacaoPanel implements Panel {
  */
 function placa(texto: string): HTMLElement {
   return h('.fab-placa', {}, h('span', { text: texto }));
+}
+
+/** Subtítulo interno: estrutura o card sem competir com o cabeçalho da coluna. */
+function subtitulo(texto: string): HTMLElement {
+  return h('.fab-subtitulo', { text: texto });
 }
 
 /**
@@ -388,14 +403,14 @@ function anelDeChance(fracao: number, cor: string): HTMLElement {
 }
 
 /** Para onde o item recém-fabricado foi. */
-type Destino = 'equipado' | 'guardado' | 'desmanchado';
+type Destino = 'equipado' | 'guardado' | 'descartado';
 
 const DESTINO_TEXTO: Record<Destino, string> = {
   equipado: 'Equipado automaticamente na nave.',
   guardado: 'Guardado no inventário.',
   // Vale avisar: o item saiu bom e a automação o desfez mesmo assim. Sem esta
   // linha, o jogador veria um Épico na tela e não o acharia em lugar nenhum.
-  desmanchado: 'Desmanchado na hora pelos ajustes de automação — virou núcleos.',
+  descartado: 'Descartado na hora pela automação — virou Sucata ou materiais conforme os Ajustes.',
 };
 
 /**
@@ -407,7 +422,7 @@ const DESTINO_TEXTO: Record<Destino, string> = {
 function destinoDe(sim: Sim, item: Item): Destino {
   if (Object.values(sim.state.equipped).some((i) => i?.uid === item.uid)) return 'equipado';
   if (sim.state.inventory.some((i) => i.uid === item.uid)) return 'guardado';
-  return 'desmanchado';
+  return 'descartado';
 }
 
 /** A chance de subir da receita daquela raridade, já em texto. */

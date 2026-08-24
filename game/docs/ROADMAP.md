@@ -8,7 +8,8 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 17/08/2026 · 190 testes passando · typecheck e build limpos.
+**Última atualização:** 24/08/2026 · 527 testes passando + 1 `todo` · registro
+consolidado em [`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md).
 
 ---
 
@@ -26,13 +27,30 @@ Fase 1B  ██████████  concluída — morte, progresso e perma
 Fase 2   ██████████  concluída — combate elemental
 Fase 3   ██████████  concluída — itemização
 Fase 4   ██████████  concluída — progressão, XP e curvas
-Fase 5   ██████░░░░  em andamento — conteúdo
+Fase 5   ███████░░░  em andamento — conteúdo
 ```
 
-**Próxima:** os quatro passos abertos da Fase 5 — reformar os baús, reformar a
-Loja, os 6 modificadores mecânicos da Provação e conteúdo em volume. Depois,
-o que separa "funciona" de "é um jogo": som, onboarding, acessibilidade e a
-volta da migração de save. Tudo detalhado em [`PLANO.md`](PLANO.md).
+**Próxima:** arte própria para os chefes da Provação, som e onboarding. A
+Provação agora tem os cinco modificadores mecânicos; acessibilidade base,
+controles Idle/manual e migração de save **v5** estão implementados. Antes de
+novo conteúdo, manter uma rodada curta de QA visual nos retratos de Missões e
+na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PLANO.md).
+
+### Consolidação de 24/08/2026
+
+- Laboratório promovido a ferramenta administrativa de calibração: hitbox e
+  escala ao vivo para jogador/inimigo, filtro de pendências, confirmação de
+  gravação no código e cenários Elite/Enxame/Cerco.
+- 29 cascos novos balanceados e liberados; 261 confrontos medidos; Hangar com
+  49 cascos, bestiário com 68 inimigos e Códex ampliado.
+- Baús, Loja, Bancada de Modulação, recursos/desmanche e Códex receberam
+  acabamento e regras próprias; a assinatura do baú segue o item de maior
+  raridade.
+- Missões passaram a ter quatro rastreios, HUD minimalista, atalhos de missão e
+  pilotagem na tela principal, retratos pelo atlas `Characters` e confiança
+  preenchida na cor do contato.
+- A gramática visual da Provação/Afixos foi adotada como padrão: neon é estado,
+  não decoração.
 
 
 
@@ -65,7 +83,7 @@ mudança de balanceamento seria fé.
 | 1.7 | Orçamento e peso de atributos (§7) | ✅ |
 | 1.8 | Nível de personagem 1–300 (§17) | ✅ com a 1B.3 |
 | 1.9 | Nível de nave 1–300, sem transferência (§17, §18) | ✅ com a 1B.3 |
-| ~~1.10~~ | ~~Save v4 + migração~~ — cancelado: o save é descartável no desenvolvimento | — |
+| 1.10 | ✅ Save v5 + migração definitiva — preferências, frota, casco, recursos e missões rastreadas normalizados | `sim/state.ts` |
 
 ### Fora do plano, feito no caminho
 
@@ -909,6 +927,92 @@ profundidade pagam diferente se um for mais difícil.
 
 ---
 
+### Reforma dos Baús ✅
+
+As quatro cápsulas deixaram de multiplicar a Sorte do jogador. Cada uma agora
+declara os sete percentuais de raridade diretamente em `data/chests.ts`; a
+abertura sorteia dessa tabela e passa a raridade exata ao gerador de item.
+`ChestDef.floor`, `ChestDef.luck` e `SORTE_EFETIVA_MAX` saíram juntos.
+
+O topo continua conquista: mesmo a Singularidade entrega Divino em 0,0008% —
+**1 em 125 mil por item**. Medido com 200 mil sorteios por cápsula; os valores
+observados ficaram dentro de 1% absoluto dos anunciados.
+
+A tela virou **Câmara de Aquisição**, com a mesma gramática da Provação: escolha
+à esquerda, objeto em foco no centro e informação decisiva à direita. Quatro
+assets autorais compartilham a mesma geometria e evoluem material e núcleo de
+Bronze a Singularidade. Cada uma das sete raridades tem assinatura animada
+própria, de varredura discreta a halo divino, respeitando redução de efeitos.
+
+---
+
+### Reforma da Loja ✅
+
+A Loja virou **Central de Serviços** e deixou de ser uma árvore de melhorias
+disfarçada. Sorte, XP, cura e multiplicadores de renda foram removidos do
+catálogo e do resolvedor de atributos; um teste falha se algum contrato voltar
+a conceder poder direto.
+
+O catálogo agora compra tempo e flexibilidade: quatro módulos de carga,
+reconfiguração da Matriz, recarga de tentativa da Provação e duas conversões de
+moeda com perda. O câmbio não é infinito: cada linha possui cota que cresce com
+o nível de comando. Craft de equipamento não pertence mais a este domínio.
+
+A expansão de carga também corrigiu uma falha antiga: a compra incrementava o
+contador da Loja, mas nunca concedia os espaços. Os quatro ids idempotentes
+agora são registrados, e compras antigas são reconciliadas sem duplicação.
+
+A tela segue a gramática da Provação e dos Baús: catálogo à esquerda, terminal
+no centro e leitura da transação à direita. Testes dedicados cobrem seus
+invariantes sem misturar as regras da Bancada.
+
+---
+
+### Bancada de Modulação ✅
+
+A recalibração de linhas saiu da Loja e virou uma tela de craft própria,
+**Afixos**. A composição usa três áreas: inventário elegível, item central com
+Prefixos e Sufixos separados, e protocolo de operação com custo, risco e pool
+possível.
+
+A referência conceitual é o craft de ARPG aplicado diretamente ao item: a
+operação diz o que muda, o que fica travado e mantém o resultado aleatório. A
+interface não copia outra tela. A remodulação preserva raridade, ilvl, base,
+elemento, conjunto, tier e natureza da linha; slot, raridade mínima, elemento e
+grupos de exclusão continuam filtrando os destinos.
+
+As regras foram movidas para `data/balance/recalibracao.ts`; a visualização do
+pool reutiliza `recalibrationCandidates`, a mesma função consumida pelo sorteio,
+para a UI nunca prometer uma identidade impossível. Testes próprios cobrem
+compatibilidade, preservação estrutural e recusa sem recurso.
+
+---
+
+### Mapa econômico dos 70 recursos ✅
+
+Os recursos deixaram de ter origens genéricas por família. As 30 galáxias têm
+um material-assinatura cada; orgânicos são exclusivos de missões, gases de
+eventos, tecnologias de chefes e essências da Provação. O mapa, o Armazém e os
+drops já leem a mesma fonte de verdade em `data/recursos.ts`.
+
+A pasta **Recursos 2.0** foi auditada: 42 artes com alfa são finais e já vencem
+no pipeline; 28 recortes antigos continuam marcados como provisórios. A lista
+de todos os materiais, função, origem, estado e prioridades está em
+[`ECONOMIA-RECURSOS.md`](ECONOMIA-RECURSOS.md).
+
+---
+
+### Venda e desmontagem de equipamentos ✅
+
+O descarte único foi separado em duas decisões: **vender** paga somente Sucata;
+**desmontar** paga somente materiais galácticos conforme raridade, ilvl, tier da
+base e qualidade dos afixos. Favoritos são protegidos, o cartão antecipa ambos
+os retornos, as ações em lote são separadas e a automação permite escolher o
+destino. A auditoria e as medianas estão em
+[`ECONOMIA-DESCARTE.md`](ECONOMIA-DESCARTE.md).
+
+---
+
 ### Ainda na Fase 5
 
 > **Corrigido em 23/08/2026.** Este bloco dizia que faltavam "a camada de combate
@@ -919,11 +1023,39 @@ profundidade pagam diferente se um for mais difícil.
 > tela existe (`ui/panels/ProvacaoPanel.ts`, 319 linhas). O nome também mudou:
 > "Abismo Estelar" virou **Núcleo de Provação**.
 
-O que de fato falta está em [`PLANO.md`](PLANO.md), com critério de aceite:
-reformar os baús, reformar a Loja, os **6 modificadores mecânicos** do §14
-(invulnerabilidade, zonas de perigo, clones, barreira frontal, pontos fracos),
-arte dedicada dos 100 chefes, e conteúdo por galáxia em volume — que é onde o
-`content-data-agent` trabalha a partir de schema aprovado.
+Os **5 modificadores mecânicos** do §14 foram concluídos: invulnerabilidade,
+zonas de perigo, clones, barreira frontal e pontos fracos. Resta a arte dedicada
+dos 100 chefes. A expansão do Códex foi concluída. O conteúdo de campanha em
+volume já fechou seus dois maiores buracos: há 30 chefes de galáxia e 68
+inimigos distribuídos em 30 elencos; galáxias vizinhas não compartilham a
+maioria das unidades. O Hangar também passou de 20 para 49 cascos: as 29 artes
+Spaceships 2.0 têm arquétipo, calibração, elemento e tiro próprios.
+
+O Laboratório também ganhou hitbox retangular de jogador, inimigo e chefe
+(largura, altura e deslocamento), ajuste ao vivo e filtros de calibração. Ele é
+uma ferramenta administrativa disponível somente no servidor local: **Gravar
+no código** atualiza `data/hitbox-calibrations.json`, nunca o save do jogador.
+Sete presets padronizados produziram a primeira comparação real dos arquétipos,
+registrada em [`RELATORIO-CONFRONTOS-CASCOS.md`](RELATORIO-CONFRONTOS-CASCOS.md).
+
+**Calibração fechada em 24/08/2026.** As 49 fichas de casco, 68 fichas inimigas
+e 30 fichas de chefe agora possuem hitbox e escala visual canônicas. O filtro
+“Não calibrados” e os indicadores de revisão leem diretamente essa tabela. O
+Laboratório ganhou os protocolos Elite, Enxame e Cerco, cada um com três
+sementes reproduzíveis. A bateria final executou 63 confrontos no motor real e
+está registrada em
+[`RELATORIO-BATERIA-CONFRONTOS.md`](RELATORIO-BATERIA-CONFRONTOS.md), com os
+ajustes aplicados a Artilharia, Saturação, Baluarte e Duelista.
+
+**Cascos liberados e Códex expandido em 24/08/2026.** A bateria cresceu para
+261 execuções (29 cascos × três cenários × três sementes). Os sete arquétipos e
+as seis famílias receberam custos mecânicos próprios; Duelista lidera o alvo
+único, Assalto o enxame, e Saturador cobre enxame/cerco sem vencer Elite. Nenhuma
+família domina tudo. Os 29 cascos foram removidos do estado de calibração e
+adicionados à frota inicial e à migração de saves. O Códex agora cobre chefes,
+inimigos comuns, elites, cascos, bases de item, recursos com fonte e as relações
+elementais. Relatório completo:
+[`RELATORIO-BATERIA-CONFRONTOS-COMPLETA.md`](RELATORIO-BATERIA-CONFRONTOS-COMPLETA.md).
 
 ---
 

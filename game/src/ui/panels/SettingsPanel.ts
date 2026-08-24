@@ -17,13 +17,32 @@ export class SettingsPanel implements Panel {
     const s = sim.state.settings;
 
     return h('.panel-body', {},
+      h('h3.section', { text: 'Controle de combate' }),
+      h('p.muted.hint', { text: 'Vale na campanha e na Provação. O Laboratório mantém seu seletor próprio para comparar IAs. No manual a arma continua automática; use WASD ou as setas para pilotar.' }),
+      h('.setting', {},
+        h('.setting-text', {},
+          h('strong', { text: 'Piloto da nave' }),
+          h('span.muted.tiny', { text: s.controlMode === 'manual' ? 'Manual · WASD ou setas' : 'Idle · IA no comando' }),
+        ),
+        h('.speed-picker', { role: 'group', 'aria-label': 'Modo de controle' },
+          h(`button.chip${s.controlMode === 'idle' ? '.active' : ''}`, {
+            text: 'Idle', 'aria-pressed': String(s.controlMode === 'idle'),
+            onclick: () => { s.controlMode = 'idle'; sim.touch(); },
+          }),
+          h(`button.chip${s.controlMode === 'manual' ? '.active' : ''}`, {
+            text: 'WASD / setas', 'aria-pressed': String(s.controlMode === 'manual'),
+            onclick: () => { s.controlMode = 'manual'; sim.touch(); },
+          }),
+        ),
+      ),
+
       h('h3.section', { text: 'Automação' }),
       toggle('Equipar automaticamente o que for melhor', s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); }),
       toggle('Repetir a fase em vez de avançar', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); }),
       h('.setting', {},
         h('.setting-text', {},
-          h('strong', { text: 'Desmanchar automaticamente abaixo de' }),
-          h('span.muted.tiny', { text: 'Itens abaixo desta raridade viram núcleos ao cair. Favoritos nunca são desmanchados.' }),
+          h('strong', { text: 'Descartar automaticamente abaixo de' }),
+          h('span.muted.tiny', { text: 'Aplica o destino escolhido ao cair. Se o Armazém lotar, a desmontagem automática vende a peça para não perder valor.' }),
         ),
         h('select.select', {
           onchange: (e: Event) => { s.autoSalvage = Number((e.target as HTMLSelectElement).value) as Rarity; sim.touch(); },
@@ -32,10 +51,30 @@ export class SettingsPanel implements Panel {
           ...RARITIES.slice(1).map((r) => h('option', { value: String(r.id), text: r.name, selected: s.autoSalvage === r.id })),
         ),
       ),
+      h('.setting', {},
+        h('.setting-text', {},
+          h('strong', { text: 'Destino do descarte automático' }),
+          h('span.muted.tiny', { text: 'Venda gera Sucata. Desmontagem gera materiais de craft. Nunca os dois.' }),
+        ),
+        h('select.select', {
+          onchange: (e: Event) => {
+            s.autoDispose = (e.target as HTMLSelectElement).value as typeof s.autoDispose;
+            sim.touch();
+          },
+        },
+          h('option', { value: 'desmontar', text: 'Desmontar', selected: s.autoDispose === 'desmontar' }),
+          h('option', { value: 'vender', text: 'Vender', selected: s.autoDispose === 'vender' }),
+        ),
+      ),
 
       h('h3.section', { text: 'Apresentação' }),
       toggle('Mostrar números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); }),
-      toggle('Reduzir efeitos (economiza bateria)', s.reduceEffects, (v) => { s.reduceEffects = v; sim.touch(); }),
+      toggle('Reduzir efeitos e movimento', s.reduceEffects, (v) => { s.reduceEffects = v; sim.touch(); }),
+      toggle('Alto contraste', s.highContrast, (v) => {
+        s.highContrast = v;
+        document.documentElement.dataset.contrast = v ? 'high' : '';
+        sim.touch();
+      }),
 
       h('h3.section', { text: 'Modo de teste' }),
       h('p.muted.hint', { text: 'Recursos e pontos de matriz infinitos, hangar liberado, nave indestrutível e controle de velocidade. Serve para inspecionar conteúdo sem esperar a progressão — o save continua o mesmo.' }),
@@ -119,9 +158,13 @@ function toggle(label: string, value: boolean, onChange: (v: boolean) => void): 
   return h('.setting', {},
     h('.setting-text', {}, h('strong', { text: label })),
     h(`button.switch${value ? '.on' : ''}`, {
+      'aria-label': label,
+      'aria-pressed': String(value),
       onclick: (e: Event) => {
         onChange(!value);
-        (e.currentTarget as HTMLElement).classList.toggle('on', !value);
+        const control = e.currentTarget as HTMLElement;
+        control.classList.toggle('on', !value);
+        control.setAttribute('aria-pressed', String(!value));
       },
     }, h('span.knob')),
   );

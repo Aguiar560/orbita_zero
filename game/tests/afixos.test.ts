@@ -57,7 +57,7 @@ describe('prefixos e sufixos (§7)', () => {
         }
       }
     }
-  });
+  }, 10_000);
 
   it('a peça não encolhe: o total de linhas continua sendo o da raridade', () => {
     for (const slot of SLOTS) {

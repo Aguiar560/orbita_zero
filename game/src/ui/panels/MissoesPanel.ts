@@ -1,4 +1,5 @@
 import { fmt } from '@core/format';
+import { assets } from '@render/Assets';
 import {
   MISSOES, TIPO_DE_MISSAO,
   type MissaoDef, type TipoDeMissao,
@@ -17,7 +18,7 @@ import {
 } from '@sim/missoes';
 import type { Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
-import { h, spriteIcon, progressBar } from '../dom';
+import { h, portraitIcon, spriteIcon, progressBar } from '../dom';
 import type { Panel } from './types';
 
 /**
@@ -49,12 +50,16 @@ export class MissoesPanel implements Panel {
   /** Contato selecionado. `null` = o primeiro desbloqueado. */
   private contato: string | null = null;
   private filtroTipo: TipoDeMissao | 'todos' = 'todos';
+  private characterArtsReady = false;
 
   badge(sim: Sim): number {
     return sim.missoesProntas;
   }
 
   render(sim: Sim): HTMLElement {
+    if (!this.characterArtsReady) {
+      void assets.loadAtlas('characters').then(() => { this.characterArtsReady = true; sim.touch(); });
+    }
     const contatos = sim.contatos;
     const ativo = this.contatoAtivo(sim);
 
@@ -102,9 +107,9 @@ export class MissoesPanel implements Panel {
         }),
       )),
       h('.mis-contadores', {},
-        h('span.mis-cont', { title: 'Missões em andamento' }, h('span', { text: `▤ ${ativas}` })),
-        h('span.mis-cont.pronta', { title: 'Prontas para entregar' }, h('span', { text: `✓ ${sim.missoesProntas}` })),
-        h('span.mis-cont.medalha', { title: 'Medalhas' }, h('span', { text: `◈ ${fmt(sim.state.medalhas)}` })),
+        h('span.mis-cont', { title: 'Missões em andamento', text: `ATIVAS ${ativas}` }),
+        h('span.mis-cont.pronta', { title: 'Prontas para entregar', text: `PRONTAS ${sim.missoesProntas}` }),
+        h('span.mis-cont.medalha', { title: 'Medalhas', text: `MEDALHAS ${fmt(sim.state.medalhas)}` }),
       ),
     );
   }
@@ -142,7 +147,7 @@ export class MissoesPanel implements Panel {
       style: { borderColor: sel ? c.def.cor : 'var(--line)' },
       onclick: () => { this.contato = c.def.id; sim.touch(); },
     },
-      h('.mis-retrato', { style: { borderColor: c.def.cor } }, spriteIcon(c.def.retrato, 44)),
+      h('.mis-retrato', { style: { borderColor: c.def.cor } }, portraitIcon(c.def.retrato, 36, 48)),
       h('.mis-contato-txt', {},
         h('strong', { text: c.def.nome }),
         h('span.muted.tiny', { text: c.def.faccao }),
@@ -157,7 +162,7 @@ export class MissoesPanel implements Panel {
     const conf = confiancaDe(sim.state, p.id);
 
     return h('.mis-ficha', { style: { borderColor: p.cor } },
-      h('.mis-ficha-retrato', { style: { borderColor: p.cor } }, spriteIcon(p.retrato, 116)),
+      h('.mis-ficha-retrato', { style: { borderColor: p.cor } }, portraitIcon(p.retrato, 72, 96)),
 
       h('.mis-ficha-dados', {},
         h('h2.mis-ficha-nome', { text: p.nome, style: { color: p.cor } }),
@@ -203,7 +208,7 @@ export class MissoesPanel implements Panel {
           h(`.mis-no${aberto ? '.aberto' : ''}`, {
             style: { borderColor: aberto ? p.cor : 'var(--line)', color: aberto ? p.cor : 'var(--muted)' },
             title: `Nível ${ROMANOS[i]} — ${premio?.texto ?? ''}`,
-          }, h('span', { text: aberto ? '✳' : '🔒' })),
+          }),
           h('span.mis-no-rom', { text: ROMANOS[i]!, style: { color: aberto ? p.cor : 'var(--muted)' } }),
         );
       })),
@@ -243,7 +248,10 @@ export class MissoesPanel implements Panel {
       h('.mis-card-icone.i-' + (def.tipo ?? 'principal')),
 
       h('.mis-card-txt', {},
-        h('strong', { text: def.nome.toUpperCase(), style: { color: t.cor } }),
+        h('.mis-card-titulo', {},
+          h('strong', { text: def.nome.toUpperCase(), style: { color: t.cor } }),
+          this.botaoRastrear(sim, def),
+        ),
         h('span.muted.tiny', { text: def.descricao }),
       ),
 
@@ -264,7 +272,7 @@ export class MissoesPanel implements Panel {
       ),
 
       pronta
-        ? h('button.btn.mis-entregar', {
+        ? h(`button.btn.mis-entregar.tipo-${def.tipo ?? 'principal'}`, {
             onclick: () => { sim.resgatarMissao(def.id); },
           }, h('span', { text: 'ENTREGAR' }))
         : h('span'),
@@ -289,7 +297,10 @@ export class MissoesPanel implements Panel {
       h('.mis-esp-esq', {},
         h('.mis-card-icone.grande.i-especial'),
         h('.mis-esp-txt', {},
-          h('span.mis-esp-tag', { text: 'CONTRATO ESPECIAL' }),
+          h('.mis-card-titulo', {},
+            h('span.mis-esp-tag', { text: 'CONTRATO ESPECIAL' }),
+            this.botaoRastrear(sim, def),
+          ),
           h('strong', { text: def.nome.toUpperCase() }),
           h('span.muted.tiny', { text: def.descricao }),
           h('.mis-obj', {},
@@ -317,7 +328,7 @@ export class MissoesPanel implements Panel {
         : []),
 
       pronta
-        ? h('button.btn.mis-entregar.esp', {
+        ? h('button.btn.mis-entregar.esp.tipo-especial', {
             onclick: () => { sim.resgatarMissao(def.id); },
           }, h('span', { text: 'RECLAMAR CONTRATO' }))
         : h('span'),
@@ -338,6 +349,24 @@ export class MissoesPanel implements Panel {
         ...faltam.map((r) => h('span.tiny.mis-req', { text: `🔒 ${textoDoRequisito(r)}` })),
       ),
     );
+  }
+
+  /** Escolha explícita do jogador: até quatro atalhos, salvos como preferência. */
+  private botaoRastrear(sim: Sim, def: MissaoDef): HTMLElement {
+    const pinned = sim.state.settings.pinnedMissions.includes(def.id);
+    const limite = sim.state.settings.pinnedMissions.length >= 4;
+    return h(`button.mis-rastrear${pinned ? '.ativo' : ''}`, {
+      text: pinned ? '★ RASTREANDO' : '☆ RASTREAR',
+      title: pinned ? 'Remover da tela principal' : limite ? 'Você já rastreia quatro missões' : 'Mostrar na tela principal',
+      'aria-pressed': String(pinned),
+      disabled: !pinned && limite,
+      onclick: () => {
+        sim.state.settings.pinnedMissions = pinned
+          ? sim.state.settings.pinnedMissions.filter((id) => id !== def.id)
+          : [...sim.state.settings.pinnedMissions, def.id];
+        sim.touch();
+      },
+    });
   }
 
   // ── coluna direita (§18, §19, §20) ────────────────────────────────────────
@@ -402,7 +431,7 @@ export class MissoesPanel implements Panel {
           );
         }
         return h('.mis-no-rede', { style: { borderColor: c.def.cor } },
-          h('.mis-retrato', { style: { borderColor: c.def.cor } }, spriteIcon(c.def.retrato, 64)),
+          h('.mis-retrato', { style: { borderColor: c.def.cor } }, portraitIcon(c.def.retrato, 48, 64)),
           h('strong', { text: c.def.nome, style: { color: c.def.cor } }),
           h('span.muted.tiny', { text: c.def.titulo }),
           h('.mis-nos.compacto', {}, ...Array.from({ length: CONFIANCA_MAX }, (_, i) =>

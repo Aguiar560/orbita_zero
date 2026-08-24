@@ -22,7 +22,6 @@ import { rarityInfo } from '@data/rarity';
 const RARIDADE_DE_REFERENCIA = 4.9;
 
 import { BASE_BY_ID, ITEM_SETS, SET_BY_ID } from '@data/items';
-import { SHOP_BY_ID } from '@data/shop';
 import { treeModifiers } from './tree';
 import { montarPacote } from './dano';
 import { CRIT_ELEM_BASE, CRIT_ELEM_DANO_BASE } from '@data/balance/elemental';
@@ -192,13 +191,6 @@ export function resolveStats(state: GameState): Stats {
 
   for (const mod of treeModifiers(state)) {
     acc[mod.kind][mod.stat] += mod.value;
-  }
-
-  for (const [id, owned] of Object.entries(state.shop)) {
-    if (!owned) continue;
-    const def = SHOP_BY_ID.get(id);
-    if (!def?.stat) continue;
-    acc[def.stat.kind][def.stat.id] += def.stat.per * owned;
   }
 
   // A patente de comando dá uma base de sincronia que cresce só de jogar.

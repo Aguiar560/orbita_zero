@@ -44,11 +44,11 @@ Abrir por código: `bus.emit('panel:open', { id })`.
 `ui/panels/InventoryPanel.ts` · 233 linhas · **painel fixo, sem aba**
 
 Grade de peças com filtro por raridade (7 botões), filtro por elemento, cinco
-ordens (poder, raridade, slot, nível, melhor tier), favoritos e desmanche em
-lote. A ficha de cada item vem de `ui/ItemCard.ts`.
+ordens (poder, raridade, slot, nível, melhor tier), favoritos, venda e
+desmontagem em lote. A ficha antecipa os dois retornos e vem de `ui/ItemCard.ts`.
 
 - **Lê:** `sim.state.inventory`, `sim.state.equipped`, `sim.stats`
-- **Escreve:** equipar/desequipar, favoritar, desmanchar
+- **Escreve:** equipar/desequipar, favoritar, vender por Sucata, desmontar por materiais
 - **Capacidade:** 15 espaços no começo, até 70 por conquista (`cargaLiberada`)
 
 **`ui/ItemCard.ts`** (184 linhas) desenha a ficha: nome colorido por raridade,
@@ -103,6 +103,18 @@ subir raridade.
 
 Ao fabricar, abre um **segundo modal por cima** mostrando o item que saiu.
 
+**Padrão visual (24/08/2026).** A Fabricação usa o **kit compartilhado** de
+Provação, Baús e Bancada de Afixos: mesma moldura externa e barra superior,
+mesmas superfícies escuras, títulos de seção com linha cyan discreta e cards de
+lista com borda lateral semântica. Não há moldura exclusiva nem linguagem visual
+paralela. A cor de raridade existe nos itens e receitas; cyan continua reservado
+para foco/ação. O reator é conteúdo do painel central, não uma nova marca visual.
+
+As laterais organizam itens, filtros e materiais à esquerda e receitas à direita;
+o centro mostra componentes, alvo e ação de síntese dentro do mesmo painel de
+trabalho usado pelo craft. Assim a tela pertence ao mesmo sistema, mas preserva
+a decisão específica de fundir itens.
+
 > **A fusão anunciava probabilidade errada.** Ela usava a raridade arredondada
 > para baixo em vez da exata: 3% de Divino anunciado eram 10,4% reais, 3,47×
 > inflado. Corrigido com o parâmetro `exata` em `rollItem`. Hoje os seis degraus
@@ -114,9 +126,27 @@ Ao fabricar, abre um **segundo modal por cima** mostrando o item que saiu.
 
 ---
 
+## Afixos — `id: 'afixos'`
+
+`ui/panels/AffixCraftPanel.ts` · camada em três colunas
+
+A **Bancada de Modulação** separa o craft de equipamento da Loja. Inventário à
+esquerda, item com Prefixos/Sufixos no centro e protocolo de craft à direita.
+
+- Seleciona uma linha específica e mostra seu tier e natureza.
+- Expõe a quantidade e os nomes dos destinos compatíveis antes da decisão.
+- Preserva raridade, ilvl, base, elemento, conjunto, tier e Prefixo/Sufixo.
+- Nunca duplica identidade nem viola grupos de exclusão do gerador natural.
+- Mostra comparação “antes/agora” depois da operação.
+
+- **Lê:** `state.inventory`, `recalibrationCandidates()` e saldo de núcleos
+- **Escreve:** `sim.recalibrateItemAffix()`
+
+---
+
 ## Missões — `id: 'missoes'`
 
-`ui/panels/MissoesPanel.ts` · 533 linhas · camada · **a Central de Contratos**
+`ui/panels/MissoesPanel.ts` · camada · **a Central de Contratos**
 
 O painel mais trabalhado da UI. Centrado em **personagem**, não em lista de
 tarefas: **9 contatos**, cada um com retrato, galáxia, afinidade e status.
@@ -126,6 +156,13 @@ tarefas: **9 contatos**, cada um com retrato, galáxia, afinidade e status.
   de `state.missoes`: uma missão entregue e removida do catálogo não pode apagar
   o grau que ajudou a construir.
 - **Quatro tipos de missão**, com os botões de tipo **abaixo** da confiança.
+- **Quatro rastreios simultâneos**. O HUD do combate mostra só nome, progresso e
+  estado: sem caixa, título, botão X ou hover que desvie atenção do jogo.
+- Os 9 contatos usam o atlas lazy `characters`, gerado a partir de `Characters`.
+  O frame 3×4 ancora o retrato no rodapé e isola a área interna exata do atlas;
+  isso impede que a miniatura capture pixels do frame seguinte.
+- A confiança é uma sequência de hexágonos preenchidos. Borda, miolo e conexão
+  seguem uma única cor do contato; os níveis ainda fechados são neutros.
 - **Requisitos declarativos:** `Requisito` é uma união discriminada, então o
   compilador pega entrada malformada que silenciosamente nunca dispararia.
 - Missão especial com moldura amarela; rede de aliados em roxo. Ambas usam a
@@ -142,7 +179,8 @@ tarefas: **9 contatos**, cada um com retrato, galáxia, afinidade e status.
 > para 2 px. A pílula virou `.mis-pilula`.
 
 - **Lê:** `sim.contatos`, `sim.missoes`, `sim.missoesProntas`, `state.confianca`
-- **Escreve:** `sim.resgatarMissao()`, `sim.entregarTudo()`
+- **Escreve:** `sim.resgatarMissao()`, `sim.entregarTudo()`,
+  `state.settings.pinnedMissions`
 
 ---
 
@@ -192,9 +230,12 @@ em `command.refunds`.
 
 `ui/panels/FleetPanel.ts` · 115 linhas · camada
 
-Os **20 cascos**. Cada nave tem **nível e XP próprios** (`state.naves`), e
+Os **49 cascos**. Cada nave tem **nível e XP próprios** (`state.naves`), e
 **trocar não transfere** (§17): é o que dá sentido a manter uma frota em vez de
 uma nave só.
+
+Os 29 cascos Spaceships 2.0 estão liberados diretamente em campanhas novas e
+existentes. O sistema definitivo de desbloqueio será desenhado depois.
 
 - **Lê:** `HULLS`, `state.fleet`, `state.naves`, `sim.naveAtiva`
 - **Escreve:** `state.hull`
@@ -203,38 +244,76 @@ uma nave só.
 
 ## Baús — `id: 'baus'`
 
-`ui/panels/ChestsPanel.ts` · 76 linhas · camada
+`ui/panels/ChestsPanel.ts` · camada · composição em três colunas
 
-Quatro baús, do comum ao de Singularidade.
+Quatro cápsulas — Bronze, Prata, Ouro e Singularidade — com arte dedicada. A
+seleção fica à esquerda, a abertura no centro e as probabilidades/itens
+extraídos à direita, repetindo a gramática visual da Provação sem repetir neon
+em toda moldura.
 
-> ⚠️ **Vão ser reformulados por inteiro.** Decisão do Rafael: os baús passam a ter
-> **percentuais próprios de raridade** e **a Sorte deixa de influenciá-los** — ela
-> vale só no drop de setor. Quando isso acontecer, `ChestDef.luck`, `ChestDef.floor`
-> e a constante `SORTE_EFETIVA_MAX` ficam órfãos e saem juntos. **Não use os
-> contratos atuais como base para nada.**
+- Cada cápsula tem sete percentuais explícitos que somam 100%.
+- Sorte vale apenas para drop de combate e não entra em `openChest`.
+- A maior raridade extraída escolhe a assinatura da abertura; os sete graus têm
+  animações próprias e respeitam “Reduzir efeitos”.
+- Assets: `assets-static/ui/baus/chests`, preservados pelo pipeline.
+- Divino na Singularidade: 0,0008% por item (1 em 125 mil).
 
 ---
 
 ## Loja — `id: 'loja'`
 
-`ui/panels/ShopPanel.ts` · 105 linhas · camada
+`ui/panels/ShopPanel.ts` · camada em três colunas
 
-Existe para dar destino ao recurso que sobra: sucata acumula sozinha com a
-patrulha e núcleos vêm de desmanche, então sem um ralo permanente eles viram
-número morto no topo da tela. **Nada aqui é exclusivo** — a loja compra tempo,
-não poder que o jogo não dê de outra forma.
+Virou **Central de Serviços**. Catálogo à esquerda, operação em foco no centro e
+leitura da transação à direita — a mesma gramática da Provação e dos Baús.
 
-> ⚠️ **Será totalmente reformulada.** Mesma regra dos baús: não sirva de base.
+- **Logística:** quatro módulos de carga, com concessões idempotentes reais.
+- **Sistemas:** reconfiguração da Matriz e uma tentativa da Provação.
+- **Câmbio controlado:** sucata → núcleos e núcleos → cristais, com perda e cota
+  crescente por nível.
+
+Sorte, XP, cura, renda e cápsulas não são vendidos aqui. A tela reserva cor para
+moeda/serviço e mantém fundos escuros, seguindo a decisão de neon na borda.
 
 ---
 
 ## Códex — `id: 'codex'`
 
-`ui/panels/CodexPanel.ts` · 81 linhas · camada
+`ui/panels/CodexPanel.ts` · camada · seis arquivos internos
 
-Registro dos chefes já derrotados (`state.codex`).
+Arquivo completo da campanha: resumo e cobertura; chefes, inimigos comuns e
+elites; 49 cascos com ficha; 80 bases de item; 70 recursos com função e fonte;
+e os seis elementos com vantagem e resistência. Conteúdo ainda não encontrado
+permanece visível como registro bloqueado, sem esconder que ele existe.
 
-**Falta:** cobrir inimigos comuns, itens, recursos e elementos — hoje só chefes.
+Usa a mesma gramática da Provação e da Bancada de Afixos: moldura externa e
+fundo técnico dedicados, títulos 9-slice, abas hexagonais, slots de arte,
+cantos chanfrados e neon reservado a bordas/estado ativo. A aba escolhida
+persiste enquanto o combate atualiza a interface.
+
+O conteúdo foi normalizado em seis arquivos: chefes, inimigos comuns/elites,
+cascos, itens, recursos/fontes e elementos. A navegação mantém a mesma moldura
+contida das telas de trabalho; cor de raridade e elemento acompanha texto e
+ícone, nunca aparece como único sinal.
+
+---
+
+## Laboratório — `id: 'laboratorio'`
+
+`ui/panels/LaboratorioPanel.ts` · camada · sandbox sem recompensas
+
+Permite combinar qualquer arte de jogador, inimigo, tiro, elemento, movimento e
+ficha numérica. Sete presets carregam representantes dos arquétipos contra o
+mesmo protocolo, permitindo comparar DPS, precisão, abates, dano e mortes.
+
+O editor expõe os 49 cascos, 68 inimigos e 30 chefes individualmente e usa
+caixas retangulares reais com largura, altura e deslocamento X/Y. Durante o
+combate os oito botões da barra inferior ajustam a caixa ao vivo. **Gravar no
+código** chama um endpoint exclusivo do `vite dev`, atualiza
+`data/hitbox-calibrations.json` e a campanha passa a usar exatamente a mesma
+colisão em todos os saves. O painel mostra o que já foi calibrado, filtra as
+pendências e confirma sucesso ou falha. Em build publicado o Laboratório não é
+exposto; ele é uma ferramenta administrativa, não uma tela do jogador.
 
 ---
 
@@ -249,6 +328,11 @@ Também o **modo de teste** (`sim.setTestMode`), que dá recursos infinitos e
 libera alcance, nível e frota de forma **não destrutiva** (leitura, sem gravar
 no save).
 
+Também centraliza preferências persistidas de acessibilidade e comando: alto
+contraste, redução de efeitos e escolha entre Idle e pilotagem manual por WASD
+ou setas. Foco visível, atalhos de teclado, rótulos acessíveis e notificações
+para leitor de tela pertencem ao Shell, mas obedecem a estas preferências.
+
 ---
 
 ## Trilho esquerdo
@@ -257,6 +341,10 @@ no save).
 
 Nave ativa, vida, escudo, elemento, **postura da IA** (`AGR` / `EQU` / `EVA` /
 `COL`) e as três moedas. Clicar numa célula de item abre o Inventário.
+
+Também reúne o acesso imediato a **Pilotar / Idle** e aos contratos rastreados,
+para que o jogador não precise abrir Ajustes ou a Central de Contratos durante a
+campanha.
 
 ---
 
@@ -268,9 +356,9 @@ Nave ativa, vida, escudo, elemento, **postura da IA** (`AGR` / `EQU` / `EVA` /
 - **`WaveDirector.ts`** decide o que entra em cena.
 - **`entities.ts`** as entidades da cena.
 
-Consome os 11 efeitos de modificador da Provação: `reflexo`, `divideEm`,
-`regen`, `travaEscudo` no `VerticalMode`; `vida`, `dano`, `cadencia`,
-`velocidade`, `invocaCada`, `espelhaElemento`, `limiteDeTempo` no `sim/desafio.ts`.
+Consome os 16 efeitos de modificador da Provação. Além dos números e especiais,
+`VerticalMode` desenha e executa invulnerabilidade cíclica, zonas telegrafadas,
+clones, barreira frontal e pontos fracos móveis.
 
 ---
 
@@ -278,9 +366,10 @@ Consome os 11 efeitos de modificador da Provação: `reflexo`, `divideEm`,
 
 | Tela | Falta |
 |---|---|
-| Baús | reforma completa: percentuais próprios, sem Sorte |
-| Loja | reforma completa |
-| Códex | inimigos comuns, itens, recursos, elementos |
+| Baús | ✅ reforma concluída: percentuais próprios, sem Sorte, assets e animações |
+| Loja | ✅ Central de Serviços concluída; logística, sistemas e câmbio |
+| Afixos | ✅ Bancada própria com Prefixos/Sufixos, pool, custo e resultado |
+| Códex | ✅ seis arquivos completos; revisar somente ao entrar conteúdo novo |
 | Provação | arte dedicada dos 100 chefes (6 sprites em rodízio hoje) |
 | Combate | arte de projétil elemental (revertida; "depois nós tratamos isso") |
-| Geral | nenhuma tela tem passe de acessibilidade (foco por teclado, leitor de tela) |
+| Geral | auditoria final de teclado e contraste AA por fluxo (base pronta: foco visível, rótulos, alto contraste e navegação de abas) |

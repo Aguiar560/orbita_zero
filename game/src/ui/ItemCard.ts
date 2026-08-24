@@ -2,7 +2,9 @@ import { fmt } from '@core/format';
 import { AFFIX_BY_ID, SET_BY_ID, SLOT_LABEL, tipoDoAfixo, type TipoDeAfixo } from '@data/items';
 import { rarityInfo } from '@data/rarity';
 import { TIERS } from '@data/balance/tiers';
-import { affixText, itemName, itemStats, salvageValue } from '@sim/loot';
+import { retornoDeDesmanche, valorDeVenda } from '@data/balance/descarte';
+import { RECURSO_POR_ID } from '@data/recursos';
+import { affixText, itemName, itemStats } from '@sim/loot';
 import { setCounts } from '@sim/stats';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
 import { DANO_STAT, RES_STAT, STAT_IDS, type Affix, type Item, type StatId, type Stats } from '@sim/types';
@@ -134,11 +136,20 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
     );
   }
 
-  frag.append(
-    h('.tip-foot', {},
-      h('span.muted.tiny', { text: `desmancha por ${fmt(salvageValue(item))}` }),
+  const retorno = retornoDeDesmanche(item);
+  const materiais = Object.entries(retorno.materiais)
+    .map(([id, n]) => `${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id}`)
+    .join(' + ');
+  frag.append(h('.tip-foot.tip-disposal', {},
+    h('.tip-disposal-row', {},
+      h('span.muted.tiny', { text: 'VENDER' }),
+      h('strong.tiny', { text: `${fmt(valorDeVenda(item))} sucata` }),
     ),
-  );
+    h('.tip-disposal-row', {},
+      h('span.muted.tiny', { text: 'DESMONTAR' }),
+      h('strong.tiny', { text: materiais }),
+    ),
+  ));
   return frag;
 }
 

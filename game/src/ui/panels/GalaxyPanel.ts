@@ -3,6 +3,7 @@ import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector, PHASES_PER_GALAXY } from '@data/galaxies';
 import { counterOf, getElement } from '@data/elements';
+import { iconeDeRecurso, recursoDaGalaxia } from '@data/recursos';
 import { sectorBounty, sectorHp } from '@sim/progression';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon, progressBar } from '../dom';
@@ -53,6 +54,7 @@ export class GalaxyPanel implements Panel {
     const unlockedGalaxies = galaxyOfSector(best);
     const info = describeGalaxy(this.viewing);
     const phases = galaxyPhases(this.viewing);
+    const recursoLocal = recursoDaGalaxia(this.viewing);
 
     const body = h('.panel-body.galaxy-body', {},
       // ── seletor de galáxia ────────────────────────────────────────────────
@@ -83,6 +85,7 @@ export class GalaxyPanel implements Panel {
           h('.galaxy-hero-text', {},
             h('strong', { text: info.name, style: { color: info.color } }),
             h('span.tiny', { text: `Domínio ${info.fleet}` }),
+            h('span.muted.tiny', { text: info.identity, title: info.hazard }),
             h('span.muted.tiny', { text: `Setores ${info.firstSector}–${info.lastSector}` }),
             // Ameaça elemental da região e a resposta a ela: é a informação que
             // faz o jogador trocar de escudo ANTES de viajar, e não depois de
@@ -97,6 +100,13 @@ export class GalaxyPanel implements Panel {
                   : `Frota de ${ameaca.name.toLowerCase()}`,
               );
             })(),
+            ...(recursoLocal ? [h('.galaxy-resource', { title: recursoLocal.funcao },
+              spriteIcon(iconeDeRecurso(recursoLocal), 24),
+              h('span', {},
+                h('small', { text: 'RECURSO DA GALÁXIA' }),
+                h('strong', { text: recursoLocal.nome }),
+              ),
+            )] : []),
           ),
           spriteIcon(info.sprite, 66, 'galaxy-spiral'),
         ),

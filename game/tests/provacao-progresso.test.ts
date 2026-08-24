@@ -25,9 +25,16 @@ const simPronto = (semente: number) => {
 
 describe('o desbloqueio e o checkpoint (§8, §75)', () => {
   it('só o piso 1 abre num save novo', () => {
-    const sim = simPronto(1);
+    const sim = new Sim(createState(1));
     expect(pisoLiberado(sim.state, 1)).toBe(true);
     expect(pisoLiberado(sim.state, 2)).toBe(false);
+  });
+
+  it('um save novo consegue iniciar o piso 1', () => {
+    const sim = new Sim(createState(101));
+    expect(sim.iniciarPisoDaProvacao(1)).toBe(true);
+    expect(sim.desafio?.piso).toBe(1);
+    expect(sim.provacaoTentativas.tem).toBe(TENTATIVAS_MAX - 1);
   });
 
   /** O cenário literal do §75. */

@@ -322,7 +322,7 @@ describe('a raridade que sai é a sorteada', () => {
     }
   });
 
-  /** `floor` continua sendo piso para quem realmente quer piso — os baús. */
+  /** `floor` continua sendo piso para sistemas que pedem uma garantia mínima. */
   it('floor continua deixando subir', () => {
     const rng = new Rng(7);
     let acima = 0;

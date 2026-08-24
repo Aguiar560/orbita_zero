@@ -12,10 +12,12 @@ import { getElement } from '@data/elements';
 import { arteElemental } from '@data/arte-elemental';
 import { FRACAO_ELEMENTAL_INIMIGA } from '@data/balance/elemental';
 import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
-import type { EnemyDef } from '@data/enemies';
-import type { ElementId, Item } from '@sim/types';
+import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
+import { HULLS, type Hull } from '@data/hulls';
+import { DANO_STAT, type ElementId, type Item, type Stats } from '@sim/types';
 import type { Sim } from '@sim/index';
-import { PilotAI } from './PilotAI';
+import { labEnemyHitbox, labHitbox, labScenario, type LaboratorioMetrics, type LabScenarioId } from '@sim/laboratorio';
+import { PilotAI, type PilotOutput } from './PilotAI';
 import { WaveDirector } from './WaveDirector';
 import {
   PICKUP_CLIP, PICKUP_COLOR, PICKUP_SPRITE, VIEW,
@@ -124,11 +126,20 @@ export class VerticalMode {
   private banner = '';
   private bannerTime = 0;
   private threat = 0;
+  private labRevision = -1;
+  private wasLabActive = false;
+  private labStats: Stats | null = null;
+  private labHull: Hull | null = null;
+  private labEnemy: EnemyDef | null = null;
+  private readonly keys = new Set<string>();
+  /** Zonas telegráficas da Provação; vivem na cena, nunca no save. */
+  private readonly dangerZones: { x: number; y: number; radius: number; life: number; warmup: number; damage: number }[] = [];
 
   readonly player: Player = {
     x: VIEW.w / 2, y: VIEW.h * 0.75, vx: 0, vy: 0,
     hp: 1, hpMax: 1, shield: 0, shieldMax: 0, shieldLock: 0,
-    radius: 15, fireTimer: 0, invuln: 1.2, bank: 0,
+    radius: 15, hitbox: { width: 30, height: 30, offsetX: 0, offsetY: 0 },
+    fireTimer: 0, invuln: 1.2, bank: 0,
     alive: true, deathTimer: 0, stun: 0, slow: 0, slowFor: 0,
   };
 
@@ -137,7 +148,41 @@ export class VerticalMode {
     private readonly sim: Sim,
   ) {
     this.syncEncounter(true);
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
   }
+
+  /** Executa o mesmo combate do jogo, sem desenho, para a bateria administrativa. */
+  executarConfrontoLaboratorio(hullId: string, scenarioId: LabScenarioId, seed: number): LaboratorioMetrics {
+    if (!this.sim.carregarCascoNoLaboratorio(hullId)) throw new Error(`Casco inexistente: ${hullId}`);
+    if (!this.sim.carregarCenarioLaboratorio(scenarioId)) throw new Error(`Cenário inválido: ${scenarioId}`);
+    this.sim.atualizarLaboratorio({ seed });
+    this.sim.laboratorio.active = true;
+    this.sim.laboratorio.paused = false;
+    this.sim.laboratorio.metrics = {
+      elapsed: 0, playerShots: 0, playerHits: 0, playerDamage: 0,
+      enemyShots: 0, enemyHits: 0, enemyDamage: 0, kills: 0, deaths: 0, activeEnemies: 0,
+    };
+    this.resetLaboratorio();
+    const frames = Math.round(labScenario(scenarioId).duration * 60);
+    for (let frame = 0; frame < frames; frame++) this.updateLaboratorio(1 / 60);
+    return { ...this.sim.laboratorio.metrics };
+  }
+
+  private readonly onKeyDown = (e: KeyboardEvent): void => {
+    this.keys.add(e.code);
+    const manual = this.sim.laboratorio.active
+      ? this.sim.laboratorio.config.control === 'manual'
+      : this.sim.state.settings.controlMode === 'manual';
+    if (manual && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();
+  };
+
+  private readonly onKeyUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
+
+  private get currentStats(): Stats { return this.labStats ?? this.sim.stats; }
+  private get currentHull(): Hull { return this.labHull ?? this.sim.hull; }
+  private get currentElement(): ElementId { return this.sim.laboratorio.active ? this.sim.laboratorio.config.playerElement : this.sim.element; }
+  private get currentDefenseElement(): ElementId { return this.sim.laboratorio.active ? this.sim.laboratorio.config.defenseElement : this.sim.defenseElement; }
 
   resize(cssW: number, cssH: number): void {
     this.surface.resize(cssW, cssH, VIEW.w, VIEW.h);
@@ -145,13 +190,75 @@ export class VerticalMode {
 
   /** Recria o estado da nave a partir dos atributos atuais. */
   refreshPlayer(full = false): void {
-    const s = this.sim.stats;
+    const s = this.currentStats;
     const hpRatio = full ? 1 : clamp01(this.player.hp / Math.max(1, this.player.hpMax));
     const shRatio = full ? 1 : clamp01(this.player.shield / Math.max(1, this.player.shieldMax));
     this.player.hpMax = s.vida;
     this.player.shieldMax = s.escudo;
     this.player.hp = s.vida * hpRatio;
     this.player.shield = s.escudo * shRatio;
+    this.syncPlayerHitbox();
+  }
+
+  private syncPlayerHitbox(): void {
+    const box = this.sim.laboratorio.active
+      ? labHitbox(this.sim.laboratorio.config)
+      : this.sim.hitboxDoCasco(this.currentHull.id);
+    this.player.hitbox = { ...box };
+    // A IA ainda trabalha com distância radial; use o maior semieixo para ela
+    // nunca acreditar que uma nave larga cabe numa abertura estreita.
+    this.player.radius = Math.max(box.width, box.height) / 2;
+  }
+
+  private circleHitsPlayer(x: number, y: number, radius: number): boolean {
+    return this.circleHitsBox(x, y, radius, this.player.x, this.player.y, this.player.hitbox);
+  }
+
+  private circleHitsBox(
+    x: number, y: number, radius: number,
+    originX: number, originY: number,
+    box: { width: number; height: number; offsetX: number; offsetY: number },
+  ): boolean {
+    const cx = originX + box.offsetX;
+    const cy = originY + box.offsetY;
+    const halfW = box.width / 2;
+    const halfH = box.height / 2;
+    const nearestX = clamp(x, cx - halfW, cx + halfW);
+    const nearestY = clamp(y, cy - halfH, cy + halfH);
+    return (x - nearestX) ** 2 + (y - nearestY) ** 2 < radius ** 2;
+  }
+
+  private enemyHitsPlayer(e: Enemy): boolean {
+    if (!e.hitbox) return this.circleHitsPlayer(e.x, e.y, e.radius * e.scale);
+    const a = this.player.hitbox;
+    const b = e.hitbox;
+    const ax = this.player.x + a.offsetX;
+    const ay = this.player.y + a.offsetY;
+    const bx = e.x + b.offsetX;
+    const by = e.y + b.offsetY;
+    return Math.abs(ax - bx) < (a.width + b.width) / 2
+      && Math.abs(ay - by) < (a.height + b.height) / 2;
+  }
+
+  private bulletHitsEnemy(b: Bullet, e: Enemy): boolean {
+    if (e.hitbox) return this.circleHitsBox(b.x, b.y, b.radius, e.x, e.y, e.hitbox);
+    const r = e.radius * e.scale + b.radius;
+    return Math.hypot(e.x - b.x, e.y - b.y) <= r;
+  }
+
+  /** Sincroniza sem reiniciar: os controles respondem no próprio quadro. */
+  private syncEnemyHitboxes(): void {
+    if (this.sim.laboratorio.active) {
+      const box = labEnemyHitbox(this.sim.laboratorio.config);
+      this.enemies.each((e) => { e.hitbox = { ...box }; });
+      return;
+    }
+    this.enemies.each((e) => {
+      const key = e.boss ? `boss:${e.boss.id}` : `enemy:${e.def.id}`;
+      const saved = this.sim.hitboxSalvaDoInimigo(key);
+      e.hitbox = saved ? { ...saved } : null;
+      e.scale = this.sim.escalaDoInimigo(key) ?? e.def.scale;
+    });
   }
 
   /** Detecta troca de encontro (pelo caminho ao vivo ou pelo abstrato). */
@@ -165,6 +272,7 @@ export class VerticalMode {
     this.director.begin(e);
     this.bullets.clear();
     this.enemies.clear();
+    this.dangerZones.length = 0;
     this.ai.reset();
 
     if (e.kind === 'chefe' && e.boss) {
@@ -298,6 +406,20 @@ export class VerticalMode {
 
   update(dt: number): void {
     this.lastDt = dt;
+    if (this.sim.laboratorio.active) {
+      this.wasLabActive = true;
+      if (this.labRevision !== this.sim.laboratorio.revision) this.resetLaboratorio();
+      this.updateLaboratorio(dt);
+      return;
+    }
+    if (this.wasLabActive) {
+      this.wasLabActive = false;
+      this.labStats = null;
+      this.labHull = null;
+      this.labEnemy = null;
+      this.syncEncounter(true);
+      this.refreshPlayer(true);
+    }
     this.syncEncounter();
     if (this.player.hpMax <= 0) this.refreshPlayer(true);
 
@@ -321,9 +443,11 @@ export class VerticalMode {
     this.flash = damp(this.flash, 0, 0.07, dt);
     this.bannerTime = Math.max(0, this.bannerTime - dt);
 
+    this.syncEnemyHitboxes();
     this.updatePlayer(dt);
     this.director.update(dt, this.enemies, (def, x, y, hp, damage) => this.spawnEnemy(def, x, y, hp, damage));
     this.updateEnemies(dt);
+    this.updateDangerZones(dt);
     this.updateBullets(dt);
     this.updatePickups(dt);
     this.particles.update(dt);
@@ -331,11 +455,107 @@ export class VerticalMode {
     this.checkCleared();
   }
 
+  private resetLaboratorio(): void {
+    const c = this.sim.laboratorio.config;
+    this.rng.reset(c.seed);
+    const hull = HULLS.find((h) => h.id === c.playerHullId) ?? HULLS[0]!;
+    const shotHull = HULLS.find((h) => h.id === c.playerShotHullId) ?? hull;
+    const source = ALL_ENEMIES.find((e) => e.id === c.enemyId) ?? ALL_ENEMIES[0]!;
+    const shotEnemy = ALL_ENEMIES.find((e) => e.id === c.enemyShotEnemyId) ?? source;
+    this.labHull = {
+      ...hull,
+      sprite: c.playerSprite,
+      scale: c.playerSpriteScale,
+      bank: undefined,
+      damageStates: undefined,
+      engineClip: undefined,
+      boostClip: undefined,
+      enginePart: undefined,
+      weaponClip: undefined,
+      shieldClip: undefined,
+      shot: { ...shotHull.shot, speed: c.playerBulletSpeed, spread: c.playerSpread },
+    };
+    this.labEnemy = {
+      ...source, sprite: c.enemySprite, scale: c.enemySpriteScale,
+      bank: undefined, clip: undefined, engineClip: undefined, weaponClip: undefined, shieldClip: undefined,
+      move: c.enemyMove, attack: c.enemyAttack, element: c.enemyElement,
+      hp: 1, dano: 1, speed: c.enemySpeed, fireRate: c.enemyFireRate, shots: c.enemyShots,
+      bulletSpeed: c.enemyBulletSpeed, bulletSprite: shotEnemy.bulletSprite, bulletColor: shotEnemy.bulletColor,
+    };
+    this.labStats = { ...this.sim.stats,
+      dano: c.playerDamage, cadencia: c.playerFireRate, projeteis: c.playerShots,
+      perfuracao: c.playerPierce, explosao: c.playerSplash, vida: c.playerHp,
+      escudo: c.playerShield, regen: c.playerRegen, velocidade: c.playerSpeed, iaSkill: c.playerAiSkill,
+      critChance: c.playerCritChance, critDano: c.playerCritDamage, penetracao: c.playerPenetration,
+    };
+    for (const id of ['padrao', 'fogo', 'raio', 'quimico', 'cosmico', 'gelo'] as ElementId[]) this.labStats[DANO_STAT[id]] = 0;
+    this.bullets.clear();
+    this.enemies.clear();
+    this.pickups.clear();
+    this.dangerZones.length = 0;
+    this.particles.clear();
+    this.ai.reset(c.seed ^ 0x9117);
+    this.elapsed = 0;
+    this.victory = 0;
+    this.cleared = false;
+    this.labRevision = this.sim.laboratorio.revision;
+    this.player.alive = true;
+    this.player.invuln = 1;
+    this.player.x = VIEW.w / 2;
+    this.player.y = VIEW.h * 0.78;
+    this.player.vx = this.player.vy = 0;
+    this.refreshPlayer(true);
+    this.ensureLabEnemies();
+    this.setBanner('LABORATÓRIO DE COMBATE');
+  }
+
+  private ensureLabEnemies(): void {
+    const c = this.sim.laboratorio.config;
+    const def = this.labEnemy;
+    if (!def) return;
+    let alive = this.enemies.items.filter((e) => e.alive).length;
+    while (alive < c.enemyCount) {
+      // Enxames não podem nascer empilhados: isso transformava perfuração e
+      // explosão em multiplicadores artificiais. Para 1–4 alvos usamos uma
+      // formação legível; acima disso, uma dispersão semeada e reproduzível.
+      const x = c.enemyCount >= 6
+        ? this.rng.range(VIEW.w * .08, VIEW.w * .92)
+        : ((alive + 1) / (c.enemyCount + 1)) * VIEW.w;
+      const y = -40 - this.rng.range(0, c.enemyCount >= 6 ? 150 : 55);
+      const e = this.spawnEnemy(def, x, y, c.enemyHp, c.enemyDamage);
+      if (!e) break;
+      e.share = 0;
+      e.counts = false;
+      alive++;
+    }
+    this.sim.laboratorio.metrics.activeEnemies = alive;
+  }
+
+  private updateLaboratorio(dt: number): void {
+    const lab = this.sim.laboratorio;
+    if (lab.paused && !this.sim.consumirPassoLaboratorio()) return;
+    // Os quatro controles da hitbox funcionam ao vivo, sem reiniciar o duelo.
+    this.syncPlayerHitbox();
+    lab.metrics.elapsed += dt;
+    this.elapsed += dt;
+    this.advanceSky(dt);
+    this.shake = damp(this.shake, 0, 0.09, dt);
+    this.flash = damp(this.flash, 0, 0.07, dt);
+    this.bannerTime = Math.max(0, this.bannerTime - dt);
+    this.syncEnemyHitboxes();
+    this.updatePlayer(dt);
+    this.updateEnemies(dt);
+    this.updateBullets(dt);
+    this.particles.update(dt);
+    if (lab.config.autoRespawn) this.ensureLabEnemies();
+    lab.metrics.activeEnemies = this.enemies.items.filter((e) => e.alive).length;
+  }
+
   // ── jogador ───────────────────────────────────────────────────────────────
 
   private updatePlayer(dt: number): void {
     const p = this.player;
-    const stats = this.sim.stats;
+    const stats = this.currentStats;
 
     // Relógios dos especiais. Decaem sempre, inclusive na morte, para não
     // sobreviverem a um encontro e contaminarem o seguinte.
@@ -356,8 +576,10 @@ export class VerticalMode {
     if (!p.alive) {
       p.deathTimer -= dt;
       if (p.deathTimer <= 0) {
-        this.sim.failEncounter();
-        this.syncEncounter(true);
+        if (!this.sim.laboratorio.active) {
+          this.sim.failEncounter();
+          this.syncEncounter(true);
+        }
         p.alive = true;
         p.invuln = 2;
         p.x = VIEW.w / 2;
@@ -376,7 +598,14 @@ export class VerticalMode {
       p.shield = Math.min(p.shieldMax, p.shield + stats.regen * dt);
     }
 
-    const cmd = this.ai.update(dt, p, this.enemies, this.bullets, this.pickups, stats.iaSkill, this.sim.state.settings.pilot);
+    const lab = this.sim.laboratorio;
+    const manual = lab.active ? lab.config.control === 'manual' : this.sim.state.settings.controlMode === 'manual';
+    const cmd: PilotOutput = manual
+      ? this.manualCommand()
+      : this.ai.update(
+        dt, p, this.enemies, this.bullets, this.pickups, stats.iaSkill,
+        lab.active ? (lab.config.control === 'manual' ? 'equilibrado' : lab.config.control) : this.sim.state.settings.pilot,
+      );
     this.threat = damp(this.threat, cmd.threat, 0.12, dt);
 
     /**
@@ -412,11 +641,12 @@ export class VerticalMode {
       p.vy = (p.vy / v) * cap;
     }
 
-    p.x = clamp(p.x + p.vx * dt, 26, VIEW.w - 26);
-    p.y = clamp(p.y + p.vy * dt, 70, VIEW.h - 40);
+    const box = p.hitbox;
+    p.x = clamp(p.x + p.vx * dt, box.width / 2 - box.offsetX, VIEW.w - box.width / 2 - box.offsetX);
+    p.y = clamp(p.y + p.vy * dt, Math.max(70, box.height / 2 - box.offsetY), VIEW.h - box.height / 2 - box.offsetY);
     p.bank = damp(p.bank, clamp(p.vx / Math.max(1, speed), -1, 1), 0.08, dt);
 
-    this.particles.thrust(p.x, p.y + 20, 0, 1, this.sim.hull.trail, 0.4);
+    this.particles.thrust(p.x, p.y + 20, 0, 1, this.currentHull.trail, 0.4);
 
     p.fireTimer -= dt;
     if (cmd.fire && p.fireTimer <= 0) {
@@ -426,18 +656,36 @@ export class VerticalMode {
     }
   }
 
+  private manualCommand(): PilotOutput {
+    const left = this.keys.has('ArrowLeft') || this.keys.has('KeyA');
+    const right = this.keys.has('ArrowRight') || this.keys.has('KeyD');
+    const up = this.keys.has('ArrowUp') || this.keys.has('KeyW');
+    const down = this.keys.has('ArrowDown') || this.keys.has('KeyS');
+    let dx = Number(right) - Number(left);
+    let dy = Number(down) - Number(up);
+    const len = Math.hypot(dx, dy);
+    if (len > 1) { dx /= len; dy /= len; }
+    return {
+      dx, dy, throttle: len > 0 ? 1 : 0,
+      // No modo manual o foco é pilotar: a arma continua automática. Espaço
+      // permanece como alternativa explícita no Laboratório.
+      fire: !this.sim.laboratorio.active || this.sim.laboratorio.config.autoFire || this.keys.has('Space'),
+      targetId: 0, dash: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'), threat: 0,
+    };
+  }
+
   private firePlayer(): void {
     const p = this.player;
-    const stats = this.sim.stats;
-    const style = this.sim.hull.shot;
+    const stats = this.currentStats;
+    const style = this.currentHull.shot;
     const count = stats.projeteis;
 
     // A arte do tiro segue o ELEMENTO quando ele não é o nativo do casco: se o
     // jogador equipou um canhão de gelo numa nave de fogo, o que sai da nave
     // precisa ser azul. Enquanto os dois coincidem vale a arte própria do casco,
     // que é mais caracterizada que o projétil genérico.
-    const element = this.sim.element;
-    const nativo = element === this.sim.hull.element;
+    const element = this.currentElement;
+    const nativo = this.sim.laboratorio.active || element === this.currentHull.element;
     const info = getElement(element);
     const sprite = nativo ? style.sprite : info.bullet[0];
     const color = nativo ? style.color : info.color;
@@ -447,7 +695,7 @@ export class VerticalMode {
     // arma mudar a CARA do disparo e não só o número — o tiro em si passa rápido
     // demais para ser lido, o clarão do cano fica.
     this.particles.flash(
-      arteElemental('fogacho', element, this.sim.encounter.wave),
+      arteElemental('fogacho', element, this.sim.laboratorio.active ? 1 : this.sim.encounter.wave),
       p.x, p.y - 22, 0.5, { vida: 0.12, crescimento: 0.9 },
     );
 
@@ -460,8 +708,14 @@ export class VerticalMode {
       // Normal e elemental crititam SEPARADO (§4). Com uma rolagem só, o tiro
       // seria inteiro crítico ou inteiro não, e separar os componentes viraria
       // contabilidade sem consequência no combate.
+      const basePacket = this.sim.laboratorio.active
+        ? {
+            normal: stats.dano * (1 - this.sim.laboratorio.config.elementalFraction),
+            elementais: element === 'padrao' ? {} : { [element]: stats.dano * this.sim.laboratorio.config.elementalFraction },
+          }
+        : montarPacote(stats);
       const { pacote, crit } = aplicarCritico(
-        montarPacote(stats),
+        basePacket,
         stats,
         () => this.rng.next(),
       );
@@ -482,6 +736,7 @@ export class VerticalMode {
       b.scale = scale;
       b.pierce = stats.perfuracao;
       b.splash = stats.explosao;
+      if (this.sim.laboratorio.active) this.sim.laboratorio.metrics.playerShots++;
     }
 
     this.particles.sparks(p.x, p.y - 20, 3, color, 90, 0.9, -Math.PI / 2);
@@ -525,22 +780,29 @@ export class VerticalMode {
      * Inimigo neutro entrega 100% normal, e é por isso que ele continua
      * perigoso para quem investiu tudo em resistência.
      */
+    const fracaoElemental = this.sim.laboratorio.active
+      ? this.sim.laboratorio.config.enemyElementalFraction
+      : FRACAO_ELEMENTAL_INIMIGA;
     const pacote = element === 'padrao'
       ? { normal: amount, elementais: {} }
       : {
-        normal: amount * (1 - FRACAO_ELEMENTAL_INIMIGA),
-        elementais: { [element]: amount * FRACAO_ELEMENTAL_INIMIGA },
+        normal: amount * (1 - fracaoElemental),
+        elementais: { [element]: amount * fracaoElemental },
       };
 
     amount = resolverDano(
       pacote,
-      this.sim.defenseElement,
+      this.currentDefenseElement,
       0, // inimigos não têm penetração; é um eixo do jogador por enquanto
-      (e) => this.sim.resistance(e),
+      (e) => this.sim.laboratorio.active ? 0 : this.sim.resistance(e),
     ).total;
+    if (this.sim.laboratorio.active) {
+      this.sim.laboratorio.metrics.enemyHits++;
+      this.sim.laboratorio.metrics.enemyDamage += amount;
+    }
     // No modo de teste o dano ainda dá feedback visual, mas não mata: o ponto
     // é inspecionar conteúdo, não sobreviver a ele.
-    if (this.sim.testMode) {
+    if (this.sim.laboratorio.active ? this.sim.laboratorio.config.immortal : this.sim.testMode) {
       this.particles.sparks(p.x, p.y, 6, '#ff6a5a', 150);
       return;
     }
@@ -567,6 +829,7 @@ export class VerticalMode {
       this.particles.debris(p.x, p.y, 16, '#8fa2bb', 190);
       this.shake = 14;
       this.setBanner('CASCO PERDIDO');
+      if (this.sim.laboratorio.active) this.sim.laboratorio.metrics.deaths++;
     }
   }
 
@@ -601,8 +864,10 @@ export class VerticalMode {
       if (e.time < 0) return;
       e.hitFlash = Math.max(0, e.hitFlash - dt);
 
-      if (e.boss) this.updateBoss(e, dt);
-      else this.moveEnemy(e, dt);
+      if (e.boss) {
+        this.updateBoss(e, dt);
+        this.updateChallengeMechanics(e);
+      } else this.moveEnemy(e, dt);
 
       // Mantidos dentro da área jogável: um inimigo pela metade fora da tela é
       // impossível de acertar e faz a IA perseguir a parede.
@@ -620,8 +885,7 @@ export class VerticalMode {
 
       // Colisão com a nave.
       if (p.alive && p.invuln <= 0) {
-        const d = Math.hypot(e.x - p.x, e.y - p.y);
-        if (d < e.radius * e.scale + p.radius) {
+        if (this.enemyHitsPlayer(e)) {
           // Colisão dói mais que um tiro, mas o inimigo se despedaça junto.
           this.damagePlayer(e.damage * 2.6, e.boss?.element ?? e.def.element);
           if (!e.boss) this.killEnemy(e, false);
@@ -754,6 +1018,78 @@ export class VerticalMode {
     }
   }
 
+  /**
+   * Modificadores mecânicos da Provação.
+   *
+   * Todos têm ciclo, limite ou telegrafia. A Provação pode exigir leitura, mas
+   * não pode punir o jogador com uma imunidade contínua ou perigo invisível.
+   */
+  private updateChallengeMechanics(e: Enemy): void {
+    const d = this.sim.desafio;
+    if (!d || !e.boss || e.entering) return;
+    const ef = d.efeitos;
+
+    e.invulnerable = ef.invulneravelCada > 0 && (e.time % ef.invulneravelCada) < ef.invulneravelPor;
+    e.barrierActive = ef.barreiraCada > 0 && (e.time % ef.barreiraCada) < ef.barreiraPor;
+
+    if (!e.challengeClone && ef.clones > 0 && !d.clonesGerados) {
+      d.clonesGerados = true;
+      for (let i = 0; i < ef.clones; i++) this.spawnChallengeClone(e, i, ef.clones);
+      this.setBanner('ECOS DE GUERRA');
+    }
+
+    if (!e.challengeClone && ef.zonaCada > 0 && d.tempo >= d.proximaZonaEm) {
+      d.proximaZonaEm = d.tempo + ef.zonaCada;
+      // O alvo é a posição atual, mas a zona leva 0,75 s para armar. Assim a
+      // resposta é sair, não prever o futuro ou morrer sem possibilidade.
+      this.dangerZones.push({
+        x: clamp(this.player.x + this.rng.range(-34, 34), 70, VIEW.w - 70),
+        y: clamp(this.player.y + this.rng.range(-24, 24), 90, VIEW.h - 80),
+        radius: ef.zonaRaio,
+        life: ef.zonaPor,
+        warmup: 0.75,
+        damage: this.sim.encounter.damage * ef.zonaDano,
+      });
+      this.setBanner('CAMPO INSTÁVEL');
+    }
+  }
+
+  private spawnChallengeClone(original: Enemy, index: number, total: number): void {
+    const offset = (index - (total - 1) / 2) * 170;
+    const clone = this.spawnEnemy(
+      original.def,
+      clamp(original.x + offset, 80, VIEW.w - 80),
+      original.y,
+      Math.max(1, original.maxHp * 0.28),
+      original.damage * 0.62,
+    );
+    if (!clone) return;
+    clone.boss = original.boss;
+    clone.radius = original.radius * 0.72;
+    clone.scale = original.scale * 0.72;
+    clone.share = 0;
+    clone.counts = false;
+    clone.challengeClone = true;
+    clone.entering = false;
+    clone.anchorX = clamp(original.anchorX + offset, 90, VIEW.w - 90);
+    clone.anchorY = original.anchorY + 26;
+  }
+
+  private updateDangerZones(dt: number): void {
+    for (let i = this.dangerZones.length - 1; i >= 0; i--) {
+      const zone = this.dangerZones[i]!;
+      zone.life -= dt;
+      zone.warmup = Math.max(0, zone.warmup - dt);
+      if (zone.life <= 0) {
+        this.dangerZones.splice(i, 1);
+        continue;
+      }
+      if (zone.warmup <= 0 && this.player.alive && Math.hypot(this.player.x - zone.x, this.player.y - zone.y) < zone.radius) {
+        this.damagePlayer(zone.damage * dt);
+      }
+    }
+  }
+
   private summonMinions(enemyId: string, count: number, source: Enemy): void {
     // Import tardio evita ciclo entre dados e cena.
     const def = MINION_CACHE.get(enemyId);
@@ -822,6 +1158,7 @@ export class VerticalMode {
       b.homing = homing;
       b.pierce = 0;
       b.splash = 0;
+      if (this.sim.laboratorio.active) this.sim.laboratorio.metrics.enemyShots++;
     };
 
     const toPlayer = Math.atan2(p.y - e.y, p.x - e.x);
@@ -884,7 +1221,16 @@ export class VerticalMode {
     this.particles.debris(e.x, e.y, e.boss ? 26 : 6, '#9aa7bd', e.boss ? 240 : 120);
     this.shake = Math.max(this.shake, e.boss ? 16 : 2.5);
 
+    if (this.sim.laboratorio.active) {
+      if (byPlayer) this.sim.laboratorio.metrics.kills++;
+      return;
+    }
+
     if (!byPlayer) return;
+
+    // Ecos e fragmentos são pressão adicional, não uma segunda recompensa nem
+    // uma forma de avançar o encontro sem derrubar o alvo principal.
+    if (e.challengeClone) return;
 
     // É AQUI que o encontro anda. `counts` é falso nos lacaios invocados por
     // chefe: eles pressionam, mas matá-los não pode substituir matar o chefe.
@@ -954,8 +1300,7 @@ export class VerticalMode {
       if (b.friendly) {
         this.enemies.each((e) => {
           if (!b.alive || !e.alive || e.time < 0 || e.id === b.hitId) return;
-          const r = e.radius * e.scale + b.radius;
-          if (Math.hypot(e.x - b.x, e.y - b.y) > r) return;
+          if (!this.bulletHitsEnemy(b, e)) return;
 
           this.hitEnemy(e, b);
           b.hitId = e.id;
@@ -963,7 +1308,7 @@ export class VerticalMode {
           else b.alive = false;
         });
       } else if (p.alive && p.invuln <= 0) {
-        if (Math.hypot(p.x - b.x, p.y - b.y) < p.radius + b.radius) {
+        if (this.circleHitsPlayer(b.x, b.y, b.radius)) {
           b.alive = false;
           this.damagePlayer(b.damageTotal, b.element);
           this.particles.sparks(b.x, b.y, 6, b.color, 130);
@@ -983,10 +1328,17 @@ export class VerticalMode {
     // neutro — ele nunca ganha vantagem, mas também nunca é reduzido.
     const alvo = e.boss?.element ?? e.def.element;
     const { total: dano, melhorMult: mul, dominante } = resolverDano(
-      b.damage, alvo, this.sim.stats.penetracao,
+      b.damage, alvo, this.currentStats.penetracao,
     );
 
-    this.applyDamage(e, dano);
+    const danoEfetivo = this.damageAgainstChallengeMechanics(e, dano, b.x, b.y);
+
+    if (this.sim.laboratorio.active) {
+      this.sim.laboratorio.metrics.playerHits++;
+      this.sim.laboratorio.metrics.playerDamage += Math.min(Math.max(0, e.hp), danoEfetivo);
+    }
+
+    this.applyDamage(e, danoEfetivo);
     e.hitFlash = 0.09;
     const critQualquer = b.crit || b.critElem;
     this.particles.sparks(b.x, b.y, critQualquer ? 8 : 4, critQualquer ? '#ffe08a' : b.color, critQualquer ? 190 : 130);
@@ -1010,7 +1362,7 @@ export class VerticalMode {
       const fraco = mul < 0.99;
       const cor = critQualquer ? '#ffd35a' : forte ? getElement(dominante).glow : fraco ? '#7e8aa0' : '#e8f2ff';
       const tam = (critQualquer ? 16 : 12) * (forte ? 1.25 : fraco ? 0.85 : 1);
-      this.particles.popup(e.x + this.rng.range(-8, 8), e.y - 12, fmt(dano, 1), cor, tam);
+      this.particles.popup(e.x + this.rng.range(-8, 8), e.y - 12, danoEfetivo <= 0 ? 'IMUNE' : fmt(danoEfetivo, 1), danoEfetivo <= 0 ? '#aab7d0' : cor, tam);
     }
 
     if (b.splash > 0) {
@@ -1019,15 +1371,41 @@ export class VerticalMode {
         if (other === e || !other.alive) return;
         if (Math.hypot(other.x - b.x, other.y - b.y) > b.splash) return;
         const respingo = resolverDano(
-          b.damage, other.boss?.element ?? other.def.element, this.sim.stats.penetracao,
+          b.damage, other.boss?.element ?? other.def.element, this.currentStats.penetracao,
         );
-        this.applyDamage(other, respingo.total * 0.45);
+        const splashDamage = this.damageAgainstChallengeMechanics(other, respingo.total * 0.45, b.x, b.y);
+        if (this.sim.laboratorio.active) {
+          this.sim.laboratorio.metrics.playerHits++;
+          this.sim.laboratorio.metrics.playerDamage += Math.min(Math.max(0, other.hp), splashDamage);
+        }
+        this.applyDamage(other, splashDamage);
         other.hitFlash = 0.07;
         if (other.hp <= 0) this.killEnemy(other, true);
       });
     }
 
     if (e.hp <= 0) this.killEnemy(e, true);
+  }
+
+  /** Regras de alvo da Provação ficam concentradas aqui para valerem para tiro e explosão. */
+  private damageAgainstChallengeMechanics(e: Enemy, amount: number, x: number, y: number): number {
+    const d = this.sim.desafio;
+    if (!d || !e.boss || amount <= 0) return amount;
+    if (e.invulnerable) return 0;
+
+    const efeitos = d.efeitos;
+    if (efeitos.pontoFraco > 0) {
+      const weak = this.weakPointOf(e);
+      if (Math.hypot(x - weak.x, y - weak.y) <= efeitos.pontoFracoRaio) return amount * efeitos.pontoFraco;
+    }
+    return e.barrierActive ? amount * (1 - efeitos.barreiraFrontal) : amount;
+  }
+
+  private weakPointOf(e: Enemy): { x: number; y: number } {
+    // Uma órbita curta torna o ponto fraco legível e evita uma área parada que
+    // pudesse ser atingida sem intenção por qualquer tiro vertical.
+    const a = e.time * 1.8 + e.id;
+    return { x: e.x + Math.cos(a) * 38 * e.scale, y: e.y + Math.sin(a) * 26 * e.scale };
   }
 
   /**
@@ -1101,6 +1479,7 @@ export class VerticalMode {
     clone.scale = original.scale * 0.8;
     clone.share = 0;
     clone.counts = false;
+    clone.challengeClone = true;
     clone.entering = false;
 
     this.setBanner('FRAGMENTAÇÃO');
@@ -1229,7 +1608,7 @@ export class VerticalMode {
     const d = this.sim.desafio;
     if (!d) return;
 
-    const chefe = this.enemies.items.find((x) => x.alive && !!x.boss) ?? null;
+    const chefe = this.enemies.items.find((x) => x.alive && !!x.boss && !x.challengeClone) ?? null;
 
     /**
      * A regeneração PAUSA enquanto o chefe está levando dano.
@@ -1354,11 +1733,13 @@ export class VerticalMode {
     s.ctx.save();
     if (jitter) s.ctx.translate(this.rng.range(-jitter, jitter), this.rng.range(-jitter, jitter));
 
+    this.drawDangerZones(s);
     this.drawPickups(s);
     this.drawEnemies(s);
     this.drawPlayer(s);
     this.drawBullets(s);
     this.particles.draw(s);
+    if (this.sim.laboratorio.active && this.sim.laboratorio.config.showHitboxes) this.drawHitboxes(s);
 
     s.ctx.restore();
 
@@ -1420,7 +1801,7 @@ export class VerticalMode {
     const p = this.player;
     if (!p.alive) return;
 
-    const hull = this.sim.hull;
+    const hull = this.currentHull;
     const blink = p.invuln > 0 && Math.floor(p.invuln * 14) % 2 === 0;
     const alpha = blink ? 0.4 : 1;
 
@@ -1429,8 +1810,8 @@ export class VerticalMode {
     // Cascos do pack Void são montados em camadas e trocam de arte conforme o
     // dano — dá para ver a nave se despedaçando sem olhar a barra de vida.
     if (hull.damageStates) {
-      const scale = 1.5;
-      const boosting = Math.hypot(p.vx, p.vy) > this.sim.stats.velocidade * 0.75;
+      const scale = this.sim.escalaDoCasco(hull.id);
+      const boosting = Math.hypot(p.vx, p.vy) > this.currentStats.velocidade * 0.75;
       const engine = getClip(boosting && hull.boostClip ? hull.boostClip : hull.engineClip ?? '');
 
       if (hull.enginePart) s.sprite(hull.enginePart, p.x, p.y, { scale, alpha });
@@ -1448,17 +1829,18 @@ export class VerticalMode {
         const idx = clamp(Math.round(p.bank * 2) + 2, 0, 4);
         sprite = hull.bank[idx]!;
       }
-      s.sprite(sprite, p.x, p.y, { scale: 0.62, alpha, rotation: p.bank * 0.13 });
+      s.sprite(sprite, p.x, p.y, { scale: this.sim.escalaDoCasco(hull.id), alpha, rotation: p.bank * 0.13 });
     }
 
-    if (p.shield > 1) {
+    const mostrarEscudo = !this.sim.laboratorio.active || this.sim.laboratorio.config.showPlayerShieldVisual;
+    if (p.shield > 1 && mostrarEscudo) {
       // A barreira hexagonal da folha arcade comunica a carga pela opacidade;
       // quando o escudo está baixo ela quase some, sem precisar de outra barra.
       const frac = clamp01(p.shield / Math.max(1, p.shieldMax));
       const pulse = 1 + Math.sin(p.shieldLock > 0 ? 0 : performance.now() / 420) * 0.03;
       // O sprite tem 88px; a bolha deve fechar pouco além do raio de colisão.
       s.sprite('barrier/1', p.x, p.y, {
-        scale: ((p.radius + 13) * 2 / 88) * pulse,
+        scale: ((Math.max(p.hitbox.width, p.hitbox.height) + 26) / 88) * pulse,
         alpha: 0.3 + frac * 0.45,
         composite: 'lighter',
       });
@@ -1508,6 +1890,8 @@ export class VerticalMode {
         if (clip) s.sprite(frameAt(clip, e.time), e.x, e.y, { scale: e.scale, alpha: 0.75, composite: 'lighter' });
       }
 
+      if (e.boss && this.sim.desafio) this.drawChallengeMarkers(s, e);
+
       // Barra de vida só para quem não morre num tiro — poluiria a tela.
       if (!e.boss && e.maxHp > 1 && e.hp < e.maxHp) {
         const w = 34;
@@ -1516,6 +1900,57 @@ export class VerticalMode {
         s.rect(e.x - w / 2, e.y - e.radius * e.scale - 12, w * frac, 3, frac > 0.5 ? '#5ce08a' : frac > 0.25 ? '#ffb638' : '#ff5d7a');
       }
     });
+  }
+
+  private drawDangerZones(s: Surface): void {
+    const ctx = s.ctx;
+    for (const zone of this.dangerZones) {
+      const armed = zone.warmup <= 0;
+      const pulse = 1 + Math.sin(this.elapsed * 9) * 0.06;
+      ctx.save();
+      ctx.globalAlpha = armed ? 0.24 : 0.16 + (1 - zone.warmup / 0.75) * 0.18;
+      ctx.fillStyle = armed ? '#ff4f72' : '#ffb638';
+      ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius * pulse, 0, TAU); ctx.fill();
+      ctx.globalAlpha = armed ? 0.9 : 0.75;
+      ctx.strokeStyle = armed ? '#ff7790' : '#ffe08a';
+      ctx.lineWidth = armed ? 2.5 : 2;
+      ctx.setLineDash(armed ? [] : [7, 6]);
+      ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius, 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  private drawChallengeMarkers(s: Surface, e: Enemy): void {
+    const ctx = s.ctx;
+    const radius = Math.max(e.radius * e.scale + 12, 32);
+    ctx.save();
+    if (e.invulnerable) {
+      ctx.strokeStyle = '#d5b7ff';
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.arc(e.x, e.y, radius, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (e.barrierActive) {
+      // O semicírculo da frente indica a direção protegida sem cercar a nave
+      // inteira num brilho igual ao da invulnerabilidade.
+      ctx.strokeStyle = '#49d8ff';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(e.x, e.y, radius + 5, Math.PI * .12, Math.PI * .88); ctx.stroke();
+    }
+    const ef = this.sim.desafio?.efeitos;
+    if (ef && ef.pontoFraco > 0) {
+      const weak = this.weakPointOf(e);
+      s.glow(weak.x, weak.y, ef.pontoFracoRaio * 1.6, '#ffe08a', 0.72);
+      ctx.fillStyle = '#ffe08a';
+      ctx.beginPath();
+      ctx.moveTo(weak.x, weak.y - 8); ctx.lineTo(weak.x + 8, weak.y);
+      ctx.lineTo(weak.x, weak.y + 8); ctx.lineTo(weak.x - 8, weak.y); ctx.closePath(); ctx.fill();
+    }
+    if (e.challengeClone) {
+      s.text('ECO', e.x, e.y - radius - 10, { size: 9, color: '#c596ff', align: 'center', shadow: 'rgba(0,0,0,.85)' });
+    }
+    ctx.restore();
   }
 
   private drawBullets(s: Surface): void {
@@ -1573,6 +2008,19 @@ export class VerticalMode {
     s.rect(pad, pad + 12, barW * clamp01(p.shield / Math.max(1, p.shieldMax)), 6, '#4db8ff');
     s.text(`${fmt(p.hp, 0)} / ${fmt(p.hpMax, 0)}`, pad, pad + 30, { size: 12, color: '#c8d8ee' });
 
+    if (sim.laboratorio.active) {
+      const m = sim.laboratorio.metrics;
+      s.text('LABORATÓRIO · SEM RECOMPENSAS', VIEW.w - pad, pad + 6, { size: 17, color: '#67f5c8', align: 'right' });
+      s.text(`${m.activeEnemies} alvos · ${m.kills} abates · ${(m.playerDamage / Math.max(.01, m.elapsed)).toFixed(1)} DPS`, VIEW.w - pad, pad + 26, { size: 12, color: '#9cb6c9', align: 'right' });
+      if (sim.laboratorio.paused) s.text('PAUSADO', VIEW.w / 2, 48, { size: 18, color: '#ffe08a', align: 'center' });
+      if (!p.alive) {
+        s.ctx.fillStyle = 'rgba(4,6,14,.55)';
+        s.ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+        s.text('RECONSTRUINDO CASCO…', VIEW.w / 2, VIEW.h / 2, { size: 20, color: '#ff8a9a', align: 'center' });
+      }
+      return;
+    }
+
     // Setor e onda, canto superior direito.
     const boss = this.enemies.items.find((e) => e.alive && e.boss);
 
@@ -1621,6 +2069,39 @@ export class VerticalMode {
     }
 
     if (this.victory > 0) this.drawVictory(s);
+  }
+
+  private drawHitboxes(s: Surface): void {
+    const ctx = s.ctx;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#67f5c8';
+    const box = this.player.hitbox;
+    const cx = this.player.x + box.offsetX;
+    const cy = this.player.y + box.offsetY;
+    ctx.strokeRect(cx - box.width / 2, cy - box.height / 2, box.width, box.height);
+    ctx.fillStyle = '#67f5c8';
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath();
+    ctx.moveTo(this.player.x - 5, this.player.y); ctx.lineTo(this.player.x + 5, this.player.y);
+    ctx.moveTo(this.player.x, this.player.y - 5); ctx.lineTo(this.player.x, this.player.y + 5);
+    ctx.stroke();
+    ctx.strokeStyle = '#ff6b8b';
+    this.enemies.each((e) => {
+      if (e.hitbox) {
+        const cx = e.x + e.hitbox.offsetX;
+        const cy = e.y + e.hitbox.offsetY;
+        ctx.strokeRect(cx - e.hitbox.width / 2, cy - e.hitbox.height / 2, e.hitbox.width, e.hitbox.height);
+        ctx.fillStyle = '#ff6b8b';
+        ctx.fillRect(cx - 2, cy - 2, 4, 4);
+      } else {
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.radius * e.scale, 0, TAU); ctx.stroke();
+      }
+    });
+    ctx.strokeStyle = '#ffe08a';
+    this.bullets.each((b) => { ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, TAU); ctx.stroke(); });
+    ctx.restore();
   }
 
   /** Painel de conquista, com contagem para a próxima fase. */
@@ -1672,6 +2153,8 @@ export class VerticalMode {
     this.enemies.clear();
     this.pickups.clear();
     this.particles.clear();
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
   }
 }
 

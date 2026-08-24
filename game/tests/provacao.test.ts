@@ -165,6 +165,20 @@ describe('os efeitos somados', () => {
     const e = efeitosDoPiso({ ...pisoDaProvacao(70), modificadores: ['enxame', 'furia'], peso: 8 });
     expect(e.invocaCada).toBe(6);
   });
+
+  it('os cinco modificadores mecânicos têm parâmetros seguros e chegam aos marcos', () => {
+    const casos = [
+      ['invulneravel', 30, (e: ReturnType<typeof efeitosDoPiso>) => e.invulneravelCada > e.invulneravelPor],
+      ['zonas_perigo', 40, (e: ReturnType<typeof efeitosDoPiso>) => e.zonaCada > 0 && e.zonaPor > 0 && e.zonaRaio > 0 && e.zonaDano > 0],
+      ['clones', 50, (e: ReturnType<typeof efeitosDoPiso>) => e.clones === 2],
+      ['barreira_frontal', 60, (e: ReturnType<typeof efeitosDoPiso>) => e.barreiraFrontal > 0 && e.barreiraFrontal < 1 && e.barreiraCada > e.barreiraPor],
+      ['ponto_fraco', 70, (e: ReturnType<typeof efeitosDoPiso>) => e.pontoFraco > 1 && e.pontoFracoRaio > 0],
+    ] as const;
+    for (const [id, piso, valido] of casos) {
+      expect(pisoDaProvacao(piso).modificadores).toContain(id);
+      expect(valido(efeitosDoPiso(pisoDaProvacao(piso))), id).toBe(true);
+    }
+  });
 });
 
 describe('as recompensas (§35)', () => {
@@ -226,6 +240,17 @@ describe('as recompensas (§35)', () => {
     expect(faltando).toEqual([]);
   });
 
+  it('a Provação só entrega suas essências exclusivas', () => {
+    const ids = new Set<string>();
+    for (const p of todos) {
+      for (const id of Object.keys(p.recompensa.materiais)) {
+        ids.add(id);
+        expect(RECURSO_POR_ID.get(id)?.escopo, `piso ${p.piso}: ${id}`).toBe('provacao');
+      }
+    }
+    expect(ids.size).toBe(10);
+  });
+
   it('nenhuma quantidade de material é zero ou negativa', () => {
     for (const p of todos) {
       for (const [id, n] of Object.entries(p.recompensa.materiais)) {
@@ -241,7 +266,7 @@ describe('os requisitos de acesso (§34)', () => {
       const nivel = p.requisitos.find((r) => r.tipo === 'nivelPersonagem');
       expect(nivel, `piso ${p.piso}`).toBeDefined();
     }
-    expect(nivelExigidoNoPiso(1)).toBe(40);
+    expect(nivelExigidoNoPiso(1)).toBe(1);
     expect(nivelExigidoNoPiso(100)).toBeLessThanOrEqual(300);
     for (let n = 2; n <= 100; n++) {
       expect(nivelExigidoNoPiso(n)).toBeGreaterThanOrEqual(nivelExigidoNoPiso(n - 1));

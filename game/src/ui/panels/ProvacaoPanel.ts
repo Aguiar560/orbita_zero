@@ -1,3 +1,4 @@
+import { bus } from '@app/Bus';
 import { fmt, duration } from '@core/format';
 import { getElement, counterOf } from '@data/elements';
 import { PROVACAO_NOME, PROVACAO_PISOS, MODIFICADOR_POR_ID, pisoDaProvacao } from '@data/provacao';
@@ -10,6 +11,17 @@ import { powerScore } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon, progressBar } from '../dom';
 import type { Panel } from './types';
+
+const PRV_ASSET = '/assets/ui/provacao';
+
+function prvImage(file: string, className: string, alt = ''): HTMLElement {
+  return h('img', {
+    class: className,
+    src: `${PRV_ASSET}/${file}`,
+    alt,
+    draggable: 'false',
+  });
+}
 
 /**
  * Núcleo de Provação — cem pisos de chefes (§32–§35).
@@ -54,6 +66,10 @@ export class ProvacaoPanel implements Panel {
         this.colunaDePisos(sim, piso),
         this.detalhe(sim, piso),
       ),
+      h('.prv-rodape', {},
+        h('span', { text: 'A TORRE OBSERVA. CADA VITÓRIA ABRE A PRÓXIMA CÂMARA.' }),
+        h('span', { text: `PROGRESSO GLOBAL ${sim.state.provacao.pisoMax}/${PROVACAO_PISOS}` }),
+      ),
     );
   }
 
@@ -65,8 +81,11 @@ export class ProvacaoPanel implements Panel {
 
     return h('.prv-topo', {},
       h('.prv-titulo', {},
-        h('h1', { text: PROVACAO_NOME }),
-        h('span.muted.tiny', { text: `${p.pisoMax} de ${PROVACAO_PISOS} pisos vencidos` }),
+        prvImage('icons/prv_alvo_torre.png', 'prv-titulo-icone', ''),
+        h('.prv-titulo-copy', {},
+          h('h1', { text: PROVACAO_NOME }),
+          h('span.muted.tiny', { text: `${p.pisoMax} de ${PROVACAO_PISOS} pisos vencidos` }),
+        ),
       ),
       h('.prv-contadores', {},
         // Tentativas primeiro: é o recurso escasso, e é ele que decide se o
@@ -78,13 +97,19 @@ export class ProvacaoPanel implements Panel {
         },
           h('span.tiny.muted', { text: 'TENTATIVAS' }),
           h('.prv-pips', {}, ...Array.from({ length: TENTATIVAS_MAX }, (_, i) =>
-            h(`.prv-pip${i < t.tem ? '.cheio' : ''}`),
+            prvImage(
+              `icons/prv_tentativa_${i < t.tem ? 'cheia' : 'vazia'}.png`,
+              `prv-pip${i < t.tem ? ' cheio' : ''}`,
+            ),
           )),
           ...(t.segundosParaProxima > 0
             ? [h('span.tiny.prv-relogio', { text: `+1 em ${duration(t.segundosParaProxima)}` })]
             : []),
         ),
-        h('.prv-cont', {}, h('span', { text: `✦ ${fmt(p.vitorias)} vitórias` })),
+        h('.prv-cont', {},
+          prvImage('icons/rewards/prv_rec_medalha.png', 'prv-cont-icone'),
+          h('span', { text: `${fmt(p.vitorias)} vitórias` }),
+        ),
       ),
     );
   }
@@ -143,9 +168,16 @@ export class ProvacaoPanel implements Panel {
     const lista: number[] = [];
     for (let n = fim; n >= inicio; n--) lista.push(n);
 
+    const torre = h('.prv-torre', {}, ...lista.map((n) => this.cardDePiso(sim, n, n === foco)));
+    requestAnimationFrame(() => {
+      const focado = torre.querySelector<HTMLElement>('.prv-piso.focado');
+      if (!focado) return;
+      torre.scrollTop = focado.offsetTop - Math.max(0, (torre.clientHeight - focado.offsetHeight) / 2);
+    });
+
     return h('.prv-col.prv-centro', {},
       h('.prv-secao-tit', { text: 'CÂMARAS' }),
-      h('.prv-torre', {}, ...lista.map((n) => this.cardDePiso(sim, n, n === foco))),
+      torre,
     );
   }
 
@@ -171,7 +203,7 @@ export class ProvacaoPanel implements Panel {
       h('.prv-piso-n', { text: String(piso) }),
       h('.prv-piso-arte', {},
         estado === 'travado'
-          ? h('span.prv-cadeado', { text: '🔒' })
+          ? prvImage('icons/prv_icone_cadeado.png', 'prv-cadeado', 'Bloqueado')
           : spriteIcon(chefe.sprite, marco ? 46 : 34),
       ),
       h('.prv-piso-txt', {},
@@ -183,9 +215,9 @@ export class ProvacaoPanel implements Panel {
       h('.prv-piso-sinais', {},
         h('span.prv-elem', { text: el.sigla, style: { background: el.color }, title: el.name }),
         ...(estado === 'vencido' || estado === 'mestrado'
-          ? [h('span.prv-check', { text: '✓' })]
+          ? [prvImage('icons/prv_icone_check.png', 'prv-check', 'Concluído')]
           : []),
-        ...(marco ? [h('span.prv-selo-marco', { text: '★' })] : []),
+        ...(marco ? [prvImage('icons/prv_icone_chefe.png', 'prv-selo-marco', 'Chefe de marco')] : []),
       ),
     );
   }
@@ -244,12 +276,19 @@ export class ProvacaoPanel implements Panel {
         ),
       ),
 
-      h('.prv-linha', {},
-        h('span.muted.tiny', { text: 'PODER RECOMENDADO' }),
-        h('span.tiny', {
-          text: fmt(recomendado),
-          style: { color: meu >= recomendado ? 'var(--good)' : 'var(--bad)' },
-        }),
+      h('.prv-poder', {},
+        h('.prv-linha', {},
+          h('span.muted.tiny', { text: 'PODER RECOMENDADO' }),
+          h('span.tiny', {
+            text: fmt(recomendado),
+            style: { color: meu >= recomendado ? 'var(--good)' : 'var(--bad)' },
+          }),
+        ),
+        h('.prv-poder-bar', {},
+          h('.prv-poder-fill', {
+            style: { width: `${Math.min(100, (meu / Math.max(1, recomendado)) * 100)}%` },
+          }),
+        ),
       ),
 
       // O especial do chefe — a informação que muda como se joga a luta.
@@ -264,13 +303,29 @@ export class ProvacaoPanel implements Panel {
             h('.prv-secao-tit', { text: 'MODIFICADORES' }),
             h('.prv-mods', {}, ...def.modificadores.map((id) => {
               const m = MODIFICADOR_POR_ID.get(id)!;
-              return h('.prv-mod', { title: m.descricao }, h('span.tiny', { text: m.nome }));
+              return h('.prv-mod', { title: m.descricao },
+                prvImage(`icons/modifiers/prv_mod_${id}.png`, 'prv-mod-icone'),
+                h('.prv-mod-txt', {},
+                  h('strong', { text: m.nome }),
+                  h('span', { text: m.descricao }),
+                ),
+              );
             })),
           ]
         : []),
 
       h('.prv-secao-tit', { text: estado === 'vencido' || estado === 'mestrado' ? 'RECOMPENSA (REPETIÇÃO)' : 'RECOMPENSA' }),
       h('.prv-premios', {}, ...this.premios(sim, piso, estado)),
+
+      ...(marco
+        ? [h('.prv-conclusao', {},
+            prvImage('icons/rewards/prv_bau_torre.png', 'prv-conclusao-bau', 'Baú da camada'),
+            h('.prv-conclusao-txt', {},
+              h('strong', { text: 'RECOMPENSA DE CONCLUSÃO' }),
+              h('span', { text: `Supere o guardião e conclua ${cam.nome}.` }),
+            ),
+          )]
+        : []),
 
       h(`button.btn.prv-iniciar${marco ? '.marco' : ''}`, {
         disabled: estado === 'travado' || t.tem === 0,
@@ -279,7 +334,9 @@ export class ProvacaoPanel implements Panel {
           : t.tem === 0
             ? `Sem tentativas — a próxima volta em ${duration(t.segundosParaProxima)}`
             : '',
-        onclick: () => { sim.iniciarPisoDaProvacao(piso); },
+        onclick: () => {
+          if (sim.iniciarPisoDaProvacao(piso)) bus.emit('panel:close');
+        },
       }, h('span', {
         text: estado === 'travado' ? 'BLOQUEADO'
           : t.tem === 0 ? 'SEM TENTATIVAS'

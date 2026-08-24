@@ -31,6 +31,7 @@ export interface GameEvents {
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; icon?: string };
   'panel:open': { id: string };
   'panel:close': void;
+  'laboratorio:changed': void;
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;

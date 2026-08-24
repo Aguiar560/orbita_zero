@@ -1,5 +1,16 @@
 # Peças de interface — Missões
 
+> **Estado de implementação — 24/08/2026.** Este documento continua útil como
+> especificação de arte, mas a interface em produção não depende de uma nova
+> moldura brilhante para funcionar. A Central de Contratos foi simplificada na
+> gramática Provação/Afixos: painéis escuros, linha cyan discreta e cor reservada
+> para o tipo/estado. Os nove retratos são servidos pelo atlas lazy `characters`
+> gerado da pasta `Characters`; o enquadramento é 3×4, ancorado no rodapé e
+> isolado por frame para impedir que pixels de outro retrato entrem no card. A
+> escada de confiança usa hexágonos preenchidos pelo CSS na cor de cada contato,
+> de modo que borda, interior e conectores sejam coerentes. Veja o registro em
+> [`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md).
+
 Especificação para gerar os sprites da Central de Contratos. **As medidas saíram
 do CSS que já roda**, medidas no navegador com o modal aberto em 1280 × 800 — não
 são estimativa. Por isso as peças encaixam sem retrabalho.

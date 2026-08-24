@@ -36,6 +36,18 @@ export interface EfeitosDoDesafio {
   /** O escudo do JOGADOR não regenera. */
   travaEscudo: boolean;
   espelhaElemento: boolean;
+  invulneravelCada: number;
+  invulneravelPor: number;
+  zonaCada: number;
+  zonaPor: number;
+  zonaRaio: number;
+  zonaDano: number;
+  clones: number;
+  barreiraFrontal: number;
+  barreiraCada: number;
+  barreiraPor: number;
+  pontoFraco: number;
+  pontoFracoRaio: number;
 }
 
 /** Um desafio em andamento. Vive em memória — não é salvo. */
@@ -65,6 +77,10 @@ export interface DesafioAtivo {
   semDanoHa: number;
   /** O chefe já se partiu? Uma vez por luta. */
   dividiu: boolean;
+  /** Evita recriar os mesmos ecos quando a cena é atualizada. */
+  clonesGerados: boolean;
+  /** Cronômetro independente das zonas, que são telegráficas. */
+  proximaZonaEm: number;
 }
 
 /**
@@ -197,6 +213,8 @@ export function abrirDesafio(piso: number): DesafioAtivo {
     danoRecebido: 0,
     semDanoHa: 0,
     dividiu: false,
+    clonesGerados: false,
+    proximaZonaEm: 0,
   };
 }
 

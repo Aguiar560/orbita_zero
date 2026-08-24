@@ -3,7 +3,7 @@ import { bus } from './Bus';
 import { assets } from '@render/Assets';
 import { Surface } from '@render/Surface';
 import { registerClips } from '@data/clips';
-import { ENEMIES } from '@data/enemies';
+import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
 import { loadFromStorage } from '@sim/state';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
@@ -62,7 +62,7 @@ export class Game {
     }
 
     registerClips();
-    registerMinions(ENEMIES);
+    registerMinions(ALL_ENEMIES);
 
     const { stage, stageWrap } = this.shell.build();
     this.stageWrap = stageWrap;
@@ -98,10 +98,10 @@ export class Game {
     // O modo de teste acelera o jogo repetindo o passo fixo, e não esticando
     // `dt`: a IA e as colisões dependem de um passo constante para não falhar.
     for (let i = 0; i < speed; i++) {
-      this.sim.patrolTick(dt);
+      if (!this.sim.laboratorio.active) this.sim.patrolTick(dt);
       this.vertical.update(dt);
     }
-    this.sim.tickSave(dt);
+    if (!this.sim.laboratorio.active) this.sim.tickSave(dt);
   };
 
   private readonly draw = (_alpha: number, dt: number): void => {
@@ -126,9 +126,8 @@ export class Game {
     const availH = Math.max(240, Math.floor(box.height));
     fitView(availW, availH);
 
-    // Depois do ajuste a proporção quase sempre bate exatamente; só quando a
-    // largura lógica encosta no teto é que sobra folga, e aí o `min` mantém o
-    // pixel quadrado em vez de esticar a arte.
+    // A largura lógica acompanha a área disponível, então esta escala preenche
+    // o palco sem distorcer a arte nem deixar faixas laterais.
     const scale = Math.min(availW / VIEW.w, availH / VIEW.h);
     this.vertical.resize(Math.floor(VIEW.w * scale), Math.floor(VIEW.h * scale));
   };

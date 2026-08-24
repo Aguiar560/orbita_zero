@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '@core/math';
 import { MAX_RARITY, RARITIES } from '@data/rarity';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, matchup } from '@data/elements';
-import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN, SORTE_EFETIVA_MAX } from '@data/balance/limites';
+import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN } from '@data/balance/limites';
 import { AFFIXES } from '@data/items';
 import { HULLS } from '@data/hulls';
 import { rollItem, rollRarity } from '@sim/loot';
@@ -277,8 +277,8 @@ describe('distribuição de raridade (§9)', () => {
     // No topo, o expoente não pode voltar a escalar com o índice.
     expect(RARITIES[6]!.sorteExpo).toBeLessThan(RARITIES[4]!.sorteExpo);
     expect(RARITIES[5]!.sorteExpo).toBeLessThan(RARITIES[4]!.sorteExpo);
-    // E nem o teto EFETIVO, que os baús alcançam, torna o Divino comum.
-    expect(1 / chanceDe(6, SORTE_EFETIVA_MAX)).toBeGreaterThan(100_000);
+    // E nem o teto real do jogador torna o Divino comum.
+    expect(1 / chanceDe(6, LIMITES.sorte.max)).toBeGreaterThan(100_000);
   });
 
   it('cada raridade dá mais afixos e tolera tier mais alto que a anterior', () => {

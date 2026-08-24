@@ -3,6 +3,7 @@ import type { BossDef } from '@data/bosses';
 import type { EnemyDef } from '@data/enemies';
 import type { ElementId, Item } from '@sim/types';
 import type { DamagePacket } from '@sim/dano';
+import type { HullHitbox } from '@data/hulls';
 
 /**
  * Espaço lógico da camada de combate.
@@ -14,14 +15,17 @@ import type { DamagePacket } from '@sim/dano';
  */
 export const VIEW = { w: 540, h: 960 };
 
-/** Limites da largura lógica: estreito demais sufoca, largo demais esvazia. */
+/**
+ * Limite mínimo apenas. A largura cresce com a tela para o canvas sempre
+ * ocupar o palco; um teto aqui criava faixas escuras nas laterais em telas
+ * largas, pois o canvas precisava preservar pixels quadrados.
+ */
 export const VIEW_W_MIN = 480;
-export const VIEW_W_MAX = 1180;
 
 /** Ajusta a largura lógica à proporção do elemento. */
 export function fitView(cssW: number, cssH: number): void {
   const ratio = cssW / Math.max(1, cssH);
-  VIEW.w = Math.round(Math.min(VIEW_W_MAX, Math.max(VIEW_W_MIN, VIEW.h * ratio)));
+  VIEW.w = Math.round(Math.max(VIEW_W_MIN, VIEW.h * ratio));
 }
 
 export interface Bullet {
@@ -82,6 +86,8 @@ export interface Enemy {
   maxHp: number;
   radius: number;
   scale: number;
+  /** Caixa personalizada. `null` mantém a colisão circular histórica. */
+  hitbox: HullHitbox | null;
   damage: number;
 
   /** Fração da recompensa do encontro que este inimigo representa. */
@@ -116,6 +122,10 @@ export interface Enemy {
   /** Fase da oscilação horizontal. */
   wobble: number;
   facing: number;
+  /** Estados transitórios dos modificadores mecânicos da Provação. */
+  invulnerable: boolean;
+  barrierActive: boolean;
+  challengeClone: boolean;
 }
 
 /**
@@ -164,6 +174,8 @@ export interface Player {
   /** Segundos até o escudo voltar a regenerar após levar dano. */
   shieldLock: number;
   radius: number;
+  /** Caixa real; `radius` permanece como raio conservador para a IA. */
+  hitbox: HullHitbox;
   fireTimer: number;
   /** Invulnerabilidade pós-respawn. */
   invuln: number;
@@ -210,15 +222,17 @@ export function createEnemyPool(capacity = 200): Pool<Enemy> {
   return new Pool<Enemy>(
     () => ({
       alive: false, id: 0, def: null as unknown as EnemyDef, boss: null,
-      x: 0, y: 0, vx: 0, vy: 0, hp: 1, maxHp: 1, radius: 16, scale: 1, damage: 1, share: 0, counts: true,
+      x: 0, y: 0, vx: 0, vy: 0, hp: 1, maxHp: 1, radius: 16, scale: 1, hitbox: null, damage: 1, share: 0, counts: true,
       time: 0, fireTimer: 0, pressao: 1, hitFlash: 0, spin: 0, anchorX: 0, anchorY: 0,
       entering: true, phase: 0, summonTimer: 0, wobble: 0, facing: 0,
+      invulnerable: false, barrierActive: false, challengeClone: false,
     }),
     (e) => {
       e.id = nextId++;
       e.boss = null; e.time = 0; e.hitFlash = 0; e.spin = 0; e.entering = true;
       e.phase = 0; e.summonTimer = 0; e.wobble = 0; e.facing = 0; e.vx = 0; e.vy = 0;
-      e.counts = true; e.pressao = 1;
+      e.counts = true; e.pressao = 1; e.hitbox = null;
+      e.invulnerable = false; e.barrierActive = false; e.challengeClone = false;
     },
     capacity,
   );

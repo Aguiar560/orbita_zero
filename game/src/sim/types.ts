@@ -2,7 +2,7 @@
 
 /**
  * `sucata`  — moeda de farm, corre sozinha com a patrulha. Paga melhorias comuns.
- * `nucleo`  — sai de abates. Paga melhorias avançadas e desmanche.
+ * `nucleo`  — sai de abates. Paga melhorias avançadas e fabricação.
  * `cristal` — sai de chefes e baús. Paga frota, loja e baús.
  *
  * Não existe moeda de prestígio: o jogo não reinicia. Toda progressão é
@@ -146,6 +146,8 @@ export interface Affix {
    * migração assume T1 para não inflar item nenhum retroativamente.
    */
   tier?: number;
+  /** Protegido pela Rolha de Asteroide contra outras modulações. */
+  locked?: boolean;
 }
 
 export interface Item {
@@ -171,6 +173,8 @@ export interface Item {
   /** Conjunto a que a peça pertence, se houver. */
   set?: string;
   favorite?: boolean;
+  /** Estado anterior da Bancada; permite o Eco Temporal sem um histórico infinito. */
+  modulationSnapshot?: Affix[];
 }
 
 // ── Progressão ──────────────────────────────────────────────────────────────
@@ -280,6 +284,12 @@ export interface Settings {
   /** Política do piloto de IA. */
   pilot: 'agressivo' | 'equilibrado' | 'evasivo' | 'coletor';
   /**
+   * `idle` deixa a IA pilotar; `manual` libera WASD e setas em campanha e
+   * Provação. O disparo continua automático para a troca não exigir uma mão a
+   * mais — no Laboratório, Espaço também pode assumir o disparo.
+   */
+  controlMode: 'idle' | 'manual';
+  /**
    * Modo de teste: recursos e pontos infinitos, tudo desbloqueado, nave
    * indestrutível e controle de velocidade. Serve para inspecionar conteúdo
    * sem esperar a curva de progressão.
@@ -304,9 +314,15 @@ export interface Settings {
   autoEquip: boolean;
   /** Auto-descartar itens abaixo desta raridade. */
   autoSalvage: Rarity;
+  /** Destino do descarte automático e da substituição com inventário cheio. */
+  autoDispose: 'desmontar' | 'vender';
   showDamageNumbers: boolean;
   barVisible: boolean;
   reduceEffects: boolean;
+  /** Aumenta a separação entre texto, fundo e estados interativos. */
+  highContrast: boolean;
+  /** Missões escolhidas pelo jogador para acompanhar na tela principal. */
+  pinnedMissions: string[];
   muted: boolean;
 }
 
@@ -395,6 +411,9 @@ export interface GameState {
    * antigo, sem migração. Ver `sim/missoes.ts`.
    */
   missoes: Record<string, { passos: number[]; entregue: boolean }>;
+
+  /** Progresso por ocorrência de evento (`id:ciclo`), para não resgatar duas vezes. */
+  eventos: Record<string, { progresso: number; resgatado: boolean }>;
 
   /**
    * Medalhas (§27).

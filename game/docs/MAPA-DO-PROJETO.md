@@ -7,10 +7,18 @@ qualquer afirmação sem confiar em documento nenhum — inclusive neste.
 | Documento | Para quê |
 |---|---|
 | **este** | orientação geral, arquitetura, invariantes, como medir |
+| [`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md) | registro detalhado e verificável da sessão de 24/08/2026 |
 | [`TELAS.md`](TELAS.md) | cada tela: o que faz, arquivo, o que lê e escreve, o que falta |
 | [`SISTEMAS.md`](SISTEMAS.md) | cada sistema por dentro: fórmulas, fluxo de dados, arquivos |
 | [`PLANO.md`](PLANO.md) | onde chegar, por que, e os passos ordenados |
 | [`ROADMAP.md`](ROADMAP.md) | histórico do que foi feito, com as medições de cada etapa |
+| [`CATALOGO-CASCOS.md`](CATALOGO-CASCOS.md) | ficha dos cascos, arquétipos, tiros e contrato para futuras naves |
+| [`RELATORIO-CONFRONTOS-CASCOS.md`](RELATORIO-CONFRONTOS-CASCOS.md) | protocolo, resultados e próximos testes dos arquétipos |
+| [`RELATORIO-BATERIA-CONFRONTOS.md`](RELATORIO-BATERIA-CONFRONTOS.md) | bateria final Elite, Enxame e Cerco, três sementes e decisões de balanceamento |
+| [`RELATORIO-BATERIA-CONFRONTOS-COMPLETA.md`](RELATORIO-BATERIA-CONFRONTOS-COMPLETA.md) | 261 confrontos: todos os 29 cascos, arquétipos e famílias de tiro |
+| [`BALANCEAMENTO-RECURSOS.md`](BALANCEAMENTO-RECURSOS.md) | receitas, fontes e tempos-alvo de farm dos 70 recursos |
+| [`ECONOMIA-DESCARTE.md`](ECONOMIA-DESCARTE.md) | decisão entre vender por Sucata e desmontar por materiais |
+| [`ARTE-UI-MISSOES.md`](ARTE-UI-MISSOES.md) | contrato de arte e estado implementado da Central de Contratos |
 | [`ESPECIFICACAO-MESTRE.md`](ESPECIFICACAO-MESTRE.md) | fonte de verdade de design. Quando divergir de qualquer outro, ela vence |
 
 Os demais (`FASE-0-*`, `ITEMIZACAO-DIAGNOSTICO`, `ARTE-UI-*`) são registros de
@@ -43,12 +51,12 @@ dificuldade, e ela some ou vira parede.
 
 | | | | |
 |---|---|---|---|
-| slots de item | 10 | inimigos | 42 |
+| slots de item | 10 | inimigos | 68 |
 | bases de item | 80 | inimigos de frota | 24 |
-| afixos | 35 | chefes de galáxia | 10 |
+| afixos | 35 | chefes de galáxia | 30 |
 | conjuntos | 4 | chefes da Provação | 100 |
 | raridades | 7 | especiais da Provação | 18 |
-| cascos (naves) | 20 | modificadores da Provação | 11 |
+| cascos (naves) | 49 | modificadores da Provação | 11 |
 | elementos | 6 | camadas da Provação | 10 |
 | recursos | 70 | contatos de missão | 9 |
 | baús | 4 | nós da Matriz | 177 (8 ramos) |
@@ -64,13 +72,13 @@ arrays exportados.)*
 src/
   core/     3 arq · matemática, RNG determinístico (mulberry32), pools, formatação
   render/   6 arq · Assets, Surface (canvas 2D), Parallax, Particles, Anim, Atlas
-  sim/     13 arq · estado, atributos, progressão, loot, matriz — SEM DOM, SEM canvas
-  data/    30 arq · tabelas puras + `balance/` com as curvas e limites
+  sim/     16 arq · estado, atributos, progressão, loot, matriz — SEM DOM, SEM canvas
+  data/    39 arq · tabelas puras + `balance/` com as curvas e limites
   modes/    4 arq · VerticalMode (cena de combate), PilotAI, WaveDirector, entities
-  ui/      19 arq · Shell, LeftRail, 12 painéis — SEM regra de jogo
-  app/      3 arq · Game (laço de passo fixo), Bus, Loop
-tools/      6 arq · pipeline de assets e o arnês de balanceamento, fora do bundle
-tests/     17 arq · 452 testes
+  ui/      22 arq · Shell, LeftRail, painéis e componentes — SEM regra de jogo
+  app/      4 arq · Game (laço de passo fixo), Bus, Loop e persistência admin
+tools/     32 arq · pipeline de assets e o arnês de balanceamento, fora do bundle
+tests/          · 527 testes passando + 1 todo (verificado em 24/08/2026)
 ```
 
 **Aliases:** `@core @render @sim @data @ui @modes @app`
@@ -142,11 +150,10 @@ Violar qualquer um destes é regressão, não escolha.
 - **Identificadores internos são estáveis e não-visuais.** `weapon_plasma_mk3`,
   nunca `Canhão de Plasma MK.III`. Vale para itens, naves, inimigos, recursos,
   elementos, galáxias, chefes e sets.
-- **Save malformado não pode travar o boot.** A migração apara o que não existe
-  mais e preenche o que falta.
-  *Durante o desenvolvimento*, compatibilidade entre versões **não** é
-  restrição: o esquema muda muito e o save é zerado de propósito. Isso volta a
-  valer antes do lançamento.
+- **Save malformado não pode travar o boot.** A migração v5 apara o que não
+  existe mais, normaliza preferências e preenche o que falta. Saves antigos são
+  preservados quando há migração conhecida; save de versão futura é recusado de
+  modo seguro, pois o código não pode inventar campos que ainda não conhece.
 
 **Arte**
 - Os packs crus em `D:\bbb\*` são **somente leitura**. O pipeline lê de lá e
@@ -156,8 +163,15 @@ Violar qualquer um destes é regressão, não escolha.
   usar. Os prefixos reais são `aba/*` (abas), `cat/*` (os nove slots de item),
   `gem/*` (raridades), `geral/*`.
 
-**A Loja** ainda existe mas será **totalmente reformulada**. Não a use como base
-para nada, nem trate seus contratos atuais como decisão de design.
+**A Loja** é a **Central de Serviços**. Sua regra arquitetural é rígida: nenhum
+contrato concede atributo direto. Ela oferece carga, reconfiguração da Matriz,
+tentativas e câmbio com cota. Dados em `data/shop.ts`, efeitos em `sim/index.ts`
+e a tela em `ui/panels/ShopPanel.ts`.
+
+**A Bancada de Modulação** é o craft de Prefixos e Sufixos. A tela própria vive
+em `ui/panels/AffixCraftPanel.ts`, o custo em
+`data/balance/recalibracao.ts` e as regras de elegibilidade/sorteio em
+`sim/loot.ts`.
 
 ---
 
@@ -174,7 +188,7 @@ O terminal do Rafael é **PowerShell 5.1**, que **não aceita `&&`** — use `;`
 | `npm run dev` | Vite em `localhost:5180` (porta fixa) |
 | `npm run assets` | Fatia os packs crus de `D:\bbb\*` em `public/assets` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | suíte do Vitest (452 testes) |
+| `npm test` | suíte do Vitest (527 testes + 1 `todo`, conferidos em 24/08/2026) |
 | `npm run build` | assets + typecheck + build |
 
 Se mexeu em arte: `npm run assets; npm run dev`.

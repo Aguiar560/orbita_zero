@@ -1,10 +1,13 @@
 ﻿import { bus } from '@app/Bus';
+import { LAB_CODE_WRITE_AVAILABLE, consumeCalibrationNotice, writeHitboxCalibration } from '@app/LabCalibrationAdmin';
 import { fmt, duration } from '@core/format';
 import { rarityInfo } from '@data/rarity';
 import { describeGalaxy, galaxyOfSector, phaseOfSector } from '@data/galaxies';
 import { itemName } from '@sim/loot';
 import type { OfflineReport, Sim } from '@sim/index';
 import { RESOURCE_IDS, type ResourceId } from '@sim/types';
+import { MISSAO_POR_ID } from '@data/missoes';
+import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
 import type { Panel } from './panels/types';
@@ -13,7 +16,9 @@ import { ShopPanel } from './panels/ShopPanel';
 import { InventoryPanel } from './panels/InventoryPanel';
 import { ArmazemPanel } from './panels/ArmazemPanel';
 import { FabricacaoPanel } from './panels/FabricacaoPanel';
+import { AffixCraftPanel } from './panels/AffixCraftPanel';
 import { MissoesPanel } from './panels/MissoesPanel';
+import { EventosPanel } from './panels/EventosPanel';
 import { ProvacaoPanel } from './panels/ProvacaoPanel';
 import { montarResultadoDaProvacao } from './ProvacaoResultado';
 import { TreePanel } from './panels/TreePanel';
@@ -21,6 +26,7 @@ import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
 import { CodexPanel } from './panels/CodexPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
+import { LaboratorioPanel } from './panels/LaboratorioPanel';
 import { RESOURCE_META } from './recursos';
 
 /** Frequência de re-render do painel ativo. */
@@ -44,13 +50,16 @@ export class Shell {
     new InventoryPanel(),
     new ArmazemPanel(),
     new FabricacaoPanel(),
+    new AffixCraftPanel(),
     new MissoesPanel(),
+    new EventosPanel(),
     new ProvacaoPanel(),
     new TreePanel(),
     new FleetPanel(),
     new ChestsPanel(),
     new ShopPanel(),
     new CodexPanel(),
+    ...(LAB_CODE_WRITE_AVAILABLE ? [new LaboratorioPanel()] : []),
   ];
 
   private readonly settings = new SettingsPanel();
@@ -69,6 +78,9 @@ export class Shell {
   private panelHost!: HTMLElement;
   private statusNode!: HTMLElement;
   private toastHost!: HTMLElement;
+  private labToolbar!: HTMLElement;
+  /** HUD independente dos trilhos: continua visível no modo de combate amplo. */
+  private missionHud!: HTMLElement;
 
   constructor(
     private readonly root: HTMLElement,
@@ -77,14 +89,20 @@ export class Shell {
 
   /** Monta o esqueleto e devolve o canvas para o modo de jogo. */
   build(): { stage: HTMLCanvasElement; stageWrap: HTMLElement } {
-    const stage = h('canvas#stage') as HTMLCanvasElement;
-    const stageWrap = h('.stage-wrap', {}, stage);
+    document.documentElement.dataset.contrast = this.sim.state.settings.highContrast ? 'high' : '';
+    const stage = h('canvas#stage', {
+      role: 'img', tabindex: '0',
+      'aria-label': 'Campo de combate. Em controle manual, mova a nave com WASD ou as setas.',
+    }) as HTMLCanvasElement;
+    this.missionHud = h('.mission-hud', { 'aria-label': 'Missões rastreadas' });
+    const stageWrap = h('.stage-wrap', {}, stage, this.missionHud);
 
     this.leftRail = new LeftRail(this.sim);
-    this.tabBar = h('nav.tabs');
+    this.tabBar = h('nav.tabs', { 'aria-label': 'Navegação principal' });
     this.panelHost = h('.panel-host');
     this.statusNode = h('.status');
-    this.toastHost = h('.toasts');
+    this.toastHost = h('.toasts', { 'aria-live': 'polite', 'aria-atomic': 'false' });
+    this.labToolbar = h('.lab-toolbar');
 
     const topbar = h('header.topbar', {},
       h('.brand', {},
@@ -108,6 +126,7 @@ export class Shell {
         })),
         h('button.gear', {
           title: 'Configurações',
+          'aria-label': 'Abrir configurações',
           onclick: () => this.openSettings(),
         }, spriteIcon('geral/b_1', 24)),
       ),
@@ -121,11 +140,15 @@ export class Shell {
         h('aside.rail-right', {}, this.panelHost),
       ),
       this.toastHost,
+      this.labToolbar,
     );
 
     this.buildTabs();
+    this.updateMissionHud();
     this.wireEvents();
     this.renderPanel();
+    const calibrationNotice = consumeCalibrationNotice();
+    if (calibrationNotice) queueMicrotask(() => bus.emit('toast', { text: calibrationNotice, kind: 'good' }));
 
     return { stage, stageWrap };
   }
@@ -138,6 +161,8 @@ export class Shell {
       const badge = panel.badge?.(this.sim) ?? 0;
       const tab = h(`button.tab${panel === this.active ? '.active' : ''}`, {
         title: panel.title,
+        'aria-label': panel.title,
+        'aria-current': panel === this.active ? 'page' : undefined,
         onclick: () => {
           this.active = panel;
           this.dirty = true;
@@ -145,12 +170,24 @@ export class Shell {
           this.renderPanel();
         },
       },
-        spriteIcon(panel.icon, 22),
+        panel.iconUrl
+          ? h('img.tab-art', { src: panel.iconUrl, alt: '', 'aria-hidden': true, draggable: false })
+          : spriteIcon(panel.icon, 22),
         h('span.tab-label', { text: panel.title }),
         badge > 0 ? h('span.badge', { text: badge > 99 ? '99+' : String(badge) }) : null,
       );
       this.tabBar.append(tab);
     }
+    this.tabBar.onkeydown = (e: KeyboardEvent) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      const tabs = Array.from(this.tabBar.querySelectorAll<HTMLButtonElement>('button.tab'));
+      const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      if (current < 0 || !tabs.length) return;
+      e.preventDefault();
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1
+        : (current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[next]?.focus();
+    };
   }
 
   private wireEvents(): void {
@@ -167,6 +204,11 @@ export class Shell {
       this.buildTabs();
       this.renderPanel();
     });
+    bus.on('panel:close', () => this.voltarDaCamada());
+    bus.on('laboratorio:changed', () => {
+      this.dirty = true;
+      this.updateLaboratorioToolbar();
+    });
 
     bus.on('loot:dropped', ({ item }) => {
       if (item.rarity < 2) return;
@@ -180,6 +222,7 @@ export class Shell {
     // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
     // jogo. Os dois eventos caem no mesmo lugar porque o que muda entre eles e
     // o conteudo, nao a moldura.
+    bus.on('provacao:iniciado', () => this.voltarDaCamada());
     bus.on('provacao:vencido', () => this.mostrarResultadoDaProvacao());
     bus.on('provacao:falhou', () => this.mostrarResultadoDaProvacao());
 
@@ -197,8 +240,118 @@ export class Shell {
         this.buildTabs();
       }
       this.updateStatus();
+      this.updateLaboratorioToolbar();
+      this.updateMissionHud();
     }
     this.updateResources();
+  }
+
+  private updateLaboratorioToolbar(): void {
+    if (!this.labToolbar) return;
+    const lab = this.sim.laboratorio;
+    this.labToolbar.classList.toggle('visible', lab.active);
+    if (!lab.active) { clear(this.labToolbar); return; }
+    const m = lab.metrics;
+    const dps = m.playerDamage / Math.max(.01, m.elapsed);
+    const c = lab.config;
+    const target = c.hitboxTarget;
+    const width = target === 'player' ? c.playerHitboxWidth : c.enemyHitboxWidth;
+    const height = target === 'player' ? c.playerHitboxHeight : c.enemyHitboxHeight;
+    const offsetX = target === 'player' ? c.playerHitboxOffsetX : c.enemyHitboxOffsetX;
+    const offsetY = target === 'player' ? c.playerHitboxOffsetY : c.enemyHitboxOffsetY;
+    const hitboxNumber = (value: number) => value.toFixed(1).replace(/\.0$/, '');
+    const nudge = (axis: 'width' | 'height' | 'offsetX' | 'offsetY', delta: number) =>
+      this.sim.ajustarHitboxLaboratorio(target, axis, delta);
+    const save = (): void => {
+      if (target === 'player') {
+        void writeHitboxCalibration('save', 'player', c.playerHullId, { width, height, offsetX, offsetY }, c.playerSpriteScale);
+        return;
+      }
+      const [kind, id] = c.enemyHitboxKey.split(':') as ['enemy' | 'boss', string];
+      if (id) void writeHitboxCalibration('save', kind, id, { width, height, offsetX, offsetY }, c.enemySpriteScale);
+    };
+    clear(this.labToolbar).append(
+      h('.lab-toolbar-title', {}, h('strong', { text: 'LAB' }), h('span', { text: lab.paused ? 'PAUSADO' : 'EM EXECUÇÃO' })),
+      h('.lab-metric', {}, h('span', { text: 'Tempo' }), h('strong', { text: duration(m.elapsed) })),
+      h('.lab-metric', {}, h('span', { text: 'DPS' }), h('strong', { text: fmt(dps, 1) })),
+      h('.lab-metric', {}, h('span', { text: 'Acertos' }), h('strong', { text: `${m.playerHits}/${m.playerShots}` })),
+      h('.lab-metric', {}, h('span', { text: 'Abates' }), h('strong', { text: String(m.kills) })),
+      h('.lab-metric', {}, h('span', { text: 'Recebido' }), h('strong', { text: fmt(m.enemyDamage, 0) })),
+      h('.lab-metric', {}, h('span', { text: 'Mortes' }), h('strong', { text: String(m.deaths) })),
+      h('.lab-hitbox-live', {},
+        h('.lab-hitbox-targets', {},
+          h(`button.mini${target === 'player' ? '.active' : ''}`, { text: 'JOG', title: 'Editar a nave do jogador', onclick: () => this.sim.atualizarLaboratorio({ hitboxTarget: 'player', showHitboxes: true }) }),
+          h(`button.mini${target === 'enemy' ? '.active' : ''}`, { text: 'INIM', title: 'Editar a nave inimiga', onclick: () => this.sim.atualizarLaboratorio({ hitboxTarget: 'enemy', showHitboxes: true }) }),
+        ),
+        h('span', { text: `${target === 'player' ? 'JOGADOR' : 'INIMIGO'} ${hitboxNumber(width)}×${hitboxNumber(height)} · ${hitboxNumber(offsetX)},${hitboxNumber(offsetY)}` }),
+        h('.lab-hitbox-buttons', {},
+          h('button.mini', { text: 'W−', title: 'Diminuir largura', onclick: () => nudge('width', -2) }),
+          h('button.mini', { text: 'W+', title: 'Aumentar largura', onclick: () => nudge('width', 2) }),
+          h('button.mini', { text: 'H−', title: 'Diminuir altura', onclick: () => nudge('height', -2) }),
+          h('button.mini', { text: 'H+', title: 'Aumentar altura', onclick: () => nudge('height', 2) }),
+          h('button.mini', { text: '←', title: 'Mover para a esquerda', onclick: () => nudge('offsetX', -2) }),
+          h('button.mini', { text: '→', title: 'Mover para a direita', onclick: () => nudge('offsetX', 2) }),
+          h('button.mini', { text: '↑', title: 'Mover para cima', onclick: () => nudge('offsetY', -2) }),
+          h('button.mini', { text: '↓', title: 'Mover para baixo', onclick: () => nudge('offsetY', 2) }),
+          h('button.mini.save', {
+            text: 'Gravar',
+            disabled: !LAB_CODE_WRITE_AVAILABLE || (target === 'enemy' && !c.enemyHitboxKey),
+            title: 'Gravar esta hitbox diretamente no código do jogo',
+            onclick: save,
+          }),
+        ),
+      ),
+      h('.lab-toolbar-actions', {},
+        h('button.mini', { text: 'Configurar', onclick: () => bus.emit('panel:open', { id: 'laboratorio' }) }),
+        h('button.mini', { text: lab.paused ? 'Continuar' : 'Pausar', onclick: () => this.sim.alternarPausaLaboratorio() }),
+        h('button.mini', { text: '1 quadro', onclick: () => this.sim.avancarLaboratorio() }),
+        h('button.mini', { text: 'Reiniciar', onclick: () => this.sim.reiniciarLaboratorio() }),
+        h('button.mini.danger', { text: 'Sair', onclick: () => this.sim.pararLaboratorio() }),
+      ),
+    );
+  }
+
+  /**
+   * Missões rastreadas vivem SOBRE o campo de combate, não só no trilho.
+   *
+   * Em tela ampla o cockpit é útil; em capturas, tela cheia e layouts estreitos
+   * ele pode ficar fora da área visível. Este HUD é a fonte de leitura durante
+   * a luta e é atualizado em baixa frequência para refletir cada objetivo.
+   */
+  private updateMissionHud(): void {
+    if (!this.missionHud) return;
+    const sim = this.sim;
+    const tracked = sim.state.settings.pinnedMissions
+      .map((id) => MISSAO_POR_ID.get(id))
+      .filter((def): def is NonNullable<typeof def> => !!def)
+      .filter((def) => {
+        const status = situacaoDe(sim.state, def, sim.alcanceLiberado);
+        return status === 'ativa' || status === 'pronta';
+      });
+
+    this.missionHud.classList.toggle('visible', tracked.length > 0 && !sim.laboratorio.active);
+    if (!tracked.length || sim.laboratorio.active) {
+      clear(this.missionHud);
+      return;
+    }
+
+    clear(this.missionHud).append(
+      ...tracked.map((def) => {
+        const progress = progressoDe(sim.state, def);
+        const fraction = fracaoDe(sim.state, def);
+        const status = situacaoDe(sim.state, def, sim.alcanceLiberado);
+        const objective = def.objetivos[0]!;
+        const done = Math.min(objective.alvo, progress.passos[0] ?? 0);
+        return h(`.mission-hud-entry${status === 'pronta' ? '.ready' : ''}`, {},
+          h('strong', { text: def.nome }),
+          h('.mission-hud-progress', {},
+            h('span', { text: def.objetivos.length > 1 ? `${objective.texto} +${def.objetivos.length - 1}` : objective.texto }),
+            h('b', { text: status === 'pronta' ? 'PRONTA' : `${fmt(done)}/${fmt(objective.alvo)}` }),
+          ),
+          h('.mission-hud-bar', {}, h('i', { style: { width: `${fraction * 100}%` } })),
+        );
+      }),
+    );
   }
 
   /**
@@ -243,10 +396,10 @@ export class Shell {
     }
 
     clear(this.camadaHost).append(
-      h('.camada-caixa', {},
+      h('.camada-caixa', { role: 'dialog', 'aria-modal': 'true', 'aria-label': painel.title },
         h('.camada-topo', {},
           h('h1', { text: painel.title }),
-          h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', onclick: () => this.voltarDaCamada() }),
+          h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', 'aria-label': 'Fechar', onclick: () => this.voltarDaCamada() }),
         ),
         painel.render(this.sim),
       ),
@@ -277,6 +430,10 @@ export class Shell {
   }
 
   private updateStatus(): void {
+    if (this.sim.laboratorio.active) {
+      this.statusNode.textContent = 'Laboratório isolado · progresso e save suspensos';
+      return;
+    }
     const st = this.sim.state;
     const info = describeGalaxy(galaxyOfSector(st.run.sector));
     this.statusNode.textContent = [
@@ -327,10 +484,10 @@ export class Shell {
 
     const off = bus.on('state:changed', draw);
     const modal = h('.modal-backdrop', {},
-      h('.modal.modal-wide', {},
+      h('.modal.modal-wide', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Configurações' },
         h('.modal-head', {},
           h('h2', { text: 'Configurações' }),
-          h('button.modal-close', { text: '✕', onclick: () => close() }),
+          h('button.modal-close', { text: '✕', 'aria-label': 'Fechar configurações', onclick: () => close() }),
         ),
         body,
       ),

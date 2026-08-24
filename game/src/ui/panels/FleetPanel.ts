@@ -1,5 +1,8 @@
 import { fmt } from '@core/format';
 import { HULLS, type Hull } from '@data/hulls';
+import {
+  HULL_ARCHETYPES, HULL_TUNINGS, HULL_WEAPONS, SPACESHIPS2_HULL_SPEC_BY_ID,
+} from '@data/hulls-spaceships2';
 import { getElement } from '@data/elements';
 import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
@@ -16,7 +19,8 @@ export class FleetPanel implements Panel {
 
   badge(sim: Sim): number {
     return HULLS.filter(
-      (hull) => !sim.frotaDisponivel.includes(hull.id)
+      (hull) => !hull.prototype
+        && !sim.frotaDisponivel.includes(hull.id)
         && sim.alcanceLiberado >= hull.requiresSector
         && sim.state.command.nivel >= nivelExigido(hull.requiresSector)
         && sim.can('cristal', hull.cost),
@@ -26,7 +30,7 @@ export class FleetPanel implements Panel {
   render(sim: Sim): HTMLElement {
     return h('.panel-body', {},
       h('p.muted.hint', {
-        text: 'Cada casco tem um perfil próprio: a nota resume a ficha, as barras mostram onde ele é extremo, '
+        text: `${HULLS.length} cascos cadastrados. Cada casco tem um perfil próprio: a nota resume a ficha, as barras mostram onde ele é extremo, `
           + 'e o elemento define o tipo de dano quando não há arma principal equipada.',
       }),
       h('.fleet-grid', {}, ...HULLS.map((hull) => {
@@ -55,6 +59,7 @@ export class FleetPanel implements Panel {
             h('span.tier', { text: `T${hull.tier}` }),
           ),
           shipBadges(hull),
+          shipBuild(hull),
           h('p.muted.tiny', { text: hull.blurb }),
           shipBars(hull),
           owned
@@ -64,11 +69,21 @@ export class FleetPanel implements Panel {
             : h('button.btn.buy', {
                 disabled: !sim.can('cristal', hull.cost),
                 onclick: () => { sim.buyHull(hull.id); },
-              }, h('span', { text: `${fmt(hull.cost)} cristais` })),
+              }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' })),
         );
       })),
     );
   }
+}
+
+/** Arquétipo, calibração e arma vêm da ficha autoral, não de inferência visual. */
+function shipBuild(hull: Hull): HTMLElement {
+  const spec = SPACESHIPS2_HULL_SPEC_BY_ID.get(hull.id);
+  if (!spec) return h('.ship-build.core', { text: 'Linha original · configuração histórica' });
+  const archetype = HULL_ARCHETYPES.find((entry) => entry.id === spec.archetype)?.name ?? spec.archetype;
+  const tuning = HULL_TUNINGS.find((entry) => entry.id === spec.tuning)?.name ?? spec.tuning;
+  const weapon = HULL_WEAPONS.find((entry) => entry.id === spec.weapon)?.name ?? spec.weapon;
+  return h('.ship-build', { text: `${archetype} · ${tuning} · ${weapon}` });
 }
 
 /** Nota, patente, especialidade e elemento — a linha de identidade do casco. */

@@ -3,8 +3,12 @@ import { bus, toast } from '@app/Bus';
 import { BIOMES, getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
+import { quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
+import {
+  retornoDeDesmanche, valorDeVenda, type RetornoDeDesmanche,
+} from '@data/balance/descarte';
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
@@ -35,7 +39,7 @@ export interface ResultadoDaProvacao {
 }
 import { chefeDoPiso } from '@data/provacao-chefes';
 import {
-  FRACAO_REPETICAO, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
+  FRACAO_REPETICAO, TENTATIVAS_MAX, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
   registrar as registrarTentativa, segundosParaProximaTentativa, tentativasDisponiveis,
   type CamadaDeRecompensa, type EstadoDoPiso,
 } from './provacao';
@@ -43,6 +47,7 @@ import {
   aplicarFato, confiancaDe, contatoDesbloqueado, fracaoDe, progressoDe, situacaoDe,
   sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
 } from './missoes';
+import { aplicarFatoAoEvento, progressoDoEvento, type ProgressoDeEvento } from './eventos';
 import { rarityInfo } from '@data/rarity';
 
 /**
@@ -63,13 +68,27 @@ const PILHA_MAX = 999_999_999;
 
 import { galaxyOfSector } from '@data/galaxies';
 import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
-import { getHull, HULLS } from '@data/hulls';
+import { getHull, HULLS, normalizeHullHitbox, type HullHitbox } from '@data/hulls';
+import { ALL_ENEMIES } from '@data/enemies';
+import { BOSSES } from '@data/bosses';
+import {
+  PLAYER_HITBOX_CALIBRATIONS, PLAYER_SCALE_CALIBRATIONS,
+  calibratedEnemyHitbox, calibratedEnemyScale,
+} from '@data/hitbox-calibrations';
 import {
   RESOURCE_IDS,
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
   type NivelProgresso, type SlotId, type Stats,
 } from './types';
-import { MAGNET_PER_LEVEL, REPAIR_PER_LEVEL, SHOP_BY_ID, shopCost } from '@data/shop';
+import {
+  SHOP_BY_ID, SHOP_CARGO_IDS, shopCost, shopLimit,
+} from '@data/shop';
+import { recalibrationCost } from '@data/balance/recalibracao';
+import {
+  OPERACAO_DE_MODULACAO_POR_ID, custoDeModulacao,
+  type CustoDeModulacao, type OperacaoDeModulacaoId,
+} from '@data/balance/modulacao';
+import { aplicarModulacao, type ResultadoDeModulacao } from './modulacao';
 import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
 
 /**
@@ -92,12 +111,16 @@ export const XP_GANHO_GLOBAL = 24;
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
-import { dropChance, openChest, rollItem, salvageValue, scoreItem } from './loot';
+import { dropChance, openChest, recalibrateAffix, rollItem, scoreItem } from './loot';
 import { createState, saveToStorage } from './state';
 import {
   allocate, allocatePath, canAllocate, canDeallocate, deallocate,
   pointsAvailable, pointsSpent, respec, xpForLevel,
 } from './tree';
+import {
+  createLaboratorio, emptyLabMetrics, labScenario, normalizeLabConfig,
+  type LaboratorioConfig, type LabScenarioId,
+} from './laboratorio';
 
 /**
  * Fração das cápsulas que a nave REALMENTE alcança, no caminho abstrato.
@@ -136,6 +159,9 @@ export interface OfflineReport {
 export class Sim {
   state: GameState;
 
+  /** Sandbox efêmero: nunca entra no GameState nem no save. */
+  readonly laboratorio = createLaboratorio();
+
   private statsCache: Stats | null = null;
   private encounterCache: Encounter | null = null;
   private readonly rng = new Rng();
@@ -170,6 +196,25 @@ export class Sim {
 
   constructor(state?: GameState) {
     this.state = state ?? createState();
+    // A primeira abertura do Laboratório precisa refletir a mesma fonte que os
+    // cartões marcam como revisada. Sem esta sincronização, a UI dizia
+    // “calibrada” mas começava nos antigos 30×30 até a nave ser reselecionada.
+    const lab = this.laboratorio.config;
+    const playerBox = this.hitboxDoCasco(lab.playerHullId);
+    const enemyBox = this.hitboxSalvaDoInimigo(lab.enemyHitboxKey)
+      ?? this.hitboxPadraoDoInimigo(lab.enemyHitboxKey);
+    this.laboratorio.config = normalizeLabConfig({
+      playerSpriteScale: this.escalaDoCasco(lab.playerHullId),
+      playerHitboxWidth: playerBox.width,
+      playerHitboxHeight: playerBox.height,
+      playerHitboxOffsetX: playerBox.offsetX,
+      playerHitboxOffsetY: playerBox.offsetY,
+      enemySpriteScale: this.escalaDoInimigo(lab.enemyHitboxKey) ?? lab.enemySpriteScale,
+      enemyHitboxWidth: enemyBox.width,
+      enemyHitboxHeight: enemyBox.height,
+      enemyHitboxOffsetX: enemyBox.offsetX,
+      enemyHitboxOffsetY: enemyBox.offsetY,
+    }, lab);
     this.refreshEncounter();
   }
 
@@ -307,7 +352,209 @@ export class Sim {
 
   /** Quantos passos fixos o laço deve rodar por quadro. */
   get timeScale(): number {
+    if (this.laboratorio.active) return this.laboratorio.paused ? (this.laboratorio.step > 0 ? 1 : 0) : this.laboratorio.config.speed;
     return this.testMode ? Math.max(1, Math.min(8, Math.round(this.state.settings.speed))) : 1;
+  }
+
+  atualizarLaboratorio(patch: Partial<LaboratorioConfig>): void {
+    this.laboratorio.config = normalizeLabConfig(patch, this.laboratorio.config);
+    bus.emit('laboratorio:changed');
+  }
+
+  /** Hitbox efetiva: calibração administrativa vence a ficha padrão do casco. */
+  hitboxDoCasco(id: string): HullHitbox {
+    const hull = getHull(id);
+    return normalizeHullHitbox(PLAYER_HITBOX_CALIBRATIONS[id] ?? hull.hitbox);
+  }
+
+  hitboxSalvaDoInimigo(key: string): HullHitbox | undefined {
+    const saved = calibratedEnemyHitbox(key);
+    return saved ? normalizeHullHitbox(saved) : undefined;
+  }
+
+  escalaDoCasco(id: string): number {
+    const hull = getHull(id);
+    return PLAYER_SCALE_CALIBRATIONS[id] ?? (hull.damageStates ? 1.5 : (hull.scale ?? .62));
+  }
+
+  escalaDoInimigo(key: string): number | undefined {
+    return calibratedEnemyScale(key);
+  }
+
+  cascoTemHitboxCalibrada(id: string): boolean {
+    return PLAYER_HITBOX_CALIBRATIONS[id] !== undefined;
+  }
+
+  inimigoTemHitboxCalibrada(key: string): boolean {
+    return calibratedEnemyHitbox(key) !== undefined;
+  }
+
+  hitboxPadraoDoInimigo(key: string): HullHitbox {
+    const [kind, id] = key.split(':');
+    const target = kind === 'boss'
+      ? BOSSES.find((entry) => entry.id === id)
+      : ALL_ENEMIES.find((entry) => entry.id === id);
+    const scale = this.escalaDoInimigo(key) ?? target?.scale ?? 1;
+    const diameter = target ? target.radius * scale * 2 : 30;
+    return normalizeHullHitbox({ width: diameter, height: diameter, offsetX: 0, offsetY: 0 });
+  }
+
+  /** Ajuste rápido sempre lê o valor atual e liga a visualização. */
+  ajustarHitboxLaboratorio(
+    target: 'player' | 'enemy',
+    axis: 'width' | 'height' | 'offsetX' | 'offsetY',
+    delta: number,
+  ): void {
+    const fields = target === 'player'
+      ? {
+          width: 'playerHitboxWidth', height: 'playerHitboxHeight',
+          offsetX: 'playerHitboxOffsetX', offsetY: 'playerHitboxOffsetY',
+        } as const
+      : {
+          width: 'enemyHitboxWidth', height: 'enemyHitboxHeight',
+          offsetX: 'enemyHitboxOffsetX', offsetY: 'enemyHitboxOffsetY',
+        } as const;
+    const field = fields[axis];
+    this.atualizarLaboratorio({
+      [field]: this.laboratorio.config[field] + delta,
+      hitboxTarget: target,
+      showHitboxes: true,
+    });
+  }
+
+  /**
+   * Carrega arte, atributos, tiro e hitbox de um casco real no sandbox.
+   * O cenário padronizado permite comparar cascos sem equipamento ou progressão.
+   */
+  carregarCascoNoLaboratorio(id: string, confrontoPadronizado = false): boolean {
+    const hull = HULLS.find((entry) => entry.id === id);
+    if (!hull) return false;
+    const clean = createState(1);
+    clean.hull = hull.id;
+    clean.fleet = [hull.id];
+    const stats = resolveStats(clean);
+    const box = this.hitboxDoCasco(id);
+    this.atualizarLaboratorio({
+      playerHullId: hull.id,
+      playerShotHullId: hull.id,
+      playerSprite: hull.sprite,
+      playerSpriteScale: this.escalaDoCasco(id),
+      playerHitboxWidth: box.width,
+      playerHitboxHeight: box.height,
+      playerHitboxOffsetX: box.offsetX,
+      playerHitboxOffsetY: box.offsetY,
+      playerElement: hull.element,
+      defenseElement: hull.element,
+      playerDamage: stats.dano,
+      playerFireRate: stats.cadencia,
+      playerShots: stats.projeteis,
+      playerBulletSpeed: hull.shot.speed,
+      playerSpread: hull.shot.spread,
+      playerPierce: stats.perfuracao,
+      playerSplash: stats.explosao,
+      playerCritChance: stats.critChance,
+      playerCritDamage: stats.critDano,
+      playerHp: stats.vida,
+      playerShield: stats.escudo,
+      playerRegen: stats.regen,
+      playerSpeed: stats.velocidade,
+      playerAiSkill: stats.iaSkill,
+      showHitboxes: true,
+      ...(confrontoPadronizado ? {
+        control: 'equilibrado' as const,
+        autoFire: true,
+        immortal: false,
+        autoRespawn: true,
+        enemyId: 'lanceiro',
+        enemyShotEnemyId: 'lanceiro',
+        enemySprite: 'enemy/wraith_a',
+        enemySpriteScale: this.escalaDoInimigo('enemy:lanceiro') ?? 0.55,
+        enemyHitboxKey: 'enemy:lanceiro',
+        enemyHitboxWidth: this.hitboxSalvaDoInimigo('enemy:lanceiro')?.width ?? 20.9,
+        enemyHitboxHeight: this.hitboxSalvaDoInimigo('enemy:lanceiro')?.height ?? 20.9,
+        enemyHitboxOffsetX: this.hitboxSalvaDoInimigo('enemy:lanceiro')?.offsetX ?? 0,
+        enemyHitboxOffsetY: this.hitboxSalvaDoInimigo('enemy:lanceiro')?.offsetY ?? 0,
+        enemyCount: 3,
+        enemyMove: 'pairar' as const,
+        enemyAttack: 'mirado' as const,
+        enemyElement: 'padrao' as const,
+        enemyElementalFraction: 0,
+        enemyHp: 600,
+        enemyDamage: 30,
+        enemySpeed: 90,
+        enemyFireRate: 1,
+        enemyShots: 1,
+        enemyBulletSpeed: 280,
+        speed: 8,
+      } : {}),
+    });
+    return true;
+  }
+
+  /** Aplica um protocolo reproduzível sem copiar fichas de inimigo na UI. */
+  carregarCenarioLaboratorio(id: LabScenarioId): boolean {
+    const scenario = labScenario(id);
+    const enemy = ALL_ENEMIES.find((entry) => entry.id === scenario.enemyId);
+    if (!enemy) return false;
+    const key = `enemy:${enemy.id}`;
+    const box = this.hitboxSalvaDoInimigo(key) ?? this.hitboxPadraoDoInimigo(key);
+    this.atualizarLaboratorio({
+      scenario: id,
+      enemyId: enemy.id,
+      enemyShotEnemyId: enemy.id,
+      enemySprite: enemy.sprite,
+      enemySpriteScale: this.escalaDoInimigo(key) ?? enemy.scale,
+      enemyHitboxKey: key,
+      enemyHitboxWidth: box.width,
+      enemyHitboxHeight: box.height,
+      enemyHitboxOffsetX: box.offsetX,
+      enemyHitboxOffsetY: box.offsetY,
+      control: 'equilibrado', autoFire: true, immortal: false, speed: 8,
+      ...scenario.config,
+    });
+    return true;
+  }
+
+  iniciarLaboratorio(): void {
+    this.laboratorio.active = true;
+    this.laboratorio.paused = false;
+    this.reiniciarLaboratorio();
+  }
+
+  reiniciarLaboratorio(): void {
+    this.laboratorio.metrics = emptyLabMetrics();
+    // Pausado, libera exatamente um passo para a cena reconstruir já; sem isso
+    // o botão pareceria não fazer nada até o usuário apertar Continuar.
+    this.laboratorio.step = this.laboratorio.paused ? 1 : 0;
+    this.laboratorio.revision++;
+    bus.emit('laboratorio:changed');
+  }
+
+  pararLaboratorio(): void {
+    this.laboratorio.active = false;
+    this.laboratorio.paused = false;
+    this.laboratorio.step = 0;
+    this.laboratorio.revision++;
+    bus.emit('laboratorio:changed');
+  }
+
+  alternarPausaLaboratorio(): void {
+    if (!this.laboratorio.active) return;
+    this.laboratorio.paused = !this.laboratorio.paused;
+    bus.emit('laboratorio:changed');
+  }
+
+  avancarLaboratorio(): void {
+    if (!this.laboratorio.active) return;
+    this.laboratorio.paused = true;
+    this.laboratorio.step++;
+    bus.emit('laboratorio:changed');
+  }
+
+  consumirPassoLaboratorio(): boolean {
+    if (this.laboratorio.step <= 0) return false;
+    this.laboratorio.step--;
+    return true;
   }
 
   /** Salta direto para um setor. Só existe para o modo de teste. */
@@ -424,8 +671,28 @@ export class Sim {
    */
   registrar(fato: FatoDeJogo): void {
     const prontas = aplicarFato(this.state, fato, this.alcanceLiberado);
+    const evento = aplicarFatoAoEvento(this.state, this.alcanceLiberado, fato);
     for (const m of prontas) toast(`Missão concluída: ${m.nome}`, 'epic');
-    if (prontas.length) this.touch();
+    if (evento.completou) toast('Objetivo do evento concluído — recompensa disponível', 'epic', 'recurso/gas_exotico');
+    if (prontas.length || evento.mudou) this.touch();
+  }
+
+  /** Evento rotativo atual e progresso desta ocorrência. */
+  get eventoAtivo(): ProgressoDeEvento {
+    return progressoDoEvento(this.state, this.alcanceLiberado);
+  }
+
+  resgatarEvento(): boolean {
+    const atual = this.eventoAtivo;
+    if (!atual.liberado || atual.resgatado || atual.progresso < atual.alvo) return false;
+    const { def, chave } = atual.janela;
+    if ((this.state.armazem[def.gas] ?? 0) <= 0 && this.materiaisGuardados >= this.resourceSlots) return false;
+    const guardado = this.guardarMaterial(def.gas, def.quantidade);
+    if (guardado < def.quantidade) return false;
+    this.state.eventos[chave] = { progresso: atual.alvo, resgatado: true };
+    toast(`${def.nome}: +${def.quantidade} ${RECURSO_POR_ID.get(def.gas)?.nome ?? def.gas}`, 'epic', `recurso/${def.gas}`);
+    this.touch();
+    return true;
   }
 
   /**
@@ -446,6 +713,11 @@ export class Sim {
       }
       for (const [rec, n] of Object.entries(def.consomeNaEntrega)) this.gastarMaterial(rec, n);
     }
+
+    // A missão é entregue antes de emitir os fatos das recompensas. Isso faz a
+    // próxima etapa da cadeia já estar ativa quando recebe o material que a
+    // etapa anterior produz — sem retroatividade global e sem perder o fato.
+    progressoDe(this.state, def).entregue = true;
 
     const r = def.recompensa;
     for (const [moeda, n] of Object.entries(r.moedas ?? {})) this.grant(moeda as ResourceId, n);
@@ -479,7 +751,6 @@ export class Sim {
       }
     }
 
-    progressoDe(this.state, def).entregue = true;
     toast(`${def.nome} — recompensa recebida`, 'epic');
     this.touch();
     return true;
@@ -937,11 +1208,11 @@ export class Sim {
     if (run.wave > WAVES_PER_SECTOR) {
       // O setor caiu: só agora a carga da incursão vira saldo.
       this.bankCarga();
-      // Cada planeta solta os SEUS três recursos (§10). Entram ao fechar o
+      // Cada galáxia tem um material-assinatura (§10). Ele entra ao fechar o
       // setor, no mesmo momento em que a carga é depositada: recurso de planeta
       // é o pagamento por ter limpado o lugar, não por ter matado um inimigo.
       for (const r of recursosDoPlaneta(run.sector)) {
-        this.guardarMaterial(r.id, 3 + Math.floor(this.stats.sorte * 2));
+        this.guardarMaterial(r.id, quantidadeDeMaterialGalactico(run.sector, this.stats.sorte));
       }
       run.wave = 1;
       run.cleared++;
@@ -1308,7 +1579,7 @@ export class Sim {
   /** Capacidade do depósito de RECURSOS (§29), separada da de itens. */
   get resourceSlots(): number {
     // Modo de teste: depósito cheio, para o conteúdo caber sem farmar concessão.
-    return this.testMode ? CARGA_MAXIMA : capacidadeDeRecursos(this.state.cargaLiberada);
+    return this.testMode ? CARGA_MAXIMA : capacidadeDeRecursos(this.concessoesDeCarga);
   }
 
   /**
@@ -1419,7 +1690,7 @@ export class Sim {
     }
 
     if (item.rarity < this.state.settings.autoSalvage) {
-      this.grant('nucleo', salvageValue(item));
+      this.descartarAutomaticamente(item);
       return;
     }
 
@@ -1429,15 +1700,16 @@ export class Sim {
 
   private stash(item: Item): void {
     if (this.state.inventory.length >= this.cargoSlots) {
-      // Bagagem cheia: desmancha o pior item não-favorito para abrir espaço.
+      // Bagagem cheia: aplica o destino automático ao pior não-favorito.
       const worst = this.state.inventory
         .filter((i) => !i.favorite)
         .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl)[0];
       if (!worst || worst.rarity > item.rarity) {
-        this.grant('nucleo', salvageValue(item));
+        this.descartarAutomaticamente(item);
         return;
       }
-      this.salvage(worst.uid);
+      if (this.state.settings.autoDispose === 'vender') this.sell(worst.uid);
+      else if (!this.salvage(worst.uid)) this.sell(worst.uid);
     }
     this.state.inventory.push(item);
   }
@@ -1461,43 +1733,85 @@ export class Sim {
     this.touch();
   }
 
-  salvage(uid: string): void {
+  /** Vende uma peça por Sucata. Nunca gera material ou outra moeda. */
+  sell(uid: string): number {
     const idx = this.state.inventory.findIndex((i) => i.uid === uid);
-    if (idx < 0) return;
-    const [item] = this.state.inventory.splice(idx, 1);
-    if (item) {
-      this.grant('nucleo', salvageValue(item));
-      this.materialDeDesmanche(item);
-    }
+    if (idx < 0) return 0;
+    const item = this.state.inventory[idx]!;
+    if (item.favorite) return 0;
+    const valor = valorDeVenda(item);
+    this.state.inventory.splice(idx, 1);
+    this.grant('sucata', valor);
+    return valor;
   }
 
   /**
-   * Desmanchar rende MATERIAL, não só moeda (§29).
+   * Desmontar rende somente materiais (§29).
    *
-   * É o que liga o inventário apertado ao craft: uma peça que não serve deixa
-   * de ser lixo e vira insumo. Sem isto, o Armazém só encheria com o que cai
-   * pronto, e desmanchar continuaria sendo apenas "converter em núcleo".
+   * Venda e desmontagem precisam competir. Se uma peça desse Sucata e material
+   * ao mesmo tempo, a venda seria uma ação falsa e o jogador nunca teria uma
+   * decisão econômica. Favoritos exigem desmarcação antes de qualquer descarte.
    */
-  private materialDeDesmanche(item: Item): void {
-    // A quantidade acompanha nível e raridade — desmanchar um Divino de nível
-    // alto tem de valer mais que dez Comuns de nível baixo.
-    const base = Math.max(1, Math.round(item.ilvl * 0.4 * (1 + item.rarity * 0.5)));
-    this.guardarMaterial('ferrita', base);
-    if (item.rarity >= 2) this.guardarMaterial('titanio', Math.max(1, Math.round(base * 0.25)));
-    if (item.rarity >= 4) this.guardarMaterial('iridio', Math.max(1, Math.round(base * 0.08)));
+  salvage(uid: string): RetornoDeDesmanche | null {
+    const idx = this.state.inventory.findIndex((i) => i.uid === uid);
+    if (idx < 0) return null;
+    const item = this.state.inventory[idx]!;
+    if (item.favorite) return null;
+    const retorno = retornoDeDesmanche(item);
+    if (!this.cabemMateriais(retorno.materiais)) return null;
+    this.state.inventory.splice(idx, 1);
+    this.guardarRetorno(retorno);
+    return retorno;
   }
 
-  /** Desmancha tudo abaixo de uma raridade, exceto favoritos. Devolve o total. */
-  salvageBelow(rarity: number): number {
-    const keep: Item[] = [];
-    let gained = 0;
-    for (const item of this.state.inventory) {
-      if (item.favorite || item.rarity >= rarity) keep.push(item);
-      else gained += salvageValue(item);
+  /** Vende em lote abaixo da raridade, sempre preservando favoritos. */
+  sellBelow(rarity: number): { itens: number; sucata: number } {
+    const ids = this.state.inventory
+      .filter((item) => !item.favorite && item.rarity < rarity)
+      .map((item) => item.uid);
+    let sucata = 0;
+    let itens = 0;
+    for (const uid of ids) {
+      const valor = this.sell(uid);
+      if (valor > 0) { sucata += valor; itens++; }
     }
-    this.state.inventory = keep;
-    this.grant('nucleo', gained);
-    return gained;
+    return { itens, sucata };
+  }
+
+  /** Desmonta em lote abaixo da raridade, preservando favoritos e sem perdas. */
+  salvageBelow(rarity: number): { itens: number; materiais: Record<string, number> } {
+    const ids = this.state.inventory
+      .filter((item) => !item.favorite && item.rarity < rarity)
+      .map((item) => item.uid);
+    const materiais: Record<string, number> = {};
+    let itens = 0;
+    for (const uid of ids) {
+      const retorno = this.salvage(uid);
+      if (!retorno) continue;
+      itens++;
+      for (const [id, n] of Object.entries(retorno.materiais)) materiais[id] = (materiais[id] ?? 0) + n;
+    }
+    return { itens, materiais };
+  }
+
+  private cabemMateriais(materiais: Readonly<Record<string, number>>): boolean {
+    const novos = Object.keys(materiais).filter((id) => (this.state.armazem[id] ?? 0) <= 0).length;
+    return this.materiaisGuardados + novos <= this.resourceSlots;
+  }
+
+  private guardarRetorno(retorno: RetornoDeDesmanche): void {
+    for (const [id, n] of Object.entries(retorno.materiais)) this.guardarMaterial(id, n);
+  }
+
+  /** Item ainda fora do inventário: se o Armazém lotou, vende em vez de perder. */
+  private descartarAutomaticamente(item: Item): void {
+    if (this.state.settings.autoDispose === 'vender') {
+      this.grant('sucata', valorDeVenda(item));
+      return;
+    }
+    const retorno = retornoDeDesmanche(item);
+    if (this.cabemMateriais(retorno.materiais)) this.guardarRetorno(retorno);
+    else this.grant('sucata', valorDeVenda(item));
   }
 
   toggleFavorite(uid: string): void {
@@ -1517,7 +1831,7 @@ export class Sim {
     this.state.chests[tier]!--;
 
     const def = CHEST_BY_ID.get(tier);
-    const items = openChest(this.rng, tier, this.encounter.ilvl, this.stats.sorte, this.state.universe.index);
+    const items = openChest(this.rng, tier, this.encounter.ilvl, this.state.universe.index);
 
     if (def) {
       // Os recursos do baú escalam com o setor: um baú de bronze aos 60 não
@@ -1550,45 +1864,77 @@ export class Sim {
     return this.state.shop[id] ?? 0;
   }
 
+  /**
+   * Concilia compras antigas de carga com o registro novo de concessões.
+   *
+   * A loja anterior incrementava `shop.carga`, mas nunca chamava
+   * `concederCarga`. Derivar os ids aqui recupera esses espaços sem migração de
+   * save e o Set impede contar duas vezes nas compras feitas já corrigidas.
+   */
+  private get concessoesDeCarga(): string[] {
+    const ids = new Set(this.state.cargaLiberada);
+    for (const id of SHOP_CARGO_IDS.slice(0, Math.min(SHOP_CARGO_IDS.length, this.shopOwned('carga')))) {
+      ids.add(id);
+    }
+    return [...ids];
+  }
+
   /** Espaços de carga: base do save + o que a loja adicionou. */
   get cargoSlots(): number {
     // A capacidade vem das CONCESSÕES obtidas (§28), não de um número no save.
     // O jogador começa com 15 — grade 5 × 3 — e cresce até 70 por loja, chefe e
     // universo; missões e conquistas entram quando existirem, sem tocar aqui.
-    return this.testMode ? CARGA_MAXIMA : capacidadeDeItens(this.state.cargaLiberada);
+    return this.testMode ? CARGA_MAXIMA : capacidadeDeItens(this.concessoesDeCarga);
   }
 
-  /** Multiplicador do raio do ímã de coleta. */
-  get magnetRange(): number {
-    return 1 + this.shopOwned('ima') * MAGNET_PER_LEVEL;
+  /** Limite atual de compras; zero significa serviço sem cota. */
+  shopPurchaseLimit(id: string): number {
+    const def = SHOP_BY_ID.get(id);
+    return def ? shopLimit(def, this.state.command.nivel) : 0;
   }
 
-  /** Fração do casco recuperada ao limpar uma onda. */
-  get repairPerWave(): number {
-    return this.shopOwned('reparo') * REPAIR_PER_LEVEL;
-  }
-
-  buyShopItem(id: string): boolean {
+  canBuyShopItem(id: string): boolean {
     const def = SHOP_BY_ID.get(id);
     if (!def) return false;
 
     const owned = this.shopOwned(id);
-    if (def.max > 0 && owned >= def.max) return false;
+    const limit = shopLimit(def, this.state.command.nivel);
+    if (limit > 0 && owned >= limit) return false;
     if (this.alcanceLiberado < (def.requiresSector ?? 0)) return false;
-    // Requisito de NÍVEL além do de setor (§17). Ver `nivelExigido`: quem
-    // chegou jogando passa com folga; quem pulou, não.
     if (this.nivelLiberado < nivelExigido(def.requiresSector ?? 0)) return false;
-    if (!this.spend(def.currency, shopCost(def, def.kind === 'consumivel' ? 0 : owned))) return false;
+    if (def.effect === 'tentativa_provacao' && tentativasDisponiveis(this.state) >= TENTATIVAS_MAX) return false;
+    if (def.effect === 'refaz_matriz' && this.matrixSpent <= 0) return false;
+    return this.can(def.currency, shopCost(def, owned));
+  }
 
-    // Consumíveis não acumulam nível: entregam o efeito e pronto.
-    if (def.kind === 'permanente') this.state.shop[id] = owned + 1;
+  buyShopItem(id: string): boolean {
+    const def = SHOP_BY_ID.get(id);
+    if (!def || !this.canBuyShopItem(id)) return false;
+
+    const owned = this.shopOwned(id);
+    if (!this.spend(def.currency, shopCost(def, owned))) return false;
+
+    // O histórico também conta serviços: é ele que fecha a cota dos câmbios e
+    // deixa a interface mostrar quantas operações já foram usadas.
+    this.state.shop[id] = owned + 1;
+
+    for (const [resource, amount] of Object.entries(def.output ?? {})) {
+      this.grant(resource as ResourceId, amount ?? 0);
+    }
 
     switch (def.effect) {
-      case 'bau_bronze': this.grantChest('bronze', 1, 'loja'); break;
-      case 'bau_prata': this.grantChest('prata', 1, 'loja'); break;
-      case 'bau_ouro': this.grantChest('ouro', 1, 'loja'); break;
-      case 'bau_singularidade': this.grantChest('singularidade', 1, 'loja'); break;
-      case 'refaz': respec(this.state); break;
+      case 'carga': {
+        const concessao = SHOP_CARGO_IDS[owned];
+        if (concessao) this.concederCarga(concessao);
+        break;
+      }
+      case 'refaz_matriz': respec(this.state); break;
+      case 'tentativa_provacao': {
+        const p = this.state.provacao;
+        p.tentativas = Math.min(TENTATIVAS_MAX, tentativasDisponiveis(this.state) + 1);
+        if (p.tentativas >= TENTATIVAS_MAX) p.tentativasEm = Date.now();
+        break;
+      }
       default: break;
     }
 
@@ -1596,11 +1942,70 @@ export class Sim {
     return true;
   }
 
+  /** Preço em núcleos para recalibrar uma linha do item. */
+  recalibrationPrice(uid: string): number | null {
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    return item ? recalibrationCost(item) : null;
+  }
+
+  /**
+   * Substitui uma linha por outra naturalmente possível naquele item.
+   * Raridade, nível, elemento, conjunto e tier da linha ficam intactos.
+   */
+  recalibrateItemAffix(uid: string, index: number): Item['affixes'][number] | null {
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    if (!item || !item.affixes[index]) return null;
+    const cost = recalibrationCost(item);
+    if (!this.can('nucleo', cost)) return null;
+    const rolled = recalibrateAffix(this.rng, item, index);
+    if (!rolled || !this.spend('nucleo', cost)) return null;
+    item.affixes[index] = rolled;
+    toast(`Afixo recalibrado · T${rolled.tier ?? 1}`, 'epic', item.icon);
+    this.touch();
+    return rolled;
+  }
+
+  /** Receita concreta exibida pela Bancada de Modulação. */
+  modulationCost(uid: string, operacaoId: OperacaoDeModulacaoId): CustoDeModulacao | null {
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    const operacao = OPERACAO_DE_MODULACAO_POR_ID.get(operacaoId);
+    return item && operacao ? custoDeModulacao(item, operacao) : null;
+  }
+
+  /**
+   * Executa uma das dez operações, de forma atômica: nenhuma essência é
+   * cobrada quando o item não aceita a transformação.
+   */
+  modulateItem(
+    uid: string,
+    operacaoId: OperacaoDeModulacaoId,
+    index = -1,
+  ): ResultadoDeModulacao | null {
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    const operacao = OPERACAO_DE_MODULACAO_POR_ID.get(operacaoId);
+    if (!item || !operacao) return null;
+
+    const custo = custoDeModulacao(item, operacao);
+    if (!this.can('nucleo', custo.nucleos)) return null;
+    if (this.materialDisponivel(custo.essencia) < custo.quantidade) return null;
+
+    const resultado = aplicarModulacao(this.rng, item, operacaoId, index);
+    if (!resultado) return null;
+
+    // As duas verificações acima tornam estes descontos infalíveis no mesmo
+    // turno. Se isso mudar no futuro, a mutação deverá ganhar rollback.
+    this.spend('nucleo', custo.nucleos);
+    this.gastarMaterial(custo.essencia, custo.quantidade);
+    toast(`${operacao.nome} concluída`, 'epic', item.icon);
+    this.touch();
+    return resultado;
+  }
+
   // ── frota ─────────────────────────────────────────────────────────────────
 
   buyHull(id: string): boolean {
     const hull = HULLS.find((h) => h.id === id);
-    if (!hull || this.frotaDisponivel.includes(id)) return false;
+    if (!hull || hull.prototype || this.frotaDisponivel.includes(id)) return false;
     if (this.alcanceLiberado < hull.requiresSector) return false;
     if (this.nivelLiberado < nivelExigido(hull.requiresSector)) return false;
     if (!this.spend('cristal', hull.cost)) return false;

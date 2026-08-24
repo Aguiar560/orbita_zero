@@ -1,145 +1,117 @@
-import type { ResourceId, StatId } from '@sim/types';
+import type { ResourceId } from '@sim/types';
 
-export type ShopKind =
-  /** Compra repetível que some ao usar (baús). */
-  | 'consumivel'
-  /** Contrato permanente, com níveis e custo crescente. */
-  | 'permanente';
+export type ShopCategory = 'logistica' | 'sistemas' | 'cambio';
+export type ShopKind = 'permanente' | 'servico' | 'cambio';
+
+export type ShopEffect =
+  | 'carga'
+  | 'refaz_matriz'
+  | 'tentativa_provacao'
+  | 'sucata_para_nucleo'
+  | 'nucleo_para_cristal';
+
+export interface ShopQuota {
+  /** Operações liberadas desde o começo. */
+  base: number;
+  /** A cada N níveis de comando uma nova operação entra no estoque. */
+  everyLevels: number;
+  /** Teto absoluto de operações desta linha. */
+  cap: number;
+}
 
 export interface ShopItem {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  detail: string;
+  /** Arte exclusiva do serviço; não reutiliza sprites de recursos ou equipamentos. */
+  art: string;
+  category: ShopCategory;
   kind: ShopKind;
   currency: ResourceId;
-  /** Custo do primeiro nível / da primeira unidade. */
+  /** Custo da primeira compra. */
   cost: number;
-  /** Fator geométrico por compra. 1 = preço fixo. */
+  /** Escala geométrica apenas para contratos permanentes. */
   growth: number;
-  /** Quantas vezes pode ser comprado. 0 = sem limite. */
+  /** Níveis máximos do contrato permanente. Zero = não se aplica. */
   max: number;
-  /** Efeito, quando é uma melhoria de atributo. */
-  stat?: { id: StatId; kind: 'add' | 'mul'; per: number };
-  /** Efeito especial, tratado à mão pela simulação. */
-  effect?: 'carga' | 'imã' | 'reparo' | 'bau_bronze' | 'bau_prata' | 'bau_ouro' | 'bau_singularidade' | 'refaz';
-  /** Setor recorde mínimo para aparecer na prateleira. */
+  effect: ShopEffect;
+  /** Recurso entregue por uma operação de câmbio. */
+  output?: Partial<Record<ResourceId, number>>;
+  /** Estoque que cresce com o nível, evitando conversão infinita. */
+  quota?: ShopQuota;
   requiresSector?: number;
 }
 
 /**
- * Loja de utilidades.
+ * Central de Serviços.
  *
- * Serve ao recurso que sobra. Sucata acumula sozinha com a patrulha e núcleos
- * vêm de desmanche, então sem um ralo permanente eles viram números mortos no
- * topo da tela. Cristais são raros e compram o que realmente atalha: baús e
- * capacidade.
+ * A loja antiga vendia Sorte, XP, cura e multiplicadores de renda permanentes.
+ * Isso a transformava numa quarta fonte de progressão ao lado de item, craft e
+ * Matriz. O catálogo novo não possui `stat`: ele movimenta logística, devolve
+ * tempo ou converte recursos com perda.
  *
- * Nada aqui é exclusivo — tudo pode ser obtido jogando. A loja compra TEMPO,
- * não poder que o jogo não dê de outra forma.
- *
- * É por isso que ela sobreviveu à remoção das Melhorias: nenhum contrato daqui
- * toca dano, vida, escudo ou cadência. O poder da nave vem de item, craft e
- * Matriz — a loja mexe em logística e rendimento. Se algum dia entrar aqui um
- * contrato de atributo de combate, ele recria o sistema paralelo que foi
- * removido e deve ser recusado.
+ * Cápsulas também saíram daqui. Elas pertencem à Câmara de Aquisição, que já
+ * mostra probabilidades e identidade de cada uma; duplicar a compra em outra
+ * tela esconderia informação justamente no momento da decisão.
  */
 export const SHOP: readonly ShopItem[] = [
-  // ── logística ─────────────────────────────────────────────────────────────
   {
-    id: 'carga', name: 'Expansão de Carga', kind: 'permanente',
-    desc: '+7 espaços no inventário. Uma fileira inteira da grade.',
-    icon: 'powerup/icon_bounty', currency: 'nucleo', cost: 400, growth: 1.75, max: 20,
+    id: 'carga', name: 'Módulo de Carga', category: 'logistica', kind: 'permanente',
+    desc: '+5 espaços de equipamento e +5 tipos de material.',
+    detail: 'Instala um compartimento físico permanente. Existem quatro módulos, cada um registrado separadamente no manifesto da nave.',
+    art: 'loja_servico_carga.webp', currency: 'nucleo', cost: 400, growth: 1.85, max: 4,
     effect: 'carga',
   },
   {
-    id: 'ima', name: 'Bobina de Atração', kind: 'permanente',
-    desc: '+18% no alcance do ímã de coleta. Menos cápsulas perdidas pela base.',
-    icon: 'powerup/icon_rapid', currency: 'nucleo', cost: 300, growth: 1.6, max: 12,
-    effect: 'imã',
+    id: 'refaz_matriz', name: 'Chave de Reconfiguração', category: 'sistemas', kind: 'servico',
+    desc: 'Devolve todos os pontos alocados na Matriz.',
+    detail: 'Não concede pontos nem atributos. Apenas permite redistribuir o poder que o nível de comando já conquistou.',
+    art: 'loja_servico_matriz.webp', currency: 'cristal', cost: 25, growth: 1, max: 0,
+    effect: 'refaz_matriz', requiresSector: 5,
   },
   {
-    id: 'reparo', name: 'Doca de Campo', kind: 'permanente',
-    desc: 'Recupera +8% do casco ao limpar cada onda.',
-    icon: 'ui/icon_heart', currency: 'nucleo', cost: 900, growth: 1.9, max: 8,
-    effect: 'reparo',
-  },
-
-  // ── contratos: sucata vira rendimento ─────────────────────────────────────
-  {
-    id: 'contrato_sucata', name: 'Contrato de Sucata', kind: 'permanente',
-    desc: '+20% de sucata da patrulha, para sempre.',
-    icon: 'ui/icon_coin', currency: 'sucata', cost: 5000, growth: 1.55, max: 40,
-    stat: { id: 'sucataGanho', kind: 'mul', per: 0.2 },
+    id: 'tentativa_provacao', name: 'Carga de Provação', category: 'sistemas', kind: 'servico',
+    desc: 'Recupera imediatamente 1 tentativa, sem ultrapassar o teto.',
+    detail: 'Compra tempo de recarga. O limite continua sendo cinco tentativas e nenhuma vitória é concedida pela loja.',
+    art: 'loja_servico_tentativa.webp', currency: 'cristal', cost: 12, growth: 1, max: 0,
+    effect: 'tentativa_provacao',
   },
   {
-    id: 'contrato_nucleo', name: 'Contrato de Extração', kind: 'permanente',
-    desc: '+15% de núcleos por abate.',
-    icon: 'powerup/icon_shield', currency: 'sucata', cost: 12000, growth: 1.6, max: 30,
-    stat: { id: 'nucleoGanho', kind: 'mul', per: 0.15 },
-    requiresSector: 8,
+    id: 'compactar_sucata', name: 'Compactação Industrial', category: 'cambio', kind: 'cambio',
+    desc: 'Converte 6.000 de sucata em 200 núcleos.',
+    detail: 'A oficina reaproveita volume bruto com forte perda. O estoque de operações cresce junto do nível de comando.',
+    art: 'loja_servico_compactacao.webp', currency: 'sucata', cost: 6000, growth: 1, max: 0,
+    output: { nucleo: 200 }, effect: 'sucata_para_nucleo', requiresSector: 3,
+    quota: { base: 4, everyLevels: 5, cap: 50 },
   },
   {
-    id: 'contrato_xp', name: 'Arquivo de Missão', kind: 'permanente',
-    desc: '+18% de XP de comando — a matriz abre mais rápido.',
-    icon: 'node/exp', currency: 'sucata', cost: 20000, growth: 1.65, max: 25,
-    stat: { id: 'xpGanho', kind: 'mul', per: 0.18 },
-    requiresSector: 12,
-  },
-  {
-    id: 'licenca_sorte', name: 'Licença de Prospecção', kind: 'permanente',
-    desc: '+6% de sorte. Mais drops e de melhor raridade.',
-    icon: 'powerup/icon_bounty', currency: 'cristal', cost: 40, growth: 1.5, max: 25,
-    stat: { id: 'sorte', kind: 'add', per: 0.06 },
-    requiresSector: 15,
-  },
-
-  // ── consumíveis ───────────────────────────────────────────────────────────
-  {
-    id: 'bau_bronze', name: 'Cápsula de Bronze', kind: 'consumivel',
-    desc: '1–2 itens do nível do setor atual.',
-    icon: 'powerup/icon_bounty', currency: 'nucleo', cost: 250, growth: 1, max: 0,
-    effect: 'bau_bronze',
-  },
-  {
-    id: 'bau_prata', name: 'Cápsula de Prata', kind: 'consumivel',
-    desc: '2–3 itens, nível +2, piso incomum.',
-    icon: 'powerup/icon_bounty', currency: 'cristal', cost: 15, growth: 1, max: 0,
-    effect: 'bau_prata',
-  },
-  {
-    id: 'bau_ouro', name: 'Cápsula de Ouro', kind: 'consumivel',
-    desc: '3–4 itens, nível +5, piso raro.',
-    icon: 'powerup/icon_bounty', currency: 'cristal', cost: 60, growth: 1, max: 0,
-    effect: 'bau_ouro',
-    requiresSector: 10,
-  },
-  {
-    id: 'bau_singularidade', name: 'Singularidade', kind: 'consumivel',
-    desc: '4–6 itens, nível +10, piso épico.',
-    icon: 'ui/icon_star', currency: 'cristal', cost: 240, growth: 1, max: 0,
-    effect: 'bau_singularidade',
-    requiresSector: 25,
-  },
-  {
-    id: 'refaz', name: 'Reconfigurar Matriz', kind: 'consumivel',
-    desc: 'Devolve todos os pontos alocados na matriz.',
-    icon: 'node/cooldown', currency: 'cristal', cost: 25, growth: 1, max: 0,
-    effect: 'refaz',
-    requiresSector: 5,
+    id: 'refinar_nucleo', name: 'Refino de Cristal', category: 'cambio', kind: 'cambio',
+    desc: 'Converte 1.200 núcleos em 5 cristais.',
+    detail: 'Uma conversão rara e limitada. Ela reduz excesso de núcleo sem transformar a patrulha numa fábrica infinita de cristais.',
+    art: 'loja_servico_refino.webp', currency: 'nucleo', cost: 1200, growth: 1, max: 0,
+    output: { cristal: 5 }, effect: 'nucleo_para_cristal', requiresSector: 10,
+    quota: { base: 1, everyLevels: 15, cap: 20 },
   },
 ];
 
 export const SHOP_BY_ID = new Map(SHOP.map((s) => [s.id, s]));
 
-/** Custo da próxima compra, dado quantas já foram feitas. */
 export function shopCost(item: ShopItem, owned: number): number {
-  return Math.ceil(item.cost * Math.pow(item.growth, owned));
+  return item.kind === 'permanente'
+    ? Math.ceil(item.cost * Math.pow(item.growth, owned))
+    : item.cost;
 }
 
-/** Espaços de inventário concedidos pela loja. */
-export const CARGO_PER_LEVEL = 7;
-/** Ganho de alcance do ímã por nível, em fração. */
-export const MAGNET_PER_LEVEL = 0.18;
-/** Cura por onda limpa, em fração do casco. */
-export const REPAIR_PER_LEVEL = 0.08;
+/** Zero significa que a linha não possui limite por quantidade. */
+export function shopLimit(item: ShopItem, commandLevel: number): number {
+  if (item.kind === 'permanente') return item.max;
+  if (!item.quota) return 0;
+  const extras = Math.floor(Math.max(0, commandLevel - 1) / item.quota.everyLevels);
+  return Math.min(item.quota.cap, item.quota.base + extras);
+}
+
+/** Cada módulo corresponde a uma concessão idempotente do registro de carga. */
+export const SHOP_CARGO_IDS = [
+  'loja_carga_1', 'loja_carga_2', 'loja_carga_3', 'loja_carga_4',
+] as const;

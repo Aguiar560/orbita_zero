@@ -5,6 +5,7 @@ import { RARITIES, rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
 import { colunasDaGrade } from '@data/balance/capacidade';
 import { ELEMENTS } from '@data/elements';
+import { RECURSO_POR_ID } from '@data/recursos';
 import type { ElementId } from '@sim/types';
 
 /** O tier mais alto entre as linhas da peça. Afixo de save antigo conta como T1. */
@@ -32,6 +33,13 @@ function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
 import { h, spriteIcon } from '../dom';
 import { buildItemCard } from '../ItemCard';
 import type { Panel } from './types';
+
+function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string {
+  return Object.entries(materiais)
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => `${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id}`)
+    .join(' + ');
+}
 
 /**
  * A forma da grade vem de `data/balance/capacidade.ts` (§28).
@@ -120,17 +128,26 @@ export class InventoryPanel implements Panel {
           onclick: () => { this.soFavoritos = !this.soFavoritos; sim.touch(); },
         }),
         h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
-        h('button.mini.danger', {
-          text: 'Desmanchar ≤ incomum',
+        h('button.mini', {
+          text: 'Vender ≤ incomum',
           onclick: () => {
-            const gained = sim.salvageBelow(2);
+            const result = sim.sellBelow(2);
             sim.touch();
-            if (gained > 0) toast(`+${fmt(gained)} núcleos recuperados`, 'good', 'ui/icon_coin');
+            if (result.itens > 0) toast(`${result.itens} itens vendidos · +${fmt(result.sucata)} sucata`, 'good', 'ui/icon_coin');
+          },
+        }),
+        h('button.mini.danger', {
+          text: 'Desmontar ≤ incomum',
+          onclick: () => {
+            const result = sim.salvageBelow(2);
+            sim.touch();
+            if (result.itens > 0) toast(`${result.itens} itens desmontados · ${resumoDeMateriais(result.materiais)}`, 'good', 'recurso/ferrita');
+            else toast('Nenhum item desmontado. Verifique favoritos e espaço no Armazém.', 'bad');
           },
         }),
       ),
 
-      h('p.muted.tiny.hint', { text: 'Clique para equipar · Shift+clique para desmanchar · botão direito favorita.' }),
+      h('p.muted.tiny.hint', { text: 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),
       h('.inv-wrap', {},
         grade(colunasDaGrade(capacidade), cells),
         this.tip),
@@ -195,8 +212,18 @@ export class InventoryPanel implements Panel {
     cell.addEventListener('mouseenter', () => this.showTip(sim, item, cell, gain));
     cell.addEventListener('mouseleave', () => this.tip.classList.add('hidden'));
     cell.addEventListener('click', (e) => {
-      if (e.shiftKey) sim.salvage(item.uid);
-      else sim.equip(item.uid);
+      if (e.altKey) {
+        e.preventDefault();
+        const valor = sim.sell(item.uid);
+        if (valor > 0) toast(`Vendido · +${fmt(valor)} sucata`, 'good', 'ui/icon_coin');
+        else toast('Item favorito: desmarque antes de vender.', 'bad');
+      } else if (e.shiftKey) {
+        const retorno = sim.salvage(item.uid);
+        if (retorno) toast(`Desmontado · ${resumoDeMateriais(retorno.materiais)}`, 'good', 'recurso/ferrita');
+        else toast(item.favorite
+          ? 'Item favorito: desmarque antes de desmontar.'
+          : 'Sem espaço para os novos materiais no Armazém.', 'bad');
+      } else sim.equip(item.uid);
       this.tip.classList.add('hidden');
       sim.touch();
     });

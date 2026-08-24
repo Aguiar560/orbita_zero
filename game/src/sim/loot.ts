@@ -11,8 +11,7 @@ import {
   type AffixDef,
 } from '@data/items';
 import { RARITIES, rarityInfo } from '@data/rarity';
-import { CHEST_BY_ID } from '@data/chests';
-import { SORTE_EFETIVA_MAX } from '@data/balance/limites';
+import { CHEST_BY_ID, type ChestDef } from '@data/chests';
 import { ELEMENTS } from '@data/elements';
 import { fatorDoTier, tiersDisponiveis } from '@data/balance/tiers';
 import {
@@ -32,7 +31,7 @@ const uid = (): string => `${Date.now().toString(36)}${(uidCounter++).toString(3
  * relíquia, que é exatamente onde o jogador quer sentir o investimento.
  */
 export function rollRarity(rng: Rng, luck: number, floor: Rarity = 0): Rarity {
-  const boost = 1 + Math.min(SORTE_EFETIVA_MAX, Math.max(0, luck));
+  const boost = 1 + Math.max(0, luck);
   // O expoente vem da tabela, não do índice da raridade. Amarrado ao índice, a
   // passagem de cinco para sete raridades multiplicou por 64 o efeito da sorte
   // no topo e um baú de Singularidade passou a soltar Divino um a cada seis.
@@ -41,6 +40,15 @@ export function rollRarity(rng: Rng, luck: number, floor: Rarity = 0): Rarity {
     (r) => (r.id < floor ? 0 : r.weight * Math.pow(boost, r.sorteExpo)),
   );
   return Math.max(floor, pick.id) as Rarity;
+}
+
+/**
+ * Raridade de baú vem da tabela do próprio baú — Sorte vale somente para o
+ * drop de combate. Separar os dois caminhos impede que uma cápsula premium
+ * multiplique a Sorte e transforme o topo da escada em resultado rotineiro.
+ */
+export function rollChestRarity(rng: Rng, chest: ChestDef): Rarity {
+  return rng.weighted(RARITIES, (r) => chest.raridades[r.id] ?? 0).id;
 }
 
 /** Gera um item completo. */
@@ -197,7 +205,19 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affi
   const opcoes = tiersDisponiveis(ilvl, tierMax);
   const tier = rng.weighted(opcoes, (o) => o.peso).tier;
 
-  const quality = rng.next();
+  return rollAffixAtTier(rng, def, ilvl, tier);
+}
+
+/** Materializa uma linha mantendo o tier fixo — usado pela recalibração. */
+export function rollAffixAtTier(
+  rng: Rng,
+  def: AffixDef,
+  ilvl: number,
+  tier: number,
+  qualidadeMinima = 0,
+): Affix {
+
+  const quality = qualidadeMinima + rng.next() * (1 - qualidadeMinima);
   const raw = def.min + (def.max - def.min) * quality;
   // Só valor BRUTO escala com o nível de item. Fração — crítico, sorte,
   // sincronia, resistência — não: escalada por ilvl 200, uma linha de +4,5% de
@@ -219,12 +239,82 @@ function rollAffix(rng: Rng, def: AffixDef, ilvl: number, tierMax: number): Affi
   return { id: def.id, stat: def.stat, kind: def.kind, value, quality, tier };
 }
 
+/**
+ * Troca uma linha por outra compatível, sem alterar raridade, ilvl ou tier.
+ *
+ * Preservar o tipo (prefixo/sufixo) mantém o orçamento estrutural do item. A
+ * lista respeita slot, elemento, raridade mínima e grupos de exclusão, como o
+ * gerador original — a loja não pode fabricar uma combinação que nunca cairia
+ * naturalmente.
+ */
+export function recalibrationCandidates(item: Item, index: number): readonly AffixDef[] {
+  const current = item.affixes[index];
+  if (!current) return [];
+  const currentDef = AFFIXES.find((a) => a.id === current.id);
+  if (!currentDef) return [];
+
+  const tipo = tipoDoAfixo(currentDef);
+  const outros = item.affixes.filter((_, i) => i !== index);
+  const usados = new Set(outros.map((a) => a.id));
+  // Repetir a mesma identidade pareceria que o serviço não fez nada, mesmo se
+  // a qualidade mudasse. Ela também fica fora deste sorteio.
+  usados.add(current.id);
+  const grupos = new Set(
+    outros
+      .map((a) => AFFIXES.find((d) => d.id === a.id)?.grupo)
+      .filter((g): g is string => !!g),
+  );
+  const elemento = item.element ?? 'padrao';
+  return AFFIXES.filter((a) =>
+    (!a.slots || a.slots.includes(item.slot))
+    && item.ilvl >= (a.minIlvl ?? 0)
+    && item.rarity >= (a.raridadeMin ?? 0)
+    && (!a.element || a.element === elemento)
+    && tipoDoAfixo(a) === tipo
+    && !usados.has(a.id)
+    && !(a.grupo && grupos.has(a.grupo)),
+  );
+}
+
+export function recalibrateAffix(rng: Rng, item: Item, index: number): Affix | null {
+  const current = item.affixes[index];
+  if (!current || current.locked) return null;
+  const candidatos = recalibrationCandidates(item, index);
+  if (!candidatos.length) return null;
+
+  const def = rng.weighted(candidatos, (a) => pesoNoSlot(a, item.slot));
+  const tier = Math.max(1, Math.min(10, current.tier ?? 1));
+  return rollAffixAtTier(rng, def, item.ilvl, tier);
+}
+
+/** Pool legal para adicionar ou converter uma linha. */
+export function affixCandidates(
+  item: Item,
+  tipo: 'prefixo' | 'sufixo',
+  ignoreIndex: number | null = null,
+): readonly AffixDef[] {
+  const outros = item.affixes.filter((_, i) => i !== ignoreIndex);
+  const usados = new Set(outros.map((a) => a.id));
+  const grupos = new Set(outros
+    .map((a) => AFFIXES.find((d) => d.id === a.id)?.grupo)
+    .filter((g): g is string => !!g));
+  const elemento = item.element ?? 'padrao';
+  return AFFIXES.filter((a) =>
+    (!a.slots || a.slots.includes(item.slot))
+    && item.ilvl >= (a.minIlvl ?? 0)
+    && item.rarity >= (a.raridadeMin ?? 0)
+    && (!a.element || a.element === elemento)
+    && tipoDoAfixo(a) === tipo
+    && !usados.has(a.id)
+    && !(a.grupo && grupos.has(a.grupo)),
+  );
+}
+
 /** Abre um baú e devolve os itens gerados (recursos são creditados pelo chamador). */
 export function openChest(
   rng: Rng,
   tier: string,
   ilvl: number,
-  luck: number,
   origin: number,
 ): Item[] {
   const def = CHEST_BY_ID.get(tier);
@@ -233,8 +323,8 @@ export function openChest(
   const count = rng.int(def.items[0], def.items[1]);
   const items: Item[] = [];
   for (let i = 0; i < count; i++) {
-    // O primeiro item honra o piso de raridade do baú; o resto é livre.
-    items.push(rollItem(rng, ilvl + def.ilvlBonus, luck * def.luck, origin, i === 0 ? { floor: def.floor } : {}));
+    const rarity = rollChestRarity(rng, def);
+    items.push(rollItem(rng, ilvl + def.ilvlBonus, 0, origin, { exata: rarity }));
   }
   return items;
 }
@@ -294,9 +384,4 @@ export function itemStats(item: Item): Partial<Stats> {
   if (base) out[base.implicit.stat] = (out[base.implicit.stat] ?? 0) + base.implicit.per * item.ilvl;
   for (const a of item.affixes) out[a.stat] = (out[a.stat] ?? 0) + a.value;
   return out;
-}
-
-/** Valor de desmanche em núcleos. */
-export function salvageValue(item: Item): number {
-  return Math.ceil((1 + item.ilvl * 0.6) * Math.pow(2.1, item.rarity));
 }

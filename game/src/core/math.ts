@@ -47,6 +47,10 @@ export class Rng {
     return this.s;
   }
 
+  reset(seed: number): void {
+    this.s = seed >>> 0;
+  }
+
   /** [0, 1) */
   next(): number {
     this.s = (this.s + 0x6d2b79f5) >>> 0;

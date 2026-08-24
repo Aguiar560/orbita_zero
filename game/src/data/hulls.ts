@@ -1,5 +1,6 @@
 import type { ElementId, StatMap } from '@sim/types';
 import { getElement } from './elements';
+import { SPACESHIPS2_HULLS } from './hulls-spaceships2';
 
 export interface ShotStyle {
   /** Sprite do projétil no atlas. */
@@ -12,6 +13,31 @@ export interface ShotStyle {
   scale: number;
   /** Abertura entre projéteis extras, em radianos. */
   spread: number;
+}
+
+/** Caixa de colisão do casco, em pixels lógicos e relativa ao centro da arte. */
+export interface HullHitbox {
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export const DEFAULT_HULL_HITBOX: Readonly<HullHitbox> = {
+  width: 30, height: 30, offsetX: 0, offsetY: 0,
+};
+
+export function normalizeHullHitbox(input?: Partial<HullHitbox>): HullHitbox {
+  const finite = (value: unknown, fallback: number): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  return {
+    width: Math.round(Math.min(220, Math.max(6, finite(input?.width, DEFAULT_HULL_HITBOX.width))) * 10) / 10,
+    height: Math.round(Math.min(260, Math.max(6, finite(input?.height, DEFAULT_HULL_HITBOX.height))) * 10) / 10,
+    offsetX: Math.round(Math.min(100, Math.max(-100, finite(input?.offsetX, 0))) * 10) / 10,
+    offsetY: Math.round(Math.min(120, Math.max(-120, finite(input?.offsetY, 0))) * 10) / 10,
+  };
 }
 
 export interface Hull {
@@ -46,6 +72,10 @@ export interface Hull {
   cost: number;
   /** Setor mínimo alcançado alguma vez para o casco aparecer no hangar. */
   requiresSector: number;
+  /** Caixa-base. A calibração administrativa versionada pode substituí-la. */
+  hitbox?: HullHitbox;
+  /** Casco completo de laboratório, ainda fora da progressão da campanha. */
+  prototype?: boolean;
 
   // ── camadas do pack Void (opcionais) ───────────────────────────────────────
   /** Quadros de casco por dano: `[intacto, leve, médio, grave]`. */
@@ -89,7 +119,7 @@ const elemShot = (element: ElementId, speed: number, spread = 0.06, scale = 0.9)
   return { sprite: info.bullet[0], speed, color: info.color, scale, spread };
 };
 
-export const HULLS: readonly Hull[] = [
+const CORE_HULLS: readonly Hull[] = [
   // ── linha Void: casco em camadas, com dano visível e armas animadas ───────
   {
     id: 'void_canhao',
@@ -451,6 +481,9 @@ export const HULLS: readonly Hull[] = [
     requiresSector: 58,
   },
 ];
+
+/** Vinte cascos originais + as 29 artes Spaceships 2.0 já balanceadas. */
+export const HULLS: readonly Hull[] = [...CORE_HULLS, ...SPACESHIPS2_HULLS];
 
 export const HULL_BY_ID = new Map(HULLS.map((h) => [h.id, h]));
 

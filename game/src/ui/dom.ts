@@ -45,7 +45,16 @@ export function h<K extends keyof HTMLElementTagNameMap>(
         break;
       case 'style':
         if (typeof value === 'string') el.setAttribute('style', value);
-        else Object.assign(el.style, value);
+        else if (value && typeof value === 'object') {
+          // CSSStyleDeclaration não aceita custom properties via Object.assign:
+          // `style['--cor'] = valor` é ignorado pelo navegador. Os painéis usam
+          // essas variáveis para temas e efeitos dinâmicos, então elas precisam
+          // passar explicitamente por setProperty.
+          for (const [property, cssValue] of Object.entries(value)) {
+            if (property.startsWith('--')) el.style.setProperty(property, String(cssValue));
+            else Object.assign(el.style, { [property]: cssValue });
+          }
+        }
         break;
       case 'dataset':
         Object.assign(el.dataset, value);
@@ -105,6 +114,39 @@ export function spriteIcon(id: string, size = 32, extraClass = ''): HTMLElement 
   el.style.imageRendering = 'pixelated';
   el.style.backgroundSize = `${(atlas.image as HTMLImageElement).width * scale}px ${(atlas.image as HTMLImageElement).height * scale}px`;
   el.style.backgroundPosition = `${-frame.x * scale + (size - w) / 2}px ${-frame.y * scale + (size - hgt) / 2}px`;
+  return el;
+}
+
+/**
+ * Retrato enquadrado: diferente de um ícone, ocupa uma moldura retangular e
+ * preserva toda a silhueta. Usa `contain` e ancora a arte na base da foto:
+ * antenas, ombros e acessórios não são cortados, mas o retrato continua com
+ * leitura vertical e sem parecer que o busto está flutuando.
+ */
+export function portraitIcon(id: string, width: number, height: number, extraClass = ''): HTMLElement {
+  const el = h('i.sprite.portrait', { dataset: { sprite: id } });
+  for (const cls of extraClass.split(/\s+/)) if (cls) el.classList.add(cls);
+  const found = assets.atlases.lookup(id);
+  if (!found) {
+    el.style.width = `${width}px`;
+    el.style.height = `${height}px`;
+    return el;
+  }
+
+  const { frame, atlas } = found;
+  const scale = Math.min(width / frame.sw, height / frame.sh);
+  const w = frame.w * scale;
+  const hgt = frame.h * scale;
+  // O elemento tem exatamente o tamanho do frame no atlas. O PAI é que cria
+  // a foto 3×4 e faz o recorte. Dar ao elemento o tamanho da foto deixava as
+  // margens transparentes amostrarem o sprite vizinho do atlas.
+  el.style.width = `${w}px`;
+  el.style.height = `${hgt}px`;
+  el.style.backgroundImage = `url(assets/atlas/${atlas.name}.png)`;
+  el.style.backgroundRepeat = 'no-repeat';
+  el.style.imageRendering = 'pixelated';
+  el.style.backgroundSize = `${(atlas.image as HTMLImageElement).width * scale}px ${(atlas.image as HTMLImageElement).height * scale}px`;
+  el.style.backgroundPosition = `${-frame.x * scale}px ${-frame.y * scale}px`;
   return el;
 }
 

@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
@@ -44,9 +44,97 @@ function snapshotPlugin(): Plugin {
   };
 }
 
+interface StoredHitbox { width: number; height: number; offsetX: number; offsetY: number; scale: number }
+interface HitboxCalibrationFile {
+  players: Record<string, StoredHitbox>;
+  enemies: Record<string, StoredHitbox>;
+  bosses: Record<string, StoredHitbox>;
+}
+
+/**
+ * Backend administrativo do Laboratório.
+ *
+ * Existe apenas no `vite dev`: uma aplicação publicada não pode reescrever o
+ * próprio bundle. O alvo é um JSON versionado, importado pelas tabelas do jogo,
+ * então salvar no Laboratório muda o padrão de todo novo save.
+ */
+function labCalibrationPlugin(): Plugin {
+  return {
+    name: 'orbita-lab-calibration',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__lab/hitboxes', (req, res) => {
+        res.setHeader('content-type', 'application/json');
+        res.setHeader('cache-control', 'no-store');
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          return res.end(JSON.stringify({ ok: false, error: 'Método não permitido.' }));
+        }
+        const origin = req.headers.origin;
+        if (origin && origin !== 'http://127.0.0.1:5180' && origin !== 'http://localhost:5180') {
+          res.statusCode = 403;
+          return res.end(JSON.stringify({ ok: false, error: 'Origem administrativa não autorizada.' }));
+        }
+        if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) {
+          res.statusCode = 415;
+          return res.end(JSON.stringify({ ok: false, error: 'Content-Type deve ser application/json.' }));
+        }
+
+        const chunks: Buffer[] = [];
+        req.on('data', (chunk: Buffer) => chunks.push(chunk));
+        req.on('end', () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString()) as {
+              action?: 'save' | 'restore';
+              kind?: 'player' | 'enemy' | 'boss';
+              id?: string;
+              hitbox?: Partial<StoredHitbox>;
+              scale?: number;
+            };
+            if (!body.action || !body.kind || !body.id || !/^[a-z0-9_]+$/.test(body.id)) {
+              throw new Error('Ação, tipo ou id de calibração inválido.');
+            }
+
+            const file = path.resolve(process.cwd(), 'src/data/hitbox-calibrations.json');
+            const data = JSON.parse(readFileSync(file, 'utf8')) as HitboxCalibrationFile;
+            const group = body.kind === 'player' ? data.players : body.kind === 'enemy' ? data.enemies : data.bosses;
+
+            if (body.action === 'restore') {
+              delete group[body.id];
+            } else {
+              const finite = (value: unknown, fallback: number): number => {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+              };
+              const round = (value: number): number => Math.round(value * 10) / 10;
+              group[body.id] = {
+                width: round(Math.min(220, Math.max(6, finite(body.hitbox?.width, 30)))),
+                height: round(Math.min(260, Math.max(6, finite(body.hitbox?.height, 30)))),
+                offsetX: round(Math.min(100, Math.max(-100, finite(body.hitbox?.offsetX, 0)))),
+                offsetY: round(Math.min(120, Math.max(-120, finite(body.hitbox?.offsetY, 0)))),
+                scale: Math.round(Math.min(4, Math.max(.05, finite(body.scale, 1))) * 1000) / 1000,
+              };
+            }
+
+            data.players = Object.fromEntries(Object.entries(data.players).sort(([a], [b]) => a.localeCompare(b)));
+            data.enemies = Object.fromEntries(Object.entries(data.enemies).sort(([a], [b]) => a.localeCompare(b)));
+            data.bosses = Object.fromEntries(Object.entries(data.bosses).sort(([a], [b]) => a.localeCompare(b)));
+            writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+            res.end(JSON.stringify({ ok: true, path: file, action: body.action, kind: body.kind, id: body.id }));
+          } catch (error) {
+            res.statusCode = 400;
+            const detail = error instanceof Error ? error.message : String(error);
+            res.end(JSON.stringify({ ok: false, error: detail }));
+          }
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [snapshotPlugin()],
+  plugins: [snapshotPlugin(), labCalibrationPlugin()],
   server: { port: 5180, host: '127.0.0.1', open: false },
   resolve: {
     alias: {

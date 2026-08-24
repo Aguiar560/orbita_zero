@@ -21,10 +21,8 @@ import { describeGalaxy } from '@data/galaxies';
  *
  * ## Retratos
  *
- * Saem de `describeGalaxy().portrait`, que é a via já provada no mapa de
- * galáxias. Inventar um nome de sprite aqui seria repetir o erro do ícone da
- * aba: nome que o atlas não tem passa por typecheck e por teste, e só o
- * navegador conta.
+ * O atlas `characters` reúne os retratos curados do pack Characters. Ele é
+ * carregado sob demanda pela Central de Missões, tal como os retratos do mapa.
  */
 
 export type StatusDeContato = 'aliado' | 'neutro' | 'ex_chefe' | 'bloqueado';
@@ -83,7 +81,7 @@ const FIXOS: readonly PersonagemDef[] = [
     nome: 'KAEL VOSS',
     faccao: 'ÓRBITA ZERO',
     titulo: 'COORDENADOR DA FROTA DE PARTIDA',
-    retrato: describeGalaxy(0).portrait,
+    retrato: 'character/player/man',
     galaxia: 0,
     status: 'aliado',
     cor: '#4FC3FF',
@@ -93,7 +91,7 @@ const FIXOS: readonly PersonagemDef[] = [
     nome: 'ZYRAK',
     faccao: 'EXPEDIÇÃO ASTRA',
     titulo: 'BATEDOR DAS ROTAS EXTERNAS',
-    retrato: describeGalaxy(3).portrait,
+    retrato: 'character/player/man_2',
     galaxia: 1,
     status: 'aliado',
     cor: '#B45CFF',
@@ -105,7 +103,7 @@ const FIXOS: readonly PersonagemDef[] = [
     nome: 'LIRA NEXUS',
     faccao: 'COMERCIANTES NEXUS',
     titulo: 'INTERMEDIÁRIA DE CARGA RARA',
-    retrato: describeGalaxy(6).portrait,
+    retrato: 'character/player/woman',
     galaxia: 2,
     status: 'neutro',
     cor: '#50E36B',
@@ -128,7 +126,7 @@ const CONVERTIDOS: readonly PersonagemDef[] = BOSSES.slice(0, 6).map((b, i) => (
   nome: b.name.toUpperCase(),
   faccao: describeGalaxy(i).name.toUpperCase(),
   titulo: `ANTIGO GUARDIÃO DE ${describeGalaxy(i).name.toUpperCase()}`,
-  retrato: describeGalaxy(i).portrait,
+  retrato: `character/enemy/enemy_${i + 1}`,
   galaxia: i,
   status: 'ex_chefe' as const,
   cor: describeGalaxy(i).color,

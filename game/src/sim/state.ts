@@ -1,5 +1,6 @@
 ﻿import { HULLS } from '@data/hulls';
 import { BIOMES } from '@data/biomes';
+import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
@@ -9,10 +10,17 @@ export const SAVE_KEY = 'orbita-zero:save';
 /**
  * v2 — 9 categorias de slot e a Matriz de Comando.
  * v3 — fim do prestígio: sem Éter, sem nós de ascensão, sem reset de universo.
+ * v4 — controles manuais globais e preferências de acessibilidade persistentes.
+ * v5 — missões rastreadas na tela principal.
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 5;
+
+/** Cascos já liberados enquanto o sistema autoral de desbloqueio não existe. */
+const INITIAL_FLEET = HULLS.filter(
+  (hull) => !hull.prototype && hull.cost === 0 && hull.requiresSector === 0,
+).map((hull) => hull.id);
 
 export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameState {
   const now = Date.now();
@@ -26,8 +34,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     lifetime: { sucata: 0, nucleo: 0, cristal: 0 },
 
     hull: HULLS[0]!.id,
-    fleet: [HULLS[0]!.id],
-
+    fleet: [...INITIAL_FLEET],
     equipped: {},
     inventory: [],
     cargaLiberada: [],
@@ -47,6 +54,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     chests: {},
     codex: [],
     missoes: {},
+    eventos: {},
     medalhas: 0,
     confianca: {},
     provacao: {
@@ -62,14 +70,18 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
 
     settings: {
       pilot: 'equilibrado',
+      controlMode: 'idle',
       testMode: false,
       speed: 1,
       repetirSetor: false,
       autoEquip: true,
       autoSalvage: 0,
+      autoDispose: 'desmontar',
       showDamageNumbers: true,
       barVisible: true,
       reduceEffects: false,
+      highContrast: false,
+      pinnedMissions: [],
       muted: false,
     },
   };
@@ -105,12 +117,16 @@ export function migrate(raw: unknown): GameState | null {
     chests: { ...data.chests },
     equipped: { ...data.equipped },
     inventory: Array.isArray(data.inventory) ? data.inventory : [],
-    fleet: Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet,
+    fleet: [...new Set([
+      ...(Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet),
+      ...INITIAL_FLEET,
+    ])],
     codex: Array.isArray(data.codex) ? data.codex : [],
     // Save anterior ao §27 não tem nem um nem outro. Ambos nascem vazios em vez
     // de travar o boot — a regra que não se negocia é "save malformado não
     // impede jogar".
     missoes: (data.missoes && typeof data.missoes === 'object') ? data.missoes as GameState['missoes'] : {},
+    eventos: (data.eventos && typeof data.eventos === 'object') ? data.eventos as GameState['eventos'] : {},
     medalhas: Number.isFinite(data.medalhas) ? Number(data.medalhas) : 0,
     confianca: (data.confianca && typeof data.confianca === 'object') ? data.confianca as Record<string, number> : {},
     // Save anterior ao modo, ou de uma versão com menos campos: o espalhamento
@@ -143,6 +159,14 @@ export function migrate(raw: unknown): GameState | null {
     // porque `createState` não o declara mais.
   }
 
+  // v4 não converte progresso: acrescenta apenas preferências seguras. Saves
+  // anteriores entram no modo idle, que preserva exatamente o comportamento
+  // que já tinham antes de WASD/setas existirem.
+  if ((data.version ?? 0) < 4) state.settings.controlMode = 'idle';
+  // Acompanhar missão é preferência de interface, sem qualquer efeito no
+  // progresso; saves anteriores começam sem atalho para não poluir a tela.
+  if ((data.version ?? 0) < 5) state.settings.pinnedMissions = [];
+
   // Save anterior à 3.7 guardava a capacidade como número solto. Converte para
   // concessões, dando as da loja primeiro: quem já tinha 70 espaços continua com
   // 70, e quem tinha menos recebe o equivalente mais próximo, sem perder nada.
@@ -164,6 +188,10 @@ export function migrate(raw: unknown): GameState | null {
     Object.entries(state.armazem ?? {}).filter(([id, n]) => RECURSO_POR_ID.has(id) && n > 0),
   );
   delete (state as unknown as Record<string, unknown>).inventorySize;
+  // Hitboxes são dados administrativos versionados, nunca progresso do jogador.
+  // Saves do protótipo podem carregar estas duas chaves antigas via `...data`.
+  delete (state as unknown as Record<string, unknown>).hullHitboxes;
+  delete (state as unknown as Record<string, unknown>).enemyHitboxes;
 
   // O sistema de Melhorias saiu (§31). Saves gravados antes disso ainda trazem
   // a chave, e o espalhamento de `...data` acima a repassaria adiante — ela
@@ -171,6 +199,9 @@ export function migrate(raw: unknown): GameState | null {
   delete (state as unknown as Record<string, unknown>).upgrades;
 
   // Consertos de integridade — um save adulterado não deve travar o boot.
+  const hullIds = new Set(HULLS.map((hull) => hull.id));
+  state.fleet = [...new Set(state.fleet.filter((id) => hullIds.has(id)))];
+  for (const id of INITIAL_FLEET) if (!state.fleet.includes(id)) state.fleet.push(id);
   if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
   state.command.nivel = Math.max(1, Math.floor(state.command.nivel));
   state.command.allocated = state.command.allocated.filter((id) => typeof id === 'string');
@@ -178,6 +209,22 @@ export function migrate(raw: unknown): GameState | null {
   state.run.wave = Math.min(WAVES_PER_SECTOR + 1, Math.max(1, Math.floor(state.run.wave)));
   state.universe.bestSector = Math.max(state.universe.bestSector, state.run.sector);
   state.universe.bestSectorEver = Math.max(state.universe.bestSectorEver, state.universe.bestSector);
+  if (state.settings.autoDispose !== 'desmontar' && state.settings.autoDispose !== 'vender') {
+    state.settings.autoDispose = 'desmontar';
+  }
+  if (state.settings.controlMode !== 'manual' && state.settings.controlMode !== 'idle') state.settings.controlMode = 'idle';
+  state.settings.pinnedMissions = [...new Set(
+    (Array.isArray(state.settings.pinnedMissions) ? state.settings.pinnedMissions : [])
+      .filter((id): id is string => typeof id === 'string' && MISSAO_POR_ID.has(id)),
+  )].slice(0, 4);
+  if (!['agressivo', 'equilibrado', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'equilibrado';
+  for (const key of ['testMode', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'barVisible', 'reduceEffects', 'highContrast', 'muted'] as const) {
+    state.settings[key] = Boolean(state.settings[key]);
+  }
+  for (const resource of ['sucata', 'nucleo', 'cristal'] as const) {
+    state.resources[resource] = Math.max(0, Number.isFinite(state.resources[resource]) ? state.resources[resource] : 0);
+    state.lifetime[resource] = Math.max(0, Number.isFinite(state.lifetime[resource]) ? state.lifetime[resource] : 0);
+  }
 
   return state;
 }

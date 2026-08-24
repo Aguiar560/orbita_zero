@@ -1,6 +1,11 @@
 import type { ElementId } from '@sim/types';
 import { getElement } from './elements';
 import { VOID_ENEMIES } from './fleets';
+import {
+  SPACESHIPS2_ELITE_ENEMIES,
+  SPACESHIPS2_ENEMIES,
+  SPACESHIPS2_REGULAR_ENEMIES,
+} from './enemies-spaceships2';
 
 export type MovePattern =
   | 'mergulho'   // desce reto, acelerando
@@ -283,13 +288,98 @@ const CORSARIO_ENEMIES: readonly EnemyDef[] = CORSARIOS.map((c) => {
  * frotas do pack Void e os corsários elementais. Os originais continuam porque
  * cobrem perigos que as frotas não têm — obstáculos inertes e minas.
  */
-export const ALL_ENEMIES: readonly EnemyDef[] = [...ENEMIES, ...VOID_ENEMIES, ...CORSARIO_ENEMIES];
+const LEGACY_ENEMIES: readonly EnemyDef[] = [...ENEMIES, ...VOID_ENEMIES, ...CORSARIO_ENEMIES];
+
+export const ALL_ENEMIES: readonly EnemyDef[] = [...LEGACY_ENEMIES, ...SPACESHIPS2_ENEMIES];
 
 export const ENEMY_BY_ID = new Map(ALL_ENEMIES.map((e) => [e.id, e]));
 
-/** Inimigos elegíveis para um setor, já filtrados por faixa. */
+export interface GalaxyEnemyRoster {
+  /** Índice humano, 1–30. */
+  galaxy: number;
+  regular: readonly string[];
+  elite: readonly string[];
+}
+
+const availableAtGalaxyStart = (enemy: EnemyDef, galaxyIndex: number): boolean => {
+  const sector = galaxyIndex * 10 + 1;
+  return sector >= enemy.sectors[0] && (enemy.sectors[1] === 0 || sector <= enemy.sectors[1]);
+};
+
+/** Seleção circular que evita o elenco imediatamente anterior sempre que possível. */
+function takeRoster(
+  pool: readonly EnemyDef[],
+  count: number,
+  offset: number,
+  previous: ReadonlySet<string>,
+  current: ReadonlySet<string> = new Set(),
+): EnemyDef[] {
+  const picked: EnemyDef[] = [];
+  for (const allowPrevious of [false, true]) {
+    for (let step = 0; step < pool.length * 2 && picked.length < count; step++) {
+      const enemy = pool[(offset + step) % pool.length];
+      if (!enemy || current.has(enemy.id) || picked.some((item) => item.id === enemy.id)) continue;
+      if (!allowPrevious && previous.has(enemy.id)) continue;
+      picked.push(enemy);
+    }
+  }
+  return picked;
+}
+
+function buildGalaxyRosters(): GalaxyEnemyRoster[] {
+  const legacyRegular = LEGACY_ENEMIES.filter((enemy) => !enemy.elite);
+  const legacyElite = LEGACY_ENEMIES.filter((enemy) => !!enemy.elite);
+  const rosters: GalaxyEnemyRoster[] = [];
+  let previousRegular = new Set<string>();
+  let previousElite = new Set<string>();
+
+  for (let galaxyIndex = 0; galaxyIndex < 30; galaxyIndex++) {
+    const signature = takeRoster(
+      SPACESHIPS2_REGULAR_ENEMIES, 4, galaxyIndex * 4, previousRegular,
+    );
+    const regularIds = new Set(signature.map((enemy) => enemy.id));
+    const supportPool = legacyRegular.filter((enemy) => availableAtGalaxyStart(enemy, galaxyIndex));
+    const support = takeRoster(supportPool, 2, galaxyIndex * 7, previousRegular, regularIds);
+    const regular = [...signature, ...support];
+
+    const eliteSignature = takeRoster(
+      SPACESHIPS2_ELITE_ENEMIES, 2, galaxyIndex * 2, previousElite,
+    );
+    const eliteIds = new Set(eliteSignature.map((enemy) => enemy.id));
+    const eliteSupportPool = legacyElite.filter((enemy) => availableAtGalaxyStart(enemy, galaxyIndex));
+    const eliteSupport = takeRoster(eliteSupportPool, 1, galaxyIndex * 3, previousElite, eliteIds);
+    const elite = [...eliteSignature, ...eliteSupport];
+    if (elite.length < 3) {
+      elite.push(...takeRoster(
+        SPACESHIPS2_ELITE_ENEMIES, 3 - elite.length, galaxyIndex * 2 + 2,
+        previousElite, new Set(elite.map((enemy) => enemy.id)),
+      ));
+    }
+
+    rosters.push({
+      galaxy: galaxyIndex + 1,
+      regular: regular.map((enemy) => enemy.id),
+      elite: elite.map((enemy) => enemy.id),
+    });
+    previousRegular = new Set(regular.map((enemy) => enemy.id));
+    previousElite = new Set(elite.map((enemy) => enemy.id));
+  }
+  return rosters;
+}
+
+/** Trinta elencos estáveis: seis comuns e três elites por galáxia. */
+export const GALAXY_ENEMY_ROSTERS: readonly GalaxyEnemyRoster[] = buildGalaxyRosters();
+
+export function enemyRosterForGalaxy(galaxyIndex: number, elite: boolean): EnemyDef[] {
+  const normalized = ((galaxyIndex % GALAXY_ENEMY_ROSTERS.length) + GALAXY_ENEMY_ROSTERS.length)
+    % GALAXY_ENEMY_ROSTERS.length;
+  const roster = GALAXY_ENEMY_ROSTERS[normalized]!;
+  const ids = elite ? roster.elite : roster.regular;
+  return ids.map((id) => ENEMY_BY_ID.get(id)).filter((enemy): enemy is EnemyDef => !!enemy);
+}
+
+/** Inimigos elegíveis para um setor, segundo o elenco estável da galáxia. */
 export function enemiesForSector(sector: number, elite: boolean): EnemyDef[] {
-  return ALL_ENEMIES.filter(
-    (e) => !!e.elite === elite && sector >= e.sectors[0] && (e.sectors[1] === 0 || sector <= e.sectors[1]),
-  );
+  const galaxyIndex = Math.max(0, Math.floor((sector - 1) / 10));
+  return enemyRosterForGalaxy(galaxyIndex, elite);
 }

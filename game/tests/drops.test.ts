@@ -11,7 +11,10 @@ import {
 } from '@data/balance/capacidade';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
-import { RECURSOS, iconeDeRecurso, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
+import {
+  RECURSOS, RECURSOS_COM_ARTE_FINAL, iconeDeRecurso,
+  recursoDaGalaxia, recursoDoChefe, recursosDoPlaneta,
+} from '@data/recursos';
 import { RESISTIVEIS } from '@sim/types';
 
 /**
@@ -262,7 +265,7 @@ describe('o armazém guarda TIPOS, não unidades', () => {
    * O elo entre o inventário apertado (§28) e o craft: uma peça que não serve
    * deixa de ser lixo e vira insumo.
    */
-  it('desmanchar rende minério, e mais quanto melhor a peça', () => {
+  it('desmontar rende materiais avançados sem também criar moeda', () => {
     const sim = new Sim(createState(16));
     const rng = new Rng(2024);
     let peca = null;
@@ -273,11 +276,11 @@ describe('o armazém guarda TIPOS, não unidades', () => {
     expect(peca, 'nenhuma peça de gelo rara em 4000 rolagens').toBeTruthy();
 
     sim.state.inventory = [peca!];
-    sim.salvage(peca!.uid);
-    expect(sim.state.armazem.ferrita ?? 0).toBeGreaterThan(0);
-    // Raridade 3 ou acima também rende titânio — desmanchar um Épico tem de
-    // valer mais que desmanchar dez Comuns.
-    expect(sim.state.armazem.titanio ?? 0).toBeGreaterThan(0);
+    const moedasAntes = { ...sim.state.resources };
+    const retorno = sim.salvage(peca!.uid);
+    expect(retorno).toBeTruthy();
+    expect(Object.values(retorno!.materiais).reduce((s, n) => s + n, 0)).toBeGreaterThan(0);
+    expect(sim.state.resources).toEqual(moedasAntes);
   });
 
 });
@@ -314,16 +317,27 @@ describe('os 70 recursos da folha', () => {
     for (const r of RECURSOS) expect(r.origens.length, r.id).toBeGreaterThan(0);
   });
 
-  /**
-   * `torre` e `missao` não têm sistema ainda — são da Fase 5. Estão declarados
-   * agora porque o pedido é explícito em já deixar guardado: quando a torre
-   * existir, ligá-la é ler esta lista, não reclassificar setenta recursos.
-   */
-  it('as origens futuras já estão declaradas', () => {
+  it('todos os modos econômicos estão representados', () => {
     const todas = new Set(RECURSOS.flatMap((r) => r.origens));
-    for (const o of ['planeta', 'chefe', 'torre', 'missao', 'evento', 'desmanche']) {
+    for (const o of ['planeta', 'chefe', 'provacao', 'missao', 'evento', 'desmanche']) {
       expect(todas.has(o as never), o).toBe(true);
     }
+  });
+
+  it('todo recurso tem drop, função, estado e escopo definidos', () => {
+    for (const r of RECURSOS) {
+      expect(r.drop.length, `${r.id}: drop`).toBeGreaterThan(12);
+      expect(r.funcao.length, `${r.id}: função`).toBeGreaterThan(12);
+      expect(['ativo', 'planejado']).toContain(r.dropEstado);
+      expect(['ativo', 'planejado']).toContain(r.usoEstado);
+      expect(['galaxia', 'missao', 'evento', 'chefe', 'provacao']).toContain(r.escopo);
+    }
+  });
+
+  it('reconhece as 70 artes finais de Recursos 2.0', () => {
+    expect(RECURSOS_COM_ARTE_FINAL.size).toBe(70);
+    expect(RECURSOS.filter((r) => r.arte === 'final')).toHaveLength(70);
+    expect(RECURSOS.filter((r) => r.arte === 'provisoria')).toHaveLength(0);
   });
 });
 
@@ -347,6 +361,16 @@ describe('quem solta o quê', () => {
     expect(new Set(conjuntos).size).toBeGreaterThan(1);
   });
 
+  it('as 30 galáxias planejadas têm um recurso-assinatura exclusivo', () => {
+    const recursos = Array.from({ length: 30 }, (_, g) => recursoDaGalaxia(g));
+    expect(recursos.every(Boolean)).toBe(true);
+    expect(new Set(recursos.map((r) => r!.id)).size).toBe(30);
+    for (let g = 0; g < 30; g++) {
+      expect(recursosDoPlaneta(g * 10 + 1)[0]?.id).toBe(recursos[g]!.id);
+      expect(recursosDoPlaneta(g * 10 + 10)[0]?.id).toBe(recursos[g]!.id);
+    }
+  });
+
   it('as famílias melhores só abrem mais fundo no jogo', () => {
     const cedo = new Set(recursosDoPlaneta(5).map((r) => r.familia));
     expect(cedo).toEqual(new Set(['minerio']));
@@ -364,6 +388,7 @@ describe('quem solta o quê', () => {
       const r = recursoDoChefe(id);
       expect(r, id).toBeTruthy();
       expect(r!.origens).toContain('chefe');
+      expect(r!.escopo).toBe('chefe');
     }
   });
 });

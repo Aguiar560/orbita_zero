@@ -12,6 +12,7 @@
  */
 import { Rng } from '@core/math';
 import { HULLS } from '@data/hulls';
+import { SPACESHIPS2_HULL_SPEC_BY_ID } from '@data/hulls-spaceships2';
 import { rollItem } from '@sim/loot';
 import { sectorDamage, sectorHp, sectorIlvl } from '@sim/progression';
 import { dps, effectiveHp, powerScore, resolveStats } from '@sim/stats';
@@ -102,7 +103,12 @@ export function slotsDoSetor(setor: number): number {
 /** Melhor casco liberado num setor, pelo tier. */
 export function cascoDoSetor(setor: number) {
   return [...HULLS]
-    .filter((h) => h.requiresSector <= setor)
+    // Esta régua mede a ESPINHA de progressão autoral. Os cascos Spaceships 2.0
+    // estão liberados para campanha, mas ainda não receberam pontos definitivos
+    // de desbloqueio; tratá-los como um T4 obrigatório no setor 1 recalibraria
+    // toda a curva contra uma decisão declaradamente provisória. A bateria de
+    // confrontos mede os 29 à parte até a escada de aquisição ser desenhada.
+    .filter((h) => !h.prototype && !SPACESHIPS2_HULL_SPEC_BY_ID.has(h.id) && h.requiresSector <= setor)
     .sort((a, b) => b.tier - a.tier)[0]!;
 }
 

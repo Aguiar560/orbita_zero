@@ -193,7 +193,8 @@ export class PilotAI {
       const dx = player.x - e.x;
       const dy = player.y - e.y;
       const d = Math.hypot(dx, dy);
-      const danger = e.radius + player.radius + 34;
+      const enemyRadius = e.hitbox ? Math.max(e.hitbox.width, e.hitbox.height) / 2 : e.radius * e.scale;
+      const danger = enemyRadius + player.radius + 34;
       if (d > danger || d < 0.001) return;
       const w = (1 - d / danger) * 2.2;
       ex += (dx / d) * w;
@@ -310,7 +311,8 @@ export class PilotAI {
     return best;
   }
 
-  reset(): void {
+  reset(seed?: number): void {
+    if (seed !== undefined) this.rng.reset(seed);
     this.panic = 0;
     this.decisionTimer = 0;
     this.cachedDx = 0;

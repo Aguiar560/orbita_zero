@@ -4,7 +4,7 @@ import type { StatMap } from './types';
 /**
  * Perfil de uma nave.
  *
- * O jogo tem 20 cascos e uma tabela de 16 atributos: comparar dois deles olhando
+ * O jogo tem dezenas de cascos e uma tabela de 16 atributos: comparar dois deles olhando
  * números crus é trabalho, não decisão. Aqui os atributos são condensados em
  * CINCO eixos e numa nota única, para a pergunta virar "quero uma nave de
  * ataque ou de defesa?" em vez de "179 de escudo é muito?".

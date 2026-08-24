@@ -9,6 +9,55 @@ reproduzido com os comandos da seção 5 do mapa.
 
 ---
 
+## 0. Sistemas transversais entregues em 24/08
+
+O registro completo das entregas de interface, calibração, arte e conteúdo
+realizadas nesta sessão está em
+[`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md). Esta seção conserva as
+regras técnicas que atravessam mais de uma tela.
+
+### Save e preferências — `sim/state.ts`
+
+`SAVE_VERSION = 5`. A migração aceita versões antigas conhecidas, cria campos
+ausentes e normaliza o resultado antes do jogo usá-lo. Preferências inválidas
+voltam para Idle, recursos zerados não inflam o save, ids repetidos são
+removidos e `pinnedMissions` é limitado a quatro missões válidas. Save malformado
+ou de versão futura retorna `null` em vez de travar a inicialização.
+
+### Rastreador de missões — `sim/missoes.ts`, `ui/Shell.ts`
+
+O estado persistido guarda apenas ids em `settings.pinnedMissions`; o painel
+resolve nome, requisito, progresso e estado a partir do catálogo e do `Sim`.
+Isso evita salvar texto ou porcentagem derivados e garante que entregar,
+bloquear ou remover uma missão também limpe o rastreio. O limite é quatro.
+
+### Calibração de colisão — `sim/laboratorio.ts`, `hitbox-calibrations.ts`
+
+Hitbox é uma caixa retangular `{ width, height, offsetX, offsetY }` por casco
+ou ficha inimiga. `VerticalMode` aplica a mesma caixa ao combate e ao desenho de
+depuração. O Laboratório altera valores ao vivo, mas a persistência administrativa
+grava somente a tabela versionada de calibrações; não há dado de hitbox em save
+do jogador. Assim uma correção é global e reproduzível em qualquer cenário.
+
+### Modificadores mecânicos da Provação — `sim/desafio.ts`, `VerticalMode.ts`
+
+Além dos modificadores numéricos, a cena interpreta cinco efeitos de leitura
+visual e resposta mecânica: janela cíclica de invulnerabilidade, zonas
+telegrafadas, clones sem recompensa, barreira frontal cíclica e ponto fraco
+móvel. O catálogo limita parâmetros para que invulnerabilidade e barreira sempre
+deixem janela de dano; clone não conta para progresso nem drop.
+
+### Baús, craft e descarte
+
+`openChest` usa a distribuição explícita do baú e ignora Sorte. Depois da
+abertura, a maior raridade determina apenas apresentação (aura, cor e animação),
+nunca altera o resultado já sorteado. A Bancada de Modulação troca uma linha
+possível preservando identidade estrutural do item. Venda e desmanche são
+destinos distintos: Sucata por venda; materiais escalados por raridade/tier/nível
+por desmanche. As tabelas econômicas vivem em `data/balance/`.
+
+---
+
 ## 1. Atributos — `sim/stats.ts`
 
 `resolveStats(state)` é a função mais central do jogo: transforma estado em
@@ -283,7 +332,30 @@ nível 1 é o piso.** Cair de nível **devolve o último nó da Matriz**.
 
 ---
 
-## 7. Missões — `sim/missoes.ts`, `data/missoes.ts`, `data/personagens.ts`
+## 7. Central de Serviços — `data/shop.ts`, `sim/index.ts`
+
+A Loja não participa de `resolveStats`. Este é o invariante central: o poder da
+nave continua vindo apenas de item, craft e Matriz.
+
+| linha | contrato |
+|---|---|
+| Carga | quatro concessões idempotentes de +5 espaços de item e recurso |
+| Matriz | devolve os pontos já conquistados; não concede nenhum |
+| Provação | soma uma tentativa sem ultrapassar `TENTATIVAS_MAX` |
+| Câmbio | pacotes com perda e cota derivada do nível de comando |
+| Recalibração | troca identidade/qualidade, preservando o tier da linha |
+
+`shopLimit` deriva a cota, em vez de salvar um relógio ou estoque. As compras
+realizadas ficam em `state.shop`; subir de nível libera operações novas até o
+teto da linha.
+
+`recalibrateAffix` reutiliza as regras do drop: slot, elemento, raridade mínima,
+prefixo/sufixo e grupos de exclusão. Recalibrar nunca produz uma combinação que
+o gerador natural recusaria.
+
+---
+
+## 8. Missões — `sim/missoes.ts`, `data/missoes.ts`, `data/personagens.ts`
 
 **9 contatos**, confiança 0–5 em algarismos romanos, quatro tipos de missão.
 
@@ -308,13 +380,13 @@ economia a aprender a ignorá-la.
 
 ---
 
-## 8. Núcleo de Provação — `data/provacao*.ts`, `sim/provacao.ts`, `sim/desafio.ts`
+## 9. Núcleo de Provação — `data/provacao*.ts`, `sim/provacao.ts`, `sim/desafio.ts`
 
 **100 pisos**, um chefe único em cada, cor cyan, modo paralelo à campanha.
 
 | arquivo | o quê |
 |---|---|
-| `data/provacao.ts` | os 100 pisos por regra, 11 modificadores, marcos a cada 10 |
+| `data/provacao.ts` | os 100 pisos por regra, 16 modificadores, marcos a cada 10 |
 | `data/provacao-chefes.ts` | 100 chefes em 10 camadas, 8 arquétipos |
 | `data/provacao-especiais.ts` | 18 especiais, cada um com telegrafia (`aviso`) e `carga` |
 | `sim/desafio.ts` | **a fronteira**: o único módulo que traduz piso → encontro |
@@ -346,12 +418,13 @@ tique — sobrevive a fechar a aba.
 > **A progressão contava duas vezes:** `hpPool` multiplicava por `escala`
 > enquanto `setorEquivalente` já avançava setores.
 
-**Falta:** 6 modificadores mecânicos do §14 (invulnerabilidade, zonas de perigo,
-clones, barreira frontal, pontos fracos) e arte dedicada dos 100 chefes.
+Os cinco modificadores mecânicos do §14 também são consumidos pelo combate:
+invulnerabilidade cíclica, zonas avisadas, ecos sem recompensa, barreira cíclica
+e núcleo móvel que multiplica dano. Resta arte dedicada dos 100 chefes.
 
 ---
 
-## 9. Economia e save — `sim/state.ts`, `sim/types.ts`
+## 10. Economia e save — `sim/state.ts`, `sim/types.ts`
 
 ### `GameState`
 
@@ -374,8 +447,9 @@ settings
 loja ou rematar um chefe daria espaço de novo. O id também é o que permite ao
 painel dizer de onde veio cada espaço.
 
-**Save malformado não pode travar o boot.** A migração apara o que sumiu e
-preenche o que falta.
+**Save malformado não pode travar o boot.** A migração v5 apara o que sumiu,
+preenche o que falta e normaliza frota, casco, recursos e preferências antes de
+o jogo usar o estado.
 
 ### Modo de teste
 
@@ -386,7 +460,7 @@ save.
 
 ---
 
-## 10. Testes — 452, em 17 arquivos
+## 11. Testes — 468 aprovados, em 20 arquivos
 
 | arquivo | testes | cobre |
 |---|---|---|

@@ -4,9 +4,9 @@ import type { Rarity } from '@sim/types';
  * Sacrifício e fusão de itens (§26).
  *
  * O problema que resolve: no fim do jogo, um drop Comum é lixo. Ele ocupa um
- * dos 15 a 70 espaços do inventário e o único destino é desmanchar por núcleos.
- * Com fusão, dez lixos viram uma tentativa — e é isso que mantém o drop
- * inferior relevante em qualquer ponto da curva.
+ * dos 15 a 70 espaços do inventário e precisa competir entre três destinos:
+ * venda por Sucata, desmontagem por materiais ou fusão. Com fusão, dez lixos
+ * viram uma tentativa — e é isso que mantém o drop inferior relevante.
  *
  * **Sempre sai um item — o que se aposta é a RARIDADE dele.** Dez Lendários dão
  * um Mítico em 7% das vezes e um Lendário nas outras 93%. Não existe perda
@@ -69,7 +69,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'comum_incomum',
     nome: 'Síntese Básica',
     entrada: 0, quantidade: 10, nucleos: 40,
-    custo: { ferrita: 200 },
+    custo: { ferrita: 40 },
     resultados: [{ raridade: 1, peso: 72 }, { raridade: 0, peso: 28 }],
     nota: 'Dez Comuns viram uma tentativa de Incomum.',
   },
@@ -77,7 +77,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'incomum_raro',
     nome: 'Síntese Ligada',
     entrada: 1, quantidade: 10, nucleos: 150,
-    custo: { ferrita: 500, titanio: 80 },
+    custo: { ferrita: 80, titanio: 30 },
     resultados: [{ raridade: 2, peso: 48 }, { raridade: 1, peso: 52 }],
     nota: 'Dez Incomuns, com liga de titânio.',
   },
@@ -85,7 +85,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'raro_epico',
     nome: 'Transmutação',
     entrada: 2, quantidade: 10, nucleos: 600,
-    custo: { titanio: 250, cristal_quantico: 40 },
+    custo: { titanio: 60, cristal_quantico: 24 },
     resultados: [{ raridade: 3, peso: 30 }, { raridade: 2, peso: 70 }],
     nota: 'Dez Raros e cristal quântico.',
   },
@@ -93,7 +93,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'epico_lendario',
     nome: 'Fusão Estelar',
     entrada: 3, quantidade: 10, nucleos: 2500,
-    custo: { cristal_quantico: 120, aco_estelar: 60 },
+    custo: { cristal_quantico: 60, aco_estelar: 30 },
     resultados: [{ raridade: 4, peso: 15 }, { raridade: 3, peso: 85 }],
     nota: 'Dez Épicos e aço estelar.',
   },
@@ -101,7 +101,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'lendario_mitico',
     nome: 'Convergência',
     entrada: 4, quantidade: 10, nucleos: 12_000,
-    custo: { aco_estelar: 200, nucleo_de_energia: 40 },
+    custo: { aco_estelar: 80, nucleo_de_energia: 20 },
     // 7 em 100 sobem; os outros 93 devolvem um Lendário. É o degrau que mais
     // ganha com a mudança: antes, 93% das vezes dez Lendários viravam nada.
     resultados: [{ raridade: 5, peso: 7 }, { raridade: 4, peso: 93 }],
@@ -111,7 +111,7 @@ export const RECEITAS: readonly ReceitaDeFusao[] = [
     id: 'mitico_divino',
     nome: 'Singularidade Contida',
     entrada: 5, quantidade: 10, nucleos: 60_000,
-    custo: { fragmento_divino: 25, essencia_primordial: 15 },
+    custo: { fragmento_divino: 12, essencia_primordial: 6 },
     resultados: [{ raridade: 6, peso: 3 }, { raridade: 5, peso: 97 }],
     nota: 'Dez Míticos, fragmento divino e essência primordial.',
   },

@@ -1,76 +1,220 @@
-﻿import { fmt } from '@core/format';
-import { CHESTS, PATROL_CACHE_KILLS } from '@data/chests';
-import { rarityInfo } from '@data/rarity';
+import { fmt } from '@core/format';
+import { CHEST_BY_ID, CHESTS, PATROL_CACHE_KILLS, type ChestDef } from '@data/chests';
+import { RARITIES, rarityInfo } from '@data/rarity';
 import { itemName } from '@sim/loot';
-import type { Item } from '@sim/types';
+import type { Item, Rarity } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
+import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
 
+const CHEST_ART = '/assets/ui/baus/chests';
+
+function chestImage(def: ChestDef, className: string): HTMLElement {
+  return h('img', {
+    class: className,
+    src: `${CHEST_ART}/${def.art}`,
+    alt: def.name,
+    draggable: 'false',
+  });
+}
+
+function chanceText(chance: number): string {
+  const percent = chance * 100;
+  if (percent >= 10) return `${percent.toFixed(0)}%`;
+  if (percent >= 1) return `${percent.toFixed(1)}%`;
+  if (percent >= 0.01) return `${percent.toFixed(3)}%`;
+  return `${percent.toFixed(5)}%`;
+}
+
+/**
+ * Câmara de aquisição.
+ *
+ * A composição segue a gramática da Provação: escolha à esquerda, objeto em
+ * foco no centro e informação decisiva à direita. A cor forte não desenha a
+ * estrutura — ela identifica o baú e, durante a revelação, a raridade obtida.
+ */
 export class ChestsPanel implements Panel {
   id = 'baus';
   title = 'Baús';
   icon = 'aba/baus';
-  /** Abre em camada: a coluna direita é do inventário. */
   overlay = true;
 
-  private lastOpen: { tier: string; items: Item[] } | null = null;
+  private selected = 'bronze';
+  private lastOpen: { tier: string; items: Item[]; best: Rarity } | null = null;
 
   badge(sim: Sim): number {
-    return Object.values(sim.state.chests).reduce((s, n) => s + n, 0);
+    return Object.values(sim.state.chests).reduce((sum, n) => sum + n, 0);
   }
 
   render(sim: Sim): HTMLElement {
-    const bar = sim.state.bar;
+    const def = CHEST_BY_ID.get(this.selected) ?? CHESTS[0]!;
+    const stock = sim.state.chests[def.id] ?? 0;
+    const result = this.lastOpen?.tier === def.id ? this.lastOpen : null;
 
-    return h('.panel-body', {},
-      h('.cache-strip', {},
-        h('.cache-text', {},
-          h('strong', { text: 'Cápsula de patrulha' }),
-          h('span.muted', { text: `${Math.floor(bar.cacheProgress * PATROL_CACHE_KILLS)} / ${PATROL_CACHE_KILLS} abates na faixa` }),
-        ),
-        progressBar(bar.cacheProgress, '#ffb638', 6),
+    return h(`.panel-body.bau${sim.state.settings.reduceEffects ? '.efeitos-reduzidos' : ''}`, {},
+      this.header(sim),
+      h('.bau-corpo', {},
+        this.catalog(sim, def),
+        this.terminal(sim, def, stock, result),
+        this.intelligence(def, result),
       ),
+      h('.bau-rodape', {},
+        h('span', { text: 'A SORTE DO PILOTO NÃO ALTERA CÁPSULAS.' }),
+        h('span', { text: 'PROBABILIDADES FIXAS · RESULTADO AUDITÁVEL' }),
+      ),
+    );
+  }
 
-      h('.chest-grid', {}, ...CHESTS.map((def) => {
+  private header(sim: Sim): HTMLElement {
+    const progress = sim.state.bar.cacheProgress;
+    const kills = Math.floor(progress * PATROL_CACHE_KILLS);
+    const total = this.badge(sim);
+
+    return h('.bau-topo', {},
+      h('.bau-titulo', {},
+        spriteIcon('bau/a_0', 42),
+        h('.bau-titulo-copy', {},
+          h('h1', { text: 'CÂMARA DE AQUISIÇÃO' }),
+          h('span.muted.tiny', { text: `${total} cápsula${total === 1 ? '' : 's'} em estoque` }),
+        ),
+      ),
+      h('.bau-cache', {},
+        h('.bau-cache-linha', {},
+          h('span', { text: 'PRÓXIMA CÁPSULA DE PATRULHA' }),
+          h('strong', { text: `${kills} / ${PATROL_CACHE_KILLS}` }),
+        ),
+        progressBar(progress, '#55bddc', 5),
+      ),
+    );
+  }
+
+  private catalog(sim: Sim, selected: ChestDef): HTMLElement {
+    return h('.bau-col.bau-lista', {},
+      h('.bau-secao', { text: 'CÁPSULAS' }),
+      ...CHESTS.map((def) => {
         const stock = sim.state.chests[def.id] ?? 0;
-        return h(`.chest-card${stock > 0 ? '.has' : ''}`, { style: { borderColor: def.color } },
-          h('.chest-art', {}, spriteIcon(def.icon, 46)),
-          h('strong', { text: def.name, style: { color: def.color } }),
-          h('span.muted.tiny', { text: `${def.items[0]}–${def.items[1]} itens · nível +${def.ilvlBonus} · piso ${rarityInfo(def.floor).name}` }),
-          h('.chest-stock', { text: `${stock} em estoque` }),
-          h('.chest-actions', {},
-            h('button.btn', {
-              disabled: stock <= 0,
-              onclick: () => {
-                const items = sim.openChestFromStock(def.id);
-                if (items) this.lastOpen = { tier: def.id, items };
-                sim.touch();
-              },
-            }, h('span', { text: 'Abrir' })),
-            def.buy > 0
-              ? h('button.btn.buy', {
-                  disabled: !sim.can('cristal', def.buy),
-                  onclick: () => { sim.buyChest(def.id); sim.touch(); },
-                }, h('span', { text: `Comprar · ${fmt(def.buy)}◆` }))
-              : null,
+        const active = def.id === selected.id;
+        return h(`button.bau-tier${active ? '.ativo' : ''}${stock > 0 ? '.disponivel' : ''}`, {
+          style: { '--bau-cor': def.color } as Partial<CSSStyleDeclaration>,
+          title: `${def.name} · ${stock} em estoque`,
+          'aria-pressed': active,
+          onclick: () => { this.selected = def.id; sim.touch(); },
+        },
+          chestImage(def, 'bau-tier-img'),
+          h('.bau-tier-copy', {},
+            h('strong', { text: def.name }),
+            h('span', { text: `${def.items[0]}–${def.items[1]} itens · NV +${def.ilvlBonus}` }),
           ),
+          h('.bau-tier-stock', { text: String(stock), title: `${stock} em estoque` }),
+        );
+      }),
+    );
+  }
+
+  private terminal(
+    sim: Sim,
+    def: ChestDef,
+    stock: number,
+    result: { items: Item[]; best: Rarity } | null,
+  ): HTMLElement {
+    const bestInfo = result ? rarityInfo(result.best) : null;
+    const resources = Object.entries(def.resources);
+
+    return h(`.bau-col.bau-terminal.t-${def.id}${result ? `.revelando.r-${bestInfo!.slug}` : ''}`, {
+      style: { '--bau-cor': def.color, '--reveal-cor': bestInfo?.color ?? def.color } as Partial<CSSStyleDeclaration>,
+    },
+      h('.bau-secao', { text: 'TERMINAL DE ABERTURA' }),
+      h('.bau-hero', {},
+        h('.bau-aura', {}),
+        h('.bau-radial', {}),
+        h('.bau-capsula', {},
+          // Uma cópia escura fica entre o efeito e a arte. Ela funciona como
+          // anteparo para os pixels semitransparentes do WebP: a luz da raridade
+          // continua atrás da silhueta, sem tingir a superfície do baú.
+          chestImage(def, 'bau-hero-matte'),
+          chestImage(def, 'bau-hero-img'),
+        ),
+        result
+          ? h('.bau-reveal-selo', {},
+              h('span', { text: 'MAIOR SINAL' }),
+              h('strong', { text: bestInfo!.name.toUpperCase(), style: { color: bestInfo!.color } }),
+            )
+          : null,
+      ),
+      h('.bau-identidade', {},
+        h('span', { text: 'CÁPSULA SELECIONADA' }),
+        h('strong', { text: def.name.toUpperCase(), style: { color: def.color } }),
+        h('small', { text: `${stock} disponível${stock === 1 ? '' : 'is'} · ${def.items[0]}–${def.items[1]} itens por abertura` }),
+      ),
+      h('.bau-recursos', {}, ...resources.map(([id, amount]) => {
+        const meta = RESOURCE_META[id as keyof typeof RESOURCE_META];
+        return h('.bau-recurso', { title: meta?.label ?? id },
+          meta ? spriteIcon(meta.icon, 20) : null,
+          h('span', { text: fmt(amount ?? 0) }),
         );
       })),
+      h('.bau-acoes', {},
+        h('button.btn.bau-abrir', {
+          disabled: stock <= 0,
+          onclick: () => {
+            const items = sim.openChestFromStock(def.id);
+            if (items?.length) {
+              const best = Math.max(...items.map((item) => item.rarity)) as Rarity;
+              this.lastOpen = { tier: def.id, items, best };
+            }
+            sim.touch();
+          },
+        }, h('span', { text: stock > 0 ? 'ABRIR CÁPSULA' : 'SEM ESTOQUE' })),
+        def.buy > 0
+          ? h('button.btn.bau-comprar', {
+              disabled: !sim.can('cristal', def.buy),
+              onclick: () => { sim.buyChest(def.id); sim.touch(); },
+            }, h('span', { text: `ADQUIRIR · ${fmt(def.buy)} ◆` }))
+          : null,
+      ),
+    );
+  }
 
-      this.lastOpen
-        ? h('.loot-result', {},
-            h('h3.section', { text: 'Último resgate' }),
-            h('.loot-list', {}, ...this.lastOpen.items.map((item) => {
-              const info = rarityInfo(item.rarity);
-              return h('.loot-row', { style: { borderColor: info.color } },
-                spriteIcon(item.icon, 26),
+  private intelligence(def: ChestDef, result: { items: Item[]; best: Rarity } | null): HTMLElement {
+    return h('.bau-col.bau-info', {},
+      h('.bau-secao', { text: 'PROBABILIDADES POR ITEM' }),
+      h('.bau-chances', {}, ...RARITIES.map((rarity) => {
+        const chance = def.raridades[rarity.id];
+        return h(`.bau-chance.r-${rarity.slug}`, {},
+          h('.bau-chance-sinal', { style: { background: rarity.color, boxShadow: `0 0 8px ${rarity.glow}` } }),
+          h('span', { text: rarity.name }),
+          h('strong', { text: chanceText(chance) }),
+        );
+      })),
+      h('.bau-nota', {},
+        h('strong', { text: 'DISTRIBUIÇÃO PRÓPRIA' }),
+        h('span', { text: 'Cada cápsula usa sua própria tabela. Sorte afeta apenas itens derrubados em combate.' }),
+      ),
+      h('.bau-secao', { text: result ? 'ITENS EXTRAÍDOS' : 'LEITURA DE SINAL' }),
+      result
+        ? h('.bau-loot', {}, ...result.items.map((item, index) => {
+            const info = rarityInfo(item.rarity);
+            return h(`.bau-drop.r-${info.slug}`, {
+              style: {
+                '--rarity': info.color,
+                '--rarity-glow': info.glow,
+                animationDelay: `${160 + index * 110}ms`,
+              } as Partial<CSSStyleDeclaration>,
+            },
+              h('.bau-drop-fx', {}),
+              spriteIcon(item.icon, 34),
+              h('.bau-drop-copy', {},
                 h('strong', { text: itemName(item), style: { color: info.color } }),
-                h('span.muted.tiny', { text: `${info.name} · nv ${item.ilvl}` }),
-              );
-            })),
-          )
-        : null,
+                h('span', { text: `${info.name} · nível ${item.ilvl}` }),
+              ),
+            );
+          }))
+        : h('.bau-vazio', {},
+            h('span', { text: '◈' }),
+            h('strong', { text: 'AGUARDANDO ABERTURA' }),
+            h('small', { text: 'O sinal da maior raridade define a animação da câmara.' }),
+          ),
     );
   }
 }

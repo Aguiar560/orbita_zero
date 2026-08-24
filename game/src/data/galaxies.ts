@@ -25,6 +25,10 @@ export interface GalaxyInfo {
   portrait: string;
   /** Frota dominante, para o texto de ambientação. */
   fleet: string;
+  /** Frase curta que define a fantasia da região. */
+  identity: string;
+  /** Perigo ambiental dominante, mostrado antes da viagem. */
+  hazard: string;
   /** Elemento predominante da região — o aviso de qual resistência vestir. */
   element: ElementId;
   color: string;
@@ -44,6 +48,22 @@ const NAMES = [
   'Coroa Quebrada', 'Longa Noite', 'Alto Silêncio', 'Véu de Âmbar', 'Última Página',
   'Forja Fria', 'Jardim de Óxido', 'Anel de Tétis', 'Garganta Azul', 'Espinha do Vazio',
   'Nona Aurora', 'Campo de Lázaro', 'Trono Oco', 'Maré de Prata', 'Fim da Linha',
+  'Caldeira de Asterion', 'Cemitério de Khepri', 'Tear de Nyx', 'Lâmina de Carbono', 'Prisma de Eos',
+  'Colmeia de Ícaro', 'Forja de Antares', 'Coroa de Caelum', 'Dobra de Janus', 'Umbra Terminal',
+];
+
+/** Identidade autoral das galáxias 21–30, alinhada ao material-assinatura. */
+const PROFUNDAS: readonly { identity: string; hazard: string; element: ElementId; color: string }[] = [
+  { identity: 'Rios de escória circulam uma estrela desmontada.', hazard: 'Marés térmicas interrompem escudos.', element: 'fogo', color: '#ff7a42' },
+  { identity: 'Milhões de meteoros formam túmulos em movimento.', hazard: 'Impactos cinéticos cruzam as rotas.', element: 'padrao', color: '#b8c4cf' },
+  { identity: 'Nanofibras antigas costuram destroços em casulos.', hazard: 'Redes móveis reduzem a evasão.', element: 'quimico', color: '#62d7a4' },
+  { identity: 'Folhas de grafeno cortam a luz como navalhas.', hazard: 'Descargas percorrem superfícies condutoras.', element: 'raio', color: '#54cfff' },
+  { identity: 'Prismas quânticos repetem cada nave em futuros rivais.', hazard: 'Ecos dimensionais duplicam projéteis.', element: 'cosmico', color: '#a97bff' },
+  { identity: 'Enxames de nanotubos constroem luas artificiais.', hazard: 'Estruturas se regeneram durante o combate.', element: 'quimico', color: '#70e0bd' },
+  { identity: 'Antares tempera aço dentro de tempestades solares.', hazard: 'Calor crescente pune combates longos.', element: 'fogo', color: '#ff9a4f' },
+  { identity: 'Uma liga celestial sustenta palácios sem gravidade.', hazard: 'Campos alternam massa e velocidade.', element: 'cosmico', color: '#f1cf75' },
+  { identity: 'Todas as rotas se dobram e retornam por outro ângulo.', hazard: 'Saltos reposicionam frotas sem aviso.', element: 'cosmico', color: '#72a2ff' },
+  { identity: 'A luz termina; apenas a matéria escura registra passagem.', hazard: 'Sensores falham e o dano recebido oscila.', element: 'cosmico', color: '#8b68d8' },
 ];
 
 /** Famílias de fundo disponíveis, alternadas para dar identidade a cada galáxia. */
@@ -85,6 +105,7 @@ export function describeGalaxy(index: number): GalaxyInfo {
   const family = BACKDROP_FAMILIES[index % BACKDROP_FAMILIES.length]!;
   const variant = String(rng.int(1, 8)).padStart(2, '0');
   const fleet = FLEET_INFO[Math.min(FLEET_INFO.length - 1, Math.floor(index / 2))]!;
+  const profunda = index >= 20 && index < 30 ? PROFUNDAS[index - 20] : null;
 
   // Duas texturas distintas por galáxia: uma de fundo, outra por cima.
   const pool = [...STARFIELDS];
@@ -106,12 +127,14 @@ export function describeGalaxy(index: number): GalaxyInfo {
     // 210 retratos disponíveis; o índice determina qual, de forma estável.
     portrait: `retrato/${index % 21}_${rng.int(0, 9)}`,
     fleet: fleet.name,
+    identity: profunda?.identity ?? 'Uma fronteira disputada entre frotas, planetas e rotas de coleta.',
+    hazard: profunda?.hazard ?? 'A ameaça dominante acompanha o elemento da frota.',
     // Enquanto as frotas escritas à mão cobrem a região, o elemento é o delas —
     // a cor da nave e a cor do tiro têm que combinar. Passado esse trecho, os
     // seis elementos entram em rodízio para nenhuma metade do bestiário ficar
     // fora de circulação nos setores profundos.
-    element: index < FLEET_INFO.length * 2 ? fleet.element : ELEMENT_IDS[index % ELEMENT_IDS.length]!,
-    color: COLORS[index % COLORS.length]!,
+    element: profunda?.element ?? (index < FLEET_INFO.length * 2 ? fleet.element : ELEMENT_IDS[index % ELEMENT_IDS.length]!),
+    color: profunda?.color ?? COLORS[index % COLORS.length]!,
     firstSector: index * PHASES_PER_GALAXY + 1,
     lastSector: (index + 1) * PHASES_PER_GALAXY,
   };

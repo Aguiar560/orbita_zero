@@ -7,7 +7,7 @@
  *
  *   npm run assets
  */
-import { readdir, mkdir, writeFile, rm, stat } from 'node:fs/promises';
+import { readdir, mkdir, writeFile, rm, stat, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,6 +70,7 @@ const PROJECT = path.resolve(HERE, '..');
 const RAW = path.resolve(PROJECT, '..'); // D:\bbb
 const VOID = path.join(RAW, 'new spaceships');
 const OUT = path.join(PROJECT, 'public', 'assets');
+const STATIC_ASSETS = path.join(PROJECT, 'assets-static');
 
 /** Altura interna (device px) da faixa horizontal — define o resize do parallax. */
 const BAR_LAYER_HEIGHT = 220;
@@ -104,9 +105,18 @@ async function main() {
   await buildInterface(manifest);
   await buildFleetAtlas(manifest);
   await buildHullAtlas(manifest);
+  await buildSpaceships2Atlas(manifest);
+  await buildCharactersAtlas(manifest);
   await buildDroneAtlas(manifest);
   await buildParallax(manifest);
   await buildDeepSpace(manifest);
+
+  // Assets autorais que não são derivados dos packs crus (por exemplo, UI da Provação).
+  // O pipeline recria public/assets do zero, então eles entram sempre no fim da montagem.
+  if (existsSync(STATIC_ASSETS)) {
+    await cp(STATIC_ASSETS, OUT, { recursive: true, force: true });
+    log('assets estáticos preservados');
+  }
 
   await writeFile(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
@@ -904,6 +914,21 @@ async function buildHullAtlas(manifest) {
     sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
   };
 
+  /** Naves soltas deste pack apontam para baixo; o combate do jogador aponta para cima. */
+  const pushPlayerShip = async (file, id) => {
+    if (!existsSync(file)) return;
+    noteRead(file);
+    const { data, info } = await src(file)
+      .rotate(180)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const raw = { data, width: info.width, height: info.height };
+    const trimmed = trimAlpha(raw, 2);
+    if (!trimmed) return;
+    sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
+  };
+
   for (let n = 1; n <= 6; n++) {
     await push(path.join(parts, `Ship${n}`, `Ship${n}.png`), `hull/ship${n}`);
 
@@ -936,6 +961,109 @@ async function buildHullAtlas(manifest) {
   }
 
   await writeAtlas('hull', sprites, manifest);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Spaceships 2.0 — catálogo visual avulso (jogador, inimigo e chefe)
+// ────────────────────────────────────────────────────────────────────────────
+const spaceships2Slug = (file) => {
+  const stem = path.basename(file, '.png');
+  const parenthesized = /^\((\d+)\)$/.exec(stem);
+  if (parenthesized) return `p_${parenthesized[1]}`;
+  const download = /^download(?: \((\d+)\))?$/i.exec(stem);
+  if (download) return download[1] ? `d_${download[1]}` : 'd_base';
+  return `n_${stem.replace(/[^a-z0-9]+/gi, '_').toLowerCase()}`;
+};
+
+async function buildSpaceships2Atlas(manifest) {
+  const root = path.join(RAW, 'spaceships new', 'spaceships 2.0');
+  if (!existsSync(root)) return;
+
+  const sprites = [];
+  const pushNormalized = async (file, id, rotate) => {
+    noteRead(file);
+    const pipeline = sharp(file);
+    if (rotate) pipeline.rotate(180);
+    const { data, info } = await pipeline
+      .resize(256, 256, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const raw = { data, width: info.width, height: info.height };
+    const trimmed = trimAlpha(raw, 2);
+    if (!trimmed) return;
+    sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
+  };
+
+  const groups = [
+    ['Jogador', 'player'],
+    ['Inimigo', 'enemy'],
+    ['Boss', 'boss'],
+  ];
+  for (const [folder, role] of groups) {
+    const dir = path.join(root, folder);
+    if (!existsSync(dir)) continue;
+    const files = (await readdir(dir)).filter((file) => file.toLowerCase().endsWith('.png')).sort(natural);
+    for (const file of files) {
+      const full = path.join(dir, file);
+      const meta = await sharp(full).metadata();
+      const square400 = meta.width === 400 && meta.height === 400;
+      // O pack de 400 px já separa jogador (para baixo) de hostil (para baixo).
+      // As artes menores vêm apontando para cima; o papel decide a correção.
+      const rotate = role === 'player' ? square400 : !square400;
+      await pushNormalized(full, `s2/${role}/${spaceships2Slug(file)}`, rotate);
+    }
+  }
+
+  // Preserva também o pequeno lote que já existia na raiz antes das pastas.
+  const legacy = (await readdir(root, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.png'))
+    .map((entry) => entry.name)
+    .sort(natural);
+  const legacyPointingDown = new Set(['(16).png', '(60).png', '19.png']);
+  for (const file of legacy) {
+    await pushNormalized(
+      path.join(root, file),
+      `s2/player/legacy_${spaceships2Slug(file)}`,
+      legacyPointingDown.has(file),
+    );
+  }
+
+  log(`Spaceships 2.0: ${sprites.length} artes normalizadas`);
+  await writeAtlas('spaceships2', sprites, manifest, 4096);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Characters — retratos de aliados, jogadores e chefes convertidos
+// ────────────────────────────────────────────────────────────────────────────
+async function buildCharactersAtlas(manifest) {
+  const root = path.join(RAW, 'spaceships new', 'Characters');
+  if (!existsSync(root)) return;
+
+  const groups = [
+    ['Jogador', 'player'],
+    ['Aliados', 'ally'],
+    ['Inimigos', 'enemy'],
+  ];
+  const sprites = [];
+  for (const [folder, role] of groups) {
+    const dir = path.join(root, folder);
+    if (!existsSync(dir)) continue;
+    const files = (await readdir(dir)).filter((file) => file.toLowerCase().endsWith('.png')).sort(natural);
+    for (const file of files) {
+      const full = path.join(dir, file);
+      let raw = await toRaw(full);
+      // Os retratos de Jogador vieram achatados sobre branco, enquanto os
+      // demais grupos já têm alfa. Recuperar a transparência aqui impede que
+      // uma foto branca quebre a identidade escura da Central de Missões.
+      if (role === 'player') raw = unmatte(raw, { r: 255, g: 255, b: 255 }, 'solid');
+      const slug = path.basename(file, '.png').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '').toLowerCase();
+      sprites.push({ id: `character/${role}/${slug}`, raw, ox: 0, oy: 0, sw: raw.width, sh: raw.height });
+    }
+  }
+
+  log(`Characters: ${sprites.length} retratos`);
+  await writeAtlas('characters', sprites, manifest, 2048, { lazy: true });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1197,7 +1325,7 @@ async function buildRecursos(manifest) {
   /**
    * Duas pastas, e a 2.0 VENCE.
    *
-   * `Recursos 2.0` tem 42 arquivos com o fundo já removido à mão — canal alfa
+   * `Recursos 2.0` tem os arquivos com o fundo já removido — canal alfa
    * de verdade, não estimativa. A pasta original tem os 70, mas sem alfa: são
    * recortes retangulares com o fundo da célula junto, e a extração automática
    * acerta a maioria e erra as bordas finas.
@@ -1222,11 +1350,18 @@ async function buildRecursos(manifest) {
   const jaFeitos = new Set(prontos.map((f) => idDeRecurso(f.replace(/.png$/i, ''))));
   const sprites = [];
 
-  // Os que já vieram com alfa: entram como estão.
+  // Os que já vieram com alfa: não passam por extração de fundo. A única
+  // transformação é limitar o lado maior a 160 px PARA O ATLAS. As fontes 2.0
+  // variam de 111 a 1024 px; empacotá-las na resolução original estouraria
+  // 2048 px e não traria ganho, pois a maior exibição no jogo usa 112 px.
   for (const f of prontos) {
     const src = path.join(dirNovo, f);
     noteRead(src);
-    const raw = await toRaw(src);
+    const buffer = await sharp(src)
+      .resize({ width: 160, height: 160, fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const raw = await toRaw(buffer);
     const trimmed = trimAlpha(raw, 6);
     if (!trimmed) { console.warn(`   ! recurso vazio (2.0): ${f}`); continue; }
     sprites.push({

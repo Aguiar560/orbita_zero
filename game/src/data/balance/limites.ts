@@ -126,16 +126,6 @@ export const INIMIGOS_POR_ONDA_MAX = 60;
 export const INIMIGOS_POR_GRUPO_MAX = 30;
 
 /**
- * Teto da sorte EFETIVA na rolagem de raridade.
- *
- * A sorte do jogador já tem teto, mas os baús a multiplicam — o de
- * Singularidade por sete. Sem um segundo limite aqui, o produto escapava e o
- * baú mais caro do jogo soltava Divino em metade dos itens, esvaziando as sete
- * raridades que acabaram de ser criadas.
- */
-export const SORTE_EFETIVA_MAX = 12;
-
-/**
  * Aplica todos os limites, no lugar.
  *
  * Muta em vez de devolver cópia porque roda no fim de `resolveStats`, que já é

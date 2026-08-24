@@ -5,6 +5,8 @@ export interface Panel {
   title: string;
   /** Sprite do atlas usado como ícone da aba. */
   icon: string;
+  /** Asset avulso, quando a tela possui ícone autoral fora dos atlas. */
+  iconUrl?: string;
   /** Constrói o conteúdo do painel. Chamado a cada re-render. */
   render(sim: Sim): HTMLElement;
   /** Marcador numérico na aba (itens novos, baús por abrir…). */
