@@ -3995,7 +3995,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .camada:has(.afx) .camada-x { opacity: .55; filter: grayscale(.4) brightness(.8); }
 
 .afx {
-  --afx-prefix: #59c7e8; --afx-suffix: #b486f0; --afx-line: rgba(112, 137, 158, .23);
+  --afx-prefix: #59c7e8; --afx-suffix: #b486f0; --afx-line: var(--painel-linha);
   height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 9px;
   color: #cbd6df; font-family: 'Segoe UI', Inter, system-ui, sans-serif; overflow: hidden;
 }
@@ -4025,7 +4025,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .afx-section {
   min-height: 24px; display: flex; align-items: center; padding: 2px 0 5px 10px;
   border-bottom: 1px solid rgba(105, 137, 155, .15); box-shadow: inset 2px 0 0 rgba(89, 199, 232, .55);
-  color: #b6c7d0; font: 600 10.5px/1 'Chakra Petch', sans-serif; letter-spacing: 1.5px;
+  color: #abc0cb; font: 600 10.5px/1 'Chakra Petch', sans-serif; letter-spacing: 1.5px;
 }
 
 .afx-inventory { grid-template-rows: auto auto auto minmax(0, 1fr); }
@@ -4787,3 +4787,116 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .mis-dir { background: rgba(5,11,22,.58); }
 .mis-tipo { border: 1px solid rgba(111,164,207,.22) !important; border-radius: 6px; background: rgba(8,16,30,.55); }
 .mis-tipo.ativo { background: rgba(79,195,255,.1); box-shadow: inset 2px 0 var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRAMÁTICA DE PAINEL — a moldura, o fundo e o título de seção
+
+   Baús, Loja, Bancada de Modulação e Provação convergiram para a mesma
+   linguagem visual, cada um com o próprio prefixo e a própria cópia das
+   regras. Medido nos estilos COMPUTADOS, os quatro são idênticos: borda
+   `1px rgba(107,139,159,.24)`, raio 7px, gradiente `#070d14 → #04090f` e
+   padding 12px; o título de seção em Chakra Petch 600/10,5px, espaçamento
+   1,5px, cor #abc0cb, com filete esquerdo em `box-shadow: inset` e um traço
+   inferior.
+
+   Missões e Galáxia ficaram de fora: Missões tinha borda de outra cor, sem
+   raio e sem fundo, com título 700/9px em #86dfff; Galáxia não tinha moldura
+   nenhuma. Este bloco existe para que a gramática tenha UM lugar — quem
+   escrever a próxima tela herda em vez de recopiar, e quem mudar a cor da
+   borda muda em um lugar só.
+
+   Fica no fim do arquivo de propósito: as regras antigas de `.mis-col` são de
+   mesma especificidade e vêm antes, então a ordem é o que faz esta vencer sem
+   precisar de `!important`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --painel-linha: rgba(107, 139, 159, .24);
+  --painel-raio: 7px;
+  --painel-padding: 12px;
+  --painel-fundo: linear-gradient(180deg, rgba(7, 13, 20, .9), rgba(4, 9, 15, .92));
+  --painel-filete: rgba(85, 189, 220, .55);
+}
+
+.painel-col {
+  min-width: 0; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: 8px; align-content: start;
+  padding: var(--painel-padding);
+  border: 1px solid var(--painel-linha);
+  border-radius: var(--painel-raio);
+  background: var(--painel-fundo);
+  box-shadow: none;
+  overflow: hidden;
+}
+/* Coluna que rola sozinha (§36): o modal nunca rola inteiro. */
+.painel-col.rola { overflow-y: auto; scrollbar-width: thin; }
+
+.painel-secao {
+  min-height: 24px;
+  display: flex; align-items: center;
+  margin: 2px 0 0;
+  padding: 2px 0 5px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(105, 137, 155, .15);
+  background: none;
+  box-shadow: inset 2px 0 0 var(--painel-filete);
+  color: #abc0cb;
+  font: 600 10.5px/1 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: 1.5px;
+  text-shadow: none;
+}
+
+/*
+ * O corpo de três colunas.
+ *
+ * As quatro telas de referência usam a mesma proporção com variações de um
+ * dígito no mínimo da primeira coluna (245px, 260px, 245px, 190px). Aqui vale a
+ * mediana; quem precisar de outra largura sobrescreve só a trilha.
+ *
+ * `minmax(0, 1fr)` na coluna do meio, e não `1fr` puro: a trilha implícita do
+ * grid é `auto`, que dimensiona pelo CONTEÚDO. Medido em Missões, os filhos
+ * ficavam com 952px dentro de uma coluna de 564 e o modal ganhava 174px de
+ * rolagem lateral. `min-width: 0` no pai não resolve — quem decide a largura é
+ * a trilha.
+ */
+.painel-corpo {
+  min-height: 0; min-width: 0;
+  display: grid; gap: 10px;
+  grid-template-columns: minmax(245px, 22%) minmax(0, 1fr) minmax(290px, 27%);
+  align-items: stretch;
+}
+@media (max-width: 1180px) {
+  .painel-corpo { grid-template-columns: minmax(0, 1fr) minmax(260px, 32%); }
+  .painel-corpo > .painel-col:first-child { display: none; }
+}
+
+/*
+ * A Galáxia dentro da gramática de painel.
+ *
+ * O herói era uma FAIXA horizontal larga: retrato, texto e espiral numa linha
+ * só, ocupando a tela inteira. Dentro de uma coluna de 245px ele virava um
+ * bloco de 219×362 com o texto quebrando em todas as linhas.
+ *
+ * Duas correções, ambas copiadas de `.loj-hero`, que é a mesma situação
+ * resolvida antes: o herói vai RENTE à coluna (margem negativa contra o padding
+ * de 12px) e troca a moldura própria por um traço inferior. Moldura dentro de
+ * moldura é o que fazia a tela parecer de outro jogo.
+ */
+.galaxy-regiao .galaxy-hero {
+  margin: 0 calc(var(--painel-padding) * -1);
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--gal-cor, #4db8ff) 30%, transparent);
+  border-radius: 0;
+}
+.galaxy-regiao .galaxy-hero-body {
+  flex-direction: column; align-items: flex-start; gap: 8px;
+}
+/* A espiral é ornamento: some quando o espaço é do conteúdo. */
+.galaxy-regiao .galaxy-spiral { display: none; }
+.galaxy-regiao .galaxy-hero-text { width: 100%; }
+
+/* O seletor de galáxia encosta no topo da coluna, acima do herói. */
+.galaxy-regiao .galaxy-nav { margin-top: 2px; }
+
+.galaxy-body { min-height: 0; }
+.galaxy-incursao .galaxy-foot { flex-direction: column; align-items: flex-start; }

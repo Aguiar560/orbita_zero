@@ -73,7 +73,7 @@ export class MissoesPanel implements Panel {
         ? h('.mis-corpo', {},
             this.colunaContatos(sim, contatos),
             ativo ? this.ficha(sim, ativo) : h('p.muted.hint', { text: 'Nenhum contato disponível ainda.' }),
-            h('.mis-centro', {}, ativo ? this.listaDeMissoes(sim, ativo) : h('div')),
+            h('.mis-centro.painel-col', {}, ativo ? this.listaDeMissoes(sim, ativo) : h('div')),
             this.colunaDireita(sim),
           )
         : this.aba === 'rede'
@@ -117,8 +117,8 @@ export class MissoesPanel implements Panel {
   // ── coluna esquerda: contatos (§7, §8) ────────────────────────────────────
 
   private colunaContatos(sim: Sim, contatos: Sim['contatos']): HTMLElement {
-    return h('.mis-col.mis-contatos', {},
-      h('.mis-secao-tit', { text: 'CONTATOS' }),
+    return h('.mis-col.painel-col.rola.mis-contatos', {},
+      h('.mis-secao-tit.painel-secao', { text: 'CONTATOS' }),
       h('.mis-lista-contatos', {}, ...contatos.map((c) => this.cardDeContato(sim, c))),
     );
   }
@@ -198,7 +198,7 @@ export class MissoesPanel implements Panel {
   /** A escada I–V (§11). */
   private confianca(p: PersonagemDef, conf: number): HTMLElement {
     return h('.mis-confianca', {},
-      h('.mis-secao-tit', { text: 'CONFIANÇA', style: { color: p.cor } }),
+      h('.mis-secao-tit.painel-secao', { text: 'CONFIANÇA', style: { color: p.cor } }),
       h('.mis-nos', {}, ...Array.from({ length: CONFIANCA_MAX }, (_, i) => {
         const n = i + 1;
         const aberto = conf >= n;
@@ -228,7 +228,7 @@ export class MissoesPanel implements Panel {
       .sort((a, b) => ORDEM[a.situacao] - ORDEM[b.situacao]);
 
     return h('.mis-missoes', {},
-      h('.mis-secao-tit', { text: 'MISSÕES DISPONÍVEIS' }),
+      h('.mis-secao-tit.painel-secao', { text: 'MISSÕES DISPONÍVEIS' }),
       minhas.length
         ? h('.mis-cards', {}, ...minhas.map((m) => m.situacao === 'oculta'
             ? this.cardBloqueado(sim, m.def)
@@ -375,8 +375,8 @@ export class MissoesPanel implements Panel {
     const tipos = Object.keys(TIPO_DE_MISSAO) as TipoDeMissao[];
     const n = sim.entregaveisEmLote;
 
-    return h('.mis-col.mis-dir', {},
-      h('.mis-secao-tit', { text: 'TIPOS DE MISSÃO' }),
+    return h('.mis-col.painel-col.mis-dir', {},
+      h('.mis-secao-tit.painel-secao', { text: 'TIPOS DE MISSÃO' }),
       ...tipos.map((id) => {
         const t = TIPO_DE_MISSAO[id];
         const ativo = this.filtroTipo === id;
@@ -421,7 +421,7 @@ export class MissoesPanel implements Panel {
    */
   private redeDeAliados(_sim: Sim, contatos: Sim['contatos']): HTMLElement {
     return h('.mis-rede', {},
-      h('.mis-secao-tit', { text: 'REDE DE ALIADOS' }),
+      h('.mis-secao-tit.painel-secao', { text: 'REDE DE ALIADOS' }),
       h('.mis-rede-grade', {}, ...contatos.map((c) => {
         if (!c.desbloqueado) {
           return h('.mis-no-rede.travado', {},
@@ -454,7 +454,7 @@ export class MissoesPanel implements Panel {
   private concluidas(sim: Sim): HTMLElement {
     const feitas = MISSOES.filter((m) => sim.state.missoes[m.id]?.entregue);
     return h('.mis-concluidas', {},
-      h('.mis-secao-tit', { text: `CONCLUÍDAS (${feitas.length})` }),
+      h('.mis-secao-tit.painel-secao', { text: `CONCLUÍDAS (${feitas.length})` }),
       feitas.length
         ? h('.mis-cards', {}, ...feitas.map((def) => {
             const p = def.giverId ? PERSONAGEM_POR_ID.get(def.giverId) : undefined;

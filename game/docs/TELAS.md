@@ -8,6 +8,33 @@ um painel precisa calcular, o cálculo mora em `sim/`. Painel lê `Sim` e desenh
 
 ---
 
+## A gramática de painel
+
+Todas as camadas usam a MESMA moldura, o mesmo fundo e o mesmo título de seção,
+definidos uma vez no fim de `src/styles/main.css`:
+
+| token | valor |
+|---|---|
+| `--painel-linha` | `rgba(107, 139, 159, .24)` |
+| `--painel-raio` | `7px` |
+| `--painel-padding` | `12px` |
+| `--painel-fundo` | `linear-gradient(180deg, #070d14e6, #04090fEB)` |
+| `--painel-filete` | `rgba(85, 189, 220, .55)` |
+
+As classes são `.painel-corpo` (grade de três colunas), `.painel-col` (a
+moldura, com `.rola` para rolagem própria) e `.painel-secao` (Chakra Petch
+600/10,5px, espaçamento 1,5px, `#abc0cb`, filete à esquerda por `box-shadow:
+inset` e traço inferior).
+
+> **Como se chegou aqui.** Baús, Loja, Bancada e Provação convergiram para essa
+> linguagem cada um com a própria cópia das regras. Missões tinha borda de outra
+> cor, sem raio e sem fundo, com título 700/9px em `#86dfff`; Galáxia não tinha
+> moldura nenhuma. Medido nos estilos COMPUTADOS de todas as seis, hoje a
+> assinatura é idêntica. `--afx-line` do craft de afixos, que destoava por um fio
+> (`.23` contra `.24`), passou a apontar para o token.
+
+---
+
 ## A moldura
 
 ```

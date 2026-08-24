@@ -56,7 +56,10 @@ export class GalaxyPanel implements Panel {
     const phases = galaxyPhases(this.viewing);
     const recursoLocal = recursoDaGalaxia(this.viewing);
 
-    const body = h('.panel-body.galaxy-body', {},
+    // ── coluna da esquerda: que região é esta ────────────────────────────
+    const coluna_regiao = h('.painel-col.galaxy-regiao', {},
+      h('.painel-secao', { text: 'REGIÃO' }),
+
       // ── seletor de galáxia ────────────────────────────────────────────────
       h('.galaxy-nav', {},
         h('button.mini', {
@@ -78,7 +81,7 @@ export class GalaxyPanel implements Panel {
       ),
 
       // ── cabeçalho com fundo e comandante ──────────────────────────────────
-      h('.galaxy-hero', { style: { backgroundImage: `url(assets/${info.backdrop})`, borderColor: info.color } },
+      h('.galaxy-hero', { style: { backgroundImage: `url(assets/${info.backdrop})`, '--gal-cor': info.color } as Partial<CSSStyleDeclaration> },
         h('.galaxy-hero-shade'),
         h('.galaxy-hero-body', {},
           this.portraitsReady ? spriteIcon(info.portrait, 62, 'galaxy-face') : h('.galaxy-face-holder'),
@@ -111,14 +114,12 @@ export class GalaxyPanel implements Panel {
           spriteIcon(info.sprite, 66, 'galaxy-spiral'),
         ),
       ),
+    );
 
-      // ── progresso da galáxia ──────────────────────────────────────────────
-      h('.galaxy-progress', {},
-        h('span.muted.tiny', { text: `${clamp(best - info.firstSector + 1, 0, PHASES_PER_GALAXY)} / ${PHASES_PER_GALAXY} fases vencidas` }),
-        progressBar(clamp((best - info.firstSector + 1) / PHASES_PER_GALAXY, 0, 1), info.color, 5),
-      ),
+    // ── coluna do meio: as dez fases ─────────────────────────────────────
+    const coluna_fases = h('.painel-col.rola.galaxy-fases', {},
+      h('.painel-secao', { text: 'FASES' }),
 
-      // ── fases ─────────────────────────────────────────────────────────────
       h('.phase-grid', {}, ...phases.map((p) => {
         const cleared = best > p.sector;
         const reachable = best >= p.sector;
@@ -146,6 +147,17 @@ export class GalaxyPanel implements Panel {
         }
         return cell;
       })),
+    );
+
+    // ── coluna da direita: a incursão ────────────────────────────────────
+    const coluna_incursao = h('.painel-col.galaxy-incursao', {},
+      h('.painel-secao', { text: 'INCURSÃO' }),
+
+      // ── progresso da galáxia ──────────────────────────────────────────────
+      h('.galaxy-progress', {},
+        h('span.muted.tiny', { text: `${clamp(best - info.firstSector + 1, 0, PHASES_PER_GALAXY)} / ${PHASES_PER_GALAXY} fases vencidas` }),
+        progressBar(clamp((best - info.firstSector + 1) / PHASES_PER_GALAXY, 0, 1), info.color, 5),
+      ),
 
       // ── travar a fase ─────────────────────────────────────────────────────
       // Fica aqui, e não só nos ajustes, porque é a mesma decisão que o mapa
@@ -180,6 +192,8 @@ export class GalaxyPanel implements Panel {
       ),
     );
 
-    return body;
+    return h('.panel-body.galaxy-body', {},
+      h('.painel-corpo', {}, coluna_regiao, coluna_fases, coluna_incursao),
+    );
   }
 }
