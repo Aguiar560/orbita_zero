@@ -673,6 +673,19 @@ Ritmo final, 21 conjuntos por setor: **de 12 setores fora de banda para 2**,
 ambos no regime de abertura (1 e 12), onde o casco vale de 99% a 43% do poder
 total. O setor 1 já estava fora antes desta etapa.
 
+#### O custo era decoração
+
+A primeira versão cobrava 0,64 núcleos por ponto de nota, a razão que a espinha
+legada praticava. Medido depois: a renda de núcleos cresce muito mais rápido que
+a nota, e o casco mais caro (64.080) saía por **0,03% da renda acumulada** até o
+setor dele. O único portão real era o setor.
+
+Agora o custo é fração da renda da JANELA — o que o jogador ganha entre um casco
+e o seguinte. Medido, a renda de núcleos de um setor é exatamente **8,91 ×**
+`curvaRecompensa`, e a razão se mantém idêntica do setor 36 ao 288. Com 35%, os
+preços ficam entre **17% e 35%** da janela: dá para ter o próximo casco OU
+refinar o que já se tem, não os dois.
+
 `SAVE_VERSION` 6: a migração devolve os cascos que o estado provisório dava de
 graça, removendo só o que **não poderia** ter sido adquirido — casco da escada
 acima do maior setor alcançado. Verificado: save antigo no setor 1 fica com 20

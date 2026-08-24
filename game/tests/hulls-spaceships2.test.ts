@@ -10,7 +10,7 @@ import {
   SPACESHIPS2_HULL_SPEC_BY_ID,
 } from '@data/hulls-spaceships2';
 import { SPACESHIPS2_LEGACY_PLAYER_ART, SPACESHIPS2_PLAYER_ART } from '@data/spaceships2';
- import { DEGRAUS_DE_CASCO, ORDEM_DA_ESCADA, POSTO_POR_CASCO, SETOR_INICIAL } from '@data/balance/cascos';
+ import { DEGRAUS_DE_CASCO, FRACAO_DA_RENDA, ORDEM_DA_ESCADA, POSTO_POR_CASCO, SETOR_INICIAL } from '@data/balance/cascos';
  import { createState } from '@sim/state';
  import { powerScore, resolveStats } from '@sim/stats';
 
@@ -96,6 +96,21 @@ describe('catálogo de cascos Spaceships 2.0', () => {
       expect(mediana(hulls.map((h) => nota(h.id))), `${degrau.id} no setor ${setorDaLinha}`)
         .toBeGreaterThan(Math.max(...legado));
     }
+  });
+
+  it('o custo pesa na renda de núcleos, e não é decoração', () => {
+    // A primeira versão cobrava por ponto de nota, e medido dava 0,03% da renda
+    // acumulada no casco mais caro: o único portão real era o setor. Agora o
+    // custo é fração da renda da janela, e este teste guarda a faixa.
+    for (const id of ORDEM_DA_ESCADA) {
+      const posto = POSTO_POR_CASCO.get(id)!;
+      const janela = posto.custo / FRACAO_DA_RENDA;
+      expect(posto.custo, id).toBeGreaterThan(0);
+      expect(posto.custo / janela, id).toBeCloseTo(FRACAO_DA_RENDA, 2);
+    }
+    // E sobe: nenhum casco tardio é mais barato que um anterior.
+    const custos = ORDEM_DA_ESCADA.map((id) => POSTO_POR_CASCO.get(id)!.custo);
+    for (let i = 1; i < custos.length; i++) expect(custos[i]!).toBeGreaterThanOrEqual(custos[i - 1]!);
   });
 
   it('a escada sobe de linha em linha', () => {

@@ -1,5 +1,5 @@
 import type { ElementId, StatMap } from '@sim/types';
-import { CUSTO_BASE, CUSTO_POR_NOTA, POSTO_POR_CASCO, escalarMagnitudes } from './balance/cascos';
+import { POSTO_POR_CASCO, escalarMagnitudes } from './balance/cascos';
 import { getElement } from './elements';
 import type { Hull, ShotStyle } from './hulls';
 import {
@@ -243,7 +243,7 @@ export const SPACESHIPS2_HULLS: readonly Hull[] = SPACESHIPS2_HULL_SPECS.map((sp
       applyWeaponStats(tuneStats(archetype.stats, spec.tuning), spec.weapon),
       posto,
     ),
-    cost: Math.round((CUSTO_BASE * posto.escalaDano * posto.escalaDefesa * CUSTO_POR_NOTA) / 10) * 10,
+    cost: posto.custo,
     requiresSector: posto.setor,
   };
 });

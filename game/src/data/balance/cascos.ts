@@ -1,5 +1,5 @@
 import type { StatMap } from '@sim/types';
-import { defesaEsperada, poderEsperado } from './curvas';
+import { curvaRecompensa, defesaEsperada, poderEsperado } from './curvas';
 
 /**
  * A escada de aquisição dos cascos Spaceships 2.0.
@@ -171,21 +171,36 @@ export const setorDaEscada = (indice: number): number => Math.round(
 );
 
 /**
- * O preço em núcleos.
+ * O preço em núcleos — derivado da RENDA, não da nota.
  *
- * Segue a razão que a própria espinha legada já praticava — cerca de **0,64
- * núcleos por ponto de nota**, medida em `void_canhaozao` (0,66),
- * `prisma_quimico` (0,71) e `aurora_x` (0,56). Como a nota do casco acompanha a
- * escala, o custo acompanha junto e não precisa de tabela própria.
+ * A primeira versão cobrava 0,64 núcleos por ponto de nota, que era a razão que
+ * a espinha legada praticava. Medido depois, era **decoração**: a renda de
+ * núcleos cresce muito mais rápido que a nota, e o casco mais caro da escada
+ * (64.080) saía por **0,03% da renda acumulada** até o setor dele. O único
+ * portão real era o setor; o preço não pesava em decisão nenhuma.
+ *
+ * Agora o custo é uma fração da renda da JANELA — o que o jogador ganha entre o
+ * casco anterior e este. Comprar todos consome `FRACAO_DA_RENDA` de toda a renda
+ * de núcleos do jogo, e o resto sobra para a fusão e a Central de Serviços.
+ * Assim o preço volta a ser escolha: dá para ter o próximo casco OU refinar o
+ * que já se tem, não os dois.
+ *
+ * `NUCLEOS_POR_RECOMPENSA` é medido, não estimado: a renda de núcleos de um setor
+ * é exatamente **8,91 ×** `curvaRecompensa` daquele setor, e a razão se manteve
+ * idêntica do setor 36 ao 288. Vem de `rewardKill` (0,34 do bounty por fração de
+ * abate) e `completeEncounter` (0,8), somados nas seis ondas, com o chefe
+ * pesando mais.
  */
-export const CUSTO_POR_NOTA = 0.64;
-export const CUSTO_BASE = 450;
+export const FRACAO_DA_RENDA = 0.35;
+export const NUCLEOS_POR_RECOMPENSA = 8.91;
 
 export interface PostoNaEscada {
   degrau: DegrauDeCasco;
   /** Posição na ordem de aquisição, de 0 a 28. */
   indice: number;
   setor: number;
+  /** Preço em núcleos. */
+  custo: number;
   escalaDano: number;
   escalaDefesa: number;
 }
@@ -197,6 +212,15 @@ export interface PostoNaEscada {
  * dificuldade usa. É o que garante que uma futura recalibração da dificuldade
  * arraste a escada dos cascos junto, em vez de deixá-la para trás em silêncio.
  */
+/** Renda de núcleos entre o casco anterior e este, pela conta do jogo. */
+function rendaDaJanela(indice: number): number {
+  const fim = setorDaEscada(indice);
+  const inicio = indice === 0 ? 1 : setorDaEscada(indice - 1) + 1;
+  let total = 0;
+  for (let setor = inicio; setor <= fim; setor++) total += curvaRecompensa(setor);
+  return total * NUCLEOS_POR_RECOMPENSA;
+}
+
 export const POSTO_POR_CASCO: ReadonlyMap<string, PostoNaEscada> = new Map(
   ORDEM_DA_ESCADA.map((id, indice) => {
     const degrau = DEGRAUS_DE_CASCO.find((d) => d.cascos.includes(id))!;
@@ -205,6 +229,7 @@ export const POSTO_POR_CASCO: ReadonlyMap<string, PostoNaEscada> = new Map(
       degrau,
       indice,
       setor,
+      custo: Math.round(rendaDaJanela(indice) * FRACAO_DA_RENDA / 10) * 10,
       escalaDano: PISO_DA_ESCADA * Math.pow(poderEsperado(setor) / poderEsperado(SETOR_INICIAL), EXPOENTE_DANO),
       escalaDefesa: PISO_DA_ESCADA * Math.pow(defesaEsperada(setor) / defesaEsperada(SETOR_INICIAL), EXPOENTE_DEFESA),
     }] as const;
