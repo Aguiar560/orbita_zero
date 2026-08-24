@@ -356,3 +356,53 @@ export function expandToNeighbours(cols, width, margem = 1e9) {
 function clamp255(v) {
   return v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
 }
+
+/**
+ * Cortes de uma fileira onde ela é mais ESCURA, não onde a régua manda.
+ *
+ * Alguns blocos da folha de planetas (anéis, nebulosas) têm corpos que se
+ * tocam pelo halo: `sliceRow` não os separa em componente nenhum, nem com piso
+ * de alfa em 245. A divisão em partes iguais era o recurso, e ela cortava —
+ * medido em `anel`, o passo caía nas colunas 147 e 295, de brilho 18 e 30,
+ * enquanto os vales reais estavam em 177 e 310, de brilho 5 e 10. O corte
+ * passava por cima da galáxia e ainda levava um pedaço da vizinha junto.
+ *
+ * Aqui a régua vira PALPITE: procura-se a coluna mais escura numa janela ao
+ * redor de cada divisa nominal. Se a arte estiver mesmo regular, o vale cai em
+ * cima do passo e nada muda; se estiver torta, o corte acompanha.
+ *
+ * @param {Raw} raw faixa já com alfa
+ * @param {number} n quantos corpos
+ * @param {number} [fracaoDaJanela] quanto do passo se pode andar para cada lado
+ * @returns {number[]} n+1 posições, de 0 a `raw.width`
+ */
+export function cortesPorVale(raw, n, fracaoDaJanela = 0.4) {
+  const { data, width, height } = raw;
+  const brilho = new Float64Array(width);
+  for (let x = 0; x < width; x++) {
+    let soma = 0;
+    for (let y = 0; y < height; y++) {
+      const i = (y * width + x) * 4;
+      // Pondera pelo alfa: uma coluna opaca e escura é fundo, não vão.
+      soma += Math.max(data[i], data[i + 1], data[i + 2]) * (data[i + 3] / 255);
+    }
+    brilho[x] = soma / height;
+  }
+
+  const passo = width / n;
+  const janela = Math.max(1, Math.round(passo * fracaoDaJanela));
+  const cortes = [0];
+  for (let k = 1; k < n; k++) {
+    const alvo = Math.round(k * passo);
+    let melhor = alvo;
+    let menor = Infinity;
+    const de = Math.max(cortes[k - 1] + 1, alvo - janela);
+    const ate = Math.min(width - 1, alvo + janela);
+    for (let x = de; x <= ate; x++) {
+      if (brilho[x] < menor) { menor = brilho[x]; melhor = x; }
+    }
+    cortes.push(melhor);
+  }
+  cortes.push(width);
+  return cortes;
+}

@@ -72,4 +72,32 @@ describe('nenhum sprite citado pelos dados está faltando no atlas', () => {
     }
     cobrar('ícones compostos', nomes);
   });
+
+  /**
+   * Os corpos contínuos são cortados no VALE, não em partes iguais.
+   *
+   * Anéis e nebulosas se tocam pelo halo na folha, então `sliceRow` não os
+   * separa nem com piso de alfa em 245 — a divisão em partes iguais era o
+   * recurso, e ela cortava. Medido no bloco `anel`: o passo caía nas colunas
+   * 147 e 295, de brilho 18 e 30, enquanto os vales reais estão em 177 e 310,
+   * de brilho 5 e 10. O corte passava POR CIMA da galáxia e ainda levava um
+   * pedaço da vizinha para dentro do quadro.
+   *
+   * O sintoma some do olho mas volta fácil no código. Este teste guarda a
+   * assinatura do conserto: cortando no vale as células saem com larguras
+   * DIFERENTES; com divisão igual, todas iguais.
+   */
+  it('anéis e nebulosas não saem de uma divisão em partes iguais', () => {
+    const orbe = JSON.parse(
+      readFileSync(new URL('orbe.json', DIR), 'utf8'),
+    ) as { frames?: Record<string, number[]> } & Record<string, unknown>;
+    const quadros = (orbe.frames ?? orbe) as Record<string, number[]>;
+    for (const bloco of ['anel', 'nebulosa']) {
+      const larguras = Object.entries(quadros)
+        .filter(([k]) => k.startsWith(bloco + "/"))
+        .map(([, q]) => q[6]!);
+      expect(larguras.length, bloco).toBeGreaterThan(1);
+      expect(new Set(larguras).size, bloco + ": " + larguras.join(", ")).toBeGreaterThan(1);
+    }
+  });
 });

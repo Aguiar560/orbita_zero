@@ -49,7 +49,8 @@ const NOVOS_ITENS_SHEET = 'novos itens.png';
 const TIROS_SHEET = 'tiros e explosoes.png';
 import {
   toRaw, rawToSharp, unmatte, trimAlpha, crop, blit, blank, rowComponents,
-  alphaOverDark, desaturate, sliceRow, expandToNeighbours, noteRead, readPaths,
+  alphaOverDark, desaturate, cortesPorVale,
+  sliceRow, expandToNeighbours, noteRead, readPaths,
 } from './lib/imaging.mjs';
 import { packSkyline } from './lib/packer.mjs';
 
@@ -767,15 +768,30 @@ async function buildOrbes(manifest) {
     });
   }
 
-  // Brilhos contínuos (nebulosa, anel, cauda) não têm coluna vazia entre si.
+  // Brilhos contínuos (nebulosa, anel, cauda, cinturão).
+  //
+  // **Isto era uma divisão CEGA em partes iguais**, e cortava a arte. Os três
+  // anéis ocupam a faixa `x 612..1054` (442px); o passo fixo caía nas colunas
+  // 147 e 295, de brilho 18 e 30, enquanto os vales reais estão em 177 e 310,
+  // de brilho 5 e 10. O corte passava POR CIMA da galáxia e ainda levava um
+  // pedaço da vizinha para dentro do quadro. Media-se pelo `offset` do frame:
+  // `anel/1` encostava na borda esquerda E na direita, assinatura de arte
+  // truncada pela célula. A nebulosa errava até 29px.
+  //
+  // Detecção por componente não resolve: estes corpos se tocam pelo halo, e
+  // `sliceRow` acha UM componente só mesmo com piso de alfa em 245 — por isso
+  // a divisão igual existia. O que faltava era usar a régua como PALPITE em vez
+  // de lei: `cortesPorVale` procura a coluna mais escura ao redor de cada
+  // divisa nominal. Arte regular não se move; arte torta passa a ser
+  // acompanhada.
   for (const bloco of PLANETA_BLOCOS) {
     const strip = alphaOverDark(
       crop(sheet, bloco.x0, bloco.y0, bloco.x1 - bloco.x0, bloco.y1 - bloco.y0),
       { flood: bloco.flood },
     );
-    const passo = strip.width / bloco.n;
+    const cortes = cortesPorVale(strip, bloco.n);
     for (let i = 0; i < bloco.n; i++) {
-      emit(`${bloco.id}/${i}`, crop(strip, Math.round(i * passo), 0, Math.round(passo), strip.height));
+      emit(`${bloco.id}/${i}`, crop(strip, cortes[i], 0, cortes[i + 1] - cortes[i], strip.height));
     }
   }
 
