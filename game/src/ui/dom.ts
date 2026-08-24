@@ -109,11 +109,37 @@ export function spriteIcon(id: string, size = 32, extraClass = ''): HTMLElement 
   const w = frame.w * scale;
   const hgt = frame.h * scale;
 
-  el.style.backgroundImage = `url(assets/atlas/${atlas.name}.png)`;
+  // A URL vem da imagem JÁ CARREGADA, não montada com o nome mais uma
+  // extensão fixa: o formato do atlas é decisão do pipeline, e fixar `.png`
+  // aqui obrigaria a lembrar deste arquivo ao trocá-lo.
+  el.style.backgroundImage = `url(${(atlas.image as HTMLImageElement).src})`;
   el.style.backgroundRepeat = 'no-repeat';
   el.style.imageRendering = 'pixelated';
   el.style.backgroundSize = `${(atlas.image as HTMLImageElement).width * scale}px ${(atlas.image as HTMLImageElement).height * scale}px`;
   el.style.backgroundPosition = `${-frame.x * scale + (size - w) / 2}px ${-frame.y * scale + (size - hgt) / 2}px`;
+
+  // Recorta na borda do QUADRO, não na da caixa.
+  //
+  // O elemento é uma janela de `size × size` sobre o atlas inteiro, e o quadro
+  // desenhado quase nunca preenche essa janela: a escala encaixa a caixa
+  // ORIGINAL do sprite (`sw × sh`), enquanto o que se desenha é o recorte
+  // aparado (`w × h`), que é menor. A sobra não fica vazia — ela mostra o que
+  // estiver ao lado no atlas.
+  //
+  // Medido em `void/nave/casco_cheio`: quadro de 30×26 numa caixa de 48×48,
+  // pedido a 62px. O desenho sai 38,8×33,6 numa janela de 62, deixando 11px de
+  // vizinho visível de cada lado — e o empacotador separa os sprites por apenas
+  // 1px de padding. Era por isso que apareciam armas em volta das naves no
+  // Hangar e fragmentos de outro recurso no Criogás.
+  //
+  // `inset` resolve sem tocar no DOM nem no empacotador: aumentar o padding do
+  // atlas não adiantaria, porque a janela é larga o bastante para alcançar o
+  // vizinho seguinte de qualquer jeito.
+  const recorteX = Math.max(0, (size - w) / 2);
+  const recorteY = Math.max(0, (size - hgt) / 2);
+  if (recorteX > 0.01 || recorteY > 0.01) {
+    el.style.clipPath = `inset(${recorteY}px ${recorteX}px)`;
+  }
   return el;
 }
 
@@ -142,7 +168,10 @@ export function portraitIcon(id: string, width: number, height: number, extraCla
   // margens transparentes amostrarem o sprite vizinho do atlas.
   el.style.width = `${w}px`;
   el.style.height = `${hgt}px`;
-  el.style.backgroundImage = `url(assets/atlas/${atlas.name}.png)`;
+  // A URL vem da imagem JÁ CARREGADA, não montada com o nome mais uma
+  // extensão fixa: o formato do atlas é decisão do pipeline, e fixar `.png`
+  // aqui obrigaria a lembrar deste arquivo ao trocá-lo.
+  el.style.backgroundImage = `url(${(atlas.image as HTMLImageElement).src})`;
   el.style.backgroundRepeat = 'no-repeat';
   el.style.imageRendering = 'pixelated';
   el.style.backgroundSize = `${(atlas.image as HTMLImageElement).width * scale}px ${(atlas.image as HTMLImageElement).height * scale}px`;

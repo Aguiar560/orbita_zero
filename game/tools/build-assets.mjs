@@ -1179,12 +1179,27 @@ async function writeAtlas(name, sprites, manifest, maxSize = 4096, opts = {}) {
     frames[p.id] = [p.x, p.y, p.w, p.h, s.ox, s.oy, s.sw, s.sh];
   }
 
-  await rawToSharp(canvas).png({ compressionLevel: 9 }).toFile(await ensureFile(`atlas/${name}.png`));
-  await writeFile(path.join(OUT, 'atlas', `${name}.json`), JSON.stringify({ image: `${name}.png`, w: width, h: height, frames }));
+  // WebP SEM PERDA, não PNG.
+  //
+  // Os 18 atlas somavam 22,3 MB e só dois eram preguiçosos, então ~20 MB
+  // entravam no primeiro carregamento. É o maior custo de partida do jogo, e
+  // 74 arquivos do projeto já eram WebP — os atlas ficaram para trás.
+  //
+  // `lossless` não é conservadorismo: com perda, o WebP borra as bordas duras
+  // do pixel art e mistura cor entre sprites vizinhos, que é o oposto do que
+  // este pipeline passou meses acertando. Sem perda ele ainda ganha bem do PNG
+  // porque o atlas é quase todo transparente.
+  //
+  // `effort: 6` é o máximo. O pipeline roda em minutos e uma vez por sessão;
+  // o custo é de quem compila, e o ganho é de todo mundo que abre o jogo.
+  await rawToSharp(canvas)
+    .webp({ lossless: true, effort: 6 })
+    .toFile(await ensureFile(`atlas/${name}.webp`));
+  await writeFile(path.join(OUT, 'atlas', `${name}.json`), JSON.stringify({ image: `${name}.webp`, w: width, h: height, frames }));
 
-  const bytes = (await stat(path.join(OUT, 'atlas', `${name}.png`))).size;
+  const bytes = (await stat(path.join(OUT, 'atlas', `${name}.webp`))).size;
   manifest.atlases.push({
-    name, image: `atlas/${name}.png`, data: `atlas/${name}.json`,
+    name, image: `atlas/${name}.webp`, data: `atlas/${name}.json`,
     w: width, h: height, count: placements.length,
     // Atlas preguiçoso não entra no boot; quem precisa pede por nome.
     ...(opts.lazy ? { lazy: true } : {}),

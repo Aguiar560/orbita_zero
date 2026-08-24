@@ -216,6 +216,15 @@ Resta neste passo, quando priorizada, a arte dos chefes da Provação.
 
 ### Passo 4.1 — Calibração e QA de apresentação 🟡
 
+**Vazamento entre quadros — resolvido em 25/08.** `spriteIcon` fazia do
+elemento uma JANELA de `size × size` sobre o atlas inteiro, e o quadro desenhado
+quase nunca preenchia essa janela: a escala encaixa a caixa ORIGINAL do sprite,
+mas o que se desenha é o recorte aparado, menor. A sobra mostrava o vizinho.
+Medido em `void/nave/casco_cheio`: **508 de 886 pixels opacos (57%) da janela
+vinham de outros sprites**. Corrigido com `clip-path: inset` na borda do quadro.
+`portraitIcon` já tinha o conserto desde antes — e o comentário dele descrevia o
+bug —, mas ninguém voltou ao outro renderizador.
+
 O Laboratório e a bateria de combate fecharam a calibração funcional dos
 cascos, mas a entrega visual precisa de uma última passada deliberada, não de
 novos remendos pontuais.

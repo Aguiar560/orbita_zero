@@ -160,18 +160,37 @@ const IMPLICITS: Record<SlotId, { stat: StatId; kind: 'add' | 'mul'; per: number
 };
 
 /**
- * 72 bases: 9 slots × 8 níveis de acabamento.
+ * 80 bases: 10 slots × 8 níveis de acabamento.
  *
  * O `tier` decide o ícone e o `minIlvl`, então avançar de setor troca
  * visivelmente o que cai — a evolução aparece no inventário, não só nos números.
  */
+
+/**
+ * O ícone da base.
+ *
+ * A folha `Itens.png` tem NOVE colunas, uma por slot original, e o atlas só
+ * conhece `item/asas` até `item/suporte`. `upgrade` foi a DÉCIMA categoria,
+ * criada depois (§28), e nenhuma arte veio com ela: as oito bases dele pediam
+ * `item/upgrade_0..7`, que não existe em atlas nenhum, e apareciam vazias no
+ * Códex. É a armadilha que o projeto documenta — o nome passa por typecheck e
+ * por toda a suíte, e só a tela mostra que não existe.
+ *
+ * Reaproveita a coluna do REATOR, que é a mesma escolha que `SLOTS` já fez ao
+ * dar `cat/reator` ao slot: um módulo universal lê como componente de reator, e
+ * assim as oito bases continuam com ícone DIFERENTE por tier em vez de oito
+ * cópias de um ícone só.
+ */
+const iconeDaBase = (slot: SlotId, tier: number): string =>
+  `item/${slot === 'upgrade' ? 'reator' : slot}_${tier}`;
+
 export const ITEM_BASES: readonly ItemBase[] = SLOTS.flatMap((slot) =>
   NAMES[slot.id].map((name, tier) => ({
     id: `${slot.id}_${tier}`,
     name,
     slot: slot.id,
     tier,
-    icon: `item/${slot.id}_${tier}`,
+    icon: iconeDaBase(slot.id, tier),
     minIlvl: tier === 0 ? 1 : tier * 7,
     implicit: { ...IMPLICITS[slot.id], per: IMPLICITS[slot.id].per * (1 + tier * 0.22) },
   })),
