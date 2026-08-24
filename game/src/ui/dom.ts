@@ -160,12 +160,23 @@ export function portraitIcon(id: string, width: number, height: number, extraCla
   }
 
   const { frame, atlas } = found;
-  const scale = Math.min(width / frame.sw, height / frame.sh);
+  // PREENCHE a foto, em vez de caber dentro dela.
+  //
+  // Era `min` — "contain" —, e o resultado media 72×76 numa foto de 72×96:
+  // sobravam 19px mortos em cima e o retrato ficava colado na base, com a
+  // cabeça baixa e o rosto pequeno. Numa moldura com borda isso não lê como
+  // "arte inteira preservada", lê como foto mal recortada.
+  //
+  // Com `max` a arte cobre a foto e o excesso sai pelos lados e pela base —
+  // que é exatamente onde um retrato pode perder pixel sem perder informação.
+  // Ancorar no TOPO é o que garante o enquadramento: o rosto fica no terço
+  // superior e o corte cai no busto, como em retrato de verdade.
+  const scale = Math.max(width / frame.w, height / frame.h);
   const w = frame.w * scale;
   const hgt = frame.h * scale;
-  // O elemento tem exatamente o tamanho do frame no atlas. O PAI é que cria
-  // a foto 3×4 e faz o recorte. Dar ao elemento o tamanho da foto deixava as
-  // margens transparentes amostrarem o sprite vizinho do atlas.
+  // O elemento tem exatamente o tamanho do DESENHO. O PAI é que cria a foto e
+  // faz o recorte. Dar ao elemento o tamanho da foto deixava as margens
+  // transparentes amostrarem o sprite vizinho do atlas.
   el.style.width = `${w}px`;
   el.style.height = `${hgt}px`;
   // A URL vem da imagem JÁ CARREGADA, não montada com o nome mais uma

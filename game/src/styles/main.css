@@ -4900,3 +4900,12 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 
 .galaxy-body { min-height: 0; }
 .galaxy-incursao .galaxy-foot { flex-direction: column; align-items: flex-start; }
+
+/*
+ * O retrato ancora no TOPO, não na base.
+ *
+ * `portraitIcon` passou a preencher a foto em vez de caber dentro dela, e o
+ * excesso precisa sair pela BASE: é onde um retrato perde busto sem perder
+ * informação. Com `flex-end`, o mesmo excesso saía pelo alto e decapitava.
+ */
+.mis-retrato, .mis-ficha-retrato { align-items: flex-start !important; }
