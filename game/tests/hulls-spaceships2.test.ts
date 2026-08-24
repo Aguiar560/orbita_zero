@@ -10,6 +10,9 @@ import {
   SPACESHIPS2_HULL_SPEC_BY_ID,
 } from '@data/hulls-spaceships2';
 import { SPACESHIPS2_LEGACY_PLAYER_ART, SPACESHIPS2_PLAYER_ART } from '@data/spaceships2';
+ import { DEGRAUS_DE_CASCO, ORDEM_DA_ESCADA, POSTO_POR_CASCO, SETOR_INICIAL } from '@data/balance/cascos';
+ import { createState } from '@sim/state';
+ import { powerScore, resolveStats } from '@sim/stats';
 
 const attack = (hull: (typeof SPACESHIPS2_HULLS)[number]): number => {
   const stats = hull.stats;
@@ -44,12 +47,67 @@ describe('catálogo de cascos Spaceships 2.0', () => {
     expect(HULL_BY_ID.get('bastiao_8')?.sprite).toBe('s2/player/p_11');
   });
 
-  it('libera os 29 cascos para Hangar e campanha sem antecipar o sistema de desbloqueio', () => {
-    for (const hull of SPACESHIPS2_HULLS) {
-      expect(hull.tier).toBe(4);
-      expect(hull.cost).toBe(0);
-      expect(hull.requiresSector).toBe(0);
-      expect(hull.prototype).not.toBe(true);
+  /**
+   * A escada de aquisição, e o defeito que ela veio corrigir.
+   *
+   * Este teste travava `tier 4`, `cost 0` e `requiresSector 0` — o estado de
+   * arte em teste. Ele estava certo em travar o que era deliberado, mas o que
+   * era deliberado tornava o começo do jogo irrelevante: 29 cascos grátis no
+   * setor 1, o melhor deles com nota 918 contra 85 do inicial.
+   */
+  it('todo casco tem posto na escada, com setor e custo crescentes', () => {
+    let setorAnterior = 0;
+    let custoAnterior = 0;
+    for (const id of ORDEM_DA_ESCADA) {
+      const hull = HULL_BY_ID.get(id)!;
+      const posto = POSTO_POR_CASCO.get(id)!;
+      expect(hull.requiresSector, id).toBe(posto.setor);
+      expect(hull.tier, id).toBe(posto.degrau.tier);
+      // Nada de graça e nada no começo: é o defeito que a escada corrigiu.
+      expect(hull.requiresSector, id).toBeGreaterThanOrEqual(SETOR_INICIAL);
+      expect(hull.cost, id).toBeGreaterThan(0);
+      // A escada sobe: o próximo casco nunca vem antes nem mais barato.
+      expect(hull.requiresSector, id).toBeGreaterThanOrEqual(setorAnterior);
+      expect(hull.cost, id).toBeGreaterThanOrEqual(custoAnterior);
+      setorAnterior = hull.requiresSector;
+      custoAnterior = hull.cost;
+    }
+    expect(setorAnterior).toBeLessThanOrEqual(300);
+  });
+
+  it('cada linha da escada supera o melhor legado disponível no seu setor', () => {
+    const nota = (id: string) => {
+      const st = createState(11);
+      st.hull = id;
+      return powerScore(resolveStats(st));
+    };
+    const mediana = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
+    for (const degrau of DEGRAUS_DE_CASCO) {
+      const hulls = degrau.cascos.map((id) => HULL_BY_ID.get(id)!);
+      const setorDaLinha = Math.min(...hulls.map((h) => h.requiresSector));
+      const legado = HULLS
+        .filter((h) => !POSTO_POR_CASCO.has(h.id) && !h.prototype && h.requiresSector <= setorDaLinha)
+        .map((h) => nota(h.id));
+      // A MEDIANA, e não todo casco. `powerScore` é produto de dps por vida, o
+      // que penaliza canhão de vidro por desenho: exigir que um duelista bata a
+      // nota de um casco equilibrado obrigaria a superajustar exatamente os
+      // arquétipos cuja graça é serem frágeis. O que a escada promete é que a
+      // LINHA seja um passo à frente, não que toda peça dela seja.
+      expect(mediana(hulls.map((h) => nota(h.id))), `${degrau.id} no setor ${setorDaLinha}`)
+        .toBeGreaterThan(Math.max(...legado));
+    }
+  });
+
+  it('a escada sobe de linha em linha', () => {
+    const nota = (id: string) => {
+      const st = createState(11);
+      st.hull = id;
+      return powerScore(resolveStats(st));
+    };
+    const mediana = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
+    const medianas = DEGRAUS_DE_CASCO.map((d) => mediana(d.cascos.map(nota)));
+    for (let i = 1; i < medianas.length; i++) {
+      expect(medianas[i]!, DEGRAUS_DE_CASCO[i]!.id).toBeGreaterThan(medianas[i - 1]!);
     }
   });
 
@@ -83,14 +141,34 @@ describe('catálogo de cascos Spaceships 2.0', () => {
       .toBe(HULL_WEAPONS.length);
   });
 
-  it('fica numa única faixa de poder, com extremos pagos por outro eixo', () => {
-    const attacks = SPACESHIPS2_HULLS.map(attack);
-    const defenses = SPACESHIPS2_HULLS.map(defense);
+  /**
+   * Dentro de uma LINHA a escolha é de estilo; ao longo da escada é de progresso.
+   *
+   * A versão anterior exigia que os 29 inteiros coubessem numa faixa só
+   * (ataque < 2,45×), o que era a leitura correta de "alternativas táticas, não
+   * uma escada de poder" — enquanto não havia escada. Agora há, e a faixa única
+   * passou a valer DENTRO da linha, não entre linhas.
+   *
+   * A velocidade continua sem escada em nenhum eixo: ela é identidade de
+   * arquétipo, não recompensa de progressão. Se um casco tardio fosse mais
+   * rápido só por ser tardio, o interceptador deixaria de ser interceptador.
+   */
+  it('dentro de uma linha o que separa os cascos é arquétipo, não escada', () => {
+    for (const degrau of DEGRAUS_DE_CASCO) {
+      const hulls = degrau.cascos.map((id) => HULL_BY_ID.get(id)!);
+      // A dispersão DENTRO da linha é a dos arquétipos, e ela é larga de
+      // propósito: um baluarte tem 500 de casco e 440 de escudo contra 215 e
+      // 115 de um duelista. O que o teste protege é que essa dispersão não
+      // CRESÇA com a escada — a faixa é a mesma em todas as cinco linhas.
+      const ataques = hulls.map(attack);
+      const defesas = hulls.map(defense);
+      expect(Math.max(...ataques) / Math.min(...ataques), `${degrau.id}: ataque`).toBeLessThan(3.2);
+      expect(Math.max(...defesas) / Math.min(...defesas), `${degrau.id}: defesa`).toBeLessThan(7.5);
+    }
+    // A velocidade não escala em eixo nenhum: ela é identidade de arquétipo, e
+    // não recompensa de progressão. Um casco tardio mais rápido só por ser
+    // tardio faria o interceptador deixar de ser interceptador.
     const speeds = SPACESHIPS2_HULLS.map((hull) => hull.stats.velocidade ?? 0);
-    // O orçamento ofensivo admite especialização, mas continua muito aquém de
-    // uma escada vertical. A prova real está na bateria dos três cenários.
-    expect(Math.max(...attacks) / Math.min(...attacks)).toBeLessThan(2.45);
-    expect(Math.max(...defenses) / Math.min(...defenses)).toBeLessThan(4.5);
     expect(Math.max(...speeds) / Math.min(...speeds)).toBeLessThan(2.5);
   });
 });

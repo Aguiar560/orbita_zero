@@ -597,6 +597,89 @@ jogador. Quando isso acontecer, `ChestDef.luck`, `ChestDef.floor` e o
 
 ---
 
+### Escada de aquisição dos cascos ✅
+
+Os 29 cascos Spaceships 2.0 entraram como **arte em teste**: `tier 4`,
+`cost 0`, `requiresSector 0`. Grátis e equipáveis no setor 1.
+
+**O que a medição achou.** No setor 1, nível 1, save novo: 29 cascos tier 4
+equipáveis, o melhor com nota **918 contra 85** do inicial. A consequência não
+era o jogo quebrar — a curva sobe rápido, e uma `bastiao_8` nua limpava até o
+setor 15 contra o 6 da inicial. Era a escada MORRER:
+
+| casco | tier | setor | custo | nota | |
+|---|---|---|---|---|---|
+| void_canhao | T1 | 0 | 0 | 85 | obsoleto |
+| void_zapper | T3 | 14 | 90 | 367 | obsoleto |
+| falcao_b | T4 | 34 | 320 | 497 | obsoleto |
+| **prisma_cosmico** | T5 | 44 | 860 | 1405 | primeiro sobrevivente |
+
+**14 dos 20 cascos legados obsoletos desde o minuto zero** — tudo do setor 0 ao
+34, incluindo compras de até 420 núcleos. E o buraco simétrico: a espinha legada
+termina no setor 70, e os outros 230 setores não ganhavam nave nenhuma.
+
+#### A régua também estava quebrada
+
+`cascoDoSetor` ordenava por `b.tier - a.tier` e pegava o primeiro — entre tiers
+iguais, decidia pela ordem do array. **`aurora_x` (nota 4.264, setor 70) nunca
+era escolhido**, porque `void_canhaozao` (1.830, setor 48) é T6 e vinha antes. A
+régua mediu por muito tempo uma nave 2,3× mais fraca que a disponível do setor 70
+em diante. Agora escolhe por NOTA: tier é rótulo, poder é medida.
+
+Consertá-la expôs o que ela escondia: quatro cascos legados fora de família.
+`aurora_x` entregava **5,46× o dano da curva** e dominava do setor 60 ao 194.
+Os quatro foram normalizados por medição (projéteis, cadência e perfuração para
+a faixa dos arquétipos), cada um resolvido por busca binária até ~1,25×.
+
+#### O desenho
+
+Um casco a cada ~9 setores, do 36 ao 288, com escala contínua tirada de
+`poderEsperado` e `defesaEsperada` — as mesmas curvas que a dificuldade usa. É o
+que garante que uma futura recalibração da dificuldade arraste a escada junto,
+em vez de deixá-la para trás em silêncio.
+
+| linha | tier | setores | custo em núcleos |
+|---|---|---|---|
+| Fronteira | T4 | 36–81 | 650 – 3.720 |
+| Expedição | T5 | 90–135 | 4.820 – 11.710 |
+| Domínio | T6 | 144–189 | 13.500 – 24.970 |
+| Ascensão | **T7** | 198–243 | 27.670 – 43.540 |
+| **Divina** | **T7** | 252–288 | 47.210 – 64.080 |
+
+Dentro de uma linha a escolha é de ESTILO (arquétipo, elemento, arma) — a
+intenção original dos 29, preservada. Ao longo da escada é de PROGRESSO.
+
+#### Quatro tentativas medidas, três descartadas
+
+| tentativa | resultado |
+|---|---|
+| cinco degraus, escala única | erro do ajuste **0,21 → 2,24**: saltos que nenhuma curva suave segue |
+| escalar TODOS os atributos | nota respondia a `f³`; estouraria tetos e apagaria o arquétipo |
+| escalar ataque e defesa igual | golpes 3,52× no setor 260 — o jogo cresce 352× no ataque e só 11,5× na defesa |
+| **escala contínua, dois eixos** | **2 setores fora de banda, ambos na abertura** |
+
+> **No fim do jogo o `dano` do casco quase não conta.** Medido no setor 70,
+> baixar o dano de um casco de 62 para 26 move a razão de 4,02× para 3,57×: os
+> itens dominam o termo aditivo, e quem manda são os MULTIPLICADORES. Por isso o
+> papel do casco tarde é defesa e identidade, não dano bruto — e por isso o
+> expoente de dano é bem menor que o de defesa.
+
+> **A escada precisou de um piso.** Sem ele os três primeiros postos nasciam
+> mortos: `centuriao_atlas` (setor 36) marcava 433 contra 497 do `falcao_b` já
+> disponível. Um casco pago que nasce pior do que o que o jogador já tem é
+> conteúdo morto.
+
+Ritmo final, 21 conjuntos por setor: **de 12 setores fora de banda para 2**,
+ambos no regime de abertura (1 e 12), onde o casco vale de 99% a 43% do poder
+total. O setor 1 já estava fora antes desta etapa.
+
+`SAVE_VERSION` 6: a migração devolve os cascos que o estado provisório dava de
+graça, removendo só o que **não poderia** ter sido adquirido — casco da escada
+acima do maior setor alcançado. Verificado: save antigo no setor 1 fica com 20
+naves; no setor 150, com 33.
+
+---
+
 ## Fase 4 — Progressão
 
 Integração da Matriz com o nível de personagem, curvas de XP calibradas,

@@ -1,4 +1,5 @@
 import type { ElementId, StatMap } from '@sim/types';
+import { CUSTO_BASE, CUSTO_POR_NOTA, POSTO_POR_CASCO, escalarMagnitudes } from './balance/cascos';
 import { getElement } from './elements';
 import type { Hull, ShotStyle } from './hulls';
 import {
@@ -217,11 +218,16 @@ export const SPACESHIPS2_HULLS: readonly Hull[] = SPACESHIPS2_HULL_SPECS.map((sp
   const archetype = ARCHETYPE.get(spec.archetype)!;
   const element = getElement(spec.element);
   const exhaust = (index % 6) + 1;
+  // Tier, setor, custo e escala vêm todos do DEGRAU, não da ficha. É o que
+  // impede que um casco novo entre no jogo com números escolhidos a olho: para
+  // cadastrar mais um basta pô-lo num degrau, e ele nasce no lugar certo da
+  // curva. Ver `data/balance/cascos.ts` para de onde vêm os números.
+  const posto = POSTO_POR_CASCO.get(spec.id);
+  if (!posto) throw new Error(`casco fora da escada de aquisição: ${spec.id}`);
   return {
     id: spec.id,
     name: spec.name,
-    // Mesmo orçamento-base: são alternativas táticas, não uma escada de poder.
-    tier: 4,
+    tier: posto.degrau.tier,
     element: spec.element,
     blurb: spec.blurb,
     sprite: art.sprite,
@@ -230,11 +236,15 @@ export const SPACESHIPS2_HULLS: readonly Hull[] = SPACESHIPS2_HULL_SPECS.map((sp
     barExhaust: `hull/ship${exhaust}_exhaust_idle_`,
     trail: element.glow,
     shot: buildShot(spec.element, spec.weapon),
-    stats: applyWeaponStats(tuneStats(archetype.stats, spec.tuning), spec.weapon),
-    // O desbloqueio autoral será desenhado depois. Até lá, os cascos entram na
-    // frota inicial sem custo para poderem participar da campanha real.
-    cost: 0,
-    requiresSector: 0,
+    // Dentro do degrau os cascos dividem o mesmo orçamento e se separam por
+    // arquétipo, sintonia e arma — a escolha é de estilo. O salto de poder mora
+    // entre degraus.
+    stats: escalarMagnitudes(
+      applyWeaponStats(tuneStats(archetype.stats, spec.tuning), spec.weapon),
+      posto,
+    ),
+    cost: Math.round((CUSTO_BASE * posto.escalaDano * posto.escalaDefesa * CUSTO_POR_NOTA) / 10) * 10,
+    requiresSector: posto.setor,
   };
 });
 

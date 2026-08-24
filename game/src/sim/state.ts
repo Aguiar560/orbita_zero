@@ -1,4 +1,5 @@
-﻿import { HULLS } from '@data/hulls';
+﻿import { POSTO_POR_CASCO } from '@data/balance/cascos';
+import { HULLS } from '@data/hulls';
 import { BIOMES } from '@data/biomes';
 import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState } from './types';
@@ -12,12 +13,21 @@ export const SAVE_KEY = 'orbita-zero:save';
  * v3 — fim do prestígio: sem Éter, sem nós de ascensão, sem reset de universo.
  * v4 — controles manuais globais e preferências de acessibilidade persistentes.
  * v5 — missões rastreadas na tela principal.
+ * v6 — escada de aquisição dos cascos: os 29 Spaceships 2.0 deixam de ser
+ *      grátis, e a frota devolve os que o jogador ainda não podia ter.
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
-/** Cascos já liberados enquanto o sistema autoral de desbloqueio não existe. */
+/**
+ * Os cascos com que se começa: os que não custam nada e não exigem setor.
+ *
+ * A REGRA não mudou quando a escada de aquisição chegou, e é por isso que ela
+ * está certa. Os 29 Spaceships 2.0 saíram da frota inicial sozinhos, ao ganharem
+ * custo e `requiresSector` — nenhuma lista precisou ser mantida à mão, que é
+ * exatamente o que uma lista à mão faria alguém esquecer.
+ */
 const INITIAL_FLEET = HULLS.filter(
   (hull) => !hull.prototype && hull.cost === 0 && hull.requiresSector === 0,
 ).map((hull) => hull.id);
@@ -201,6 +211,23 @@ export function migrate(raw: unknown): GameState | null {
   // Consertos de integridade — um save adulterado não deve travar o boot.
   const hullIds = new Set(HULLS.map((hull) => hull.id));
   state.fleet = [...new Set(state.fleet.filter((id) => hullIds.has(id)))];
+
+  // Devolve os cascos que o estado provisório dava de graça.
+  //
+  // Enquanto os Spaceships 2.0 eram arte em teste, os 29 entravam na frota de
+  // TODO save, com custo 0 e `requiresSector` 0. Com a escada de aquisição eles
+  // passam a ser comprados, e um save antigo continuaria carregando 29 naves
+  // que ninguém pagou — algumas de faixa que o jogador ainda não alcançou.
+  //
+  // A regra remove só o que NÃO PODERIA ter sido adquirido: casco da escada
+  // acima do maior setor já alcançado. Quem realmente chegou lá mantém a nave,
+  // e ninguém perde compra legítima.
+  const alcance = Math.max(state.universe.bestSector ?? 1, state.run.sector ?? 1);
+  state.fleet = state.fleet.filter((id) => {
+    const posto = POSTO_POR_CASCO.get(id);
+    return !posto || posto.setor <= alcance;
+  });
+
   for (const id of INITIAL_FLEET) if (!state.fleet.includes(id)) state.fleet.push(id);
   if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
   state.command.nivel = Math.max(1, Math.floor(state.command.nivel));

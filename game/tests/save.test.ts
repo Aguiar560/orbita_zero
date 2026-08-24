@@ -100,13 +100,27 @@ describe('normalização de save adulterado', () => {
     expect(s.settings.pilot).toBe('equilibrado');
   });
 
-  it('entrega os 29 cascos liberados a campanhas novas e existentes', () => {
+  /**
+   * A frota inicial deixou de conter os 29.
+   *
+   * Este teste guardava o contrário: enquanto os Spaceships 2.0 eram arte em
+   * teste, com custo 0 e `requiresSector` 0, TODOS entravam na frota de quem
+   * começava o jogo. Medido, isso deixava 14 dos 20 cascos legados obsoletos no
+   * minuto zero — o melhor grátis marcava nota 918 contra 85 do inicial.
+   *
+   * Com a escada de aquisição, eles são comprados. A regra de
+   * `INITIAL_FLEET` nem precisou mudar: custo e setor bastam para excluí-los.
+   */
+  it('a frota inicial não contém casco da escada de aquisição', () => {
     const nova = createState(2026);
     const antiga = migrate({ version: SAVE_VERSION, fleet: ['batedor'], hull: 'batedor' })!;
     for (const hull of SPACESHIPS2_HULLS) {
-      expect(nova.fleet, `nova: ${hull.id}`).toContain(hull.id);
-      expect(antiga.fleet, `migrada: ${hull.id}`).toContain(hull.id);
+      expect(nova.fleet, `nova: ${hull.id}`).not.toContain(hull.id);
+      expect(antiga.fleet, `migrada: ${hull.id}`).not.toContain(hull.id);
     }
+    // E sobra frota jogável: o save novo precisa de nave para voar.
+    expect(nova.fleet.length).toBeGreaterThan(0);
+    expect(nova.fleet).toContain(nova.hull);
   });
 
   it('conserta setor e onda fora de faixa', () => {

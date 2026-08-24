@@ -43,10 +43,11 @@ Provação) e o trabalho que separa "funciona" de "é um jogo" — som e onboard
 | **Craft de afixos** | ✅ Bancada própria; Prefixos/Sufixos e remodulação de linha | `data/balance/recalibracao.ts`, `ui/panels/AffixCraftPanel.ts` |
 | Códex | ✅ chefes, inimigos/elites, cascos, itens, recursos/fontes e elementos | `ui/panels/CodexPanel.ts` |
 | Conteúdo por galáxia | 🟡 elenco base pronto; falta variedade autoral contínua | `data/enemies.ts`, `hulls.ts`, `bosses.ts` |
+| **Escada de cascos** | ✅ os 29 Spaceships 2.0 com setor, custo e escala medidos | `data/balance/cascos.ts` |
 | **Som** | 🔴 **não existe** | — |
 | **Onboarding** | 🔴 **não existe** | — |
 | **Acessibilidade** | 🟡 base pronta; falta auditoria fluxo a fluxo | `ui/Shell.ts`, `ui/panels/SettingsPanel.ts` |
-| Migração de save | ✅ v5 normalizada | `sim/state.ts` (`SAVE_VERSION = 5`) |
+| Migração de save | ✅ v6 normalizada | `sim/state.ts` (`SAVE_VERSION = 6`) |
 
 ---
 
@@ -315,6 +316,8 @@ Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
 
 | dívida | evidência | onde resolve |
 |---|---|---|
+| **Três cascos legados fora de família** | `ignis4` 3,85× · `prisma_quimico` 2,51× · `prisma_cosmico` 2,47× de dano contra a curva no próprio setor. `aurora_x` (5,46×) já foi corrigido | retuna de conteúdo legado — 20 naves autorais, etapa própria |
+| **Setores 1 e 12 fora da faixa de ritmo** | 0,17× e 0,45× do tempo-alvo. É o regime de abertura, onde o casco vale de 99% a 43% do poder e nenhuma curva suave o descreve | curva de início — o setor 1 já estava assim antes da escada |
 | **Assimetria ofensiva/defensiva** | expoente 3,07 contra 1,25 — afixos ofensivos são multiplicativos, defensivos aditivos. Já foi 3,70 × 1,10 | orçamento de item (§7) |
 | **Lendário, Mítico e Divino são indistinguíveis pela régua da parede** | os três travam além do setor 300 | precisa de outra régua — provavelmente tempo de limpeza no setor 300 |
 | **A galáxia 1 vem rápida demais no simulador** | 1,2 h contra a meta de ~10 h. Ao vivo é bem mais lento | o simulador corre ~2× à frente |

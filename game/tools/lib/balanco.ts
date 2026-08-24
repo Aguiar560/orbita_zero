@@ -101,15 +101,36 @@ export function slotsDoSetor(setor: number): number {
 }
 
 /** Melhor casco liberado num setor, pelo tier. */
+/**
+ * O melhor casco que o jogador daquele setor consegue ter.
+ *
+ * Os Spaceships 2.0 voltaram para a régua. Eles ficavam de fora enquanto
+ * estavam com `requiresSector 0` e custo zero — medi-los ali teria calibrado a
+ * curva contra um T4 grátis no setor 1. Com a escada de aquisição desenhada
+ * (`data/balance/cascos.ts`) eles são parte da espinha, e excluí-los passaria a
+ * ser o erro: a régua mediria uma frota que o jogador não usa.
+ *
+ * **Escolhe por NOTA, não por tier.** A versão anterior ordenava por
+ * `b.tier - a.tier` e pegava o primeiro, o que entre tiers iguais decidia pela
+ * ordem do array — e `aurora_x` (nota 4.264, setor 70) nunca era escolhido,
+ * porque `void_canhaozao` (nota 1.830, setor 48) é T6 e vinha antes. A régua
+ * mediu por muito tempo uma nave 2,3× mais fraca do que a disponível do setor
+ * 70 em diante. `tier` é rótulo; poder é medida.
+ */
+const notaDeCasco = new Map<string, number>();
 export function cascoDoSetor(setor: number) {
+  const nota = (id: string) => {
+    const posto = notaDeCasco.get(id);
+    if (posto !== undefined) return posto;
+    const st = createState(11);
+    st.hull = id;
+    const n = powerScore(resolveStats(st));
+    notaDeCasco.set(id, n);
+    return n;
+  };
   return [...HULLS]
-    // Esta régua mede a ESPINHA de progressão autoral. Os cascos Spaceships 2.0
-    // estão liberados para campanha, mas ainda não receberam pontos definitivos
-    // de desbloqueio; tratá-los como um T4 obrigatório no setor 1 recalibraria
-    // toda a curva contra uma decisão declaradamente provisória. A bateria de
-    // confrontos mede os 29 à parte até a escada de aquisição ser desenhada.
-    .filter((h) => !h.prototype && !SPACESHIPS2_HULL_SPEC_BY_ID.has(h.id) && h.requiresSector <= setor)
-    .sort((a, b) => b.tier - a.tier)[0]!;
+    .filter((h) => !h.prototype && h.requiresSector <= setor)
+    .sort((a, b) => nota(b.id) - nota(a.id))[0]!;
 }
 
 export interface MedidaDeSetor {
