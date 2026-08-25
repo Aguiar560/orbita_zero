@@ -743,9 +743,20 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .rail-row strong { font-variant-numeric: tabular-nums; }
 .rail-warn { padding: 7px 9px; border-radius: 7px; font-size: 11.5px; line-height: 1.3; background: rgba(255, 93, 122, 0.1); border: 1px solid rgba(255, 93, 122, 0.35); color: #ffc3ce; }
 
-.rail-pilots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+/*
+ * As colunas seguem a CONTAGEM de posturas, em vez de um número escrito.
+ *
+ * Estava `repeat(4, 1fr)` de quando havia quatro. Ao remover o equilibrado
+ * sobrou uma quarta coluna vazia — medido, 59px de buraco no fim de uma faixa
+ * de 233. `grid-auto-flow: column` cria uma trilha por filho, então entrar ou
+ * sair uma postura não deixa mais rombo nem exige lembrar de dois lugares.
+ */
+.rail-pilots { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
 .rail-pilot {
-  padding: 6px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  /* 30px é a altura dos botões IDLE/PILOTAR logo acima: as duas fileiras são
+   * o mesmo controle em dois níveis, e altura diferente as separaria à toa. */
+  min-height: 30px;
+  padding: 6px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
   background: rgba(255, 255, 255, 0.05); border: 1px solid transparent; border-radius: 6px; color: var(--muted);
 }
 .rail-pilot.active { background: rgba(79, 195, 255, 0.15); border-color: var(--line-strong); color: var(--text); }
