@@ -88,6 +88,7 @@ export class LaboratorioPanel implements Panel {
   id = 'laboratorio';
   title = 'Laboratório';
   icon = 'aba/melhorias';
+  iconUrl = '/assets/ui/menu/laboratorio.webp';
   overlay = true;
   badge(sim: Sim): number { return sim.laboratorio.active ? 1 : 0; }
 

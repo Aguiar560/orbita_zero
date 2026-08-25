@@ -39,6 +39,7 @@ export class ChestsPanel implements Panel {
   id = 'baus';
   title = 'Baús';
   icon = 'aba/baus';
+  iconUrl = '/assets/ui/menu/bau.webp';
   overlay = true;
 
   private selected = 'bronze';

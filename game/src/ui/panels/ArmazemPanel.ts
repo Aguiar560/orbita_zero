@@ -22,6 +22,7 @@ export class ArmazemPanel implements Panel {
   id = 'armazem';
   title = 'Armazém';
   icon = 'aba/inventario';
+  iconUrl = '/assets/ui/menu/armazem.webp';
   /** Abre em camada: a coluna direita é do inventário. */
   overlay = true;
 

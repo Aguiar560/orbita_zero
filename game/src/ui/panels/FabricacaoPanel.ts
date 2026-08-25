@@ -26,6 +26,7 @@ export class FabricacaoPanel implements Panel {
   id = 'fabricacao';
   title = 'Fabricação';
   icon = 'cat/reator';
+  iconUrl = '/assets/ui/menu/fabricacao.webp';
   /** Três colunas próprias não cabem no trilho. */
   overlay = true;
 

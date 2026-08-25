@@ -44,6 +44,7 @@ export class MissoesPanel implements Panel {
   // já recortado e que nada mais usa. Melhor reaproveitá-lo do que inventar um
   // nome que o atlas não tem — foi o que `cat/alvo` fez, e a aba nasceu sem arte.
   icon = 'aba/melhorias';
+  iconUrl = '/assets/ui/menu/missoes.webp';
   overlay = true;
 
   private aba: 'contratos' | 'rede' | 'concluidas' = 'contratos';

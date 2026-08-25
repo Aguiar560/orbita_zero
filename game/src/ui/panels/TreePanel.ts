@@ -27,6 +27,7 @@ export class TreePanel implements Panel {
   id = 'matriz';
   title = 'Matriz';
   icon = 'aba/matriz';
+  iconUrl = '/assets/ui/menu/matriz.webp';
   /** Abre em camada: a coluna direita é do inventário. */
   overlay = true;
 

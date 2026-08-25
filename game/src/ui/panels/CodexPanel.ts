@@ -27,6 +27,7 @@ export class CodexPanel implements Panel {
   id = 'codex';
   title = 'Códex';
   icon = 'aba/codex';
+  iconUrl = '/assets/ui/menu/codex.webp';
   overlay = true;
   private activeTab: CodexTab = 'resumo';
 

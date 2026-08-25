@@ -8,6 +8,7 @@ export class EventosPanel implements Panel {
   id = 'eventos';
   title = 'Eventos';
   icon = 'recurso/gas_exotico';
+  iconUrl = '/assets/ui/menu/eventos.webp';
   overlay = true;
 
   badge(sim: Sim): number {

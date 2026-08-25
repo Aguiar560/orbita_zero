@@ -40,6 +40,7 @@ export class ShopPanel implements Panel {
   id = 'loja';
   title = 'Loja';
   icon = 'aba/loja';
+  iconUrl = '/assets/ui/menu/loja.webp';
   overlay = true;
 
   private selected = 'carga';

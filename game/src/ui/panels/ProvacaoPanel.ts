@@ -40,6 +40,7 @@ export class ProvacaoPanel implements Panel {
   id = 'provacao';
   title = 'Provação';
   icon = 'aba/matriz';
+  iconUrl = '/assets/ui/menu/provacao.webp';
   overlay = true;
 
   /** Piso em foco. `null` = o próximo a enfrentar. */

@@ -33,7 +33,7 @@ export class AffixCraftPanel implements Panel {
   id = 'afixos';
   title = 'Afixos';
   icon = 'cat/reator';
-  iconUrl = WORKBENCH_ART;
+  iconUrl = '/assets/ui/menu/afixos.webp';
   overlay = true;
 
   private selectedUid: string | null = null;

@@ -22,6 +22,7 @@ export class GalaxyPanel implements Panel {
   id = 'galaxia';
   title = 'Galáxia';
   icon = 'aba/galaxia';
+  iconUrl = '/assets/ui/menu/galaxia.webp';
   /** Abre em camada: a coluna direita é do inventário. */
   overlay = true;
 

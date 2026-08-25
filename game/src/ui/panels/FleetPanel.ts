@@ -14,6 +14,7 @@ export class FleetPanel implements Panel {
   id = 'frota';
   title = 'Hangar';
   icon = 'aba/hangar';
+  iconUrl = '/assets/ui/menu/hangar.webp';
   /** Abre em camada: a coluna direita é do inventário. */
   overlay = true;
 

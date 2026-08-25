@@ -8,6 +8,26 @@ um painel precisa calcular, o cálculo mora em `sim/`. Painel lê `Sim` e desenh
 
 ---
 
+## Ícones das abas
+
+As treze abas usam arte própria em `assets-static/ui/menu/*.webp`, publicada
+por `tools/optimize-menu-icons.mjs` a partir de `art-source/ui/menu/*.png`.
+
+O otimizador **apara antes de redimensionar**: as artes chegaram de 179×205 a
+378×378 com o objeto em posições diferentes, e sem o `trim` cada uma ocuparia
+uma fração distinta dos 22px da aba. O `threshold: 12` existe porque o halo de
+alfa quase-zero em volta não é aparado por um corte no zero absoluto.
+
+O `Panel` aceita `iconUrl` (arte) e `icon` (sprite do atlas). Quando há
+`iconUrl`, o `Shell` monta `img.tab-art`; senão, `spriteIcon`. O `icon`
+continua declarado como reserva.
+
+Os estados são por **opacidade**, não por brilho: 0,74 inativo · 0,95 hover ·
+1 ativo com halo. Medido, um lift de brilho estourava 4% dos pixels da arte
+nova — ela já é clara (luminância média 43 contra 16 do fundo da barra).
+
+---
+
 ## A gramática de painel
 
 Todas as camadas usam a MESMA moldura, o mesmo fundo e o mesmo título de seção,
