@@ -110,12 +110,16 @@ export class Anatomia {
         ),
         h('.anat-coluna', {}, ...DIREITA.map((s) => this.soquete(s, 'dir'))),
       ),
-      emCampo
-        ? h('span.anat-nota.tiny', { text: 'Nave em campo' })
-        : h('button.mini.anat-ir', {
+      // Nave em campo não ganha rodapé: o quadro já acende com `.em-campo`, e um
+      // rótulo dizendo o que a moldura diz custava uma linha do cartão para
+      // repetir informação. Só a nave GUARDADA precisa de rodapé, porque aí há
+      // uma ação a oferecer.
+      ...(emCampo
+        ? []
+        : [h('button.mini.anat-ir', {
             text: 'Levar esta nave a campo',
             onclick: () => { sim.trocarCasco?.(this.vendo); sim.touch(); },
-          }),
+          })]),
     );
   }
 

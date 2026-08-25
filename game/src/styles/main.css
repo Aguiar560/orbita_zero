@@ -4970,43 +4970,65 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* ═══ Coluna de anatomia — o "boneco" da nave ══════════════════════════════ */
 
 /*
- * Uma quarta trilha, entre o palco e o inventário.
+ * SOBREPOSTA ao palco, não ao lado dele.
  *
- * Não foi para dentro da coluna do inventário porque as duas competiriam:
- * medido, a anatomia ocupa 290px dos 668 disponíveis e os itens à vista
- * cairiam de 35 para 15. Coluna própria custa largura do PALCO — que se adapta
- * sozinho, porque `fitView` deriva a largura lógica da proporção. Com 300px
- * aqui o palco fica em 392 e o campo em 563 unidades, bem acima do piso de
- * 480; a tarja preta só apareceria com o palco abaixo de 334px.
+ * Foi uma quarta trilha antes, e trilha de grid é retângulo de altura cheia:
+ * o cartão ocupava 380px dos 668 e os outros 288 ficavam reservados sem nada
+ * dentro — dinheiro de largura pago por espaço morto. Pior, a largura saía do
+ * PALCO: com 300px numa janela de 1280 o campo lógico batia exatamente no piso
+ * de 480, e a coluna precisava encolher para 250 só para caber.
  *
- * `grid-template-columns` do `.layout` ganha a trilha; fechada ela vira zero e
- * o palco recupera tudo.
+ * Sobreposta, o palco não paga nada: fica com os 634px em qualquer estado da
+ * anatomia, e abrir e fechar deixou de ser um evento de layout.
+ *
+ * Ela mora na MESMA célula do palco (`1 / 2`), ancorada no alto à direita —
+ * encostada no inventário, que é de onde os itens vêm. Como uma das quatro
+ * passou a ter posição explícita, todas precisam ter: com auto-placement, a
+ * célula já ocupada empurraria `.center` para a coluna 3 e jogaria o
+ * inventário para uma segunda linha.
  */
-.layout { grid-template-columns: 268px minmax(0, 1fr) var(--anat-larg, 300px) 378px; }
-.layout:has(.anatomia.fechada) { --anat-larg: 0px; }
+.layout { grid-template-columns: 268px minmax(0, 1fr) 378px; }
+.layout > .rail-left  { grid-area: 1 / 1; }
+.layout > .center     { grid-area: 1 / 2; }
+.layout > .rail-right { grid-area: 1 / 3; }
+.layout > .anatomia {
+  grid-area: 1 / 2;
+  justify-self: end; align-self: start;
+  width: var(--anat-larg, 300px);
+  margin: 12px 12px 0 0;
+  /* Por cima do canvas, que vem antes no DOM. */
+  z-index: 5;
+}
+.layout > .anatomia.fechada { width: 0; }
 
 /*
- * A trilha ocupa a altura toda; o CARTÃO, não.
+ * O cartão tem a altura do que tem dentro, e só.
  *
  * O conteúdo são dez soquetes em duas colunas — 262px de soquete mais o
- * cabeçalho e o seletor. Esticar isso por 668px não mostrava mais nada: só
- * espalhava os mesmos elementos, e o "boneco" perdia a leitura de peça única
- * que é justamente o que faz um paperdoll funcionar. O cartão fica com a
- * altura do que tem dentro, centrado na trilha.
+ * cabeçalho e o seletor, ~380 no total. Esticar isso pela altura da tela não
+ * mostrava mais nada: só espalhava os mesmos elementos, e o "boneco" perdia a
+ * leitura de peça única que é justamente o que faz um paperdoll funcionar.
  *
- * Por isso a moldura e o fundo saíram do `aside` e foram para o `.anat-corpo`:
- * uma borda de altura cheia ao redor de um cartão pela metade denunciaria a
- * trilha vazia em vez de esconder.
+ * A moldura e o fundo moram AQUI, não no `aside`: o `aside` é só a âncora, e
+ * dar borda a ele desenharia uma caixa maior que o conteúdo.
  */
 .anatomia {
   min-width: 0; min-height: 0; position: relative;
   display: grid; align-content: start;
+  pointer-events: none;
 }
+.anat-corpo, .anat-alca { pointer-events: auto; }
 .anat-corpo {
   max-height: 100%; display: grid; gap: 8px;
   padding: var(--painel-padding); align-content: start;
   border: 1px solid var(--painel-linha); border-radius: var(--painel-raio);
-  background: var(--painel-fundo);
+  /* Translúcido de propósito: tem combate acontecendo atrás, e enterrá-lo sob
+   * uma chapa opaca faria a anatomia parecer uma tela em vez de um painel. O
+   * `blur` é o que mantém o texto legível apesar da estrela passando embaixo —
+   * sem ele, sprite claro atrás de rótulo claro some. */
+  background: linear-gradient(180deg, rgba(7, 13, 20, .74), rgba(4, 9, 15, .8));
+  backdrop-filter: blur(7px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
   /* O recorte mora AQUI, e não no `aside`: no pai ele cortava a alça, que
    * fica fora da caixa por definição. Medido — a alça caía em x=638 com a
    * coluna começando em 652, e quem respondia ao clique era o painel de fases
@@ -5081,26 +5103,21 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .anat-slot-art { position: relative; z-index: 1; width: 28px; height: 28px; opacity: .34; }
 .anat-soquete:hover .anat-slot-art { opacity: .6; }
 
-.anat-nota { color: var(--muted); text-align: center; }
 .anat-ir { width: 100%; }
 
 /*
  * A largura cede antes de a coluna sumir.
  *
- * Medido: com 300px numa janela de 1280 o palco fica em 334 e o campo lógico
- * bate EXATAMENTE no piso de 480 — mais um pixel de coluna e aparece tarja
- * preta. Como 1280 é resolução comum demais para simplesmente esconder a
- * coluna, ela encolhe para 250 nessa faixa: o palco sobe para 384 e o campo
- * para 552, com folga real.
+ * O palco não paga mais largura, então o que está em jogo é QUANTO do combate
+ * fica coberto. Em 1280 o palco tem 634px e um cartão de 300 tapa 47% dele;
+ * com 250 cai para 39%, que é o que sobra de campo útil à esquerda para ainda
+ * se acompanhar a nave.
  *
- * Abaixo de 1180 não há largura que salve os quatro, e aí ela sai de cena —
- * mesmo ponto de corte que o `.painel-corpo` já usa.
+ * Abaixo de 1180 o palco fica estreito demais para ceder qualquer pedaço, e aí
+ * ela sai de cena — mesmo ponto de corte que o `.painel-corpo` já usa.
  */
 @media (max-width: 1400px) { .layout { --anat-larg: 250px; } }
-@media (max-width: 1180px) {
-  .layout { --anat-larg: 0px; }
-  .anatomia { display: none; }
-}
+@media (max-width: 1180px) { .anatomia { display: none; } }
 
 /*
  * O layout PODE encolher, e o canvas não o segura.

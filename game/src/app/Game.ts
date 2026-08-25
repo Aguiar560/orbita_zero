@@ -72,11 +72,14 @@ export class Game {
     this.vertical.refreshPlayer(true);
 
     window.addEventListener('resize', this.layout);
-    // O palco também muda de tamanho SEM a janela mudar: a coluna de anatomia
-    // abre e fecha, e `fitView` deriva a largura lógica da proporção do
-    // elemento. Sem observar o próprio palco, fechar e reabrir deixava a
-    // trilha central 70px maior do que cabia — medido, o layout somava 1.350
-    // numa janela de 1.280 e transbordava.
+    // O palco pode mudar de tamanho SEM a janela mudar — um trilho que some,
+    // uma faixa que aparece — e `fitView` deriva a largura lógica da proporção
+    // do elemento, então precisa saber. `resize` da janela não cobre isso.
+    //
+    // Nasceu de um caso concreto: a anatomia era uma quarta trilha de grid, e
+    // abrir e fechar deixava o layout com 1.350px numa janela de 1.280. Hoje
+    // ela é sobreposta e não mexe mais no palco, mas o observador fica: é a
+    // única defesa contra a próxima trilha que entrar no layout.
     new ResizeObserver(() => this.layout()).observe(stage.parentElement ?? stage);
     document.addEventListener('visibilitychange', this.onVisibility);
     // `pagehide` é o evento que realmente dispara ao fechar em todo navegador;

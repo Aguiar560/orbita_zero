@@ -58,17 +58,17 @@ inset` e traço inferior).
 ## A moldura
 
 ```
-┌──────────────┬──────────────────────┬─────────────┬─────────────┐
-│  LeftRail    │  palco (canvas)      │┤ Anatomia   │  Inventário │
-│  263 linhas  │  vertical/VerticalMode│  193 linhas │  painel FIXO│
-│              │                      │ ┌─────────┐ │  233 linhas │
-│  nave, HP,   │  ┌────────────────┐  │ │ cartão  │ │             │
-│  escudo,     │  │ CAMADA em tela │  │ │ ~380px  │ │ nunca sai   │
-│  elemento,   │  │ cheia (z: 60)  │  │ └─────────┘ │ da tela, e   │
-│  postura,    │  └────────────────┘  │  resto vazio│ por isso não │
-│  recursos    │                      │  e sem pintar│ tem aba      │
-└──────────────┴──────────────────────┴─────────────┴─────────────┘
-                                       ▲ ┤ = alça, abre e fecha
+┌──────────────┬────────────────────────────────┬──────────────────┐
+│  LeftRail    │  palco (canvas do combate)     │   Inventário     │
+│  263 linhas  │  modes/vertical/VerticalMode   │   painel FIXO    │
+│              │            ┌──┬──────────────┐ │   233 linhas     │
+│  nave, HP,   │            │┤ │  Anatomia    │ │                  │
+│  escudo,     │  ┌─────────┴──┤  SOBREPOSTA  │ │  nunca sai da    │
+│  elemento,   │  │ CAMADA em  │  translúcida │ │  tela, e por     │
+│  postura,    │  │ tela cheia └──────────────┘ │  isso não tem    │
+│  recursos    │  │ (z-index: 60)              │ │  aba própria     │
+└──────────────┴────────────────────────────────┴──────────────────┘
+                             ▲ ┤ = alça, abre e fecha
    ▲ abas: Galáxia · Armazém · Fabricação · Missões · Provação ·
            Matriz · Hangar · Baús · Loja · Códex   (+ ⚙ Ajustes)
 ```
@@ -403,38 +403,58 @@ fora de campo. O rótulo mostra a lotação: `Aurora Mk I · 1/10`.
 
 Passar o mouse num soquete cheio abre a ficha do item; clicar desequipa.
 
-### Por que é uma coluna, e não uma camada
+### Sobreposta, e não uma trilha
 
 Equipar é arrastar do inventário para o boneco. Distância entre os dois é atrito
-puro, e uma camada em tela cheia esconderia justamente o inventário.
+puro, e uma camada em tela cheia (como as outras abas) esconderia justamente o
+inventário. Dentro da coluna do inventário também não coube: medido, ocuparia
+290 dos 668px e os itens à vista cairiam de **35 para 15**.
 
-Dentro da coluna do inventário também não coube: medido, ocuparia 290 dos 668px
-e os itens à vista cairiam de **35 para 15**.
+Foi uma **quarta trilha de grid** por uma versão, e não deu certo por dois
+motivos que só aparecem medindo:
 
-Coluna própria custa largura do PALCO — que se adapta sozinho, porque `fitView`
-deriva a largura lógica da proporção do elemento.
+1. Trilha de grid é retângulo de altura cheia. O cartão tem ~357px de conteúdo,
+   então 311px ficavam reservados sem nada dentro.
+2. A largura saía do PALCO. Com 300px numa janela de 1280 o campo lógico batia
+   **exatamente** no piso de 480 (`fitView` deriva a largura da proporção), e a
+   coluna precisava encolher para 250 só para caber.
 
-| Largura da coluna | Palco | Campo lógico | Piso |
-|---|---|---|---|
-| 300px (≥1400) | 392 | 563 | 480 |
-| 300px em 1280 | 334 | **480** | 480 — no limite exato |
-| 250px em 1280 | 384 | 552 | 480 |
-| oculta (<1180) | 634 | — | — |
+Hoje ela mora na **mesma célula do palco** (`grid-area: 1 / 2`), ancorada no
+alto à direita — encostada no inventário, que é de onde os itens vêm.
 
-Por isso ela **encolhe antes de sumir**: 1280 é comum demais para esconder a
-coluna, e com 300px ali o campo bate exatamente no piso — mais um pixel e
-aparece tarja preta.
+| | Trilha (antes) | Sobreposta (hoje) |
+|---|---|---|
+| palco aberta / fechada | 384 / 634 | **634 / 634** |
+| campo lógico em 1280 | 552 | 908 |
+| espaço reservado e vazio | 250 × 311 | nenhum |
+| abrir e fechar | evento de layout | não toca no layout |
 
-### O cartão é meia altura, e a trilha vazia não pinta nada
+Como uma das quatro filhas passou a ter posição explícita, **todas** precisam
+ter: com auto-placement, a célula já ocupada empurraria `.center` para a coluna
+3 e jogaria o inventário para uma segunda linha.
 
-O conteúdo são 262px de soquete mais cabeçalho e seletor: ~380 dos 668
-disponíveis. Esticar isso pela altura toda não mostrava mais nada — só espalhava
-os mesmos elementos e o boneco perdia a leitura de peça única.
+O que se paga agora é COBERTURA, não largura: em 1280 o cartão de 250px tapa
+39% da largura do palco e 53% da altura. É por isso que ele continua encolhendo
+de 300 para 250 abaixo de 1400px, e some abaixo de 1180.
 
-A moldura e o fundo moram no `.anat-corpo`, não no `<aside>`: uma borda de
-altura cheia ao redor de um cartão pela metade denunciaria a trilha vazia em vez
-de escondê-la. A alça fica no TOPO, colada na quina do cartão, e aponta para a
-única coisa que existe ali.
+### O cartão é translúcido e tem a altura do conteúdo
+
+Tem combate acontecendo atrás, e enterrá-lo sob uma chapa opaca faria a anatomia
+parecer uma tela em vez de um painel: o fundo é `rgba(7,13,20,.74)` com
+`backdrop-filter: blur(7px)`. O `blur` não é enfeite — sem ele, sprite claro
+passando atrás de rótulo claro apaga o texto.
+
+A altura é a do conteúdo (~357px): 262 de soquete mais cabeçalho e seletor.
+Esticar não mostrava mais nada, só espalhava os mesmos elementos, e o boneco
+perdia a leitura de peça única que faz um paperdoll funcionar.
+
+A moldura e o fundo moram no `.anat-corpo`; o `<aside>` é só a âncora e não
+pinta nada. Ele tem `pointer-events: none` para não roubar clique do palco na
+área que não é cartão. A alça fica no TOPO, colada na quina.
+
+**Nave em campo não tem rodapé:** o quadro já acende com `.em-campo`, e um
+rótulo repetindo isso custava uma linha do cartão. Só a nave guardada ganha
+rodapé — "Levar esta nave a campo" — porque aí há uma ação a oferecer.
 
 O `overflow: hidden` também mora no cartão. No `<aside>` ele cortava a alça, que
 fica fora da caixa por definição — medido, a alça caía em x=638 com a coluna
