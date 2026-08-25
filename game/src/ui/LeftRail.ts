@@ -9,9 +9,7 @@ import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Item, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { WAVES_PER_SECTOR } from '@data/balance/curvas';
-import { MISSAO_POR_ID, TIPO_DE_MISSAO } from '@data/missoes';
 import { RESOURCE_IDS } from '@sim/types';
-import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon, progressBar } from './dom';
 import { RESOURCE_META } from './recursos';
 import { buildEquippedCard } from './ItemCard';
@@ -170,9 +168,10 @@ export class LeftRail {
         progressBar(stats.iaSkill, '#7fe4ff', 4),
       ),
 
-      // ── missões fixadas ──────────────────────────────────────────────────
-      h('.rail-section', { text: 'Missões rastreadas' }),
-      this.missionTracker(),
+      // As missões rastreadas moram SOBRE o campo de combate (`.mission-hud`,
+      // em `Shell`), e só lá. Tinham cópia aqui também, e duas listas do mesmo
+      // conteúdo na mesma tela competem pelo olhar sem acrescentar nada — o
+      // trilho é da nave e dos recursos.
 
       // ── patrulha ──────────────────────────────────────────────────────────
       h('.rail-section', { text: 'Patrulha' }),
@@ -185,54 +184,6 @@ export class LeftRail {
         progressBar(sim.state.bar.cacheProgress, '#ffb638', 4),
       ),
     );
-  }
-
-  /** Atalhos escolhidos na Central de Contratos; no máximo quatro. */
-  private missionTracker(): HTMLElement {
-    const sim = this.sim;
-    const pinned = sim.state.settings.pinnedMissions
-      .map((id) => MISSAO_POR_ID.get(id))
-      .filter((def): def is NonNullable<typeof def> => !!def)
-      .filter((def) => {
-        const state = situacaoDe(sim.state, def, sim.alcanceLiberado);
-        return state === 'ativa' || state === 'pronta';
-      });
-
-    if (!pinned.length) {
-      return h('button.rail-mission-empty', {
-        text: 'Rastrear missões', title: 'Escolha até quatro missões na Central de Contratos',
-        onclick: () => bus.emit('panel:open', { id: 'missoes' }),
-      });
-    }
-
-    return h('.rail-missions', {}, ...pinned.map((def) => {
-      const progresso = progressoDe(sim.state, def);
-      const fracao = fracaoDe(sim.state, def);
-      const situacao = situacaoDe(sim.state, def, sim.alcanceLiberado);
-      const objetivo = def.objetivos[0]!;
-      const feito = Math.min(objetivo.alvo, progresso.passos[0] ?? 0);
-      const tipo = TIPO_DE_MISSAO[def.tipo ?? 'principal'];
-      return h(`.rail-mission${situacao === 'pronta' ? '.ready' : ''}`, { style: { borderColor: tipo.cor, borderLeftColor: tipo.cor } },
-        h('button.rail-mission-open', {
-          title: `Abrir missão: ${def.nome}`,
-          onclick: () => bus.emit('panel:open', { id: 'missoes' }),
-        },
-          h('.rail-mission-line', {},
-            h('strong', { text: def.nome }),
-            h('span.tiny', { text: situacao === 'pronta' ? 'PRONTA' : `${fmt(feito)}/${fmt(objetivo.alvo)}` }),
-          ),
-          h('span.muted.tiny', { text: def.objetivos.length > 1 ? `${objetivo.texto} +${def.objetivos.length - 1}` : objetivo.texto }),
-          progressBar(fracao, situacao === 'pronta' ? 'var(--good)' : tipo.cor, 4),
-        ),
-        h('button.rail-mission-unpin', {
-          text: '×', title: `Parar de rastrear ${def.nome}`, 'aria-label': `Parar de rastrear ${def.nome}`,
-          onclick: () => {
-            sim.state.settings.pinnedMissions = sim.state.settings.pinnedMissions.filter((id) => id !== def.id);
-            sim.touch();
-          },
-        }),
-      );
-    }));
   }
 
   /**

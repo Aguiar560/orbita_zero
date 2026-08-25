@@ -366,6 +366,10 @@ para leitor de tela pertencem ao Shell, mas obedecem a estas preferências.
 
 `ui/LeftRail.ts` · 303 linhas
 
+As missões rastreadas **não** moram aqui: elas vivem sobre o campo de combate
+(`.mission-hud`, em `Shell`), e só lá. Havia cópia nos dois lugares, e duas
+listas do mesmo conteúdo na mesma tela competem pelo olhar sem acrescentar nada.
+
 Nave ativa, vida, escudo, elemento, **postura da IA** (`AGR` / `EQU` / `EVA` /
 `COL`) e as três moedas. Clicar numa célula de item abre o Inventário.
 
