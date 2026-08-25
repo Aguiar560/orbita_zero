@@ -11,6 +11,7 @@ import {
 } from '@data/balance/descarte';
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
+import { PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import {
   abrirDesafio, encontroDoDesafio, tickDoDesafio, type DesafioAtivo,
@@ -2025,9 +2026,35 @@ export class Sim {
 
   // ── frota ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Registra a escolha da primeira tela.
+   *
+   * Troca o casco ativo junto porque a nave do personagem É a escolha — deixar
+   * o jogador escolher Sora e continuar voando o casco genérico seria escolher
+   * no vazio. Não mexe em mais nada: o piloto não dá atributo, e o resto do
+   * save nasceu válido sem ele.
+   *
+   * Idempotente e recusa id desconhecido, porque ela é chamada de uma tela e
+   * telas erram.
+   */
+  escolherPiloto(id: string): boolean {
+    if (this.state.piloto || !PILOTO_POR_ID.has(id)) return false;
+    const casco = pilotoDe(id).casco;
+    this.state.piloto = id;
+    this.state.hull = casco;
+    if (!this.state.fleet.includes(casco)) this.state.fleet.push(casco);
+    this.state.naves[casco] ??= { nivel: 1, xp: 0, equipped: {} };
+    this.touch();
+    return true;
+  }
+
   buyHull(id: string): boolean {
     const hull = HULLS.find((h) => h.id === id);
     if (!hull || hull.prototype || this.frotaDisponivel.includes(id)) return false;
+    // Casco de personagem nunca é comprável — nem o seu, que você já tem, nem
+    // o dos outros três. Comprar o dos outros esvaziaria a escolha da primeira
+    // tela por dentro: bastaria juntar cristal para ter os quatro.
+    if (hull.piloto) return false;
     if (this.alcanceLiberado < hull.requiresSector) return false;
     if (this.nivelLiberado < nivelExigido(hull.requiresSector)) return false;
     if (!this.spend('cristal', hull.cost)) return false;

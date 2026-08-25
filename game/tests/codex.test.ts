@@ -10,7 +10,7 @@ describe('cobertura do Códex', () => {
   it('cobre todos os catálogos vivos do jogo', () => {
     expect(BOSSES).toHaveLength(30);
     expect(ALL_ENEMIES).toHaveLength(68);
-    expect(HULLS).toHaveLength(49);
+    expect(HULLS).toHaveLength(53);
     expect(ITEM_BASES).toHaveLength(80);
     expect(RECURSOS).toHaveLength(70);
     expect(ELEMENTS).toHaveLength(6);

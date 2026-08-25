@@ -363,6 +363,16 @@ export interface GameState {
   /** Totais acumulados de todos os tempos, para estatísticas e conquistas. */
   lifetime: Resources;
 
+  /**
+   * Piloto escolhido na primeira tela (`data/pilotos.ts`).
+   *
+   * Guarda a ESCOLHA, não os efeitos dela: o casco de partida sai daqui uma
+   * vez, no nascimento do save, e depois `hull` e `fleet` seguem sozinhos.
+   * Guardar o id mesmo assim é o que permite a tela mostrar quem você é, e o
+   * que permitiria um dia oferecer troca de piloto sem adivinhar.
+   */
+  piloto: string;
+
   hull: string;
   /** Cascos desbloqueados. */
   fleet: string[];

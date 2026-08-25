@@ -43,11 +43,28 @@ export class Anatomia {
   private readonly corpo = h('.anat-corpo');
   /** Casco em exibição; pode não ser o que está voando. */
   private vendo = '';
+  /**
+   * Se o jogador escolheu esta nave no seletor, ou se ela só está seguindo a
+   * que está em campo.
+   *
+   * Sem esta distinção a coluna congelava na primeira nave que viu: ela só
+   * trocava de casco quando o exibido saía da frota. Trocar de nave no Hangar,
+   * ou escolher personagem na primeira tela, deixava a anatomia montando o
+   * conjunto de OUTRA nave sem avisar — e o jogador equipava no lugar errado.
+   */
+  private fixadoPeloJogador = false;
   private dirty = true;
   private timer = 0;
 
   /** Ficha do item sob o cursor. No `body` para não ser cortada pela coluna. */
   private ficha: HTMLElement | null = null;
+
+  /** Levar a nave a campo volta a coluna a seguir o casco ativo. */
+  private irACampo(id: string): void {
+    this.sim.trocarCasco?.(id);
+    this.fixadoPeloJogador = false;
+    this.sim.touch();
+  }
 
   private readonly alca = h('button.anat-alca', {
     'aria-label': 'Abrir ou fechar a anatomia',
@@ -93,7 +110,7 @@ export class Anatomia {
     if (!this.aberta) return;
     // Segue a nave em campo enquanto o jogador não escolher outra: abrir a
     // coluna e ver o conjunto de uma nave guardada seria desorientador.
-    if (!this.vendo || !sim.state.fleet.includes(this.vendo)) this.vendo = sim.state.hull;
+    if (!this.fixadoPeloJogador || !sim.state.fleet.includes(this.vendo)) this.vendo = sim.state.hull;
 
     const casco = HULL_BY_ID.get(this.vendo);
     if (!casco) return;
@@ -118,7 +135,7 @@ export class Anatomia {
         ? []
         : [h('button.mini.anat-ir', {
             text: 'Levar esta nave a campo',
-            onclick: () => { sim.trocarCasco?.(this.vendo); sim.touch(); },
+            onclick: () => this.irACampo(this.vendo),
           })]),
     );
   }
@@ -135,6 +152,10 @@ export class Anatomia {
       'aria-label': 'Nave a equipar',
       onchange: (e: Event) => {
         this.vendo = (e.target as HTMLSelectElement).value;
+        // A partir daqui a coluna para de seguir a nave em campo: quem mexeu no
+        // seletor quer montar aquela nave, e puxá-lo de volta na próxima troca
+        // de casco desfaria o que ele pediu.
+        this.fixadoPeloJogador = true;
         this.dirty = true;
         this.build();
       },

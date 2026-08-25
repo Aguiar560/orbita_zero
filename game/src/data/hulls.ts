@@ -76,6 +76,15 @@ export interface Hull {
   hitbox?: HullHitbox;
   /** Casco completo de laboratório, ainda fora da progressão da campanha. */
   prototype?: boolean;
+  /**
+   * Casco de partida deste piloto (`data/pilotos.ts`).
+   *
+   * Não é comprável e não entra na frota inicial de todo mundo: ele CHEGA com
+   * o personagem escolhido. Sem esta marca os quatro cairiam juntos em
+   * `INITIAL_FLEET`, que é derivada de "custo 0 e setor 0" — e a escolha da
+   * primeira tela não valeria nada, porque o jogador teria os quatro.
+   */
+  piloto?: string;
 
   // ── camadas do pack Void (opcionais) ───────────────────────────────────────
   /** Quadros de casco por dano: `[intacto, leve, médio, grave]`. */
@@ -479,6 +488,85 @@ const CORE_HULLS: readonly Hull[] = [
     },
     cost: 1600,
     requiresSector: 58,
+  },
+
+  // ── cascos de piloto (§ escolha inicial) ──────────────────────────────────
+  //
+  // Quatro formas, UMA nota. `powerScore` é a média geométrica de ataque e
+  // defesa, e os quatro batem em 1,10× o Aurora Mk I com 1,58% de dispersão
+  // entre si — contra 34% de diferença em dps e 30% em vida efetiva. É isso
+  // que faz a escolha ser de gosto e não de vantagem, e `tests/pilotos.test.ts`
+  // é quem não deixa esquecer.
+  //
+  // O casco do personagem é melhor que o genérico de propósito: se empatasse,
+  // o jogador trocaria pelo Aurora no primeiro minuto e a escolha morreria
+  // ali. Mas 1,10 e não 1,15, e o teto veio de MEDIÇÃO, não de gosto — com
+  // 1,15 o setor 1 dava 90,8 golpes de sobrevivência contra o teto de 90 do
+  // §2, e a régua reprovava a introdução por ser mansa demais. Em 1,10 dá
+  // 87,7, com folga real.
+  {
+    id: 'nucleo_vektor',
+    name: 'Núcleo Vektor',
+    tier: 1,
+    element: 'raio',
+    blurb: 'Casco de navegação sintético. Faz tudo bem e nada de espetacular.',
+    sprite: 'ship/aurora_a',
+    barSprite: 'hull/ship1',
+    barExhaust: 'hull/ship1_exhaust_idle_',
+    trail: '#4fc3ff',
+    shot: elemShot('raio', 800),
+    stats: { dano: 6.8, cadencia: 3.2, vida: 115, escudo: 40, regen: 3, velocidade: 210, projeteis: 1 },
+    cost: 0,
+    requiresSector: 0,
+    piloto: 'piloto_vektor',
+  },
+  {
+    id: 'lanca_rubra',
+    name: 'Lança Rubra',
+    tier: 1,
+    element: 'fogo',
+    blurb: 'Casco de corrida convertido para combate. Rápido de matar, fácil de morrer.',
+    sprite: 'ship/ignis_a',
+    barSprite: 'hull/ship2',
+    barExhaust: 'hull/ship2_exhaust_idle_',
+    trail: '#ff8a4d',
+    shot: elemShot('fogo', 820),
+    stats: { dano: 7.3, cadencia: 3.4, vida: 95, escudo: 38, regen: 3, velocidade: 210, projeteis: 1 },
+    cost: 0,
+    requiresSector: 0,
+    piloto: 'piloto_darin',
+  },
+  {
+    id: 'baluarte_glacial',
+    name: 'Baluarte Glacial',
+    tier: 1,
+    element: 'gelo',
+    blurb: 'Blindagem de doca fria sobre um casco leve. Absorve o que os outros desviam.',
+    sprite: 'ship/aurora_c',
+    barSprite: 'hull/ship3',
+    barExhaust: 'hull/ship3_exhaust_idle_',
+    trail: '#5ce6ff',
+    shot: elemShot('gelo', 760),
+    stats: { dano: 5.8, cadencia: 3.2, vida: 125, escudo: 48, regen: 3.9, velocidade: 210, projeteis: 1 },
+    cost: 0,
+    requiresSector: 0,
+    piloto: 'piloto_sora',
+  },
+  {
+    id: 'sopro_astral',
+    name: 'Sopro Astral',
+    tier: 1,
+    element: 'cosmico',
+    blurb: 'Responde antes do comando. Ninguém a bordo sabe explicar como.',
+    sprite: 'ship/ignis_c',
+    barSprite: 'hull/ship4',
+    barExhaust: 'hull/ship4_exhaust_idle_',
+    trail: '#b45cff',
+    shot: elemShot('cosmico', 860),
+    stats: { dano: 6.4, cadencia: 3.5, vida: 95, escudo: 38, regen: 3, velocidade: 255, projeteis: 1 },
+    cost: 0,
+    requiresSector: 0,
+    piloto: 'piloto_nharu',
   },
 ];
 

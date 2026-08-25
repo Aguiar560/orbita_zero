@@ -21,6 +21,7 @@ export class FleetPanel implements Panel {
   badge(sim: Sim): number {
     return HULLS.filter(
       (hull) => !hull.prototype
+        && !hull.piloto
         && !sim.frotaDisponivel.includes(hull.id)
         && sim.alcanceLiberado >= hull.requiresSector
         && sim.state.command.nivel >= nivelExigido(hull.requiresSector)
@@ -34,7 +35,11 @@ export class FleetPanel implements Panel {
         text: `${HULLS.length} cascos cadastrados. Cada casco tem um perfil próprio: a nota resume a ficha, as barras mostram onde ele é extremo, `
           + 'e o elemento define o tipo de dano quando não há arma principal equipada.',
       }),
-      h('.fleet-grid', {}, ...HULLS.map((hull) => {
+      // Os cascos dos OUTROS três personagens não entram na lista. Eles não
+      // são compráveis, então apareceriam como uma fileira permanente de
+      // "bloqueado" sem nenhuma forma de desbloquear — a pior espécie de
+      // cadeado, o que não tem chave.
+      h('.fleet-grid', {}, ...HULLS.filter((hull) => !hull.piloto || sim.frotaDisponivel.includes(hull.id)).map((hull) => {
         const owned = sim.frotaDisponivel.includes(hull.id);
         const active = sim.state.hull === hull.id;
         const revealed = sim.alcanceLiberado >= hull.requiresSector;

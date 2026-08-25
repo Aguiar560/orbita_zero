@@ -1,5 +1,6 @@
 ﻿import { POSTO_POR_CASCO } from '@data/balance/cascos';
 import { HULLS } from '@data/hulls';
+import { PILOTO_PADRAO, PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
 import { BIOMES } from '@data/biomes';
 import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState, NaveProgresso } from './types';
@@ -19,7 +20,7 @@ export const SAVE_KEY = 'orbita-zero:save';
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -30,11 +31,27 @@ export const SAVE_VERSION = 7;
  * exatamente o que uma lista à mão faria alguém esquecer.
  */
 const INITIAL_FLEET = HULLS.filter(
-  (hull) => !hull.prototype && hull.cost === 0 && hull.requiresSector === 0,
+  // `!hull.piloto` é o que segura a escolha da primeira tela em pé. Os quatro
+  // cascos de personagem também têm custo 0 e setor 0, então sem este filtro
+  // eles cairiam TODOS aqui e o jogador começaria com os quatro — escolher
+  // deixaria de significar alguma coisa.
+  (hull) => !hull.prototype && !hull.piloto && hull.cost === 0 && hull.requiresSector === 0,
 ).map((hull) => hull.id);
 
-export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameState {
+export function createState(
+  seed = (Math.random() * 0xffffffff) >>> 0,
+  // Vazio é "ainda não escolheu" — é o que faz a tela de escolha aparecer no
+  // primeiro boot. Não usa `PILOTO_PADRAO` como valor inicial de propósito:
+  // com um padrão válido não haveria como distinguir quem escolheu o
+  // equilibrado de quem nunca viu a tela.
+  piloto = '',
+): GameState {
   const now = Date.now();
+  // Sem escolha feita não há casco de personagem NENHUM — nem o do padrão. O
+  // estado precisa de uma nave válida para o palco desenhar atrás da tela de
+  // escolha, e essa nave é a genérica. Entregar a do padrão aqui deixaria a
+  // nave de outro personagem no hangar de quem escolhesse qualquer outro.
+  const casco = piloto ? pilotoDe(piloto).casco : HULLS[0]!.id;
   return {
     version: SAVE_VERSION,
     createdAt: now,
@@ -44,8 +61,13 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
     resources: { sucata: 0, nucleo: 0, cristal: 0 },
     lifetime: { sucata: 0, nucleo: 0, cristal: 0 },
 
-    hull: HULLS[0]!.id,
-    fleet: [...INITIAL_FLEET],
+    piloto,
+    // A nave do personagem entra ATIVA, não guardada: ela é a melhor coisa que
+    // o jogador tem na partida (1,15× o casco genérico), e fazê-lo trocar de
+    // casco no primeiro minuto para usar o que acabou de escolher seria um
+    // passo administrativo entre a escolha e o jogo.
+    hull: casco,
+    fleet: [...new Set([casco, ...INITIAL_FLEET])],
     inventory: [],
     cargaLiberada: [],
     armazem: {},
@@ -111,11 +133,25 @@ export function migrate(raw: unknown): GameState | null {
   const data = raw as Partial<GameState>;
   if (typeof data.version !== 'number' || data.version > SAVE_VERSION) return null;
 
-  const fresh = createState(data.universe?.seed);
+  // O piloto do save vem ANTES de montar o estado fresco: é ele que decide o
+  // casco de partida, e um `createState` sem ele daria a nave do padrão para
+  // todo mundo na hora de preencher o que falta.
+  //
+  // AUSENTE e VAZIO são casos diferentes, e confundi-los escolhia pelo jogador.
+  // Save sem o campo é de antes da tela existir: quem já jogou não pode ser
+  // parado agora para escolher, então recebe o padrão. Campo vazio é save NOVO
+  // cuja escolha não foi concluída — fechar a aba com a tela aberta grava isso,
+  // porque `pagehide` salva. Promovê-lo ao padrão fazia a tela nunca mais
+  // aparecer, e o jogador voltava já sendo alguém que não escolheu ser.
+  const piloto = data.piloto === undefined
+    ? PILOTO_PADRAO
+    : (typeof data.piloto === 'string' && PILOTO_POR_ID.has(data.piloto) ? data.piloto : '');
+  const fresh = createState(data.universe?.seed, piloto);
   const state: GameState = {
     ...fresh,
     ...data,
     version: SAVE_VERSION,
+    piloto,
     resources: { ...fresh.resources, ...data.resources },
     lifetime: { ...fresh.lifetime, ...data.lifetime },
     run: { ...fresh.run, ...data.run },
@@ -127,9 +163,16 @@ export function migrate(raw: unknown): GameState | null {
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
     inventory: Array.isArray(data.inventory) ? data.inventory : [],
+    // O casco do piloto entra junto: save de antes da escolha não tem nenhum
+    // dos quatro, e sem isto o jogador migrado ficaria com um `piloto` que não
+    // corresponde a nave nenhuma na frota.
     fleet: [...new Set([
       ...(Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet),
       ...INITIAL_FLEET,
+      // Só quando há escolha feita: sem isto, um save inacabado ganharia o
+      // casco do padrão na frota e o jogador terminaria a escolha com a nave
+      // de outro personagem no hangar.
+      ...(piloto ? [pilotoDe(piloto).casco] : []),
     ])],
     codex: Array.isArray(data.codex) ? data.codex : [],
     // Save anterior ao §27 não tem nem um nem outro. Ambos nascem vazios em vez

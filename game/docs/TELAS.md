@@ -87,6 +87,84 @@ Abrir por código: `bus.emit('panel:open', { id })`.
 
 ---
 
+## Escolha de personagem — a primeira tela
+
+`ui/EscolhaDePiloto.ts` · `data/pilotos.ts` · aparece **uma vez** por save
+
+Quatro personagens em cartões lado a lado. Cada um tem nome, **raça**, galáxia
+de origem, uma descrição curta — e uma **nave de partida**, que é a única coisa
+que pesa em número nenhum.
+
+| | raça | casco | elemento | forma |
+|---|---|---|---|---|
+| VEKTOR-9 | Sintético | Núcleo Vektor | Raio | equilibrado |
+| DARIN KOSS | Humano | Lança Rubra | Fogo | agressivo |
+| SORA VEY | Humana | Baluarte Glacial | Gelo | resistente |
+| NHARU | Ser cósmico | Sopro Astral | Cósmico | ágil |
+
+### A escolha não pode ser uma armadilha, e isso é medido
+
+Os quatro cascos têm a MESMA nota de `powerScore` — **1,58% de dispersão** —
+com formas bem diferentes: dps de 18,8 a 25,2 e vida efetiva de 193 a 251.
+`tests/pilotos.test.ts` exige dispersão abaixo de 3% E diferença acima de 20%
+nos dois eixos: um teste segura o equilíbrio, o outro impede que "equilibrar"
+vire "achatar".
+
+A escolha **converge**: todo casco comprável continua aberto a todos, e o
+piloto não dá atributo nenhum. Por volta do primeiro casco de loja ela deixou de
+ser restrição e virou preferência. A tela diz isso em texto, de propósito — sem
+essa linha o jogador cauteloso escolhe o equilibrado "para não errar", que é
+exatamente a decisão sem graça que a tela existe para evitar.
+
+Por que não dá bônus: o `CLAUDE.md` proíbe fonte de poder fora de item, craft e
+Matriz. Um bônus de piloto seria a quarta.
+
+### O casco do personagem é 1,10× o genérico, e o número veio de medição
+
+Se empatasse com o Aurora Mk I, o jogador trocaria no primeiro minuto e a
+escolha morreria ali. Mas o teto não é gosto: com **1,15×** o setor 1 dava
+**90,8 golpes** de sobrevivência contra o teto de 90 do §2, e a régua reprovava
+a introdução por mansa demais. Em 1,10× dá 87,7.
+
+### As três barras existem por um defeito que a medição pegou
+
+Com só DANO e RESISTÊNCIA, o Sopro Astral aparecia **dominado** — mesma vida
+efetiva da Lança Rubra e menos dano — porque a vantagem dele é velocidade, que
+`powerScore` conta como esquiva e `effectiveHp` não mostra. A tela dizia que uma
+das quatro escolhas era pior, e não era.
+
+Com VELOCIDADE à vista, ninguém é dominado e cada um é o melhor em algo:
+
+```
+VEKTOR-9    DANO=60%  RESISTÊNCIA=49%  VELOCIDADE=18%
+DARIN KOSS  DANO=100% RESISTÊNCIA=18%  VELOCIDADE=18%
+SORA VEY    DANO=18%  RESISTÊNCIA=100% VELOCIDADE=18%
+NHARU       DANO=68%  RESISTÊNCIA=18%  VELOCIDADE=100%
+```
+
+As barras saem de `powerScore`/`dps`/`effectiveHp` sobre um estado real, e são
+normalizadas ENTRE os quatro — contra uma escala absoluta ficariam quase iguais
+e a tela não diria nada. Números escritos à mão aqui virariam mentira no
+primeiro ajuste de balanceamento, e ninguém repara numa tela que só aparece uma
+vez.
+
+### Save: `piloto`, versão 8
+
+Ausente e vazio são **casos diferentes**, e confundi-los escolhia pelo jogador:
+
+- **campo ausente** — save de antes da tela existir. Recebe o padrão; quem já
+  jogou não pode ser parado agora para escolher.
+- **campo vazio** — save novo com a escolha não concluída. Fechar a aba com a
+  tela aberta grava isso, porque `pagehide` salva. A tela volta.
+
+Enquanto não há escolha, **nenhum** casco de personagem entra na frota — nem o
+do padrão, senão o jogador terminaria a escolha com a nave de outro no hangar.
+
+Os quatro cascos não são compráveis (`Hull.piloto`) e os dos outros três nem
+aparecem no Hangar: seriam uma fileira permanente de bloqueado sem chave.
+
+---
+
 ## Inventário — `id: 'inventario'`
 
 `ui/panels/InventoryPanel.ts` · 233 linhas · **painel fixo, sem aba**

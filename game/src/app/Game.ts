@@ -9,6 +9,7 @@ import { loadFromStorage } from '@sim/state';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
+import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
 
 /**
  * Ausência mínima (segundos) para creditar progresso offline.
@@ -43,7 +44,11 @@ export class Game {
 
   private stageWrap!: HTMLElement;
 
+  /** Onde a tela de escolha de personagem é montada, antes do laço começar. */
+  private readonly rootEl: HTMLElement;
+
   constructor(root: HTMLElement) {
+    this.rootEl = root;
     const loaded = loadFromStorage();
     this.sim = new Sim(loaded?.state);
     this.shell = new Shell(root, this.sim);
@@ -90,6 +95,16 @@ export class Game {
     bus.on('state:changed', () => this.vertical.refreshPlayer());
 
     this.layout();
+
+    // A escolha de personagem vem ANTES do laço e antes do relatório de
+    // ausência. Antes do laço porque o casco escolhido troca a nave em campo, e
+    // um quadro sequer da nave errada já é uma piscada errada na primeira tela
+    // que o jogador vê. Antes do relatório porque save sem piloto é save novo,
+    // e save novo não tem ausência para relatar.
+    if (!this.sim.state.piloto) {
+      await new EscolhaDePiloto(this.sim, this.rootEl).mostrar();
+      this.vertical.refreshPlayer(true);
+    }
 
     if (this.offlineSeconds > AWAY_THRESHOLD) {
       const report = this.sim.applyOffline(this.offlineSeconds);

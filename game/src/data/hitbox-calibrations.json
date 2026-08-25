@@ -28,20 +28,6 @@
       "offsetY": 2.8,
       "scale": 0.398
     },
-    "aurora_negra": {
-      "width": 30,
-      "height": 36,
-      "offsetX": -2.1,
-      "offsetY": 1.3,
-      "scale": 0.377
-    },
-    "aurora_x": {
-      "width": 29.2,
-      "height": 33.5,
-      "offsetX": -0.6,
-      "offsetY": 1.9,
-      "scale": 0.62
-    },
     "aurora1": {
       "width": 30.9,
       "height": 33.8,
@@ -68,6 +54,27 @@
       "height": 34.3,
       "offsetX": -0.6,
       "offsetY": 0.3,
+      "scale": 0.62
+    },
+    "aurora_negra": {
+      "width": 30,
+      "height": 36,
+      "offsetX": -2.1,
+      "offsetY": 1.3,
+      "scale": 0.377
+    },
+    "aurora_x": {
+      "width": 29.2,
+      "height": 33.5,
+      "offsetX": -0.6,
+      "offsetY": 1.9,
+      "scale": 0.62
+    },
+    "baluarte_glacial": {
+      "width": 29.2,
+      "height": 33.5,
+      "offsetX": -0.6,
+      "offsetY": 1.9,
       "scale": 0.62
     },
     "bastiao_8": {
@@ -175,6 +182,13 @@
       "offsetY": 0.4,
       "scale": 0.389
     },
+    "lanca_rubra": {
+      "width": 30.6,
+      "height": 31.5,
+      "offsetX": -1.2,
+      "offsetY": 0.3,
+      "scale": 0.62
+    },
     "leviata_ferro": {
       "width": 32.9,
       "height": 39.6,
@@ -209,6 +223,13 @@
       "offsetX": 0,
       "offsetY": -1.6,
       "scale": 0.393
+    },
+    "nucleo_vektor": {
+      "width": 30.9,
+      "height": 33.8,
+      "offsetX": -0.9,
+      "offsetY": 0.9,
+      "scale": 0.62
     },
     "oraculo_safira": {
       "width": 32.9,
@@ -286,6 +307,13 @@
       "offsetX": -0.2,
       "offsetY": 2.9,
       "scale": 0.381
+    },
+    "sopro_astral": {
+      "width": 29.9,
+      "height": 31.5,
+      "offsetX": -0.6,
+      "offsetY": 0.3,
+      "scale": 0.62
     },
     "talon_ignifero": {
       "width": 38.6,

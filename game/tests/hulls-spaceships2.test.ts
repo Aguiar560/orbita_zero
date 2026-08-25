@@ -29,7 +29,7 @@ describe('catálogo de cascos Spaceships 2.0', () => {
     expect(art).toHaveLength(29);
     expect(SPACESHIPS2_HULL_SPECS).toHaveLength(29);
     expect(SPACESHIPS2_HULLS).toHaveLength(29);
-    expect(HULLS).toHaveLength(49);
+    expect(HULLS).toHaveLength(53);
     expect(new Set(SPACESHIPS2_HULL_SPECS.map((spec) => spec.artId)))
       .toEqual(new Set(art.map((entry) => entry.id)));
   });
