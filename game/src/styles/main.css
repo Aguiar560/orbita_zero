@@ -4991,11 +4991,27 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .layout > .rail-left  { grid-area: 1 / 1; }
 .layout > .center     { grid-area: 1 / 2; }
 .layout > .rail-right { grid-area: 1 / 3; }
+/*
+ * Colada na parede, e abaixo do HUD do setor.
+ *
+ * O canto superior direito do campo já é ocupado por "SETOR n" e pelo rótulo
+ * da onda — medido lendo os pixels do canvas: a onda termina em y=30 com o
+ * palco em 668px de altura, e a alça ficava em y=22..86, cruzando o texto.
+ *
+ * O recuo NÃO pode ser um número fixo de pixels. `VIEW.h` é fixo em 960 e o
+ * canvas ocupa a altura toda do palco, então a escala é `altura / 960` — o
+ * HUD desce junto com a janela. 40px limpariam o texto em 720 e bateriam nele
+ * em 1080. Por isso o recuo é expresso nas MESMAS unidades lógicas em que o
+ * HUD é desenhado: 60 unidades, contra as 43 onde a onda acaba.
+ *
+ * O `100vh - 52px` é a altura do palco: a barra de cima é a única coisa acima
+ * dele, e não há nada abaixo. Se a barra mudar de altura, este número muda.
+ */
 .layout > .anatomia {
   grid-area: 1 / 2;
   justify-self: end; align-self: start;
   width: var(--anat-larg, 300px);
-  margin: 12px 12px 0 0;
+  margin-top: calc((100vh - 52px) * 60 / 960);
   /* Por cima do canvas, que vem antes no DOM. */
   z-index: 5;
 }

@@ -452,6 +452,28 @@ A moldura e o fundo moram no `.anat-corpo`; o `<aside>` é só a âncora e não
 pinta nada. Ele tem `pointer-events: none` para não roubar clique do palco na
 área que não é cartão. A alça fica no TOPO, colada na quina.
 
+### O recuo do topo não é um número de pixels
+
+O canto superior direito do campo já é do HUD: "SETOR n" e o rótulo da onda.
+Lendo os pixels do canvas, a onda acaba em **y=30** com o palco em 668px — e a
+alça ficava em y=22..86, cruzando o texto.
+
+Um recuo fixo não serve. `VIEW.h` é fixo em 960 e o canvas ocupa a altura toda
+do palco, então a escala é `altura / 960`: **o HUD desce junto com a janela**.
+Medido, 40px dariam 20px de folga em 720 e apenas **4px** em 1080.
+
+Por isso o recuo está nas mesmas unidades lógicas em que o HUD é desenhado —
+`calc((100vh - 52px) * 60 / 960)`, contra as 43 onde a onda acaba. Os dois
+crescem juntos, então a folga é sempre `altura × 17 / 960`: 22px em 720, 28px
+em 1080.
+
+O `100vh - 52px` é a altura do palco (a barra de cima é a única coisa acima
+dele, e não há nada abaixo) — verificado nas duas alturas. Se a barra mudar de
+altura, este número muda junto.
+
+Lateralmente o cartão fica **colado na parede**, sem margem: encostado no
+inventário, que é de onde os itens vêm.
+
 **Nave em campo não tem rodapé:** o quadro já acende com `.em-campo`, e um
 rótulo repetindo isso custava uma linha do cartão. Só a nave guardada ganha
 rodapé — "Levar esta nave a campo" — porque aí há uma ação a oferecer.
