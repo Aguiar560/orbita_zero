@@ -287,6 +287,11 @@ em toda moldura.
 
 ---
 
+Ao abrir uma cápsula, passar o mouse por um item mostra a **ficha completa** —
+implícito, prefixos, sufixos com tier e a comparação com o equipado. O cartão
+mora no `body`, não dentro do painel: `.bau-col` é `overflow: hidden` e o
+cortaria na borda. Vira para a esquerda quando não cabe à direita.
+
 ## Loja — `id: 'loja'`
 
 `ui/panels/ShopPanel.ts` · camada em três colunas

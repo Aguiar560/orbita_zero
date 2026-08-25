@@ -5,6 +5,7 @@ import { itemName } from '@sim/loot';
 import type { Item, Rarity } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
+import { buildItemCard } from '../ItemCard';
 import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
 
@@ -43,6 +44,47 @@ export class ChestsPanel implements Panel {
   private selected = 'bronze';
   private lastOpen: { tier: string; items: Item[]; best: Rarity } | null = null;
 
+  /**
+   * Ficha do item sob o cursor.
+   *
+   * Mora no `body`, e não dentro do painel, porque `.bau-col` é `overflow:
+   * hidden` — um cartão ancorado lá dentro seria cortado pela própria coluna
+   * assim que passasse da borda. É o mesmo caminho que o trilho já usa.
+   *
+   * Criado sob demanda: a maioria das aberturas de painel nunca chega a passar
+   * o mouse por um item, e um nó a mais no `body` por painel construído seria
+   * lixo acumulado a cada troca de aba.
+   */
+  private ficha: HTMLElement | null = null;
+
+  private fichaDoItem(): HTMLElement {
+    if (!this.ficha) {
+      this.ficha = h('.item-card-float.hidden');
+      document.body.append(this.ficha);
+    }
+    return this.ficha;
+  }
+
+  private mostrarFicha(sim: Sim, item: Item, alvo: HTMLElement): void {
+    const ficha = this.fichaDoItem();
+    ficha.replaceChildren(buildItemCard(sim, item));
+    ficha.classList.remove('hidden');
+
+    // Abre à direita do item; vira para a esquerda quando não couber, e nunca
+    // passa da borda de baixo da janela.
+    const spot = alvo.getBoundingClientRect();
+    const largura = ficha.offsetWidth || 236;
+    const altura = ficha.offsetHeight || 220;
+    const direita = spot.right + 10;
+    const cabe = direita + largura <= window.innerWidth - 8;
+    ficha.style.left = `${cabe ? direita : Math.max(8, spot.left - largura - 10)}px`;
+    ficha.style.top = `${Math.min(Math.max(8, spot.top - 12), Math.max(8, window.innerHeight - altura - 8))}px`;
+  }
+
+  private esconderFicha(): void {
+    this.ficha?.classList.add('hidden');
+  }
+
   badge(sim: Sim): number {
     return Object.values(sim.state.chests).reduce((sum, n) => sum + n, 0);
   }
@@ -57,7 +99,7 @@ export class ChestsPanel implements Panel {
       h('.bau-corpo', {},
         this.catalog(sim, def),
         this.terminal(sim, def, stock, result),
-        this.intelligence(def, result),
+        this.intelligence(sim, def, result),
       ),
       h('.bau-rodape', {},
         h('span', { text: 'A SORTE DO PILOTO NÃO ALTERA CÁPSULAS.' }),
@@ -176,7 +218,7 @@ export class ChestsPanel implements Panel {
     );
   }
 
-  private intelligence(def: ChestDef, result: { items: Item[]; best: Rarity } | null): HTMLElement {
+  private intelligence(sim: Sim, def: ChestDef, result: { items: Item[]; best: Rarity } | null): HTMLElement {
     return h('.bau-col.bau-info', {},
       h('.bau-secao', { text: 'PROBABILIDADES POR ITEM' }),
       h('.bau-chances', {}, ...RARITIES.map((rarity) => {
@@ -195,7 +237,7 @@ export class ChestsPanel implements Panel {
       result
         ? h('.bau-loot', {}, ...result.items.map((item, index) => {
             const info = rarityInfo(item.rarity);
-            return h(`.bau-drop.r-${info.slug}`, {
+            const linha = h(`.bau-drop.r-${info.slug}`, {
               style: {
                 '--rarity': info.color,
                 '--rarity-glow': info.glow,
@@ -209,6 +251,13 @@ export class ChestsPanel implements Panel {
                 h('span', { text: `${info.name} · nível ${item.ilvl}` }),
               ),
             );
+            // A linha só dizia nome, raridade e nível. Quem acabou de abrir a
+            // cápsula quer saber se a peça PRESTA — implícito, afixos, tier e
+            // comparação com o equipado — e ir até o Armazém para descobrir
+            // desfaz o momento da abertura.
+            linha.addEventListener('mouseenter', () => this.mostrarFicha(sim, item, linha));
+            linha.addEventListener('mouseleave', () => this.esconderFicha());
+            return linha;
           }))
         : h('.bau-vazio', {},
             h('span', { text: '◈' }),
