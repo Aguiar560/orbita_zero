@@ -604,7 +604,12 @@ export class VerticalMode {
       ? this.manualCommand()
       : this.ai.update(
         dt, p, this.enemies, this.bullets, this.pickups, stats.iaSkill,
-        lab.active ? (lab.config.control === 'manual' ? 'equilibrado' : lab.config.control) : this.sim.state.settings.pilot,
+        // No Laboratório, `manual` significa que o jogador voa — este ramo só
+        // é alcançado quando a IA está no comando, então o valor aqui é um
+        // encaixe de tipo, não uma escolha de comportamento. Era
+        // `equilibrado`; virou `evasivo` porque foi a postura que sobrou mais
+        // perto do meio.
+        lab.active ? (lab.config.control === 'manual' ? 'evasivo' : lab.config.control) : this.sim.state.settings.pilot,
       );
     this.threat = damp(this.threat, cmd.threat, 0.12, dt);
 

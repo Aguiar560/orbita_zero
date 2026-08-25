@@ -19,7 +19,7 @@ const MOVES: readonly MovePattern[] = ['mergulho', 'senoide', 'pairar', 'deriva'
 const ATTACKS: readonly AttackPattern[] = ['nenhum', 'direto', 'mirado', 'leque', 'espiral', 'teleguiado', 'explosivo'];
 const CONTROLS: readonly { id: LabControl; label: string }[] = [
   { id: 'manual', label: 'Manual (WASD/setas)' }, { id: 'agressivo', label: 'IA agressiva' },
-  { id: 'equilibrado', label: 'IA equilibrada' }, { id: 'evasivo', label: 'IA evasiva' },
+  { id: 'evasivo', label: 'IA evasiva' },
   { id: 'coletor', label: 'IA coletora' },
 ];
 

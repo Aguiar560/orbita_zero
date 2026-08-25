@@ -462,7 +462,7 @@ export class Sim {
       playerAiSkill: stats.iaSkill,
       showHitboxes: true,
       ...(confrontoPadronizado ? {
-        control: 'equilibrado' as const,
+        control: 'evasivo' as const,
         autoFire: true,
         immortal: false,
         autoRespawn: true,
@@ -510,7 +510,9 @@ export class Sim {
       enemyHitboxHeight: box.height,
       enemyHitboxOffsetX: box.offsetX,
       enemyHitboxOffsetY: box.offsetY,
-      control: 'equilibrado', autoFire: true, immortal: false, speed: 8,
+      // A ficha do Laboratório roda sob a postura mais neutra que sobrou: ela
+      // existe para COMPARAR cascos, e a postura tem de ser a mesma para todos.
+      control: 'evasivo', autoFire: true, immortal: false, speed: 8,
       ...scenario.config,
     });
     return true;

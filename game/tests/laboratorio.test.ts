@@ -75,7 +75,10 @@ describe('laboratório de combate', () => {
       const spec = SPACESHIPS2_HULL_SPECS.find((entry) => entry.archetype === archetype.id)!;
       expect(sim.carregarCascoNoLaboratorio(spec.id, true), archetype.id).toBe(true);
       expect(sim.laboratorio.config.playerHullId).toBe(spec.id);
-      expect(sim.laboratorio.config.control).toBe('equilibrado');
+      // A ficha padronizada roda sob a postura mais neutra que existe, porque
+      // ela compara CASCOS — a postura tem de ser a mesma para todos. Era
+      // 'equilibrado'; virou 'evasivo' quando o meio-termo saiu do jogo.
+      expect(sim.laboratorio.config.control).toBe('evasivo');
       expect(sim.laboratorio.config.enemyCount).toBe(3);
       expect(sim.laboratorio.config.enemyHp).toBe(600);
       expect(sim.laboratorio.config.speed).toBe(8);

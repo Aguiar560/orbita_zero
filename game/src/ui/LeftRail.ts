@@ -10,9 +10,12 @@ import { RESOURCE_IDS } from '@sim/types';
 import { h, clear, spriteIcon, progressBar } from './dom';
 import { RESOURCE_META } from './recursos';
 
+/**
+ * Três posturas, sem meio-termo. A quarta (`EQU`) saiu porque não era uma
+ * escolha: nunca era a melhor, nunca era a errada, e por isso ficava sempre.
+ */
 const PILOTS = [
   { id: 'agressivo', label: 'AGR' },
-  { id: 'equilibrado', label: 'EQU' },
   { id: 'evasivo', label: 'EVA' },
   { id: 'coletor', label: 'COL' },
 ] as const;

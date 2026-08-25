@@ -30,9 +30,21 @@ interface Policy {
   targeting: 'proximo' | 'fraco' | 'perigoso';
 }
 
+/**
+ * As três posturas, e por que não há uma quarta no meio.
+ *
+ * `equilibrado` existia com { evade 1,15 · aggression 1,0 · greed 0,8 } e foi
+ * removida. Ela DOMINAVA o coletor em dois dos três eixos — mais desvio e mais
+ * agressividade, perdendo só em coleta — e não era extrema em nada. Uma opção
+ * assim não se escolhe, se aceita: nunca é a melhor, mas nunca é a errada, e
+ * isso basta para absorver a decisão inteira.
+ *
+ * As três que ficaram são extremas de propósito, cada uma no seu eixo:
+ * agressivo lidera em aggression, evasivo em evade, coletor em greed. Nenhuma
+ * domina outra, então escolher custa alguma coisa.
+ */
 const POLICIES: Record<Settings['pilot'], Policy> = {
   agressivo:    { evade: 0.75, aggression: 1.6, greed: 0.5, standoff: 0.62, targeting: 'perigoso' },
-  equilibrado:  { evade: 1.15, aggression: 1.0, greed: 0.8, standoff: 0.74, targeting: 'proximo' },
   evasivo:      { evade: 1.9,  aggression: 0.55, greed: 0.6, standoff: 0.85, targeting: 'proximo' },
   coletor:      { evade: 1.1,  aggression: 0.7, greed: 2.0, standoff: 0.76, targeting: 'fraco' },
 };
@@ -76,7 +88,7 @@ export class PilotAI {
     skill: number,
     policyId: Settings['pilot'],
   ): PilotOutput {
-    const policy = POLICIES[policyId] ?? POLICIES.equilibrado;
+    const policy = POLICIES[policyId] ?? POLICIES.evasivo;
     this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     this.targetTimer -= dt;
     this.panic = Math.max(0, this.panic - dt);

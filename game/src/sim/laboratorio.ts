@@ -2,7 +2,7 @@ import type { AttackPattern, MovePattern } from '@data/enemies';
 import type { HullHitbox } from '@data/hulls';
 import type { ElementId } from './types';
 
-export type LabControl = 'manual' | 'agressivo' | 'equilibrado' | 'evasivo' | 'coletor';
+export type LabControl = 'manual' | 'agressivo' | 'evasivo' | 'coletor';
 export type LabHitboxTarget = 'player' | 'enemy';
 export type LabScenarioId = 'elite' | 'enxame' | 'cerco';
 

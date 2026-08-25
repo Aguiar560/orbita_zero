@@ -101,7 +101,7 @@ export function createState(
     stats: { kills: 0, bossKills: 0, deaths: 0, itemsFound: 0, chestsOpened: 0 },
 
     settings: {
-      pilot: 'equilibrado',
+      pilot: 'agressivo',
       controlMode: 'idle',
       testMode: false,
       speed: 1,
@@ -321,7 +321,16 @@ export function migrate(raw: unknown): GameState | null {
     (Array.isArray(state.settings.pinnedMissions) ? state.settings.pinnedMissions : [])
       .filter((id): id is string => typeof id === 'string' && MISSAO_POR_ID.has(id)),
   )].slice(0, 4);
-  if (!['agressivo', 'equilibrado', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'equilibrado';
+  // Save com a postura removida cai no EVASIVO, e não no padrão de save novo.
+  //
+  // São decisões diferentes de propósito. Save novo nasce agressivo porque é
+  // o que um jogador espera de um jogo de nave e porque o começo aguenta
+  // (medido: 83% de vida no fim do setor 1). Mas quem já jogava com o
+  // equilibrado não pediu para mudar de postura, e pode estar com a aba
+  // fechada agora — uma migração silenciosa não pode aumentar o risco de
+  // alguém que não está olhando. Perder progresso porque o jogo mudou por
+  // baixo é pior do que voar conservador até ele reparar e escolher.
+  if (!['agressivo', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'evasivo';
   for (const key of ['testMode', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
   }

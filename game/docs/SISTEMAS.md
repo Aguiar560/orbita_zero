@@ -252,6 +252,36 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Posturas do piloto de IA — três, sem meio-termo
+
+O jogador não pilota: escolhe uma postura. Eram quatro, e a quarta não era uma
+escolha — era a ausência de uma.
+
+| postura | evade | aggression | greed | standoff | alvo |
+|---|---|---|---|---|---|
+| **agressivo** | 0,75 | **1,60** | 0,50 | 0,62 | perigoso |
+| **evasivo** | **1,90** | 0,55 | 0,60 | 0,85 | próximo |
+| **coletor** | 1,10 | 0,70 | **2,00** | 0,76 | fraco |
+| ~~equilibrado~~ | ~~1,15~~ | ~~1,00~~ | ~~0,80~~ | ~~0,74~~ | ~~próximo~~ |
+
+O equilibrado **dominava o coletor em dois dos três eixos** — mais desvio E
+mais agressividade, perdendo só em coleta — e não era extremo em nenhum. Uma
+opção assim não se escolhe, se aceita: nunca é a melhor, nunca é a errada, e
+isso basta para absorver a decisão inteira.
+
+As três que ficaram lideram um eixo cada e nenhuma domina outra, então escolher
+custa alguma coisa: arriscar, sobreviver ou coletar.
+
+**Padrão e migração são decisões diferentes, de propósito.** Save novo nasce
+`agressivo` — é o que se espera de um jogo de nave, e o começo aguenta
+(medido: 83% de vida ao fim do setor 1). Save que usava o equilibrado cai em
+`evasivo`: quem já jogava não pediu para mudar de postura e pode estar com a
+aba fechada agora. Migração silenciosa não pode aumentar o risco de quem não
+está olhando.
+
+O Laboratório também perdeu a opção. A ficha padronizada, que existe para
+COMPARAR cascos sob a mesma postura, passou a rodar em `evasivo`.
+
 ### Densidade da onda — quantos inimigos entram
 
 O começo do jogo estava vazio e acabava antes de começar. Medido: **o setor 1

@@ -298,7 +298,18 @@ export interface ChestGrant {
 
 export interface Settings {
   /** Política do piloto de IA. */
-  pilot: 'agressivo' | 'equilibrado' | 'evasivo' | 'coletor';
+  /**
+   * Postura do piloto de IA. TRÊS, e nenhuma delas é o meio.
+   *
+   * Havia uma quarta, `equilibrado`, e ela não era uma escolha: era a
+   * ausência de uma. Na tabela de políticas ela dominava o coletor em dois
+   * dos três eixos — mais desvio E mais agressividade, perdendo só em coleta
+   * — e não era extrema em nada. Quem não tinha opinião ficava nela, e quem
+   * tinha também, porque nunca era ruim.
+   *
+   * Com três, a pergunta volta a existir: arriscar, coletar ou sobreviver.
+   */
+  pilot: 'agressivo' | 'evasivo' | 'coletor';
   /**
    * `idle` deixa a IA pilotar; `manual` libera WASD e setas em campanha e
    * Provação. O disparo continua automático para a troca não exigir uma mão a

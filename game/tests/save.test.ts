@@ -97,7 +97,7 @@ describe('normalização de save adulterado', () => {
     expect(s.fleet).not.toContain('nao-existe');
     expect(s.fleet).toContain(s.hull);
     expect(s.settings.controlMode).toBe('manual');
-    expect(s.settings.pilot).toBe('equilibrado');
+    expect(s.settings.pilot).toBe('evasivo');
   });
 
   /**
@@ -189,5 +189,31 @@ describe('exportar e importar', () => {
     expect(importSave('não é save')).toBeNull();
     expect(importSave('')).toBeNull();
     expect(importSave('{"version":999}')).toBeNull();
+  });
+});
+
+describe('a postura equilibrada foi removida', () => {
+  /**
+   * Ela dominava o coletor em dois dos três eixos da política e não era
+   * extrema em nenhum. Uma opção assim não se escolhe, se aceita — e
+   * absorvia a decisão inteira.
+   */
+  it('save que a usava cai no evasivo, e não no padrão de save novo', () => {
+    const st = createState(11);
+    const settings = { ...st.settings, pilot: 'equilibrado' } as Record<string, unknown>;
+    const m = migrate({ ...st, settings })!;
+    expect(m.settings.pilot).toBe('evasivo');
+  });
+
+  it('save novo nasce agressivo — o padrão e a migração são decisões diferentes', () => {
+    expect(createState(11).settings.pilot).toBe('agressivo');
+  });
+
+  it('as três posturas restantes sobrevivem à normalização', () => {
+    for (const p of ['agressivo', 'evasivo', 'coletor'] as const) {
+      const st = createState(11);
+      st.settings.pilot = p;
+      expect(migrate({ ...st })!.settings.pilot).toBe(p);
+    }
   });
 });
