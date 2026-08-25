@@ -1,3 +1,4 @@
+import { equipamentoDe } from '@sim/stats';
 import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
@@ -155,7 +156,7 @@ describe('fundir de verdade', () => {
     // justamente quando a fusão deu o melhor resultado possível.
     if (r!.item) {
       const guardado = sim.state.inventory.some((i) => i.uid === r!.item!.uid);
-      const equipado = Object.values(sim.state.equipped).some((i) => i?.uid === r!.item!.uid);
+      const equipado = Object.values(equipamentoDe(sim.state)).some((i) => i?.uid === r!.item!.uid);
       expect(guardado || equipado).toBe(true);
     }
   });

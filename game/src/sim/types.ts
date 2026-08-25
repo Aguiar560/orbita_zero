@@ -191,6 +191,22 @@ export interface NivelProgresso {
   xp: number;
 }
 
+export interface NaveProgresso extends NivelProgresso {
+  /**
+   * O equipamento DAQUELA nave.
+   *
+   * Cada casco carrega o próprio conjunto: uma nave pode usar um item e outra,
+   * outro. Antes havia um `equipped` só, no topo do estado, e trocar de casco
+   * levava o equipamento junto — o que fazia da frota uma troca de silhueta,
+   * não de configuração.
+   *
+   * Mora aqui, e não numa segunda tabela ao lado, porque nível, XP e
+   * equipamento são a MESMA coisa: o que aquela nave é. Duas tabelas indexadas
+   * pelo mesmo id acabam desalinhando quando uma esquece de remover a entrada.
+   */
+  equipped: Partial<Record<SlotId, Item>>;
+}
+
 export type EncounterKind = 'onda' | 'elite' | 'chefe';
 
 export interface RunState {
@@ -351,9 +367,8 @@ export interface GameState {
    * uma nave só — e o que faz o §18 funcionar, porque a nave certa para um
    * conteúdo pode ser a que ainda não está desenvolvida.
    */
-  naves: Record<string, NivelProgresso>;
+  naves: Record<string, NaveProgresso>;
 
-  equipped: Partial<Record<SlotId, Item>>;
   inventory: Item[];
   /**
    * @deprecated Substituído por `cargaLiberada` na 3.7. Fica só para saves

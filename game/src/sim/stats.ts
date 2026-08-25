@@ -1,4 +1,4 @@
-import { RES_STAT, RESISTIVEIS, STAT_IDS, type ElementId, type GameState, type Item, type StatId, type Stats } from './types';
+import { RES_STAT, RESISTIVEIS, STAT_IDS, type ElementId, type GameState, type Item, type NaveProgresso, type SlotId, type StatId, type Stats } from './types';
 import { getHull } from '@data/hulls';
 import { RES_MAX, RES_MIN, aplicarLimites } from '@data/balance/limites';
 import {
@@ -67,9 +67,46 @@ function emptyAccum(): Accum {
 }
 
 /** Quantas peças de cada conjunto estão equipadas. */
+/**
+ * O equipamento da nave ATIVA.
+ *
+ * Um acessor, e não `state.equipped`, porque o equipamento passou a ser por
+ * casco. Ter os dois — um campo no topo e outro por nave — significaria manter
+ * duas verdades sincronizadas na troca de nave, e é o tipo de desencontro que
+ * só aparece quando alguém perde o conjunto inteiro.
+ *
+ * Devolve objeto vazio para casco sem registro: nave recém-desbloqueada nasce
+ * nua, e isso não pode explodir a resolução de atributos.
+ */
+export const equipamentoDe = (state: GameState): Partial<Record<SlotId, Item>> =>
+  state.naves[state.hull]?.equipped ?? {};
+
+/**
+ * A ficha da nave ativa, CRIADA se não existir.
+ *
+ * `equipamentoDe` devolve um objeto SOLTO quando o casco ainda não tem registro
+ * — o `?? {}` cria um objeto novo, fora do estado. Escrever nele não vai a
+ * lugar nenhum, e o arnês perdeu um conjunto inteiro assim: o setor 170 saltou
+ * de 29 s para 7.995 s porque o jogador medido estava nu.
+ *
+ * Leitura usa `equipamentoDe`; **escrita usa isto**.
+ */
+export function naveDe(state: GameState): NaveProgresso {
+  return (state.naves[state.hull] ??= { nivel: 1, xp: 0, equipped: {} });
+}
+
+/** Uma cópia do estado com um slot trocado, para sondagem sem efeito colateral. */
+export function comEquipamento(state: GameState, slot: SlotId, item: Item | undefined): GameState {
+  const nave = state.naves[state.hull] ?? { nivel: 1, xp: 0, equipped: {} };
+  const equipped = { ...nave.equipped };
+  if (item) equipped[slot] = item;
+  else delete equipped[slot];
+  return { ...state, naves: { ...state.naves, [state.hull]: { ...nave, equipped } } };
+}
+
 export function setCounts(state: GameState): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const item of Object.values(state.equipped) as (Item | undefined)[]) {
+  for (const item of Object.values(equipamentoDe(state)) as (Item | undefined)[]) {
     if (!item?.set) continue;
     counts.set(item.set, (counts.get(item.set) ?? 0) + 1);
   }
@@ -105,7 +142,7 @@ export { SET_BY_ID };
  * pode carregar duas principais e alternar conforme a frota que enfrenta.
  */
 export function activeElement(state: GameState): ElementId {
-  return state.equipped.principal?.element ?? getHull(state.hull).element;
+  return equipamentoDe(state).principal?.element ?? getHull(state.hull).element;
 }
 
 /**
@@ -115,7 +152,7 @@ export function activeElement(state: GameState): ElementId {
  * escudo deixa de ser "o de número maior" e vira uma leitura do inimigo.
  */
 export function defenseElement(state: GameState): ElementId {
-  return state.equipped.escudo?.element ?? 'padrao';
+  return equipamentoDe(state).escudo?.element ?? 'padrao';
 }
 
 /** Resistência efetiva contra um elemento, já com o teto aplicado. */
@@ -147,7 +184,7 @@ export function resolveStats(state: GameState): Stats {
     acc.add[stat as StatId] += (value ?? 0) * crescimento;
   }
 
-  for (const item of Object.values(state.equipped)) {
+  for (const item of Object.values(equipamentoDe(state))) {
     if (!item) continue;
     const base = BASE_BY_ID.get(item.baseId);
     /**

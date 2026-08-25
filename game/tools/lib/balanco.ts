@@ -15,7 +15,7 @@ import { HULLS } from '@data/hulls';
 import { SPACESHIPS2_HULL_SPEC_BY_ID } from '@data/hulls-spaceships2';
 import { rollItem } from '@sim/loot';
 import { sectorDamage, sectorHp, sectorIlvl } from '@sim/progression';
-import { dps, effectiveHp, powerScore, resolveStats } from '@sim/stats';
+import { comEquipamento, dps, effectiveHp, naveDe, powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import { SLOT_IDS, type GameState } from '@sim/types';
 
@@ -58,14 +58,14 @@ export function equiparMelhor(
     let melhorNota = -Infinity;
     for (let i = 0; i < tentativas; i++) {
       const item = rollItem(rng, ilvl, sorte, 0, { slot });
-      const sonda: GameState = { ...st, equipped: { ...st.equipped, [slot]: item } };
+      const sonda: GameState = comEquipamento(st, slot, item);
       const nota = powerScore(resolveStats(sonda));
       if (nota > melhorNota) {
         melhorNota = nota;
         melhor = item;
       }
     }
-    if (melhor) st.equipped[slot] = melhor;
+    if (melhor) naveDe(st).equipped[slot] = melhor;
   }
   return st;
 }

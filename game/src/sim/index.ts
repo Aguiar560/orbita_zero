@@ -78,7 +78,7 @@ import {
 import {
   RESOURCE_IDS,
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
-  type NivelProgresso, type SlotId, type Stats,
+  type NaveProgresso, type NivelProgresso, type SlotId, type Stats,
 } from './types';
 import {
   SHOP_BY_ID, SHOP_CARGO_IDS, shopCost, shopLimit,
@@ -1375,9 +1375,9 @@ export class Sim {
   }
 
   /** Progresso de nível da nave em uso, criado sob demanda. */
-  get naveAtiva(): NivelProgresso {
+  get naveAtiva(): NaveProgresso {
     const naves = this.state.naves;
-    return (naves[this.state.hull] ??= { nivel: 1, xp: 0 });
+    return (naves[this.state.hull] ??= { nivel: 1, xp: 0, equipped: {} });
   }
 
   /**
@@ -1681,8 +1681,8 @@ export class Sim {
     this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
 
     if (this.state.settings.autoEquip && scoreItem(this.state, item) > 0) {
-      const previous = this.state.equipped[item.slot];
-      this.state.equipped[item.slot] = item;
+      const previous = this.equipamento[item.slot];
+      this.equipamento[item.slot] = item;
       this.touch();
       if (previous) this.stash(previous);
       bus.emit('loot:dropped', { item });
@@ -1714,21 +1714,28 @@ export class Sim {
     this.state.inventory.push(item);
   }
 
+  /** O equipamento da nave em campo. Criado na hora se o casco é novo. */
+  private get equipamento(): Partial<Record<SlotId, Item>> {
+    const nave = this.naveAtiva;
+    nave.equipped ??= {};
+    return nave.equipped;
+  }
+
   equip(uid: string): void {
     const idx = this.state.inventory.findIndex((i) => i.uid === uid);
     if (idx < 0) return;
     const item = this.state.inventory[idx]!;
-    const previous = this.state.equipped[item.slot];
+    const previous = this.equipamento[item.slot];
     this.state.inventory.splice(idx, 1);
-    this.state.equipped[item.slot] = item;
+    this.equipamento[item.slot] = item;
     if (previous) this.state.inventory.push(previous);
     this.touch();
   }
 
   unequip(slot: SlotId): void {
-    const item = this.state.equipped[slot];
+    const item = this.equipamento[slot];
     if (!item) return;
-    delete this.state.equipped[slot];
+    delete this.equipamento[slot];
     this.stash(item);
     this.touch();
   }

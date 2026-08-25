@@ -5,7 +5,7 @@ import { TIERS } from '@data/balance/tiers';
 import { retornoDeDesmanche, valorDeVenda } from '@data/balance/descarte';
 import { RECURSO_POR_ID } from '@data/recursos';
 import { affixText, itemName, itemStats } from '@sim/loot';
-import { setCounts } from '@sim/stats';
+import { equipamentoDe, setCounts } from '@sim/stats';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
 import { DANO_STAT, RES_STAT, STAT_IDS, type Affix, type Item, type StatId, type Stats } from '@sim/types';
 import type { Sim } from '@sim/index';
@@ -57,7 +57,7 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
   const info = rarityInfo(item.rarity);
   const set = item.set ? SET_BY_ID.get(item.set) : undefined;
   const worn = set ? (setCounts(sim.state).get(set.id) ?? 0) : 0;
-  const equipped = sim.state.equipped[item.slot];
+  const equipped = equipamentoDe(sim.state)[item.slot];
   const comparing = opts.compare !== false && !!equipped && equipped.uid !== item.uid;
 
   frag.append(

@@ -6,7 +6,7 @@ import { LIMITES, REGEN_MAX_FRACAO, RES_MAX, RES_MIN } from '@data/balance/limit
 import { AFFIXES } from '@data/items';
 import { HULLS } from '@data/hulls';
 import { rollItem, rollRarity } from '@sim/loot';
-import { resistance, resolveStats } from '@sim/stats';
+import { naveDe, resistance, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import { DANO_STAT, RES_STAT, SLOT_IDS, STAT_IDS, type GameState } from '@sim/types';
 import { buildEncounter, sectorHp } from '@sim/progression';
@@ -73,7 +73,7 @@ describe('limites de sanidade (§40)', () => {
     const st = createState(777);
     const rng = new Rng(777);
     for (const slot of SLOT_IDS) {
-      st.equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
+      naveDe(st).equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
     }
     return st;
   };
@@ -324,7 +324,7 @@ describe('matriz elemental (§5)', () => {
   it('resistência a dano normal é sempre zero, com qualquer equipamento', () => {
     const st = createState(31337);
     const rng = new Rng(31337);
-    for (const slot of SLOT_IDS) st.equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
+    for (const slot of SLOT_IDS) naveDe(st).equipped[slot] = rollItem(rng, 300, 5, 0, { slot, floor: 4 });
     expect(resistance(resolveStats(st), 'padrao')).toBe(0);
   });
 

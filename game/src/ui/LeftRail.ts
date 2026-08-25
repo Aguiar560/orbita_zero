@@ -4,7 +4,7 @@ import { clamp, clamp01 } from '@core/math';
 import { ITEM_SETS, SLOTS, SLOT_BY_ID } from '@data/items';
 import { rarityInfo } from '@data/rarity';
 import { ELEMENTOS_RESISTIVEIS, counterOf, getElement, matchup } from '@data/elements';
-import { dps, effectiveHp, setCounts } from '@sim/stats';
+import { dps, effectiveHp, equipamentoDe, setCounts } from '@sim/stats';
 import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Item, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
@@ -277,7 +277,7 @@ export class LeftRail {
 
   private slotCell(slot: SlotId): HTMLElement {
     const info = SLOT_BY_ID.get(slot)!;
-    const item = this.sim.state.equipped[slot];
+    const item = equipamentoDe(this.sim.state)[slot];
 
     if (!item) {
       const cell = h('.doll-cell.empty', { title: `${info.name} — vazio` }, spriteIcon(info.icon, 22, 'dim'));

@@ -18,7 +18,7 @@ import {
   AFIXO_ESCALA_POR_ILVL, ATRIBUTOS_FRACIONARIOS, DROP_BASE, DROP_SORTE_PESO, DROP_TETO,
 } from '@data/balance/curvas';
 import type { Affix, ElementId, GameState, Item, Rarity, SlotId, Stats } from './types';
-import { resolveStats, powerScore } from './stats';
+import { comEquipamento, resolveStats, powerScore } from './stats';
 
 let uidCounter = 0;
 const uid = (): string => `${Date.now().toString(36)}${(uidCounter++).toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
@@ -349,7 +349,7 @@ export function dropChance(kind: 'onda' | 'elite' | 'chefe', luck: number): numb
  */
 export function scoreItem(state: GameState, item: Item): number {
   const current = powerScore(resolveStats(state));
-  const probe: GameState = { ...state, equipped: { ...state.equipped, [item.slot]: item } };
+  const probe: GameState = comEquipamento(state, item.slot, item);
   return powerScore(resolveStats(probe)) - current;
 }
 

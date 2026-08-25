@@ -1,4 +1,5 @@
 import { duration, fmt } from '@core/format';
+import { equipamentoDe } from '@sim/stats';
 import { BOSSES } from '@data/bosses';
 import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
 import { counterOf, ELEMENTS, getElement } from '@data/elements';
@@ -71,7 +72,7 @@ function resumo(sim: Sim): HTMLElement {
   const inimigosVistos = ALL_ENEMIES.filter((enemy) => sim.alcanceLiberado >= enemy.sectors[0]).length;
   const basesVistas = new Set([
     ...sim.state.inventory.map((item) => item.baseId),
-    ...Object.values(sim.state.equipped).flatMap((item) => item ? [item.baseId] : []),
+    ...Object.values(equipamentoDe(sim.state)).flatMap((item) => item ? [item.baseId] : []),
   ]).size;
   const recursosPossuidos = RECURSOS.filter((resource) => (sim.state.armazem[resource.id] ?? 0) > 0).length;
   return h('section', {},
@@ -156,7 +157,7 @@ function hullEntry(sim: Sim, hull: Hull): HTMLElement {
 function itens(sim: Sim): HTMLElement {
   const found = new Set([
     ...sim.state.inventory.map((item) => item.baseId),
-    ...Object.values(sim.state.equipped).flatMap((item) => item ? [item.baseId] : []),
+    ...Object.values(equipamentoDe(sim.state)).flatMap((item) => item ? [item.baseId] : []),
   ]);
   return h('section', {},
     h('h3.section', { text: `Bases de item · ${ITEM_BASES.length}` }),

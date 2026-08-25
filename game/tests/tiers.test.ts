@@ -6,7 +6,7 @@ import { rollItem } from '@sim/loot';
 import { montarPacote } from '@sim/dano';
 import { FRACAO_ELEMENTAL_MAX } from '@data/balance/elemental';
 import { AFFIXES } from '@data/items';
-import { powerScore, resolveStats } from '@sim/stats';
+import { comEquipamento, powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import type { Item } from '@sim/types';
 
@@ -156,7 +156,7 @@ describe('todo afixo precisa mover a nota de poder', () => {
       element: def.element ?? 'padrao', icon: '', origin: 0,
       affixes: [{ id: def.id, stat: def.stat, kind: def.kind, value: (def.min + def.max) / 2, quality: 0.5, tier: 5 }],
     } as unknown as Item;
-    const sonda = { ...base, equipped: { ...base.equipped, [slot]: item } };
+    const sonda = comEquipamento(base, slot, item);
     return powerScore(resolveStats(sonda)) - notaBase;
   };
 

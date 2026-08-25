@@ -2,7 +2,7 @@
 import { HULLS } from '@data/hulls';
 import { BIOMES } from '@data/biomes';
 import { MISSAO_POR_ID } from '@data/missoes';
-import type { GameState } from './types';
+import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
@@ -13,12 +13,13 @@ export const SAVE_KEY = 'orbita-zero:save';
  * v3 — fim do prestígio: sem Éter, sem nós de ascensão, sem reset de universo.
  * v4 — controles manuais globais e preferências de acessibilidade persistentes.
  * v5 — missões rastreadas na tela principal.
- * v6 — escada de aquisição dos cascos: os 29 Spaceships 2.0 deixam de ser
+  * v6 — escada de aquisição dos cascos: os 29 Spaceships 2.0 deixam de ser
  *      grátis, e a frota devolve os que o jogador ainda não podia ter.
+ * v7 — equipamento POR NAVE: `equipped` sai do topo e vira `naves[id].equipped`.
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -45,7 +46,6 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
 
     hull: HULLS[0]!.id,
     fleet: [...INITIAL_FLEET],
-    equipped: {},
     inventory: [],
     cargaLiberada: [],
     armazem: {},
@@ -125,7 +125,6 @@ export function migrate(raw: unknown): GameState | null {
     shop: { ...data.shop },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
-    equipped: { ...data.equipped },
     inventory: Array.isArray(data.inventory) ? data.inventory : [],
     fleet: [...new Set([
       ...(Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet),
@@ -155,7 +154,7 @@ export function migrate(raw: unknown): GameState | null {
   if ((data.version ?? 0) < 2) {
     // Os slots de v1 não existem mais. Descartar é melhor que tentar traduzir:
     // um item mapeado errado ficaria com implícito e afixos de outra categoria.
-    state.equipped = {};
+    for (const nave of Object.values(state.naves)) nave.equipped = {};
     state.inventory = [];
     state.command = { nivel: 1, xp: 0, allocated: [], refunds: 3 };
   }
@@ -207,6 +206,35 @@ export function migrate(raw: unknown): GameState | null {
   // a chave, e o espalhamento de `...data` acima a repassaria adiante — ela
   // seria regravada para sempre, confundindo quem for inspecionar um save.
   delete (state as unknown as Record<string, unknown>).upgrades;
+
+  // ── v7: o equipamento passa a ser de cada nave ───────────────────────────
+  //
+  // Antes havia um `equipped` só, no topo: trocar de casco levava o conjunto
+  // junto, e a frota era troca de silhueta, não de configuração. O que estava
+  // equipado no save antigo pertencia à nave em uso, então é para ela que vai —
+  // qualquer outro destino inventaria uma decisão que o jogador não tomou.
+  //
+  // Roda antes dos consertos de integridade porque eles já esperam `naves`
+  // normalizado.
+  const naves = (state.naves ?? {}) as Record<string, Partial<NaveProgresso>>;
+  const antigoEquipado = (data as { equipped?: NaveProgresso['equipped'] }).equipped;
+  for (const [id, nave] of Object.entries(naves)) {
+    if (!nave || typeof nave !== 'object') { delete naves[id]; continue; }
+    nave.nivel = Math.max(1, Math.floor(Number(nave.nivel) || 1));
+    nave.xp = Math.max(0, Number(nave.xp) || 0);
+    nave.equipped ??= {};
+  }
+  if (antigoEquipado && typeof antigoEquipado === 'object') {
+    const ativa = (naves[state.hull] ??= { nivel: 1, xp: 0, equipped: {} });
+    // Só preenche slot vazio: se o save já for v7 e trouxer os dois campos, o
+    // que está NA NAVE é o mais recente e não pode ser sobrescrito pelo resto.
+    for (const [slot, item] of Object.entries(antigoEquipado)) {
+      const chave = slot as keyof NaveProgresso['equipped'];
+      if (item && !ativa.equipped![chave]) ativa.equipped![chave] = item;
+    }
+  }
+  delete (state as unknown as Record<string, unknown>).equipped;
+  state.naves = naves as GameState['naves'];
 
   // Consertos de integridade — um save adulterado não deve travar o boot.
   const hullIds = new Set(HULLS.map((hull) => hull.id));

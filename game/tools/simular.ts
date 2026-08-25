@@ -19,7 +19,7 @@ import { Rng } from '@core/math';
 import { RARITIES } from '@data/rarity';
 import { rollItem, rollRarity } from '@sim/loot';
 import { WAVES_PER_SECTOR, buildEncounter } from '@sim/progression';
-import { powerScore, resolveStats } from '@sim/stats';
+import { comEquipamento, equipamentoDe, powerScore, resolveStats } from '@sim/stats';
 import { createState } from '@sim/state';
 import type { GameState, Item } from '@sim/types';
 import { AFFIXES } from '@data/items';
@@ -125,7 +125,7 @@ function comandoItem(ilvl: number, amostras: number): void {
   const porRaridade = new Map<number, number[]>();
   for (let i = 0; i < amostras; i++) {
     const item = rollItem(rng, ilvl, 0.3, 0);
-    const sonda: GameState = { ...base, equipped: { ...base.equipped, [item.slot]: item } };
+    const sonda: GameState = comEquipamento(base, item.slot, item);
     const ganho = powerScore(resolveStats(sonda)) - notaBase;
     if (!porRaridade.has(item.rarity)) porRaridade.set(item.rarity, []);
     porRaridade.get(item.rarity)!.push(ganho);
@@ -290,7 +290,7 @@ export function medirAfixos(ilvl: number, tier: number): { def: typeof AFFIXES[n
    * multiplicativo contra nave nua. A régua tem de olhar o caso em que o afixo
    * faz sentido.
    */
-  const armaElemental = base.equipped.principal;
+  const armaElemental = equipamentoDe(base).principal;
   const baseElem: GameState = armaElemental
     ? {
       ...base,

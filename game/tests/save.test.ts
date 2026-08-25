@@ -31,7 +31,7 @@ describe('o boot sobrevive a qualquer entrada', () => {
     expect(s).not.toBeNull();
     for (const chave of [
       'resources', 'lifetime', 'run', 'bar', 'universe',
-      'stats', 'settings', 'shop', 'command', 'chests', 'equipped',
+      'stats', 'settings', 'shop', 'command', 'chests',
     ] as const) {
       expect(s![chave], chave).toBeDefined();
     }

@@ -1,4 +1,5 @@
 import { fmt } from '@core/format';
+import { equipamentoDe } from '@sim/stats';
 import { RECEITAS, chanceDeSubir, type ReceitaDeFusao } from '@data/balance/fusao';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { RARITIES, rarityInfo } from '@data/rarity';
@@ -421,7 +422,7 @@ const DESTINO_TEXTO: Record<Destino, string> = {
  * ganhar um caso novo sem que este painel fique sabendo.
  */
 function destinoDe(sim: Sim, item: Item): Destino {
-  if (Object.values(sim.state.equipped).some((i) => i?.uid === item.uid)) return 'equipado';
+  if (Object.values(equipamentoDe(sim.state)).some((i) => i?.uid === item.uid)) return 'equipado';
   if (sim.state.inventory.some((i) => i.uid === item.uid)) return 'guardado';
   return 'descartado';
 }
