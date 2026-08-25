@@ -5260,3 +5260,83 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   margin: 0; max-width: 74ch; color: var(--muted); font-size: 12px; line-height: 1.5;
 }
 .escolha-confirmar { min-width: 260px; }
+
+
+/* ═══ Ajustes em abas ══════════════════════════════════════════════════════ */
+
+/*
+ * Duas faixas: a tira de abas em cima, o conteúdo rolando embaixo.
+ *
+ * `minmax(0, 1fr)` na segunda trilha, e não `auto` — trilha implícita de grid
+ * dimensiona pelo CONTEÚDO, e a aba de Jogabilidade é a mais alta das cinco.
+ * Com `auto` o painel inteiro cresceria até ela e as outras quatro herdariam
+ * uma caixa que não precisam. É a mesma armadilha que já custou 174px de
+ * rolagem em Missões e a coluna do meio da Galáxia.
+ */
+.panel-body.ajustes {
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px; min-height: 0;
+}
+
+.ajustes-abas {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--painel-linha);
+}
+.ajustes-aba {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid transparent; border-radius: 7px;
+  background: rgba(255, 255, 255, .03);
+  color: var(--muted);
+  font: 600 12px/1 'Chakra Petch', sans-serif; letter-spacing: .04em;
+  cursor: pointer;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.ajustes-aba:hover { color: #cfe0ee; background: rgba(255, 255, 255, .06); }
+.ajustes-aba.ativa {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ajustes-aba-icone { font-size: 13px; line-height: 1; }
+
+.ajustes-conteudo { min-height: 0; overflow-y: auto; padding-right: 4px; }
+/* A primeira seção de cada aba não precisa do respiro que separa as de baixo:
+ * ela já está colada na régua das abas. */
+.ajustes-conteudo > .section:first-child { margin-top: 0; }
+
+/*
+ * O aviso da aba de Áudio.
+ *
+ * Âmbar e não vermelho: não é erro nem perigo, é uma ausência declarada. Em
+ * vermelho o jogador leria "algo quebrou" e iria procurar o que consertar.
+ */
+.ajustes-aviso {
+  display: grid; gap: 5px;
+  padding: 12px 14px; margin-bottom: 4px;
+  border: 1px solid rgba(255, 196, 92, .3); border-radius: 7px;
+  background: rgba(255, 176, 64, .07);
+}
+.ajustes-aviso strong { color: #ffcf7a; font-size: 12.5px; }
+.ajustes-aviso span { color: #b9a789; line-height: 1.5; }
+
+.ajustes-volume { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 9px; align-items: center; min-width: 190px; }
+.ajustes-slider { width: 100%; accent-color: var(--accent); }
+/* Desabilitado precisa PARECER desabilitado: o aviso explica, mas o controle
+ * também tem de dizer sozinho, para quem não leu. */
+.ajustes-slider:disabled { opacity: .4; cursor: not-allowed; }
+.ajustes-volume-num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+.ajustes-resumo {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px;
+}
+.ajustes-linha {
+  display: grid; gap: 2px;
+  padding: 9px 11px; border-radius: 6px;
+  border: 1px solid var(--painel-linha);
+  background: rgba(255, 255, 255, .025);
+}
+.ajustes-linha strong { color: #d6e3ee; font-size: 12px; }
+
+.section.perigo { color: #ff9aa8; }

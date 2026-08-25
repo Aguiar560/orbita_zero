@@ -462,19 +462,83 @@ exposto; ele é uma ferramenta administrativa, não uma tela do jogador.
 
 ## Ajustes — `id: 'ajustes'`
 
-`ui/panels/SettingsPanel.ts` · 128 linhas · camada · **engrenagem no topo, não aba**
+`ui/panels/SettingsPanel.ts` · **cinco abas**
 
-Inclui a trava **repetir setor** (`settings.repetirSetor`), que faz a incursão
-ficar na fase em vez de avançar — sem custar o acesso já conquistado.
+Era uma página só com seis seções empilhadas. O custo aparecia na hora de
+PROCURAR: quem queria desligar o tremor de tela passava por automação, descarte
+e modo de teste no caminho.
 
-Também o **modo de teste** (`sim.setTestMode`), que dá recursos infinitos e
-libera alcance, nível e frota de forma **não destrutiva** (leitura, sem gravar
-no save).
+A ordem é por FREQUÊNCIA de uso, não por importância. Teste fica por último
+também por ser destrutivo de percepção — ele muda o jogo inteiro, e não deve ser
+a primeira coisa que alguém encontra.
 
-Também centraliza preferências persistidas de acessibilidade e comando: alto
-contraste, redução de efeitos e escolha entre Idle e pilotagem manual por WASD
-ou setas. Foco visível, atalhos de teclado, rótulos acessíveis e notificações
-para leitor de tela pertencem ao Shell, mas obedecem a estas preferências.
+| Aba | O quê |
+|---|---|
+| **Jogabilidade** | piloto idle/manual · bolha de escudo · repetir fase · auto-equipar · descarte automático e destino · teto offline |
+| **Vídeo** | reduzir efeitos · tremor de tela · números de dano · alto contraste · nota sobre enquadramento |
+| **Áudio** | volume geral, música e efeitos · silenciar — **todos inertes**, ver abaixo |
+| **Dados** | resumo da partida · exportar/importar · apagar progresso |
+| **Teste** | modo de teste · velocidade · saltar setor · conceder itens/baús/XP |
+
+A aba visível mora na INSTÂNCIA do painel, não no save: é onde o jogador estava,
+não uma preferência. Reabrir Ajustes numa aba que ele viu há dois dias seria
+lembrar da coisa errada.
+
+### Dois ajustes novos, e por que estão separados
+
+**Bolha de escudo** (`mostrarEscudo`) — fica em Jogabilidade e não em Vídeo. Ela
+comunica a carga pela opacidade, mas COBRE o casco, e quem pilota no manual
+perde a nave de vista exatamente quando o escudo está cheio, que é quando se
+avança. O Laboratório já tinha este interruptor (`showPlayerShieldVisual`) e
+continua mandando lá dentro: ele existe para comparar fichas sem a bolha
+atrapalhar, e não deve depender do gosto do jogador na campanha.
+
+Medido no canvas, numa janela de 68px ao redor da nave com o escudo cheio:
+
+| | pixels azuis | brilho médio |
+|---|---|---|
+| ligado | 365 | 46,0 |
+| desligado | 74 | 20,9 |
+
+**Tremor de tela** (`tremorDeTela`) — separado de "reduzir efeitos" porque
+atinge gente diferente: efeito pesa na MÁQUINA, tremor pesa em quem sente enjoo
+de movimento. Juntos, alguém teria de desligar partícula para parar de passar
+mal.
+
+Verificado forçando `shake = 20` e comparando a assinatura por coluna de uma
+faixa do canvas contra um quadro sem tremor: **5.346 com o tremor desligado**
+contra **122.803 com ele ligado** — 23× maior. O resíduo dos 5.346 é o jogo se
+mexendo entre quadros, não a tela.
+
+### A aba de Áudio diz que não funciona
+
+**O jogo não tem som.** Não existe `Audio`, `AudioContext` nem arquivo de áudio
+no projeto — foi confirmado por busca, não suposto.
+
+Havia duas saídas ruins: esconder a aba, e o jogador procurar volume onde não
+há; ou mostrar controles mudos, e ele mexer achando que ajustou. A terceira é
+dizer. Os `<input type=range>` ficam `disabled`, um aviso âmbar (não vermelho —
+não é erro, é ausência declarada) explica, e os valores são persistidos para o
+dia em que o som existir. Aí a aba perde o aviso e nada mais muda.
+
+### Duas configurações mortas encontradas na auditoria
+
+- `barVisible` — declarada, inicializada, migrada, **nunca lida**. Sobra da
+  faixa horizontal removida. Apagada.
+- `muted` — declarada e migrada, nunca lida. Mantida, mas agora dentro do grupo
+  de áudio, onde ao menos tem para onde crescer.
+
+### Save: versão 9
+
+`mostrarEscudo` e `tremorDeTela` nascem **ligados**, e save antigo os ganha
+ligados. É o caso que `tests/ajustes.test.ts` protege: ajuste é a única parte do
+jogo em que estar errado não dá erro — um campo que volta ao padrão só desfaz,
+sem avisar, o que o jogador pediu.
+
+Volumes são presos em 0..1 na carga. Não é preciosismo: quando o áudio existir,
+um multiplicador negativo ou acima de 1 vira estouro de amplitude, e descobrir
+isso com alto-falante é caro.
+
 
 ---
 

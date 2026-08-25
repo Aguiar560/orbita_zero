@@ -333,8 +333,24 @@ export interface Settings {
   /** Destino do descarte automático e da substituição com inventário cheio. */
   autoDispose: 'desmontar' | 'vender';
   showDamageNumbers: boolean;
-  barVisible: boolean;
   reduceEffects: boolean;
+  /**
+   * Desenhar a bolha de escudo por cima da nave.
+   *
+   * Ela comunica a carga pela opacidade, mas cobre o casco — e quem pilota no
+   * manual perde a leitura de onde a nave está exatamente quando o escudo está
+   * cheio, que é quando se avança. O Laboratório já tinha este interruptor
+   * (`showPlayerShieldVisual`); agora ele vale para o jogo todo.
+   */
+  mostrarEscudo: boolean;
+  /**
+   * Tremor de tela em impacto, morte e chefe.
+   *
+   * Separado de `reduceEffects` porque atinge gente diferente: efeitos pesam na
+   * MÁQUINA, tremor pesa em quem sente enjoo de movimento. Juntar os dois
+   * obrigaria a desligar partícula para parar de passar mal.
+   */
+  tremorDeTela: boolean;
   /** Aumenta a separação entre texto, fundo e estados interativos. */
   highContrast: boolean;
   /** Missões escolhidas pelo jogador para acompanhar na tela principal. */
@@ -347,6 +363,17 @@ export interface Settings {
    * jogador não escolheu seria mexer no enquadramento do combate por conta.
    */
   anatomiaAberta: boolean;
+
+  // ── áudio ─────────────────────────────────────────────────────────────────
+  //
+  // O jogo AINDA NÃO TEM SOM: não existe `Audio`, `AudioContext` nem arquivo
+  // de áudio no projeto. Estes campos são persistidos assim mesmo para o dia em
+  // que existir — e a aba de Áudio diz ao jogador, em letras, que eles não
+  // fazem nada hoje. Controle que finge funcionar é pior que controle ausente.
+  /** Volume geral, 0..1. Multiplica os outros dois. */
+  volumeMestre: number;
+  volumeMusica: number;
+  volumeEfeitos: number;
   muted: boolean;
 }
 

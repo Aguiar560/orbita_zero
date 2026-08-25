@@ -1729,7 +1729,7 @@ export class VerticalMode {
 
     this.drawBackground(s);
 
-    const jitter = this.shake > 0.1 ? this.shake : 0;
+    const jitter = this.shake > 0.1 && this.sim.state.settings.tremorDeTela ? this.shake : 0;
     s.ctx.save();
     if (jitter) s.ctx.translate(this.rng.range(-jitter, jitter), this.rng.range(-jitter, jitter));
 
@@ -1832,7 +1832,12 @@ export class VerticalMode {
       s.sprite(sprite, p.x, p.y, { scale: this.sim.escalaDoCasco(hull.id), alpha, rotation: p.bank * 0.13 });
     }
 
-    const mostrarEscudo = !this.sim.laboratorio.active || this.sim.laboratorio.config.showPlayerShieldVisual;
+    // Duas travas, e a do Laboratório continua mandando lá dentro: ela existe
+    // para COMPARAR fichas sem a bolha atrapalhar a leitura, e não deve depender
+    // do que o jogador prefere ver na campanha.
+    const mostrarEscudo = this.sim.laboratorio.active
+      ? this.sim.laboratorio.config.showPlayerShieldVisual
+      : this.sim.state.settings.mostrarEscudo;
     if (p.shield > 1 && mostrarEscudo) {
       // A barreira hexagonal da folha arcade comunica a carga pela opacidade;
       // quando o escudo está baixo ela quase some, sem precisar de outra barra.

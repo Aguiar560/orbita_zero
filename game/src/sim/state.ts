@@ -20,7 +20,7 @@ export const SAVE_KEY = 'orbita-zero:save';
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -110,8 +110,13 @@ export function createState(
       autoSalvage: 0,
       autoDispose: 'desmontar',
       showDamageNumbers: true,
-      barVisible: true,
+
       reduceEffects: false,
+      mostrarEscudo: true,
+      tremorDeTela: true,
+      volumeMestre: 0.8,
+      volumeMusica: 0.6,
+      volumeEfeitos: 0.8,
       highContrast: false,
       pinnedMissions: [],
       anatomiaAberta: true,
@@ -317,8 +322,15 @@ export function migrate(raw: unknown): GameState | null {
       .filter((id): id is string => typeof id === 'string' && MISSAO_POR_ID.has(id)),
   )].slice(0, 4);
   if (!['agressivo', 'equilibrado', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'equilibrado';
-  for (const key of ['testMode', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'barVisible', 'reduceEffects', 'highContrast', 'muted'] as const) {
+  for (const key of ['testMode', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
+  }
+  // Volume fora de 0..1 não é só feio: quando o áudio existir, um multiplicador
+  // negativo ou acima de 1 vira estouro de amplitude. Sanear na carga é mais
+  // barato que descobrir isso com alto-falante.
+  for (const key of ['volumeMestre', 'volumeMusica', 'volumeEfeitos'] as const) {
+    const v = Number(state.settings[key]);
+    state.settings[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8;
   }
   for (const resource of ['sucata', 'nucleo', 'cristal'] as const) {
     state.resources[resource] = Math.max(0, Number.isFinite(state.resources[resource]) ? state.resources[resource] : 0);
