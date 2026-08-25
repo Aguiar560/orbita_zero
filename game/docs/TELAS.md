@@ -58,16 +58,17 @@ inset` e traço inferior).
 ## A moldura
 
 ```
-┌──────────────┬───────────────────────────────┬──────────────────┐
-│  LeftRail    │   palco (canvas do combate)   │   Inventário     │
-│  303 linhas  │   modes/vertical/VerticalMode │   painel FIXO    │
-│              │                               │   233 linhas     │
-│  nave, HP,   │   ┌───────────────────────┐   │                  │
-│  escudo,     │   │  CAMADA em tela cheia │   │  nunca sai da    │
-│  elemento,   │   │  (qualquer outra aba) │   │  tela, e por     │
-│  postura,    │   └───────────────────────┘   │  isso não tem    │
-│  recursos    │                               │  aba própria     │
-└──────────────┴───────────────────────────────┴──────────────────┘
+┌──────────────┬──────────────────────┬─────────────┬─────────────┐
+│  LeftRail    │  palco (canvas)      │┤ Anatomia   │  Inventário │
+│  263 linhas  │  vertical/VerticalMode│  193 linhas │  painel FIXO│
+│              │                      │ ┌─────────┐ │  233 linhas │
+│  nave, HP,   │  ┌────────────────┐  │ │ cartão  │ │             │
+│  escudo,     │  │ CAMADA em tela │  │ │ ~380px  │ │ nunca sai   │
+│  elemento,   │  │ cheia (z: 60)  │  │ └─────────┘ │ da tela, e   │
+│  postura,    │  └────────────────┘  │  resto vazio│ por isso não │
+│  recursos    │                      │  e sem pintar│ tem aba      │
+└──────────────┴──────────────────────┴─────────────┴─────────────┘
+                                       ▲ ┤ = alça, abre e fecha
    ▲ abas: Galáxia · Armazém · Fabricação · Missões · Provação ·
            Matriz · Hangar · Baús · Loja · Códex   (+ ⚙ Ajustes)
 ```
@@ -387,9 +388,71 @@ para leitor de tela pertencem ao Shell, mas obedecem a estas preferências.
 
 ---
 
+## Coluna de anatomia
+
+`ui/Anatomia.ts` · 193 linhas · a quarta trilha do layout
+
+O "boneco" da nave: dez soquetes em duas colunas ao redor de um chassi, na ordem
+ANATÔMICA — armas na proa (`principal`, `secundaria`), asas e escudo no meio,
+motor e utilitários na popa. É o que faz achar o slot sem ler o rótulo.
+`upgrade` fica na ponta de propósito: é o único sem lugar no corpo da nave.
+
+**Tem seletor de nave** porque o equipamento é POR CASCO (save v7,
+`naves[id].equipped`). Sem ele não haveria onde montar o conjunto de uma nave
+fora de campo. O rótulo mostra a lotação: `Aurora Mk I · 1/10`.
+
+Passar o mouse num soquete cheio abre a ficha do item; clicar desequipa.
+
+### Por que é uma coluna, e não uma camada
+
+Equipar é arrastar do inventário para o boneco. Distância entre os dois é atrito
+puro, e uma camada em tela cheia esconderia justamente o inventário.
+
+Dentro da coluna do inventário também não coube: medido, ocuparia 290 dos 668px
+e os itens à vista cairiam de **35 para 15**.
+
+Coluna própria custa largura do PALCO — que se adapta sozinho, porque `fitView`
+deriva a largura lógica da proporção do elemento.
+
+| Largura da coluna | Palco | Campo lógico | Piso |
+|---|---|---|---|
+| 300px (≥1400) | 392 | 563 | 480 |
+| 300px em 1280 | 334 | **480** | 480 — no limite exato |
+| 250px em 1280 | 384 | 552 | 480 |
+| oculta (<1180) | 634 | — | — |
+
+Por isso ela **encolhe antes de sumir**: 1280 é comum demais para esconder a
+coluna, e com 300px ali o campo bate exatamente no piso — mais um pixel e
+aparece tarja preta.
+
+### O cartão é meia altura, e a trilha vazia não pinta nada
+
+O conteúdo são 262px de soquete mais cabeçalho e seletor: ~380 dos 668
+disponíveis. Esticar isso pela altura toda não mostrava mais nada — só espalhava
+os mesmos elementos e o boneco perdia a leitura de peça única.
+
+A moldura e o fundo moram no `.anat-corpo`, não no `<aside>`: uma borda de
+altura cheia ao redor de um cartão pela metade denunciaria a trilha vazia em vez
+de escondê-la. A alça fica no TOPO, colada na quina do cartão, e aponta para a
+única coisa que existe ali.
+
+O `overflow: hidden` também mora no cartão. No `<aside>` ele cortava a alça, que
+fica fora da caixa por definição — medido, a alça caía em x=638 com a coluna
+começando em 652, e quem respondia ao clique era o painel atrás dela.
+
+Clicar a alça **repinta na hora**, sem esperar o laço: o `update` é amostrado a
+0,2s e um clique é entrada direta.
+
+---
+
 ## Trilho esquerdo
 
-`ui/LeftRail.ts` · 303 linhas
+`ui/LeftRail.ts` · 263 linhas
+
+**Equipamento e conjuntos saíram daqui** e moram só na coluna de anatomia. Com o
+conjunto sendo por nave, o trilho mostraria sempre o da nave em campo enquanto a
+anatomia mostra a que se está montando — duas leituras divergentes do mesmo dado
+na mesma tela.
 
 As missões rastreadas **não** moram aqui: elas vivem sobre o campo de combate
 (`.mission-hud`, em `Shell`), e só lá. Havia cópia nos dois lugares, e duas

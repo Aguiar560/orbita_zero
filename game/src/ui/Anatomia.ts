@@ -66,6 +66,13 @@ export class Anatomia {
 
   alternar(): void {
     this.sim.state.settings.anatomiaAberta = !this.aberta;
+    // Repinta AGORA, sem esperar o laço. `update` só roda dentro do `draw`, e
+    // o `draw` para com a aba oculta — mas o custo real é outro: mesmo com a
+    // aba à vista o rebuild é amostrado a cada 0,2s, e um clique de alça
+    // ficava até 200ms sem resposta visível. Clique é entrada direta; quem
+    // espera o relógio é a atualização por mudança de estado.
+    this.dirty = false;
+    this.build();
     this.sim.touch();
   }
 

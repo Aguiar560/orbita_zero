@@ -4985,27 +4985,58 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .layout { grid-template-columns: 268px minmax(0, 1fr) var(--anat-larg, 300px) 378px; }
 .layout:has(.anatomia.fechada) { --anat-larg: 0px; }
 
+/*
+ * A trilha ocupa a altura toda; o CARTÃO, não.
+ *
+ * O conteúdo são dez soquetes em duas colunas — 262px de soquete mais o
+ * cabeçalho e o seletor. Esticar isso por 668px não mostrava mais nada: só
+ * espalhava os mesmos elementos, e o "boneco" perdia a leitura de peça única
+ * que é justamente o que faz um paperdoll funcionar. O cartão fica com a
+ * altura do que tem dentro, centrado na trilha.
+ *
+ * Por isso a moldura e o fundo saíram do `aside` e foram para o `.anat-corpo`:
+ * uma borda de altura cheia ao redor de um cartão pela metade denunciaria a
+ * trilha vazia em vez de esconder.
+ */
 .anatomia {
   min-width: 0; min-height: 0; position: relative;
-  border-left: 1px solid var(--painel-linha);
-  background: var(--painel-fundo);
-  overflow: hidden;
+  display: grid; align-content: start;
 }
-.anatomia.fechada { border-left: 0; }
 .anat-corpo {
-  height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 8px; padding: var(--painel-padding); align-content: start;
+  max-height: 100%; display: grid; gap: 8px;
+  padding: var(--painel-padding); align-content: start;
+  border: 1px solid var(--painel-linha); border-radius: var(--painel-raio);
+  background: var(--painel-fundo);
+  /* O recorte mora AQUI, e não no `aside`: no pai ele cortava a alça, que
+   * fica fora da caixa por definição. Medido — a alça caía em x=638 com a
+   * coluna começando em 652, e quem respondia ao clique era o painel de fases
+   * atrás dela. O abre-e-fecha existia e não dava para usar. */
+  overflow: hidden;
 }
 .anatomia.fechada .anat-corpo { display: none; }
 
-/* A alça vive na borda e não some quando a coluna fecha. */
+/*
+ * A alça mora no TOPO, colada na quina do cartão — não no meio da trilha.
+ *
+ * Centrada, ela marcava a metade de uma coluna de 668px e prometia que a
+ * coluna inteira ia abrir. O que abre é o cartão, e o resto da trilha nunca
+ * teve nada: a alça agora aponta para a única coisa que existe ali.
+ *
+ * Ela acompanha a borda da trilha, então anda 250px na horizontal ao abrir e
+ * fechar — mas a ALTURA não muda, e é a altura que o olho perde. Antes,
+ * presa a 50%, ela também mudava de altura quando o cartão mudava de tamanho.
+ */
 .anat-alca {
-  position: absolute; top: 50%; left: 0; transform: translate(-100%, -50%);
-  width: 15px; height: 62px; display: grid; place-items: center;
+  position: absolute; top: 10px; left: 0; transform: translateX(-100%);
+  width: 16px; height: 64px; display: grid; place-items: center;
   border: 1px solid var(--painel-linha); border-right: 0;
   border-radius: 6px 0 0 6px;
   background: var(--painel-fundo); color: var(--muted);
-  font: 600 10px/1 'Chakra Petch', sans-serif; cursor: pointer;
+  font: 600 11px/1 'Chakra Petch', sans-serif; cursor: pointer;
+  /* Ela invade a coluna do palco, que vem antes no DOM — sem uma camada
+   * própria o canvas ficaria por cima em qualquer navegador que resolva o
+   * empilhamento pela ordem de pintura. */
+  z-index: 6;
 }
 .anat-alca:hover { color: var(--accent); border-color: var(--line-strong); }
 
