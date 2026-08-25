@@ -8,8 +8,8 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 24/08/2026 · 527 testes passando + 1 `todo` · registro
-consolidado em [`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md).
+**Última atualização:** 25/08/2026 · 570 testes passando + 1 `todo` · registro
+consolidado em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
@@ -35,6 +35,38 @@ Provação agora tem os cinco modificadores mecânicos; acessibilidade base,
 controles Idle/manual e migração de save **v5** estão implementados. Antes de
 novo conteúdo, manter uma rodada curta de QA visual nos retratos de Missões e
 na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PLANO.md).
+
+### Consolidação de 25/08/2026
+
+Registro completo em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+Cinco frentes, três sistemas novos e três versões de save (7, 8, 9).
+
+**Equipamento por nave (v7).** Cada casco carrega o próprio conjunto
+(`naves[id].equipped`), que é o que faz manter uma frota significar alguma
+coisa. Migração verificada behaviour-neutral: as quatro medições de ritmo são
+idênticas antes e depois.
+
+**Coluna de anatomia.** Dez soquetes ao redor do chassi, sobreposta ao palco.
+Nasceu como quarta trilha de grid e voltou atrás: trilha é retângulo de altura
+cheia, e o cartão só usa 357 dos 668px. Sobreposta, o palco deixou de pagar
+largura — campo lógico de 552 para **908** em 1280.
+
+**Escolha de personagem (v8).** Quatro pilotos com nave própria, **1,58% de
+dispersão** de poder e 34% de diferença em dps. Os stats foram resolvidos por
+bisseção sobre `powerScore`, não escritos à mão.
+
+**Ajustes em cinco abas (v9).** Jogabilidade · Vídeo · Áudio · Dados · Teste.
+Dois ajustes novos (bolha de escudo e tremor de tela, ambos verificados em
+pixels) e duas configurações mortas encontradas na auditoria.
+
+**Ondas 10× mais cheias.** O setor 1 ia de 4,0s a 70,1s, de 25 para **240**
+inimigos, com a XP **exatamente** preservada por um orçamento de onda. Um bug
+latente do pool virou alcançável e foi corrigido junto.
+
+**Três posturas de IA.** O equilibrado saiu: dominava o coletor em dois dos
+três eixos e não era extremo em nenhum.
+
+---
 
 ### Consolidação de 24/08/2026
 

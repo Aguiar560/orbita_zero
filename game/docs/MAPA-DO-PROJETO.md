@@ -56,10 +56,11 @@ dificuldade, e ela some ou vira parede.
 | afixos | 35 | chefes de galáxia | 30 |
 | conjuntos | 4 | chefes da Provação | 100 |
 | raridades | 7 | especiais da Provação | 18 |
-| cascos (naves) | 49 | modificadores da Provação | 11 |
+| cascos (naves) | 53 | modificadores da Provação | 11 |
 | elementos | 6 | camadas da Provação | 10 |
 | recursos | 70 | contatos de missão | 9 |
 | baús | 4 | nós da Matriz | 177 (8 ramos) |
+| personagens jogáveis | 4 | posturas de IA | 3 |
 
 *(Reproduza este censo importando as tabelas de `@data/*` e contando — todas são
 arrays exportados.)*
@@ -78,7 +79,7 @@ src/
   ui/      22 arq · Shell, LeftRail, painéis e componentes — SEM regra de jogo
   app/      4 arq · Game (laço de passo fixo), Bus, Loop e persistência admin
 tools/     32 arq · pipeline de assets e o arnês de balanceamento, fora do bundle
-tests/          · 527 testes passando + 1 todo (verificado em 24/08/2026)
+tests/          · 570 testes passando + 1 todo (verificado em 25/08/2026)
 ```
 
 **Aliases:** `@core @render @sim @data @ui @modes @app`
@@ -188,7 +189,7 @@ O terminal do Rafael é **PowerShell 5.1**, que **não aceita `&&`** — use `;`
 | `npm run dev` | Vite em `localhost:5180` (porta fixa) |
 | `npm run assets` | Fatia os packs crus de `D:\bbb\*` em `public/assets` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | suíte do Vitest (527 testes + 1 `todo`, conferidos em 24/08/2026) |
+| `npm test` | suíte do Vitest (570 testes + 1 `todo`, conferidos em 25/08/2026) |
 | `npm run build` | assets + typecheck + build |
 
 Se mexeu em arte: `npm run assets; npm run dev`.

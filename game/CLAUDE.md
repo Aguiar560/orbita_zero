@@ -23,6 +23,7 @@ Registros de momento, que valem como história e **não** como estado atual:
 [`HANDOFF-FASE-0`](docs/HANDOFF-FASE-0.md) ·
 [`FASE-0-NEXO`](docs/FASE-0-NEXO.md) ·
 [`ITEMIZACAO-DIAGNOSTICO`](docs/ITEMIZACAO-DIAGNOSTICO.md) ·
+[`ATUALIZACAO-2026-08-25`](docs/ATUALIZACAO-2026-08-25.md) ·
 [`ARTE-UI-*`](docs/).
 
 Quando este arquivo e a especificação divergirem, a especificação vence — e a

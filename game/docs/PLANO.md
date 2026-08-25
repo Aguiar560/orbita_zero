@@ -47,7 +47,12 @@ Provação) e o trabalho que separa "funciona" de "é um jogo" — som e onboard
 | **Som** | 🔴 **não existe** | — |
 | **Onboarding** | 🔴 **não existe** | — |
 | **Acessibilidade** | 🟡 base pronta; falta auditoria fluxo a fluxo | `ui/Shell.ts`, `ui/panels/SettingsPanel.ts` |
-| Migração de save | ✅ v6 normalizada | `sim/state.ts` (`SAVE_VERSION = 6`) |
+| **Personagens jogáveis** | ✅ quatro, com nave própria e 1,58% de dispersão de poder | `data/pilotos.ts`, `ui/EscolhaDePiloto.ts` |
+| **Equipamento por nave** | ✅ cada casco com o próprio conjunto | `sim/stats.ts`, `ui/Anatomia.ts` |
+| **Ajustes** | ✅ cinco abas; áudio declarado inerte | `ui/panels/SettingsPanel.ts` |
+| **Densidade das ondas** | ✅ 10× no começo, XP invariante | `data/balance/curvas.ts`, `sim/progression.ts` |
+| **Posturas de IA** | ✅ três, sem meio-termo | `modes/vertical/PilotAI.ts` |
+| Migração de save | ✅ v9 normalizada | `sim/state.ts` (`SAVE_VERSION = 9`) |
 
 ---
 
@@ -315,7 +320,9 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | 1 | **Anel elemental com deriva de 5%** | `1,5 × 0,7 = 1,05`, deveria fechar em 1,0. A especificação propõe `1,25 × 0,80`. Mexer nisso move todo o combate elemental |
 | 2 | **O laço ocioso trava na parede do chefe** | Ao vivo: setor 5 dos 90 aos 120 min, mortes de 20 para 31. É o cruzamento de "chefe exige farm" com "sem recuo automático". Três saídas possíveis: recuo automático, chefe opcional, ou farm dirigido |
 | 3 | ✅ **O que a Loja vende** | Resolvido pela opção A: Central de Serviços |
-| 4 | **Offline rende mais item que jogar** | Setor 10 contra 8, e **368 itens contra 44**. O caminho abstrato já modela morte e já não banca recurso; o que resta é o item. Precisa de uma corrida AO VIVO nova para comparar — os 44 são de antes das Fases 2 e 3 |
+| 4 | **Item só do elemento da nave** | Pedido em 25/08 e MEDIDO antes de implementar. Se a nave só aceitar item neutro ou do próprio elemento, o Divino fica inutilizável **78%** das vezes — e trocar o elemento invalida **88%** de um conjunto lendário, o que torna o serviço de loja um botão que ninguém aperta. A alternativa medida é restringir só **principal + escudo**, os dois slots onde o elemento já significa algo: aí o Divino fica usável em 84% e a troca custa no máximo 2 peças de 10. Falta escolher entre as duas |
+| 5 | **Setor 5 depois do adensamento** | Onda mais longa é mais tempo sob fogo, e `incomingDps` é taxa fixa. A vida mínima do setor 3 caiu de 90% para 52%, e o setor 5 passou de 36% e nenhuma morte para 0% e três mortes. Compensar mexeria em `curvaDano`, que é outro sistema calibrado — decisão de quanto o começo deve doer |
+| 6 | **Offline rende mais item que jogar** | Setor 10 contra 8, e **368 itens contra 44**. O caminho abstrato já modela morte e já não banca recurso; o que resta é o item. Precisa de uma corrida AO VIVO nova para comparar — os 44 são de antes das Fases 2 e 3 |
 
 ---
 
