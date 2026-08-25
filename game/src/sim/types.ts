@@ -339,6 +339,14 @@ export interface Settings {
   highContrast: boolean;
   /** Missões escolhidas pelo jogador para acompanhar na tela principal. */
   pinnedMissions: string[];
+  /**
+   * A coluna de anatomia está aberta.
+   *
+   * Preferência de interface, sem efeito no progresso — mas persistida porque
+   * ela custa largura do palco, e reabrir o jogo com a coluna num estado que o
+   * jogador não escolheu seria mexer no enquadramento do combate por conta.
+   */
+  anatomiaAberta: boolean;
   muted: boolean;
 }
 

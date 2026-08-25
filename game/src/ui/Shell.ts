@@ -10,6 +10,7 @@ import { MISSAO_POR_ID } from '@data/missoes';
 import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
+import { Anatomia } from './Anatomia';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
@@ -74,6 +75,7 @@ export class Shell {
 
   private readonly resourceNodes = new Map<ResourceId, HTMLElement>();
   private leftRail!: LeftRail;
+  private anatomia!: Anatomia;
   private tabBar!: HTMLElement;
   private panelHost!: HTMLElement;
   private statusNode!: HTMLElement;
@@ -98,6 +100,7 @@ export class Shell {
     const stageWrap = h('.stage-wrap', {}, stage, this.missionHud);
 
     this.leftRail = new LeftRail(this.sim);
+    this.anatomia = new Anatomia(this.sim);
     this.tabBar = h('nav.tabs', { 'aria-label': 'Navegação principal' });
     this.panelHost = h('.panel-host');
     this.statusNode = h('.status');
@@ -137,6 +140,9 @@ export class Shell {
       h('main.layout', {},
         this.leftRail.root,
         h('.center', {}, stageWrap),
+        // A coluna de anatomia fica ENTRE o palco e o inventário: equipar é
+        // arrastar de um para o outro, e distância entre eles é atrito puro.
+        this.anatomia.root,
         h('aside.rail-right', {}, this.panelHost),
       ),
       this.toastHost,
@@ -231,6 +237,7 @@ export class Shell {
 
   update(dt: number): void {
     this.leftRail.update(dt);
+    this.anatomia.update(dt);
     this.panelTimer -= dt;
     if (this.panelTimer <= 0) {
       this.panelTimer = 1 / PANEL_HZ;

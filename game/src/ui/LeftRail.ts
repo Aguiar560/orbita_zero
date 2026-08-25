@@ -1,18 +1,14 @@
 import { bus } from '@app/Bus';
 import { fmt, duration, pct } from '@core/format';
-import { clamp, clamp01 } from '@core/math';
-import { ITEM_SETS, SLOTS, SLOT_BY_ID } from '@data/items';
-import { rarityInfo } from '@data/rarity';
+import { clamp01 } from '@core/math';
 import { ELEMENTOS_RESISTIVEIS, counterOf, getElement, matchup } from '@data/elements';
-import { dps, effectiveHp, equipamentoDe, setCounts } from '@sim/stats';
+import { dps, effectiveHp } from '@sim/stats';
 import { especialidadeLabel, shipProfile } from '@sim/ships';
-import type { Item, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { WAVES_PER_SECTOR } from '@data/balance/curvas';
 import { RESOURCE_IDS } from '@sim/types';
 import { h, clear, spriteIcon, progressBar } from './dom';
 import { RESOURCE_META } from './recursos';
-import { buildEquippedCard } from './ItemCard';
 
 const PILOTS = [
   { id: 'agressivo', label: 'AGR' },
@@ -43,14 +39,10 @@ export class LeftRail {
   private dirty = true;
   private timer = 0;
 
-  /** Cartão de item do hover. Vive no `body` para não ser cortado pela coluna. */
-  private readonly card = h('.item-card-float.hidden');
-
   constructor(private readonly sim: Sim) {
     this.hpFill.style.background = '#ff5d7a';
     this.shFill.style.background = '#38a9ff';
     this.root.append(this.body);
-    document.body.append(this.card);
     bus.on('state:changed', () => { this.dirty = true; });
     this.build();
   }
@@ -80,7 +72,6 @@ export class LeftRail {
     const sim = this.sim;
     const stats = sim.stats;
     const hull = sim.hull;
-    const counts = setCounts(sim.state);
 
     clear(this.body).append(
       // ── nave ──────────────────────────────────────────────────────────────
@@ -102,24 +93,11 @@ export class LeftRail {
         ),
       ),
 
-      // ── equipamento ───────────────────────────────────────────────────────
-      h('.rail-section', { text: 'Equipamento' }),
-      h('.paperdoll', {}, ...SLOTS.map((slot) => this.slotCell(slot.id))),
-
-      // ── conjuntos ─────────────────────────────────────────────────────────
-      ...(counts.size
-        ? [
-            h('.rail-section', { text: 'Conjuntos' }),
-            h('.rail-sets', {}, ...ITEM_SETS.filter((s) => (counts.get(s.id) ?? 0) > 0).map((set) => {
-              const n = counts.get(set.id) ?? 0;
-              const active = set.bonuses.filter((b) => n >= b.pieces).length;
-              return h('.rail-set', { style: { color: set.color }, title: set.bonuses.map((b) => `${b.pieces}: ${b.label}`).join('\n') },
-                h('strong', { text: set.name }),
-                h('span.tiny', { text: `${n}/${set.slots.length} · ${active} bônus` }),
-              );
-            })),
-          ]
-        : []),
+      // Equipamento e conjuntos moram na COLUNA DE ANATOMIA, e só lá. Tinham
+      // cópia aqui: a grade de dez slots e a lista de conjuntos ativos. Com o
+      // equipamento passando a ser por nave, o trilho mostraria sempre o da
+      // nave em campo enquanto a anatomia mostra a que se está montando — duas
+      // leituras divergentes do mesmo dado, na mesma tela.
 
       // ── leitura de combate ────────────────────────────────────────────────
       h('.rail-section', { text: 'Combate' }),
@@ -275,40 +253,6 @@ export class LeftRail {
     );
   }
 
-  private slotCell(slot: SlotId): HTMLElement {
-    const info = SLOT_BY_ID.get(slot)!;
-    const item = equipamentoDe(this.sim.state)[slot];
-
-    if (!item) {
-      const cell = h('.doll-cell.empty', { title: `${info.name} — vazio` }, spriteIcon(info.icon, 22, 'dim'));
-      cell.addEventListener('click', () => bus.emit('panel:open', { id: 'inventario' }));
-      return cell;
-    }
-
-    const rarity = rarityInfo(item.rarity);
-    const cell = h('.doll-cell', {
-      style: { borderColor: rarity.color, boxShadow: `inset 0 0 14px ${rarity.glow}` },
-    }, spriteIcon(item.icon, 34));
-    if (item.set) cell.append(h('i.doll-set'));
-
-    // Cartão completo no hover, em vez do tooltip nativo: o `title` do navegador
-    // demora, não formata e some ao mover o mouse um pixel.
-    cell.addEventListener('mouseenter', () => this.showCard(item, cell));
-    cell.addEventListener('mouseleave', () => this.card.classList.add('hidden'));
-    cell.addEventListener('click', () => bus.emit('panel:open', { id: 'inventario' }));
-    return cell;
-  }
-
-  /** Posiciona o cartão à direita do slot, preso à janela. */
-  private showCard(item: Item, cell: HTMLElement): void {
-    this.card.replaceChildren(buildEquippedCard(this.sim, item));
-    this.card.classList.remove('hidden');
-
-    const spot = cell.getBoundingClientRect();
-    const height = this.card.offsetHeight || 200;
-    this.card.style.left = `${spot.right + 10}px`;
-    this.card.style.top = `${clamp(spot.top - 12, 8, Math.max(8, window.innerHeight - height - 8))}px`;
-  }
 }
 
 function row(label: string, value: string, color: string): HTMLElement {

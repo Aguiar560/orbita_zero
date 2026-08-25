@@ -92,6 +92,7 @@ export function createState(seed = (Math.random() * 0xffffffff) >>> 0): GameStat
       reduceEffects: false,
       highContrast: false,
       pinnedMissions: [],
+      anatomiaAberta: true,
       muted: false,
     },
   };

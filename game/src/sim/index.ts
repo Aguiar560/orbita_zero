@@ -1681,8 +1681,10 @@ export class Sim {
     this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
 
     if (this.state.settings.autoEquip && scoreItem(this.state, item) > 0) {
-      const previous = this.equipamento[item.slot];
-      this.equipamento[item.slot] = item;
+      // Auto-equipar mira a nave EM CAMPO: o item acabou de cair na incursão
+      // dela, e mandá-lo para uma nave guardada seria decidir pelo jogador.
+      const previous = this.equipamentoDe()[item.slot];
+      this.equipamentoDe()[item.slot] = item;
       this.touch();
       if (previous) this.stash(previous);
       bus.emit('loot:dropped', { item });
@@ -1714,28 +1716,41 @@ export class Sim {
     this.state.inventory.push(item);
   }
 
-  /** O equipamento da nave em campo. Criado na hora se o casco é novo. */
-  private get equipamento(): Partial<Record<SlotId, Item>> {
-    const nave = this.naveAtiva;
+  /**
+   * O equipamento de um casco. Criado na hora se a nave é nova.
+   *
+   * Aceita um id porque a coluna de anatomia monta o conjunto de naves que
+   * NÃO estão em campo — sem isso, equipar a segunda nave exigiria trocá-la
+   * para o campo primeiro, e a rotação por combustível ficaria insuportável.
+   */
+  private equipamentoDe(hullId = this.state.hull): Partial<Record<SlotId, Item>> {
+    const nave = (this.state.naves[hullId] ??= { nivel: 1, xp: 0, equipped: {} });
     nave.equipped ??= {};
     return nave.equipped;
   }
 
-  equip(uid: string): void {
+  /** Leva um casco da frota para o campo. */
+  trocarCasco(hullId: string): void {
+    if (!this.state.fleet.includes(hullId) || this.state.hull === hullId) return;
+    this.state.hull = hullId;
+    this.touch();
+  }
+
+  equip(uid: string, hullId = this.state.hull): void {
     const idx = this.state.inventory.findIndex((i) => i.uid === uid);
     if (idx < 0) return;
     const item = this.state.inventory[idx]!;
-    const previous = this.equipamento[item.slot];
+    const previous = this.equipamentoDe(hullId)[item.slot];
     this.state.inventory.splice(idx, 1);
-    this.equipamento[item.slot] = item;
+    this.equipamentoDe(hullId)[item.slot] = item;
     if (previous) this.state.inventory.push(previous);
     this.touch();
   }
 
-  unequip(slot: SlotId): void {
-    const item = this.equipamento[slot];
+  unequip(slot: SlotId, hullId = this.state.hull): void {
+    const item = this.equipamentoDe(hullId)[slot];
     if (!item) return;
-    delete this.equipamento[slot];
+    delete this.equipamentoDe(hullId)[slot];
     this.stash(item);
     this.touch();
   }

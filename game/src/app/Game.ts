@@ -72,6 +72,12 @@ export class Game {
     this.vertical.refreshPlayer(true);
 
     window.addEventListener('resize', this.layout);
+    // O palco também muda de tamanho SEM a janela mudar: a coluna de anatomia
+    // abre e fecha, e `fitView` deriva a largura lógica da proporção do
+    // elemento. Sem observar o próprio palco, fechar e reabrir deixava a
+    // trilha central 70px maior do que cabia — medido, o layout somava 1.350
+    // numa janela de 1.280 e transbordava.
+    new ResizeObserver(() => this.layout()).observe(stage.parentElement ?? stage);
     document.addEventListener('visibilitychange', this.onVisibility);
     // `pagehide` é o evento que realmente dispara ao fechar em todo navegador;
     // `beforeunload` não é garantido no celular. Salvar nos dois é barato e a

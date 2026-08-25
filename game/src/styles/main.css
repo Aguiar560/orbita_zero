@@ -100,6 +100,17 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 #app {
   height: 100vh;
   display: grid;
+  /*
+   * A COLUNA precisa ser declarada, não só a linha.
+   *
+   * Sem `grid-template-columns`, a trilha implícita é `auto` — e `auto`
+   * dimensiona pelo CONTEÚDO, não pelo contêiner. Bastou o canvas ficar mais
+   * largo que a tela por um instante (fechar a coluna de anatomia o levava a
+   * 704px) para a raiz inteira travar em 1.350 numa janela de 1.280, e não
+   * voltar mais. É a terceira vez que esta armadilha aparece no projeto: já
+   * custou 174px de rolagem em Missões e a coluna do meio da Galáxia.
+   */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 52px minmax(0, 1fr);
 }
 
@@ -4955,3 +4966,125 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* O rótulo inativo também estava fraco demais para 10,5px. */
 .topbar .tab { color: #9db0c9; }
 .topbar .tab:hover { color: #e8f2ff; }
+
+/* ═══ Coluna de anatomia — o "boneco" da nave ══════════════════════════════ */
+
+/*
+ * Uma quarta trilha, entre o palco e o inventário.
+ *
+ * Não foi para dentro da coluna do inventário porque as duas competiriam:
+ * medido, a anatomia ocupa 290px dos 668 disponíveis e os itens à vista
+ * cairiam de 35 para 15. Coluna própria custa largura do PALCO — que se adapta
+ * sozinho, porque `fitView` deriva a largura lógica da proporção. Com 300px
+ * aqui o palco fica em 392 e o campo em 563 unidades, bem acima do piso de
+ * 480; a tarja preta só apareceria com o palco abaixo de 334px.
+ *
+ * `grid-template-columns` do `.layout` ganha a trilha; fechada ela vira zero e
+ * o palco recupera tudo.
+ */
+.layout { grid-template-columns: 268px minmax(0, 1fr) var(--anat-larg, 300px) 378px; }
+.layout:has(.anatomia.fechada) { --anat-larg: 0px; }
+
+.anatomia {
+  min-width: 0; min-height: 0; position: relative;
+  border-left: 1px solid var(--painel-linha);
+  background: var(--painel-fundo);
+  overflow: hidden;
+}
+.anatomia.fechada { border-left: 0; }
+.anat-corpo {
+  height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px; padding: var(--painel-padding); align-content: start;
+}
+.anatomia.fechada .anat-corpo { display: none; }
+
+/* A alça vive na borda e não some quando a coluna fecha. */
+.anat-alca {
+  position: absolute; top: 50%; left: 0; transform: translate(-100%, -50%);
+  width: 15px; height: 62px; display: grid; place-items: center;
+  border: 1px solid var(--painel-linha); border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: var(--painel-fundo); color: var(--muted);
+  font: 600 10px/1 'Chakra Petch', sans-serif; cursor: pointer;
+}
+.anat-alca:hover { color: var(--accent); border-color: var(--line-strong); }
+
+.anat-seletor {
+  width: 100%; padding: 5px 7px;
+  border: 1px solid var(--painel-linha); border-radius: 5px;
+  background: rgba(4, 10, 17, .82); color: #c7d4dc;
+  font: 600 10.5px/1.3 'Chakra Petch', sans-serif;
+}
+
+/*
+ * Três colunas: soquetes, chassi, soquetes.
+ *
+ * `minmax(0, 1fr)` no meio, e não `auto` — a arte do chassi tem largura
+ * própria e a trilha implícita dimensionaria por ela, empurrando os soquetes
+ * para fora da coluna. É a mesma armadilha do grid que já custou 174px de
+ * rolagem lateral em Missões.
+ */
+.anat-quadro {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 6px; min-height: 0;
+}
+.anat-coluna { display: grid; gap: 8px; align-content: center; }
+
+.anat-chassi { position: relative; display: grid; place-items: center; min-width: 0; }
+.anat-chassi-art { width: 100%; max-width: 150px; height: auto; opacity: .58; pointer-events: none; }
+/* A nave REAL por cima do esquema: o boneco é da nave que se está montando. */
+.anat-nave { position: absolute; opacity: .95; filter: drop-shadow(0 0 10px rgba(79,195,255,.3)); }
+
+.anat-soquete {
+  position: relative; width: 46px; height: 46px;
+  display: grid; place-items: center; cursor: default;
+}
+.anat-soquete.cheio { cursor: pointer; }
+.anat-moldura { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* O halo do soquete aceso recebe a cor da raridade do que está instalado. */
+.anat-soquete.cheio .anat-moldura {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--rarity, #4fc3ff) 62%, transparent));
+}
+.anat-item { position: relative; z-index: 1; }
+/* Slot vazio mostra o ícone da CATEGORIA, apagado: diz o que falta ali. */
+.anat-slot-art { position: relative; z-index: 1; width: 28px; height: 28px; opacity: .34; }
+.anat-soquete:hover .anat-slot-art { opacity: .6; }
+
+.anat-nota { color: var(--muted); text-align: center; }
+.anat-ir { width: 100%; }
+
+/*
+ * A largura cede antes de a coluna sumir.
+ *
+ * Medido: com 300px numa janela de 1280 o palco fica em 334 e o campo lógico
+ * bate EXATAMENTE no piso de 480 — mais um pixel de coluna e aparece tarja
+ * preta. Como 1280 é resolução comum demais para simplesmente esconder a
+ * coluna, ela encolhe para 250 nessa faixa: o palco sobe para 384 e o campo
+ * para 552, com folga real.
+ *
+ * Abaixo de 1180 não há largura que salve os quatro, e aí ela sai de cena —
+ * mesmo ponto de corte que o `.painel-corpo` já usa.
+ */
+@media (max-width: 1400px) { .layout { --anat-larg: 250px; } }
+@media (max-width: 1180px) {
+  .layout { --anat-larg: 0px; }
+  .anatomia { display: none; }
+}
+
+/*
+ * O layout PODE encolher, e o canvas não o segura.
+ *
+ * `.layout` é item de grid da raiz, e item de grid tem `min-width: auto` — ele
+ * se recusa a ficar menor que o conteúdo. Ao fechar a coluna de anatomia o
+ * palco crescia e o canvas era redimensionado para 704px; ao reabrir, a trilha
+ * deveria voltar a 384, mas o canvas de 704 virava o piso e o layout inteiro
+ * ficava com 1.350 numa janela de 1.280 — transbordo lateral que só aparecia
+ * depois de abrir e fechar.
+ *
+ * `min-width: 0` devolve a permissão de encolher; `max-width: 100%` no canvas
+ * tira dele o direito de definir esse piso. Os dois são necessários: sem o
+ * primeiro o pai não cede, sem o segundo o canvas continua sendo o conteúdo
+ * mais largo.
+ */
+.layout { min-width: 0; }
+.stage-wrap > canvas { max-width: 100%; max-height: 100%; }
