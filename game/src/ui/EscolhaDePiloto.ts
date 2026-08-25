@@ -5,6 +5,7 @@ import { PILOTOS, type PilotoDef } from '@data/pilotos';
 import type { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { dps, effectiveHp, powerScore, resolveStats } from '@sim/stats';
+import { assets } from '@render/Assets';
 import { clear, h, portraitIcon, spriteIcon } from './dom';
 
 /**
@@ -44,8 +45,24 @@ export class EscolhaDePiloto {
     }
   }
 
-  /** Mostra a tela. Resolve quando o jogador confirmar. */
-  mostrar(): Promise<void> {
+  /**
+   * Mostra a tela. Resolve quando o jogador confirmar.
+   *
+   * Espera o atlas `characters` ANTES de montar. Ele é `lazy` no manifesto —
+   * fica fora do boot porque só a Central de Missões costumava precisar dele —
+   * e esta tela roda antes de qualquer painel abrir. Sem a espera os quatro
+   * retratos saíam como molduras vazias, que é o pior resultado possível numa
+   * tela em que o retrato É o conteúdo: o jogador escolhe entre quatro
+   * retângulos.
+   *
+   * Esperar em vez de re-renderizar ao carregar (como o painel de missões faz)
+   * porque aqui não há nada útil para mostrar enquanto isso, e a piscada de
+   * caixa vazia para retrato seria mais feia que o meio segundo de espera.
+   */
+  async mostrar(): Promise<void> {
+    // Falhar o carregamento não pode travar o boot: sem retrato a tela ainda
+    // diz nome, raça, nave e barras, que é o suficiente para escolher.
+    await assets.loadAtlas('characters').catch(() => {});
     return new Promise((resolve) => {
       this.render(() => {
         this.root.remove();

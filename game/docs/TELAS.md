@@ -148,6 +148,18 @@ e a tela não diria nada. Números escritos à mão aqui virariam mentira no
 primeiro ajuste de balanceamento, e ninguém repara numa tela que só aparece uma
 vez.
 
+### O atlas dos retratos é `lazy`, e esta tela espera por ele
+
+`characters` fica fora do boot no manifesto — só a Central de Missões costumava
+precisar dele. Esta tela roda ANTES de qualquer painel abrir, então os quatro
+retratos saíam como molduras vazias: o jogador escolhia entre quatro retângulos.
+
+`mostrar()` faz `await assets.loadAtlas('characters')` antes de montar. Esperar,
+e não re-renderizar ao carregar como o painel de missões faz, porque aqui não há
+nada útil para mostrar enquanto isso — a piscada de moldura vazia seria pior que
+o meio segundo. Falha no carregamento não trava o boot: sem retrato a tela ainda
+diz nome, raça, nave e barras.
+
 ### Save: `piloto`, versão 8
 
 Ausente e vazio são **casos diferentes**, e confundi-los escolhia pelo jogador:
