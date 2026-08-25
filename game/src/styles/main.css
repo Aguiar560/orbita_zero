@@ -5351,3 +5351,102 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .ajustes-linha strong { color: #d6e3ee; font-size: 12px; }
 
 .section.perigo { color: #ff9aa8; }
+
+
+/* ═══ Ranking — placares sazonais e mundiais ═══════════════════════════════ */
+
+/*
+ * Três faixas: temporada, abas, corpo.
+ *
+ * `minmax(0, 1fr)` na última, e não `auto` — trilha implícita de grid
+ * dimensiona pelo CONTEÚDO, e a seção de Naves é a mais alta das cinco por
+ * causa do filtro. Com `auto` o painel inteiro cresceria até ela. É a mesma
+ * armadilha que já custou 174px de rolagem em Missões, a coluna do meio da
+ * Galáxia e a raiz do `#app`.
+ */
+.panel-body.ranking {
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px; min-height: 0;
+}
+
+.ranking-topo {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 13px 16px;
+  border: 1px solid var(--painel-linha); border-radius: var(--painel-raio);
+  background: linear-gradient(100deg, rgba(28, 52, 84, .5), rgba(6, 12, 20, .72));
+}
+.ranking-temporada { display: grid; gap: 3px; min-width: 0; }
+.ranking-temporada strong { font: 700 16px/1.1 'Chakra Petch', sans-serif; color: #dbe9f5; letter-spacing: .04em; }
+/* O selo é o que responde "contra quem" antes de o jogador perguntar: mundial,
+ * não regional nem entre amigos. */
+.ranking-selo {
+  justify-self: start;
+  padding: 2px 8px; border-radius: 3px;
+  background: rgba(255, 196, 92, .16); border: 1px solid rgba(255, 196, 92, .38);
+  color: #ffcf7a; font: 700 9.5px/1.5 'Chakra Petch', sans-serif; letter-spacing: .14em;
+}
+.ranking-relogio { display: grid; gap: 2px; justify-items: end; text-align: right; }
+.ranking-conta { font: 700 19px/1 'Chakra Petch', sans-serif; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.ranking-abas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.ranking-aba {
+  min-height: 32px; padding: 7px 6px;
+  border: 1px solid transparent; border-radius: 7px;
+  background: rgba(255, 255, 255, .04); color: var(--muted);
+  font: 700 12px/1 'Chakra Petch', sans-serif; letter-spacing: .05em; cursor: pointer;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.ranking-aba:hover { color: #cfe0ee; background: rgba(255, 255, 255, .07); }
+.ranking-aba.ativa {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ranking-corpo { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 11px; min-height: 0; align-content: start; }
+.ranking-criterio { margin: 0; }
+
+.ranking-filtro { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; }
+
+/* A marca do jogador é a única coisa REAL desta tela hoje, então ela tem o
+ * peso visual de um resultado, não o de um rodapé. */
+.ranking-sua-marca {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); border-radius: var(--painel-raio);
+  background: color-mix(in srgb, var(--accent) 8%, rgba(6, 12, 20, .6));
+}
+.ranking-marca-info { display: grid; gap: 1px; }
+.ranking-valor { font: 700 30px/1 'Chakra Petch', sans-serif; color: #eaf6ff; font-variant-numeric: tabular-nums; }
+.ranking-marca-quem { display: grid; gap: 2px; justify-items: end; text-align: right; min-width: 0; }
+.ranking-marca-quem strong { font: 700 13px/1.1 'Chakra Petch', sans-serif; letter-spacing: .06em; }
+
+.ranking-lista {
+  display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0;
+  border: 1px solid var(--painel-linha); border-radius: var(--painel-raio);
+  background: rgba(255, 255, 255, .02); overflow: hidden;
+}
+.ranking-cabecalho {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) 110px; gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--painel-linha);
+  background: rgba(255, 255, 255, .025);
+  color: var(--muted); letter-spacing: .12em;
+}
+.ranking-cabecalho span:last-child { text-align: right; }
+
+/* Vazio POR AUSÊNCIA DE SERVIDOR, não por erro — nada de vermelho aqui. */
+.ranking-vazio {
+  display: grid; gap: 7px; place-content: center; justify-items: center;
+  padding: 26px 22px; text-align: center;
+}
+.ranking-vazio-icone { opacity: .45; }
+.ranking-vazio strong { color: #cfe0ee; font-size: 13px; }
+.ranking-vazio span { max-width: 62ch; color: var(--muted); line-height: 1.55; }
+.ranking-vazio-nota { color: #7f92a6; font-style: italic; }
+
+@media (max-width: 900px) {
+  .ranking-topo { grid-template-columns: minmax(0, 1fr); }
+  .ranking-relogio { justify-items: start; text-align: left; }
+  .ranking-abas { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

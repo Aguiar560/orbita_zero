@@ -420,6 +420,63 @@ moeda/serviço e mantém fundos escuros, seguindo a decisão de neon na borda.
 
 ---
 
+## Ranking — `id: 'ranking'`
+
+`ui/panels/RankingPanel.ts` · `sim/ranking.ts` · `data/temporadas.ts`
+
+Placares **sazonais** e **mundiais**. Cinco seções, uma por eixo de progresso:
+
+| seção | mede | detalhe |
+|---|---|---|
+| **Provação** | maior andar VENCIDO | chegar sem vencer não conta |
+| **Galáxia** | setor mais distante alcançado | recuar para farmar não custa posição |
+| **Personagem** | nível de comando | empate desfeito pelo XP dentro do nível |
+| **Naves** | nível de cada casco | **filtro por nave**, só as da frota |
+| **Missões** | contratos entregues | aceita ou em andamento não conta |
+
+A regra de cada placar mora em `sim/ranking.ts`, não na tela: "melhor setor" é
+`bestSectorEver` e não `run.sector`, e uma tela que decidisse isso sozinha
+divergiria do que o servidor for pontuar.
+
+### A temporada e o relógio de Brasília
+
+Temporadas de **28 dias**, ancoradas em 01/09/2026 00:00 de Brasília. Vinte e
+oito e não um mês de calendário: mês tem 28, 30 ou 31 dias, e uma temporada de
+fevereiro valeria 10% menos que uma de março. Num placar de progressão, tempo
+É pontuação.
+
+O fuso é fixo em **UTC−3**, sem consultar o relógio da máquina. Uma temporada
+que virasse no fuso de cada um teria fim diferente para cada jogador, e o
+último dia — que é quando o placar decide — valeria mais para uns. O Brasil não
+usa horário de verão desde 2019; se voltar, `data/temporadas.ts` é o único
+lugar a mexer.
+
+Um defeito pego na verificação: a conta regressiva da pré-temporada apontava
+para o FIM da temporada 1 em vez do começo — medido a 7 dias da âncora, a tela
+dizia "começa em 34d". `temporadaEm` devolve a temporada 1 também antes da
+âncora, então contar sempre até `fim` estava errado por construção.
+
+### A lista está vazia, e a tela diz por quê
+
+**Placar mundial precisa de back-end, e ele não existe**: o jogo não tem conta,
+não tem save em nuvem e não tem para onde enviar marca nenhuma.
+
+Havia duas saídas ruins. Esconder a tela até o servidor existir — e o jogador
+não saberia que o esforço dele será pontuado, que é justamente o que faz valer
+a pena subir um andar a mais. Ou preencher a lista com nomes inventados — e ele
+decidiria o que jogar comparando-se com gente que não existe, e descobriria a
+mentira no dia em que o placar de verdade chegasse.
+
+A terceira é a implementada: estrutura inteira de pé, a marca REAL dele em cada
+eixo com peso visual de resultado, e uma linha dizendo o que falta. A área da
+lista tem cabeçalho de colunas de verdade, para o formato do que vem ficar
+visível — um retângulo vazio pareceria erro.
+
+**Falta o ícone da aba.** Usa `geral/b_4` do atlas por enquanto; as outras
+treze abas têm arte própria em `assets-static/ui/menu/`.
+
+---
+
 ## Códex — `id: 'codex'`
 
 `ui/panels/CodexPanel.ts` · camada · seis arquivos internos

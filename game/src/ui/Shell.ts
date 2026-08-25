@@ -26,6 +26,7 @@ import { TreePanel } from './panels/TreePanel';
 import { FleetPanel } from './panels/FleetPanel';
 import { ChestsPanel } from './panels/ChestsPanel';
 import { CodexPanel } from './panels/CodexPanel';
+import { RankingPanel } from './panels/RankingPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { LaboratorioPanel } from './panels/LaboratorioPanel';
 import { RESOURCE_META } from './recursos';
@@ -60,6 +61,7 @@ export class Shell {
     new ChestsPanel(),
     new ShopPanel(),
     new CodexPanel(),
+    new RankingPanel(),
     ...(LAB_CODE_WRITE_AVAILABLE ? [new LaboratorioPanel()] : []),
   ];
 
