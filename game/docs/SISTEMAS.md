@@ -252,6 +252,87 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Densidade da onda — quantos inimigos entram
+
+O começo do jogo estava vazio e acabava antes de começar. Medido: **o setor 1
+inteiro em 4,0 segundos**, com ondas de 2 a 5 inimigos. Só por volta do setor
+20 o ritmo ficava decente.
+
+| | antes | depois |
+|---|---|---|
+| ondas do setor 1 | 2 · 5 · 5 · 5 · 5 · 3 | 23 · 50 · 51 · 50 · 51 · 15 |
+| total do setor 1 | 25 | **240** |
+| setor 1 completo | 4,0 s | **70,1 s** |
+| `DENSIDADE_INICIO` | 5 | 50 |
+| `DENSIDADE_FIM` | 20 | 90 |
+
+O adensamento é de **10× no setor 1** e 4,6× no 300 — a curva sobe menos no
+fim porque lá a contagem já era razoável.
+
+### Três coisas tiveram de acompanhar, e cada uma por um motivo diferente
+
+**A XP não pode seguir a contagem.** Ela é fixa por abate
+(`grantXp(2 + bounty × 0,25)` em `rewardKill`), então dez vezes mais inimigos
+seriam dez vezes mais XP — e a densidade, que é escolha de RITMO, viraria
+alavanca de progressão. Agora o abate divide um ORÇAMENTO da onda:
+
+```
+grantXp((2 + bounty × 0,25) × abatesDeReferencia / unidades)
+```
+
+`abatesDeReferencia` é a contagem que a onda teria com a densidade antiga —
+a curva velha ficou congelada em `densidadeParaXp` só para isto. Um divisor
+constante não serviria: o adensamento não é uniforme. Verificado: a XP bruta
+de um setor é **idêntica** antes e depois (setor 1: 1,424; setor 3: 3,247).
+
+Recursos já eram invariantes — `rewardKill` usa `share = 1/unidades`.
+
+**A pressão também é por cabeça.** Sem dividir, 10× inimigos seriam 10×
+projéteis em tela: o pedido era mais alvos, não parede de tiro. `pressao` é
+multiplicada por `abatesDeReferencia / unidades`, então o que a onda cospe por
+segundo continua o mesmo — muda em quantas bocas. No setor 1 isso dá 0,04 por
+inimigo contra 121 inimigos.
+
+**O caminho abstrato precisou aprender a entrada.** A cena solta a onda em
+levas de 4 a 8 a cada 1,1–2,4 s, e com a onda adensada é ISSO que determina a
+duração no começo do jogo: no setor 1 o inimigo tem 0,2 de vida e morre
+instantaneamente — o que se espera é ele chegar.
+
+`abstractTick` matava por dano puro e limparia o setor 1 em 0,4 s contra os
+70 s do jogo ao vivo. Ficar offline viraria o jeito rápido de progredir. Agora
+o abate tem dois tetos: `min(dano/vidaUnitária, TAXA_DE_ENTRADA)`. As
+constantes da leva saíram do `WaveDirector` para `curvas.ts` junto — número de
+balanceamento não mora dentro de uma cena.
+
+### Um bug latente que o adensamento tornou alcançável
+
+O pool de inimigos tem teto e `spawn` devolve `null` quando enche. O director
+fazia `break` e **avançava o cursor mesmo assim** — o resto do grupo sumia do
+cronograma com `pending` descontado só do que nasceu, e a onda ficava devendo
+inimigos que nunca viriam. Com ondas de até 240 num pool de 200 isso deixou de
+ser hipotético. Agora o grupo encolhe e espera a próxima volta; o pool subiu
+para 260.
+
+### O custo, medido e não escondido
+
+Onda mais longa é mais tempo sob fogo. `incomingDps` é uma taxa fixa (1,5
+acertos/s), então o dano recebido por onda cresce com a duração:
+
+| setor | vida mínima antes | vida mínima depois | mortes |
+|---|---|---|---|
+| 1 | 98% | 83% | 0 → 0 |
+| 3 | 90% | 52% | 0 → 0 |
+| 5 | 36% | **0%** | **0 → 3** |
+
+Os setores 8+ já morriam antes do adensamento, na mesma medida — isso é a nave
+sem equipamento da régua, não a densidade.
+
+O setor 5 é o ponto a vigiar. Não foi compensado de propósito: mexer em
+`curvaDano` para acomodar a densidade misturaria dois sistemas calibrados
+separadamente, e o teste de ritmo (`golpesAteMorrer` entre 8 e 90) continua
+passando — ele mede letalidade por golpe, e é cega para duração.
+
+
 ### A inversão que salvou tudo
 
 ```

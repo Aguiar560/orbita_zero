@@ -90,7 +90,7 @@ import {
   type CustoDeModulacao, type OperacaoDeModulacaoId,
 } from '@data/balance/modulacao';
 import { aplicarModulacao, type ResultadoDeModulacao } from './modulacao';
-import { NIVEL_MAX, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
+import { NIVEL_MAX, TAXA_DE_ENTRADA, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
 
 /**
  * Multiplicador global de XP.
@@ -1121,10 +1121,18 @@ export class Sim {
     const s = this.stats;
     this.grantCarga('nucleo', e.bounty * fraction * 0.34 * (1 + s.nucleoGanho));
     this.grantCarga('sucata', e.bounty * fraction * 1.6 * (1 + s.sucataGanho));
-    // XP por abate não usa `fraction`: a fatia de um inimigo numa onda de 20 é
-    // pequena demais para render patente, e a patente deve premiar tempo de
-    // combate, não o tamanho do alvo.
-    this.grantXp(2 + e.bounty * 0.25);
+    // XP por abate divide um ORÇAMENTO DA ONDA, em vez de pagar por cabeça.
+    //
+    // Continua sem usar `fraction` — a fatia de um inimigo numa onda de 200 é
+    // pequena demais para render patente, e a patente premia tempo de combate,
+    // não o tamanho do alvo. Mas fixa por cabeça ela também não pode ser: a
+    // onda passou a ter dez vezes mais inimigos, e isso multiplicaria a
+    // progressão por dez sem ninguém ter pedido.
+    //
+    // O total da onda é `abatesDeReferencia × (2 + bounty × 0,25)` — exatamente
+    // o que ela pagava antes do adensamento, em qualquer setor e qualquer
+    // perfil.
+    this.grantXp((2 + e.bounty * 0.25) * (e.abatesDeReferencia / Math.max(1, e.unidades)));
     this.state.stats.kills++;
     // O fato do abate. O elemento sai do ENCONTRO e não do alvo individual
     // porque `rewardKill` recebe só a fração; levar a def do inimigo até aqui é
@@ -1305,7 +1313,18 @@ export class Sim {
     // Converte dano por segundo em ABATES por segundo, para o caminho abstrato
     // medir a mesma coisa que a cena mede. Sem isso os dois divergiriam: um
     // contaria dano e o outro naves destruídas.
-    run.restam = Math.max(0, run.restam - (dps(this.stats) / Math.max(1, this.unitHpMedio)) * dt);
+    //
+    // E o abate tem DOIS tetos, não um. O dano é o teto óbvio. O outro é a
+    // ENTRADA: não se mata quem ainda não chegou, e a cena solta a onda em
+    // levas. Enquanto a vida por inimigo era alta o dano mandava sempre e o
+    // segundo teto não existia na prática — com a onda adensada ele passou a
+    // mandar no começo do jogo, onde o inimigo tem 0,2 de vida e o que se
+    // espera é ele aparecer.
+    //
+    // Sem este teto aqui, ficar offline limparia o setor 1 em 0,4s contra os
+    // 70s do jogo ao vivo — e a aba fechada viraria o jeito rápido de subir.
+    const porDano = dps(this.stats) / Math.max(0.01, this.unitHpMedio);
+    run.restam = Math.max(0, run.restam - Math.min(porDano, TAXA_DE_ENTRADA) * dt);
     run.elapsed += dt;
 
     /**

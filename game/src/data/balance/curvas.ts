@@ -242,12 +242,59 @@ export const CHEFE_BONUS_RECOMPENSA = 1.5;
  * que se fez com a dificuldade. O total continua sendo `curvaHp`, então o
  * tempo-alvo da onda não muda; o que muda é a cara dela.
  */
-export const DENSIDADE_INICIO = 5;
-export const DENSIDADE_FIM = 20;
+export const DENSIDADE_INICIO = 50;
+export const DENSIDADE_FIM = 90;
 export const DENSIDADE_K = 110;
 
 export const densidadeAlvo = (setor: number): number =>
   DENSIDADE_INICIO + (DENSIDADE_FIM - DENSIDADE_INICIO) * (1 - Math.exp(-setor / DENSIDADE_K));
+
+/**
+ * A densidade que a XP de abate continua enxergando.
+ *
+ * E a curva ANTERIOR ao adensamento, congelada de proposito. A XP por abate
+ * e fixa por inimigo, entao dez vezes mais inimigos seriam dez vezes mais XP
+ * — e a densidade, que e uma escolha de RITMO, viraria alavanca de
+ * progressao.
+ *
+ * Guardar a curva velha em vez de um divisor unico e o que torna isto exato:
+ * o adensamento nao e uniforme (10x no setor 1, 4,6x no 300), entao nenhum
+ * divisor constante manteria a XP igual nas duas pontas.
+ *
+ * So `rewardKill` usa. Se um dia a XP de abate deixar de ser fixa por
+ * inimigo, isto some junto.
+ */
+/**
+ * Como a onda ENTRA em cena.
+ *
+ * Estavam soltos dentro do `WaveDirector` como `rng.int(4, 8)` e
+ * `rng.range(1.1, 2.4)`. Vieram para ca por dois motivos.
+ *
+ * O primeiro e regra de projeto: numero de balanceamento nao mora dentro de
+ * uma cena.
+ *
+ * O segundo e concreto e foi o que obrigou. Com a onda adensada, o que
+ * determina a duracao de um setor no comeco do jogo deixou de ser o dano do
+ * jogador e passou a ser a ENTRADA: no setor 1 a onda tem 50 inimigos de 0,2
+ * de vida, que morrem instantaneamente — o que se espera e eles chegarem. E
+ * o caminho abstrato (progresso offline) precisa saber disso, senao ele
+ * limpa o setor 1 em 0,4s enquanto ao vivo leva 70s, e ficar offline vira o
+ * jeito rapido de progredir.
+ */
+export const LEVA_MIN = 4;
+export const LEVA_MAX = 8;
+export const LEVA_INTERVALO_MIN = 1.1;
+export const LEVA_INTERVALO_MAX = 2.4;
+
+/** Inimigos por segundo que a cena consegue colocar em campo, na media. */
+export const TAXA_DE_ENTRADA =
+  ((LEVA_MIN + LEVA_MAX) / 2) / ((LEVA_INTERVALO_MIN + LEVA_INTERVALO_MAX) / 2);
+
+export const DENSIDADE_XP_INICIO = 5;
+export const DENSIDADE_XP_FIM = 20;
+
+export const densidadeParaXp = (setor: number): number =>
+  DENSIDADE_XP_INICIO + (DENSIDADE_XP_FIM - DENSIDADE_XP_INICIO) * (1 - Math.exp(-setor / DENSIDADE_K));
 
 /**
  * Cadência de tiro dos inimigos, como multiplicador.

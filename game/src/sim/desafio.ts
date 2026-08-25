@@ -183,6 +183,9 @@ export function encontroDoDesafio(_state: GameState, d: DesafioAtivo): Encounter
      */
     hpPool: sectorHp(setor) * boss.hp * VIDA_DO_CHEFE,
     unidades: 1,
+    // O chefe da Provação é uma cabeça só: a XP dele não passa pelo orçamento
+    // de onda, porque não há onda para dividir.
+    abatesDeReferencia: 1,
     squad: [],
     boss,
     damage: sectorDamage(setor) * boss.dano,

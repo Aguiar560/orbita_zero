@@ -1,3 +1,4 @@
+import { TAXA_DE_ENTRADA } from '@data/balance/curvas';
 import { describe, expect, it } from 'vitest';
 import { TREE_NODES, custoDoNo } from '@data/tree';
 import { allocatePath, pointsAvailable, pointsForLevel } from '@sim/tree';
@@ -127,13 +128,25 @@ describe('progresso do encontro (§16)', () => {
    * enquanto a cena conta abates, o progresso mudaria de ritmo conforme o
    * jogador estivesse com o jogo aberto ou não.
    */
-  it('o caminho abstrato limpa o encontro no tempo que o dano por segundo prevê', () => {
+  it('o caminho abstrato limpa o encontro no tempo que o jogo ao vivo levaria', () => {
     // Setor 1 de propósito: é o único ponto da curva onde a nave SEM
     // equipamento é a premissa. Num setor adiantado, um jogador nu levaria
     // horas — e o teste mediria a falta de itens, não a conversão de dano em
     // abates, que é o que interessa aqui.
     const s = sim(1);
-    const esperado = s.encounter.hpPool / dps(s.stats);
+
+    // O tempo é o MAIOR entre dois tetos, e o teste existe para os dois
+    // continuarem valendo. O dano é o teto óbvio. O outro é a ENTRADA: não se
+    // mata quem ainda não chegou, e a cena solta a onda em levas.
+    //
+    // Antes do adensamento este teste só media o primeiro, porque o inimigo
+    // do setor 1 tinha 2,0 de vida e o dano sempre mandava. Hoje ele tem 0,2 e
+    // quem manda é a entrada — se o abstrato ignorasse isso, ficar offline
+    // limparia o setor 1 em 0,4s contra os ~15s de uma onda ao vivo, e a aba
+    // fechada seria o jeito rápido de progredir.
+    const porDano = s.encounter.hpPool / dps(s.stats);
+    const porEntrada = s.encounter.unidades / TAXA_DE_ENTRADA;
+    const esperado = Math.max(porDano, porEntrada);
     const ondaAntes = s.state.run.wave;
 
     let t = 0;
@@ -144,7 +157,7 @@ describe('progresso do encontro (§16)', () => {
     }
 
     expect(s.state.run.wave, 'o encontro precisa ter sido concluído').not.toBe(ondaAntes);
-    expect(Math.abs(t / esperado - 1), `levou ${t.toFixed(1)}s contra ${esperado.toFixed(1)}s`)
+    expect(Math.abs(t / esperado - 1), `levou ${t.toFixed(1)}s contra ${esperado.toFixed(1)}s (dano ${porDano.toFixed(1)}s, entrada ${porEntrada.toFixed(1)}s)`)
       .toBeLessThan(0.15);
   });
 });

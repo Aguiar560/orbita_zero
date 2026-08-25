@@ -120,10 +120,10 @@ export const REDUCAO_DANO_MAX = 0.8;
  * pediria centenas de naves. O pool de inimigos comporta 200; este limite fica
  * bem abaixo para sobrar espaço aos lacaios que os chefes invocam.
  */
-export const INIMIGOS_POR_ONDA_MAX = 60;
+export const INIMIGOS_POR_ONDA_MAX = 240;
 
 /** Teto de inimigos do mesmo tipo num grupo, para a formação continuar legível. */
-export const INIMIGOS_POR_GRUPO_MAX = 30;
+export const INIMIGOS_POR_GRUPO_MAX = 160;
 
 /**
  * Aplica todos os limites, no lugar.

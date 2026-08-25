@@ -4,7 +4,7 @@ import { enemiesForSector, type EnemyDef } from '@data/enemies';
 import {
   CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_EXIGENCIA, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
   RECOMPENSA_FRACAO, WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
-  densidadeAlvo, pressaoAlvo,
+  densidadeAlvo, densidadeParaXp, pressaoAlvo,
 } from '@data/balance/curvas';
 import { INIMIGOS_POR_GRUPO_MAX, INIMIGOS_POR_ONDA_MAX } from '@data/balance/limites';
 import type { EncounterKind, GameState } from './types';
@@ -34,6 +34,16 @@ export interface Encounter {
   hpPool: number;
   /** Quantos inimigos precisam ser abatidos para o encontro acabar. */
   unidades: number;
+  /**
+   * Quantos abates esta onda PAGA de XP, independente de em quantos inimigos
+   * ela vem. E a contagem que a onda teria com a densidade antiga.
+   *
+   * Existe porque a XP por abate e fixa por inimigo: sem isto, adensar a onda
+   * multiplicaria a progressao junto. `rewardKill` divide um orcamento em
+   * vez de pagar por cabeca, e o total da onda fica identico ao de antes —
+   * exatamente, nao por aproximacao.
+   */
+  abatesDeReferencia: number;
   /** Composição da onda: tipos e quantidades. */
   squad: { def: EnemyDef; count: number }[];
   boss: BossDef | null;
@@ -79,6 +89,7 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
       hpPool,
       // O chefe é uma unidade só: o encontro acaba quando ele cai.
       unidades: 1,
+      abatesDeReferencia: 1,
       squad: [],
       damage: baseDamage * boss.dano * CHEFE_EXIGENCIA,
       // O chefe tem cadência própria por fase; a pressão do setor não se aplica.
@@ -127,6 +138,10 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     INIMIGOS_POR_ONDA_MAX,
     Math.max(1, Math.round(densidadeAlvo(sector) * perfil.densidade)),
   );
+  // A referencia de XP acompanha o PERFIL tambem: hoje uma onda de enxame paga
+  // mais XP que uma de vanguarda porque tem mais cabecas, e adensar nao pode
+  // apagar essa diferenca sem querer.
+  const abatesDeReferencia = Math.max(1, Math.round(densidadeParaXp(sector) * perfil.densidade));
   const totalWeight = chosen.reduce((s, e) => s + e.hp, 0) || 1;
 
   const squad = chosen.map((def) => {
@@ -137,15 +152,27 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
     return { def, count: Math.min(INIMIGOS_POR_GRUPO_MAX, count) };
   });
 
+  // A contagem REAL, depois do teto por grupo e dos arredondamentos. É ela que
+  // divide a pressão e a XP — usar o alvo teórico deixaria as duas erradas
+  // justamente nas ondas que bateram no teto.
+  const alvoFinal = squad.reduce((s, g) => s + g.count, 0);
+
   return {
     sector, wave, kind, boss: null,
     hpPool: waveHp,
-    unidades: squad.reduce((s, g) => s + g.count, 0),
+    unidades: alvoFinal,
+    abatesDeReferencia,
     squad,
     damage: baseDamage,
     // A pressão do setor, temperada pelo perfil, é o que faz uma onda de poucos
     // inimigos ser tão perigosa quanto uma de muitos.
-    pressao: pressaoAlvo(sector) * perfil.pressao,
+    //
+    // E é dividida pelo adensamento pelo mesmo motivo que a XP: ela é cadência
+    // POR INIMIGO, e a onda passou a ter dez vezes mais cabeças. Sem dividir, o
+    // adensamento multiplicaria por dez os projéteis em tela — o jogador pediu
+    // mais alvos, não uma parede de tiro. O que a onda cospe por segundo
+    // continua sendo o que cuspia antes; o que muda é em quantas bocas.
+    pressao: pressaoAlvo(sector) * perfil.pressao * (abatesDeReferencia / Math.max(1, alvoFinal)),
     perfil: perfil.nome,
     bounty: RECOMPENSA_FRACAO * waveHp,
     ilvl: elite ? ilvl + 2 : ilvl,

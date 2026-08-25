@@ -217,7 +217,7 @@ export function createBulletPool(capacity = 1400): Pool<Bullet> {
   );
 }
 
-export function createEnemyPool(capacity = 200): Pool<Enemy> {
+export function createEnemyPool(capacity = 260): Pool<Enemy> {
   let nextId = 1;
   return new Pool<Enemy>(
     () => ({

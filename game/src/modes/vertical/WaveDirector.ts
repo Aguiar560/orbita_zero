@@ -2,6 +2,7 @@
 import { Rng, clamp } from '@core/math';
 import type { Encounter } from '@sim/progression';
 import { unitHp } from '@sim/progression';
+import { LEVA_INTERVALO_MAX, LEVA_INTERVALO_MIN, LEVA_MAX, LEVA_MIN } from '@data/balance/curvas';
 import type { EnemyDef } from '@data/enemies';
 import { VIEW, type Enemy } from './entities';
 
@@ -122,7 +123,7 @@ export class WaveDirector {
       // Grupos grandes chegam em levas de até 8 para não entupir a tela.
       let left = entry.count;
       while (left > 0) {
-        const size = Math.min(left, rng.int(4, 8));
+        const size = Math.min(left, rng.int(LEVA_MIN, LEVA_MAX));
         left -= size;
         this.groups.push({
           def: entry.def,
@@ -132,7 +133,7 @@ export class WaveDirector {
           gap: rng.range(0.06, 0.16),
         });
         this.pending += size;
-        at += rng.range(1.1, 2.4) * pace;
+        at += rng.range(LEVA_INTERVALO_MIN, LEVA_INTERVALO_MAX) * pace;
       }
     }
     this.groups.sort((a, b) => a.at - b.at);
@@ -165,16 +166,29 @@ export class WaveDirector {
     let born = 0;
     while (this.cursor < this.groups.length && this.groups[this.cursor]!.at <= this.timer) {
       const group = this.groups[this.cursor]!;
+      const nasceram = this.spawnGroup(group, enc, spawn);
+      born += nasceram;
+      // O pool tem teto, e `spawn` devolve null quando enche. Antes o cursor
+      // avancava mesmo assim e o restante do grupo sumia do cronograma — com
+      // `pending` ja descontado so do que nasceu, a onda ficava devendo
+      // inimigos que nunca viriam. Com ondas de ate 240 num pool de 200 isso
+      // deixou de ser hipotetico. Agora o grupo encolhe e espera a proxima
+      // volta, quando alguem ja tera morrido.
+      if (nasceram < group.count) {
+        group.count -= nasceram;
+        break;
+      }
       this.cursor++;
-      born += this.spawnGroup(group, enc, spawn);
     }
 
     // Rede de segurança: se a tela esvaziou mas ainda há grupos agendados,
     // adianta o próximo. Evita esperas mortas quando o jogador limpa tudo cedo.
     if (born === 0 && pool.size === 0 && this.cursor < this.groups.length) {
       const group = this.groups[this.cursor]!;
-      this.cursor++;
-      born += this.spawnGroup(group, enc, spawn);
+      const nasceram = this.spawnGroup(group, enc, spawn);
+      born += nasceram;
+      if (nasceram < group.count) group.count -= nasceram;
+      else this.cursor++;
     }
     return born;
   }
