@@ -4,6 +4,7 @@ import {
   dataDeBrasilia, horaDeBrasilia, segundosAteVirar, temporadaComecou, temporadaEm,
 } from '@data/temporadas';
 import { pilotoDe } from '@data/pilotos';
+import { DEMO_ATIVA, placarDeDemonstracao } from '@sim/ranking-demo';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
@@ -123,7 +124,7 @@ export class RankingPanel implements Panel {
         ),
       ),
 
-      this.listaPendente(placar.nome),
+      DEMO_ATIVA ? this.listaDemo(sim, placar.nome, casco) : this.listaPendente(placar.nome),
     );
   }
 
@@ -143,6 +144,59 @@ export class RankingPanel implements Panel {
         return o;
       })),
       h('span.muted.tiny', { text: `${naves.length} na frota` }),
+    );
+  }
+
+  /**
+   * A lista com jogadores FICTÍCIOS, para avaliar o layout.
+   *
+   * Andaime, e a tela diz isso num selo que não dá para não ver — o risco de
+   * dado falso num placar é o jogador se comparar com gente que não existe.
+   * `DEMO_ATIVA` desliga tudo numa linha.
+   *
+   * Mostra o topo E a linha do jogador na posição real dele, separadas por uma
+   * quebra. Só o topo esconderia justamente o que precisa ser julgado: como a
+   * própria linha se destaca quando não está entre os primeiros.
+   */
+  private listaDemo(sim: Sim, nome: string, casco: string | undefined): HTMLElement {
+    const { topo, eu, total } = placarDeDemonstracao(sim.state, this.secao, casco, Date.now());
+    const foraDoTopo = eu.posicao > topo.length;
+
+    return h('.ranking-lista', {},
+      h('.ranking-cabecalho', {},
+        h('span.tiny', { text: '#' }),
+        h('span.tiny', { text: 'PILOTO' }),
+        h('span.tiny', { text: nome.toUpperCase() }),
+      ),
+      h('.ranking-linhas', {}, ...topo.map((l) => this.linha(l))),
+      // A linha do jogador fica FORA da rolagem. Ela é a que ele abriu a tela
+      // para ver, e dentro do container ela nasce abaixo da dobra — medido, com
+      // doze linhas de topo era preciso rolar para se encontrar. É também como
+      // todo placar de verdade se comporta.
+      ...(foraDoTopo
+        ? [h('.ranking-eu', {},
+            h('.ranking-quebra', {}, h('span.tiny', { text: `${total - topo.length} pilotos entre você e o topo` })),
+            this.linha(eu),
+          )]
+        : []),
+      h('.ranking-demo-aviso', {},
+        h('span.ranking-demo-selo', { text: 'DEMONSTRAÇÃO' }),
+        h('span.tiny', {
+          text: 'Estes pilotos não existem. A lista é gerada no seu navegador para dar forma à tela enquanto o placar mundial não tem servidor — '
+            + 'a SUA marca, acima, é a única coisa real aqui.',
+        }),
+      ),
+    );
+  }
+
+  private linha(l: ReturnType<typeof placarDeDemonstracao>['topo'][number]): HTMLElement {
+    return h(`.ranking-linha${l.euMesmo ? '.eu' : ''}`, {},
+      h('span.ranking-pos', { text: `${l.posicao}` }),
+      h('.ranking-nome', {},
+        h('strong', { text: l.nome, style: { color: l.cor } as Partial<CSSStyleDeclaration> }),
+        ...(l.detalhe ? [h('span.muted.tiny', { text: l.detalhe })] : []),
+      ),
+      h('strong.ranking-pontos', { text: l.valor > 0 ? fmt(l.valor) : '—' }),
     );
   }
 

@@ -5450,3 +5450,65 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   .ranking-relogio { justify-items: start; text-align: left; }
   .ranking-abas { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── linhas do placar ─────────────────────────────────────────────────────── */
+
+.ranking-lista { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.ranking-linhas { min-height: 0; overflow-y: auto; }
+
+/* As mesmas trilhas do cabeçalho, escritas uma vez só: se as duas listas de
+ * colunas divergirem, o número desalinha do rótulo e ninguém repara logo. */
+.ranking-cabecalho, .ranking-linha {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) 110px; gap: 10px; align-items: center;
+}
+.ranking-linha {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(107, 139, 159, .12);
+}
+.ranking-linha:last-child { border-bottom: 0; }
+.ranking-pos { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.ranking-nome { display: grid; gap: 1px; min-width: 0; }
+.ranking-nome strong { font: 700 12.5px/1.2 'Chakra Petch', sans-serif; letter-spacing: .04em; }
+.ranking-pontos { text-align: right; color: #dbe9f5; font-variant-numeric: tabular-nums; font-size: 14px; }
+
+/* Os três primeiros ganham cor no número da posição, e só ali: pódio é leitura
+ * de relance, e colorir a linha inteira competiria com a cor do piloto. */
+.ranking-linha:nth-child(1) .ranking-pos { color: #ffd76a; font-weight: 700; }
+.ranking-linha:nth-child(2) .ranking-pos { color: #d6e2ee; font-weight: 700; }
+.ranking-linha:nth-child(3) .ranking-pos { color: #e0a878; font-weight: 700; }
+
+.ranking-linha.eu {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.ranking-linha.eu .ranking-pos, .ranking-linha.eu .ranking-pontos { color: #eaf6ff; font-weight: 700; }
+/* Bloco próprio, FORA da rolagem: é a linha que o jogador abriu a tela para
+ * ver, e dentro do container ela nascia abaixo da dobra. */
+.ranking-eu { border-top: 1px solid var(--painel-linha); }
+
+/* A quebra diz QUANTA gente foi pulada: sem isso o salto de 12 para 900
+ * pareceria erro de renderização. */
+.ranking-quebra {
+  display: grid; place-items: center;
+  padding: 7px 14px;
+  border-top: 1px dashed rgba(107, 139, 159, .3);
+  border-bottom: 1px dashed rgba(107, 139, 159, .3);
+  background: rgba(0, 0, 0, .22);
+}
+.ranking-quebra span { color: #7f92a6; letter-spacing: .06em; }
+
+/* O aviso é âmbar e fica COLADO na lista, não no rodapé do painel: ele
+ * qualifica estas linhas, e longe delas viraria letra miúda que ninguém liga
+ * ao que está vendo. */
+.ranking-demo-aviso {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center;
+  padding: 9px 14px;
+  border-top: 1px solid rgba(255, 196, 92, .28);
+  background: rgba(255, 176, 64, .07);
+}
+.ranking-demo-selo {
+  padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  background: rgba(255, 196, 92, .18); border: 1px solid rgba(255, 196, 92, .45);
+  color: #ffcf7a; font: 700 9.5px/1.5 'Chakra Petch', sans-serif; letter-spacing: .12em;
+}
+.ranking-demo-aviso span:last-child { color: #b9a789; line-height: 1.5; }

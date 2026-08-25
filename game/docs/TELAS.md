@@ -456,21 +456,51 @@ para o FIM da temporada 1 em vez do começo — medido a 7 dias da âncora, a te
 dizia "começa em 34d". `temporadaEm` devolve a temporada 1 também antes da
 âncora, então contar sempre até `fim` estava errado por construção.
 
-### A lista está vazia, e a tela diz por quê
+### A lista tem pilotos FICTÍCIOS, e a tela diz isso
 
 **Placar mundial precisa de back-end, e ele não existe**: o jogo não tem conta,
 não tem save em nuvem e não tem para onde enviar marca nenhuma.
 
-Havia duas saídas ruins. Esconder a tela até o servidor existir — e o jogador
-não saberia que o esforço dele será pontuado, que é justamente o que faz valer
-a pena subir um andar a mais. Ou preencher a lista com nomes inventados — e ele
-decidiria o que jogar comparando-se com gente que não existe, e descobriria a
-mentira no dia em que o placar de verdade chegasse.
+Uma lista vazia, porém, não deixa julgar espaçamento, truncamento de nome,
+alinhamento de número nem o destaque da própria linha — coisas que só aparecem
+com a lista cheia. Então `sim/ranking-demo.ts` gera doze linhas de exemplo.
 
-A terceira é a implementada: estrutura inteira de pé, a marca REAL dele em cada
-eixo com peso visual de resultado, e uma linha dizendo o que falta. A área da
-lista tem cabeçalho de colunas de verdade, para o formato do que vem ficar
-visível — um retângulo vazio pareceria erro.
+O risco de dado falso num placar é o jogador se comparar com gente que não
+existe e decidir o que jogar com base nisso. Três travas contra isso:
+
+1. **`DEMO_ATIVA` desliga tudo numa linha.** É o interruptor a virar quando o
+   servidor entrar — e antes de qualquer build pública. Há teste cobrando que a
+   chave continue existindo.
+2. **Um selo âmbar colado na lista** diz que os pilotos não existem. Colado, e
+   não no rodapé do painel: longe das linhas viraria letra miúda que ninguém
+   liga ao que está vendo.
+3. **Os nomes são indicativos de voo inventados** (`Corvo Sigma`, `Vega Ômega`),
+   sem parecer conta de pessoa real.
+
+É **determinístico**, semeado por placar + casco + número da temporada. O painel
+reconstrói a ~5 Hz; com números novos a cada quadro a lista tremeria e não
+daria para avaliar nada. A lista muda quando a temporada vira, que é o que o
+placar de verdade vai fazer.
+
+A posição do jogador sai da distância entre a marca dele e o teto do placar.
+É conta de fachada, mas **monótona**: marca maior sempre dá posição melhor —
+há teste para isso, porque a demonstração pode ser falsa nos números e não
+pode ser falsa na direção.
+
+| placar | teto de exemplo | sua posição hoje |
+|---|---|---|
+| Provação | 100 | #2317 (sem andar vencido) |
+| Galáxia | 300 | #2165 (setor 2) |
+| Personagem | 300 | #1761 (nível 18) |
+| Naves | 60 | **#745** (nível 36) |
+| Missões | 140 | #2217 (nenhuma entregue) |
+
+Dois defeitos pegos na verificação: **"Lupus Sigma" saía em 1º e em 10º** na
+primeira lista gerada — num placar, nome repetido não lê como coincidência, lê
+como a mesma conta contada duas vezes. E a linha do jogador nascia **abaixo da
+dobra**, dentro do container de rolagem: era preciso rolar para se encontrar,
+justamente na linha que ele abriu a tela para ver. Ela saiu da rolagem e ganhou
+bloco próprio, como em todo placar de verdade.
 
 **Falta o ícone da aba.** Usa `geral/b_4` do atlas por enquanto; as outras
 treze abas têm arte própria em `assets-static/ui/menu/`.
