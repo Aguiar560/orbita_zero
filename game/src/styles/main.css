@@ -5867,3 +5867,24 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * de coluna, e na faixa horizontal ele deve mesmo ter a largura do conteúdo.
  */
 .elem-res { grid-template-columns: repeat(5, minmax(24px, 1fr)); }
+
+/*
+ * O pip de resistência não apaga mais.
+ *
+ * A opacidade carregava a intensidade e se voltava contra o próprio propósito:
+ * com 0% de resistência — o começo de jogo inteiro, e exatamente quando saber
+ * que se está exposto importa mais — os cinco ficavam a 35% e não se liam.
+ * Apagar o ícone escondia QUAL elemento é, que é a informação que nunca deveria
+ * sumir. Agora quem cresce é o preenchimento.
+ */
+.elem-pip { border-width: 1px; }
+.elem-pip .elem-icone {
+  /* Sombra um pouco mais forte que o padrão: aqui o ícone fica sobre um fundo
+   * que ganha cor conforme a resistência, e sem ela a arte encostaria no fundo
+   * da própria cor. */
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, .8));
+}
+.elem-pip .tiny { color: #8fa4b6; font-weight: 700; }
+/* Com resistência, o pip ganha um halo discreto — é o sinal de "aqui você está
+ * protegido", legível de relance sem precisar ler o número. */
+.elem-pip.tem { box-shadow: inset 0 0 10px rgba(255, 255, 255, .06); }

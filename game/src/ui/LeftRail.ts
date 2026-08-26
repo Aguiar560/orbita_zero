@@ -263,15 +263,34 @@ export class LeftRail {
       h('span.muted.tiny.elem-titulo', { text: 'RESISTÊNCIAS' }),
       h('.elem-res', {}, ...ELEMENTOS_RESISTIVEIS.map((e) => {
         const v = sim.resistance(e.id);
-        return h('.elem-pip', {
+        // A intensidade vai no FUNDO e na borda, nunca na opacidade do bloco.
+        //
+        // Era `opacity: 0.35 + resistência × 0.65`, e a conta se voltava contra o
+        // próprio propósito: com 0% de resistência — o começo de jogo inteiro, e
+        // exatamente quando saber que se está exposto importa mais — os cinco
+        // pips ficavam a 35% e não se liam. Apagar o ícone esconde QUAL elemento
+        // é, que é a informação que nunca deveria sumir.
+        //
+        // Agora o ícone fica sempre nítido e quem cresce é o preenchimento: um
+        // pip vazio lê como "nenhuma resistência", não como "não olhe para mim".
+        const forca = clamp01(v / 0.75);
+        return h(`.elem-pip${v > 0 ? '.tem' : ''}`, {
           title: `Resistência a ${e.name.toLowerCase()}: ${pct(v)}`,
-          style: { borderColor: e.color, opacity: String(0.35 + clamp01(v / 0.75) * 0.65) },
+          style: {
+            borderColor: `color-mix(in srgb, ${e.color} ${Math.round(35 + forca * 65)}%, transparent)`,
+            background: `color-mix(in srgb, ${e.color} ${Math.round(forca * 22)}%, rgba(255,255,255,.05))`,
+          } as Partial<CSSStyleDeclaration>,
         },
           // Ícone e não sigla, como no resto do jogo. Aqui a letra era pior que
           // em qualquer outro lugar: cinco delas lado a lado, em 14px, e o
           // jogador tinha de traduzir cada uma antes de comparar os números.
           iconeDeElemento(e.id, 14),
-          h('span.tiny', { text: pct(v, 0) }),
+          // O número é o valor exato; ele acende com a resistência, mas nunca
+          // abaixo do que se lê.
+          h('span.tiny', {
+            text: pct(v, 0),
+            style: { color: v > 0 ? e.color : undefined } as Partial<CSSStyleDeclaration>,
+          }),
         );
       })),
     );
