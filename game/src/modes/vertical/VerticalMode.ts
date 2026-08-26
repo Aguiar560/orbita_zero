@@ -1,4 +1,5 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
+import { ALFA_MAX_DE_CORPO, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, POEIRA, PROFUNDIDADE } from '@data/cenario';
 import {
   CLIMAS, CLIMA_POR_ID, DETRITOS_MAX, INTERVALO_MAX, INTERVALO_MIN,
   PERFIL_DE_DETRITO, VELOCIDADE_BASE, spriteDeDetrito, tamanhoSorteado,
@@ -71,6 +72,16 @@ export class VerticalMode {
   private readonly bullets = createBulletPool();
   private readonly enemies = createEnemyPool();
   private readonly pickups = createPickupPool();
+
+  /**
+   * Grãos de poeira do primeiro plano ambiental.
+   *
+   * Array simples e não um pool: eles nunca morrem, só voltam ao topo. Um pool
+   * serve para o que nasce e some, e isto é uma textura em movimento.
+   */
+  private readonly poeira = Array.from({ length: POEIRA.quantidade }, () => ({
+    x: 0, y: 0, raio: 1, alfa: 0.2, vel: 1, cor: '#dfe7f5',
+  }));
 
   /** Asteroides e lixo: obstáculo de cenário, sem recompensa nenhuma. */
   private readonly detritos = createDetritoPool();
@@ -397,6 +408,11 @@ export class VerticalMode {
 
     // A ordem de desenho é do fim para o começo, então o que precisa ficar
     // atrás de tudo vai para o fim da lista.
+    // Teto de presença. O corpo heroico entrava a 0,78 e competia com o
+    // gameplay; aplicar o limite aqui, e não em cada linha da tabela, garante
+    // que qualquer corpo novo nasça obedecendo — inclusive os que ainda não
+    // existem.
+    for (const p of props) p.alpha = Math.min(p.alpha, ALFA_MAX_DE_CORPO);
     this.skyProps = props.sort((a, b) => b.size * (1 - b.alpha) - a.size * (1 - a.alpha));
   }
 
@@ -467,6 +483,7 @@ export class VerticalMode {
     this.updateBullets(dt);
     this.updatePickups(dt);
     this.updateDetritos(dt);
+    this.updatePoeira(dt);
     this.particles.update(dt);
 
     this.checkCleared();
@@ -1552,6 +1569,35 @@ export class VerticalMode {
     p.vx = this.rng.range(-30, 30);
   }
 
+  /**
+   * Move a poeira e a recicla pelo topo.
+   *
+   * Três faixas de velocidade dentro da própria poeira, e não uma só: mesmo
+   * dentro de uma camada, a variação é o que impede a leitura de "folha de
+   * papel com pontos" e produz volume.
+   */
+  private updatePoeira(dt: number): void {
+    for (const g of this.poeira) {
+      if (g.vel <= 1) {
+        // Primeira volta: semeia em posição e faixa aleatórias.
+        g.x = this.rng.range(0, VIEW.w);
+        g.y = this.rng.range(0, VIEW.h);
+        g.raio = this.rng.range(POEIRA.raioMin, POEIRA.raioMax);
+        // Grão maior é mais perto: mais rápido e mais opaco. É a mesma
+        // relação que o parallax usa entre camadas, aplicada dentro de uma.
+        const perto = (g.raio - POEIRA.raioMin) / (POEIRA.raioMax - POEIRA.raioMin);
+        g.vel = POEIRA.velocidade * PROFUNDIDADE.ambiente * (0.55 + perto * 0.9);
+        g.alfa = POEIRA.alfaMax * (0.35 + perto * 0.65);
+        continue;
+      }
+      g.y += g.vel * dt;
+      if (g.y - g.raio > VIEW.h) {
+        g.y = -g.raio;
+        g.x = this.rng.range(0, VIEW.w);
+      }
+    }
+  }
+
   // ── detritos: o cenário que atrapalha ───────────────────────────────────
 
   /**
@@ -1997,6 +2043,65 @@ export class VerticalMode {
       const escala = prop.size / Math.max(found.frame.sw, found.frame.sh);
       s.sprite(prop.key, prop.fx * VIEW.w, prop.y + prop.size / 2, { scale: escala, alpha: prop.alpha });
     }
+
+    this.rebaixarCenario(s);
+    this.drawPoeira(s);
+  }
+
+  /**
+   * Empurra o cenário para trás do jogo.
+   *
+   * Aplicado DEPOIS do fundo e ANTES de qualquer coisa jogável — é essa posição
+   * na ordem de desenho que faz dele uma separação e não um filtro de tela
+   * inteira. Um véu por cima de tudo escureceria também o projétil que o
+   * jogador precisa ver.
+   *
+   * Duas passadas, porque uma só não resolve: `saturation` tira a cor mas
+   * mantém o brilho, e um fundo pálido continua puxando o olho; o escurecimento
+   * sozinho deixa cinza-sujo e mata a identidade de cor da galáxia. Juntos
+   * produzem "longe" — um planeta que ainda é laranja, só que um laranja que
+   * não grita.
+   */
+  private rebaixarCenario(s: Surface): void {
+    const ctx = s.ctx;
+
+    // 1. saturação: o modo `saturation` toma a saturação da FONTE e mantém
+    //    matiz e luminosidade do que já está desenhado.
+    ctx.save();
+    ctx.globalCompositeOperation = 'saturation';
+    ctx.fillStyle = `hsl(0, ${Math.round(CENARIO_SATURACAO * 100)}%, 50%)`;
+    ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+    ctx.restore();
+
+    // 2. luminosidade: preto por cima, na fração que falta para o alvo.
+    ctx.save();
+    ctx.fillStyle = `rgba(4, 8, 16, ${1 - CENARIO_LUMINOSIDADE})`;
+    ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+    ctx.restore();
+  }
+
+  /**
+   * Poeira estelar: a terceira referência de profundidade.
+   *
+   * Com duas camadas o olho lê "fundo e frente"; com três ele lê espaço. Estes
+   * grãos passam DEPOIS do véu justamente para não serem rebaixados por ele —
+   * eles são o primeiro plano ambiental, não cenário distante.
+   *
+   * Baixa intensidade de propósito: partícula demais vira ruído visual e come
+   * exatamente a legibilidade que o véu acabou de comprar.
+   */
+  private drawPoeira(s: Surface): void {
+    if (this.sim.state.settings.reduceEffects) return;
+    const ctx = s.ctx;
+    ctx.save();
+    for (const g of this.poeira) {
+      ctx.globalAlpha = g.alfa;
+      ctx.fillStyle = g.cor;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.raio, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   private drawPlayer(s: Surface): void {

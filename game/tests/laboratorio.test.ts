@@ -153,7 +153,16 @@ describe('laboratório de combate', () => {
       enemyHitboxOffsetY: 8,
     });
     expect(sim.laboratorio.config.enemyHitboxWidth).toBe(42);
-    expect(sim.hitboxSalvaDoInimigo('enemy:lanceiro')).toEqual({ width: 25.1, height: 34.8, offsetX: -0.8, offsetY: 0.3 });
+    // O que este teste prova é o ISOLAMENTO: a edição vive na sessão e não
+    // encosta na calibração salva. Os números exatos eram incidentais, e
+    // fixá-los fazia o teste cair a cada reescala de arte — como na unificação
+    // de escala visual, que remapeou todas as caixas junto com os sprites.
+    // Ler da tabela mantém a asserção sobre o que importa.
+    expect(sim.hitboxSalvaDoInimigo('enemy:lanceiro')).toEqual(
+      // A chave da tabela não traz o prefixo 'enemy:' — ele é do Laboratório,
+      // que usa um espaço de nomes próprio para distinguir inimigo de chefe.
+      ENEMY_HITBOX_CALIBRATIONS.lanceiro,
+    );
   });
 
   it('informa sucesso e falha ao gravar uma calibração administrativa', async () => {
