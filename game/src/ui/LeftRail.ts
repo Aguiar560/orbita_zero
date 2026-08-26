@@ -176,6 +176,7 @@ export class LeftRail {
       h('.rail-stats', {},
         row('Nível', String(sim.state.bar.patrol), '#9fe8ff'),
         row('Sucata/s', fmt(sim.patrolScrapRate, 1), '#ffd98a'),
+        row('Por abate', fmt(sim.patrolScrapPerKill, 1), '#ffd98a'),
       ),
       h('.rail-cache', {},
         h('span.tiny.muted', { text: 'Próxima cápsula' }),

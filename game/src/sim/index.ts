@@ -306,10 +306,33 @@ export class Sim {
   }
 
   /** Rendimento de sucata por segundo da faixa horizontal. */
-  get patrolScrapRate(): number {
+  /**
+   * Sucata por ABATE na patrulha.
+   *
+   * Era sucata por SEGUNDO, e era a única coisa na patrulha que não passava
+   * pelos abates: XP, patente e progresso de cápsula já derivavam de `kills`.
+   * Sucata caindo no relógio enquanto tudo o mais cai no abate é duas
+   * economias no mesmo lugar — e a que anda sozinha é a que o jogador não
+   * consegue influenciar por jogar melhor.
+   *
+   * O valor é o mesmo: a taxa antiga dividida pela taxa de abate. Isso é
+   * álgebra e não recalibração — a renda por segundo em patrulha parada sai
+   * idêntica. O que muda é o ACOPLAMENTO: se algum dia um modificador mexer
+   * na cadência de abate da patrulha, a sucata acompanha sozinha, que é o que
+   * não acontecia.
+   *
+   * O nível de patrulha continua dentro do número, e faz sentido que continue:
+   * patrulha alta é caça em setor melhor, e cada carcaça vale mais.
+   */
+  get patrolScrapPerKill(): number {
     const biome = getBiome(this.state.bar.biome);
     const patrol = 1 + (this.state.bar.patrol - 1) * 0.28;
-    return 2.4 * biome.bounty * patrol * (1 + this.stats.sucataGanho);
+    return 2.4 * biome.bounty * patrol * (1 + this.stats.sucataGanho) / this.patrolKillRate;
+  }
+
+  /** Só para o trilho mostrar um ritmo. A renda de verdade vem do abate. */
+  get patrolScrapRate(): number {
+    return this.patrolScrapPerKill * this.patrolKillRate;
   }
 
   /** Abates por segundo da faixa horizontal. */
@@ -1054,12 +1077,13 @@ export class Sim {
     // dois — gastar só num deles faria a aba fechada (ou aberta) ser de graça.
     if (this.gastarCombustivel(dt)) return;
     const bar = this.state.bar;
-    const scrap = this.patrolScrapRate * dt * intensity;
-    this.grant('sucata', scrap);
 
     bar.distance += 120 * dt * intensity;
     const kills = this.patrolKillRate * dt * intensity;
     bar.kills += kills;
+
+    // A sucata sai DAQUI, do abate, e não do relógio. Ver `patrolScrapPerKill`.
+    this.grant('sucata', kills * this.patrolScrapPerKill);
     this.state.stats.kills += kills;
 
     bar.patrolXp += kills * 4 * (1 + this.stats.xpGanho);
