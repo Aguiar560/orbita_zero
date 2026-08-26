@@ -3,7 +3,7 @@ import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector, PHASES_PER_GALAXY } from '@data/galaxies';
-import { counterOf, getElement } from '@data/elements';
+import { getElement } from '@data/elements';
 import { iconeDeRecurso, recursoDaGalaxia } from '@data/recursos';
 import { sectorBounty, sectorHp } from '@sim/progression';
 import type { Sim } from '@sim/index';
@@ -97,12 +97,13 @@ export class GalaxyPanel implements Panel {
             // morrer duas vezes.
             (() => {
               const ameaca = getElement(info.element);
-              const contra = counterOf(info.element);
               return h('span.galaxy-threat', { style: { color: ameaca.color, borderColor: ameaca.color } },
                 h('span.elem-sigla', { text: ameaca.sigla, style: { background: ameaca.color } }),
-                contra
-                  ? `Frota de ${ameaca.name.toLowerCase()} · leve ${getElement(contra).name.toLowerCase()}`
-                  : `Frota de ${ameaca.name.toLowerCase()}`,
+                // Só a AMEAÇA. O "· leve químico" que vinha atrás entregava a
+                // resposta junto com a pergunta: o anel elemental deixava de ser
+                // algo que o jogador aprende e virava etiqueta que ele obedece.
+                // Quem quiser a conta tem o painel de elemento no trilho.
+                `Frota de ${ameaca.name.toLowerCase()}`,
               );
             })(),
             ...(recursoLocal ? [h('.galaxy-resource', { title: recursoLocal.funcao },
@@ -120,7 +121,7 @@ export class GalaxyPanel implements Panel {
 
     // ── coluna do meio: as dez fases ─────────────────────────────────────
     const coluna_fases = h('.painel-col.rola.galaxy-fases', {},
-      h('.painel-secao', { text: 'FASES' }),
+      h('.painel-secao', { text: 'SETORES' }),
 
       h('.phase-grid', {}, ...phases.map((p) => {
         const cleared = best > p.sector;
