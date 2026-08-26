@@ -5617,15 +5617,21 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .selecao-faixa {
   position: fixed; z-index: 70;
-  left: 50%; bottom: 18px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 12px;
-  max-width: min(620px, 92vw);
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 9px;
-  background: linear-gradient(180deg, rgba(10, 26, 42, .96), rgba(5, 12, 20, .97));
-  box-shadow: 0 12px 34px rgba(0, 0, 0, .55);
-  color: #dbe9f5; font-size: 12.5px;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 14px;
+  max-width: min(660px, 92vw);
+  padding: 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(12, 32, 52, .97), rgba(5, 12, 20, .98));
+  /* O halo é o que faz a faixa se descolar do combate atrás dela. Embaixo, sem
+   * halo e pequena, ela sumia contra o cenário — o jogador ficava com a grade
+   * pulsando e sem saber por quê. */
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, .5),
+    0 0 34px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 18px 48px rgba(0, 0, 0, .65);
+  color: #eaf6ff; font-size: 14px;
 }
 .selecao-selo {
   padding: 2px 8px; border-radius: 3px; white-space: nowrap;
