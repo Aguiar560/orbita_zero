@@ -5814,3 +5814,36 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .16em;
 }
 .hangar-curiosidade span:last-child { color: #b9cbd9; font-size: 12px; line-height: 1.55; }
+
+/* ── ícones de elemento ───────────────────────────────────────────────────── */
+
+/*
+ * Substituíram as siglas (F, G, R, Q, C) em cinco lugares. A letra exigia LER, e
+ * ler não acontece numa grade de setenta células varrida em um segundo — além de
+ * "F" e "G" serem parecidas em tamanho pequeno, enquanto uma chama e um floco
+ * não se confundem nunca.
+ *
+ * `image-rendering: auto` de propósito: a arte é vetorial-limpa a 256px e o
+ * navegador reduz melhor com suavização. Pixel art seria o caso oposto.
+ */
+.elem-icone {
+  display: block; flex: none;
+  object-fit: contain;
+  /* O ícone já vem colorido. Um filtro por cima só o sujaria. */
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, .55));
+}
+
+.elem-linha { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.elem-linha span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/*
+ * No canto da célula do item o `pip` era um selo com fundo colorido e a letra
+ * dentro. Agora é só o ícone: o fundo competia com a arte e roubava três dos
+ * onze pixels de cada lado.
+ */
+.pip.elem {
+  bottom: 2px; left: 2px;
+  width: auto; height: auto; min-width: 0; padding: 0;
+  background: none; border-radius: 0;
+  display: grid; place-items: center;
+}

@@ -1,4 +1,5 @@
 ﻿import { assets } from '@render/Assets';
+import { iconeDeElemento } from '../elementos';
 import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
@@ -98,7 +99,7 @@ export class GalaxyPanel implements Panel {
             (() => {
               const ameaca = getElement(info.element);
               return h('span.galaxy-threat', { style: { color: ameaca.color, borderColor: ameaca.color } },
-                h('span.elem-sigla', { text: ameaca.sigla, style: { background: ameaca.color } }),
+                iconeDeElemento(ameaca.id, 16),
                 // Só a AMEAÇA. O "· leve químico" que vinha atrás entregava a
                 // resposta junto com a pergunta: o anel elemental deixava de ser
                 // algo que o jogador aprende e virava etiqueta que ele obedece.

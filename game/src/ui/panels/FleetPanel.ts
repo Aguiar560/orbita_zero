@@ -1,3 +1,4 @@
+import { iconeDeElemento } from '../elementos';
 import { autonomiaDoCasco, podeDecolar, recargaDoCasco } from '@sim/combustivel';
 import { duration, fmt } from '@core/format';
 import { HULLS, type Hull } from '@data/hulls';
@@ -264,7 +265,7 @@ function shipBadges(hull: Hull): HTMLElement {
     h('.ship-tags', {},
       h('span.ship-espec', { text: especialidadeLabel(perfil) }),
       h('span.ship-elem', { style: { color: el.color, borderColor: el.color }, title: el.blurb },
-        h('span.elem-sigla', { text: el.sigla, style: { background: el.color } }),
+        iconeDeElemento(el.id, 16),
         el.name,
       ),
     ),

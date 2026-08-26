@@ -1,3 +1,4 @@
+import { iconeDeElemento } from './elementos';
 import { autonomiaDoCasco } from '@sim/combustivel';
 import { bus } from '@app/Bus';
 import { fmt, duration, pct } from '@core/format';
@@ -232,7 +233,7 @@ export class LeftRail {
 
     const chip = (info: ReturnType<typeof getElement>, label: string) =>
       h('.elem-chip', { style: { borderColor: info.color }, title: info.blurb },
-        h('span.elem-sigla', { text: info.sigla, style: { background: info.color } }),
+        iconeDeElemento(info.id, 22),
         h('.elem-chip-text', {},
           h('span.muted.tiny', { text: label }),
           h('strong.tiny', { text: info.name, style: { color: info.color } }),

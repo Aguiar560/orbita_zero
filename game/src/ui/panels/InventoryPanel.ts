@@ -1,4 +1,5 @@
 ﻿import { toast } from '@app/Bus';
+import { iconeDeElemento } from '../elementos';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { RARITIES, rarityInfo } from '@data/rarity';
@@ -207,12 +208,13 @@ export class InventoryPanel implements Panel {
     // Elemento no canto inferior esquerdo: numa grade de setenta ícones, é o
     // que permite achar "o canhão de gelo" sem passar o mouse em cada célula.
     if (item.element && item.element !== 'padrao') {
-      const el = getElement(item.element);
-      cell.append(h('i.pip.elem', {
-        text: el.sigla,
-        title: `Elemento ${el.name.toLowerCase()}`,
-        style: { background: el.color, color: '#08101c' },
-      }));
+      // Ícone e não sigla. A letra exigia LER, e ler não acontece numa grade de
+      // setenta células que o jogador varre em um segundo — além de "F" de fogo
+      // e "G" de gelo serem parecidas em tamanho pequeno, enquanto uma chama e
+      // um floco não se confundem nunca.
+      cell.append(h('i.pip.elem', { title: `Elemento ${getElement(item.element).name.toLowerCase()}` },
+        iconeDeElemento(item.element, 14),
+      ));
     }
 
     // Marcadores de canto: melhoria, conjunto e favorito, legíveis sem hover.

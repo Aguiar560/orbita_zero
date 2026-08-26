@@ -1,3 +1,4 @@
+import { iconeDeElemento } from './elementos';
 import { fmt } from '@core/format';
 import { AFFIX_BY_ID, SET_BY_ID, SLOT_LABEL, tipoDoAfixo, type TipoDeAfixo } from '@data/items';
 import { rarityInfo } from '@data/rarity';
@@ -76,7 +77,7 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
     const el = getElement(item.element);
     frag.append(
       h('.tip-element', { style: { color: el.color, borderColor: el.color } },
-        h('span.elem-sigla', { text: el.sigla, style: { background: el.color } }),
+        iconeDeElemento(el.id, 16),
         h('span.tiny', { text: elementRole(item, el.name) }),
       ),
     );
