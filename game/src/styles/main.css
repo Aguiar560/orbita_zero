@@ -5691,3 +5691,85 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .fleet-fuel { display: grid; gap: 4px; margin: 6px 0 2px; }
 .fleet-reabastecer { justify-self: stretch; margin-top: 3px; }
 .fleet-reabastecer:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ═══ Hangar: lista + ficha ════════════════════════════════════════════════ */
+
+/*
+ * Era uma grade de cartões de 376x381, um por casco. Medido com 49 deles:
+ * 4.413px de rolagem contra 648 de tela — 6,8 telas. Com os 50+ que o catálogo
+ * vai ter, comparar duas naves significaria rolar, memorizar e rolar de volta.
+ *
+ * A lista compacta cabe muitas naves por tela e a ficha fica parada ao lado, no
+ * mesmo lugar sempre: trocar de nave troca só o painel direito.
+ */
+.panel-body.hangar {
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px; min-height: 0;
+}
+.hangar-topo {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center;
+}
+.hangar-corpo {
+  display: grid; grid-template-columns: minmax(280px, 34%) minmax(0, 1fr); gap: 14px;
+  min-height: 0;
+}
+
+.hangar-lista {
+  display: grid; gap: 4px; align-content: start;
+  min-height: 0; overflow-y: auto; padding-right: 5px;
+}
+.hangar-linha {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 9px; align-items: center; width: 100%;
+  padding: 7px 10px; text-align: left;
+  border: 1px solid transparent; border-radius: 7px;
+  background: rgba(255, 255, 255, .022);
+  color: inherit; cursor: pointer;
+  transition: border-color .1s, background .1s;
+}
+.hangar-linha:hover { background: rgba(255, 255, 255, .06); }
+.hangar-linha.ativa {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+/* Bloqueada continua LEGÍVEL, só apagada: o catálogo existe para o jogador saber
+ * o que perseguir, e o que ele não consegue ler não persegue. */
+.hangar-linha.bloqueada { opacity: .55; }
+.hangar-linha-txt { display: grid; gap: 1px; min-width: 0; }
+.hangar-linha-txt strong {
+  font: 700 12px/1.2 'Chakra Petch', sans-serif; color: #d6e3ee;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hangar-linha-fuel { width: 46px; }
+.hangar-linha-preco { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* O ponto de "em uso" é a única marca que precisa ser vista sem ler. */
+.hangar-pip {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 7px var(--accent);
+}
+
+.hangar-ficha {
+  display: grid; gap: 10px; align-content: start;
+  min-height: 0; overflow-y: auto; padding: 15px 16px;
+  border: 1px solid var(--painel-linha); border-radius: var(--painel-raio);
+  background: rgba(255, 255, 255, .022);
+}
+.hangar-ficha-topo { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+.hangar-ficha-id { display: grid; gap: 3px; min-width: 0; }
+.hangar-ficha-id strong { font: 700 17px/1.15 'Chakra Petch', sans-serif; color: #dbe9f5; }
+
+/*
+ * O corte é 900 e veio de MEDIÇÃO, não de palpite.
+ *
+ * Estava em 1100 e produziu o oposto do pretendido: numa janela de 966 o painel
+ * tem 775px de largura — a ficha lado a lado ficaria com 481, que cabe — mas a
+ * media query empilhava mesmo assim e deixava a lista com 190px de altura, três
+ * naves por tela e 13,4 telas de rolagem. Pior que a grade que o painel veio
+ * substituir.
+ *
+ * A camada mede a janela menos ~190. Abaixo de 900 a ficha cairia abaixo de 420
+ * e aí sim empilhar é melhor que espremer — com 300px para a lista, não 190.
+ */
+@media (max-width: 900px) {
+  .hangar-corpo { grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px minmax(0, 1fr); }
+}

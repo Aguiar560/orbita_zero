@@ -30,60 +30,156 @@ export class FleetPanel implements Panel {
     ).length;
   }
 
+  /**
+   * Casco em detalhe. Vazio = o ativo.
+   *
+   * Mora na instância e não no save: é onde o jogador estava olhando, não uma
+   * preferência que mereça sobreviver a dois dias fechado.
+   */
+  private vendo = '';
+
+  /** Filtro de tier. `-1` = todos. */
+  private tier = -1;
+
+  /** Mostrar só o que já está no hangar. */
+  private soMinhas = false;
+
+  /**
+   * Hangar: LISTA à esquerda, ficha à direita.
+   *
+   * Era uma grade de cartões de 376x381, um por casco. Medido com 49 deles:
+   * 4.413px de rolagem contra 648 de tela — **6,8 telas**. Com os 50+ que o
+   * catálogo vai ter, comparar duas naves significaria rolar, memorizar e
+   * rolar de volta.
+   *
+   * A lista compacta cabe muitas naves por tela e a ficha completa fica parada
+   * ao lado, no mesmo lugar sempre — trocar de nave troca só o painel direito.
+   * É a mesma gramática que a Central de Serviços já usa, e a familiaridade
+   * vale mais aqui do que qualquer invenção.
+   */
   render(sim: Sim): HTMLElement {
-    return h('.panel-body', {},
-      h('p.muted.hint', {
-        text: `${HULLS.length} cascos cadastrados. Cada casco tem um perfil próprio: a nota resume a ficha, as barras mostram onde ele é extremo, `
-          + 'e o elemento define o tipo de dano quando não há arma principal equipada.',
-      }),
-      // Os cascos dos OUTROS três personagens não entram na lista. Eles não
-      // são compráveis, então apareceriam como uma fileira permanente de
-      // "bloqueado" sem nenhuma forma de desbloquear — a pior espécie de
-      // cadeado, o que não tem chave.
-      h('.fleet-grid', {}, ...HULLS.filter((hull) => !hull.piloto || sim.frotaDisponivel.includes(hull.id)).map((hull) => {
-        const owned = sim.frotaDisponivel.includes(hull.id);
-        const active = sim.state.hull === hull.id;
-        const tanque = sim.combustivelDe(hull.id);
-        const custo = sim.custoParaEncher(hull.id);
-        const revealed = sim.alcanceLiberado >= hull.requiresSector;
+    // Os cascos dos OUTROS três personagens não entram. Não são compráveis,
+    // então seriam uma fileira permanente de "bloqueado" sem forma de
+    // desbloquear — a pior espécie de cadeado, o que não tem chave.
+    const catalogo = HULLS.filter((hull) => !hull.piloto || sim.frotaDisponivel.includes(hull.id));
+    const lista = catalogo
+      .filter((hull) => this.tier < 0 || hull.tier === this.tier)
+      .filter((hull) => !this.soMinhas || sim.frotaDisponivel.includes(hull.id))
+      .sort((a, b) => a.tier - b.tier || a.requiresSector - b.requiresSector || a.name.localeCompare(b.name));
 
-        if (!revealed && !owned) {
-          return h('.fleet-card.locked', {},
-            h('.fleet-art', {}, spriteIcon(hull.sprite, 64, 'silhouette')),
-            h('strong', { text: '???' }),
-            h('span.muted', {
-              // Diz QUAL requisito falta, não só que falta algum: um botão
-              // cinza sem motivo manda o jogador adivinhar.
-              text: sim.alcanceLiberado < hull.requiresSector
-                ? `Alcance o setor ${hull.requiresSector}`
-                : `Requer nível ${nivelExigido(hull.requiresSector)} de comando`,
-            }),
-          );
-        }
+    // O casco em foco tem de existir na lista FILTRADA: se o filtro tirou o que
+    // estava selecionado, a ficha ao lado mostraria uma nave que a lista não
+    // tem, e clicar em nada a traria de volta.
+    const foco = lista.find((hull) => hull.id === this.vendo)
+      ?? lista.find((hull) => hull.id === sim.state.hull)
+      ?? lista[0];
 
-        return h(`.fleet-card${active ? '.active' : ''}${owned ? '' : '.unowned'}`, {},
-          h('.fleet-art', {}, spriteIcon(hull.sprite, 72)),
-          h('.fleet-head', {},
-            h('strong', { text: hull.name }),
-            h('span.tier', { text: `T${hull.tier}` }),
-          ),
-          shipBadges(hull),
-          shipBuild(hull),
-          h('p.muted.tiny', { text: hull.blurb }),
-          shipBars(hull),
+    const tiers = [...new Set(catalogo.map((hull) => hull.tier))].sort((a, b) => a - b);
+    const minhas = catalogo.filter((hull) => sim.frotaDisponivel.includes(hull.id)).length;
 
-          // O tanque aparece SÓ nas naves que o jogador tem. Numa nave à venda
-          // ele não diz nada: ela sai da loja cheia, e a barra ali só somaria
-          // ruído a um cartão que já tem ficha, tier e preço.
-          ...(owned ? [h('.fleet-fuel', {},
+    return h('.panel-body.hangar', {},
+      h('.hangar-topo', {},
+        h('.filters', {},
+          h(`button.chip${this.tier < 0 ? '.active' : ''}`, {
+            text: 'Tudo', onclick: () => { this.tier = -1; sim.touch(); },
+          }),
+          ...tiers.map((t) => h(`button.chip${this.tier === t ? '.active' : ''}`, {
+            text: `T${t}`,
+            onclick: () => { this.tier = t; sim.touch(); },
+          })),
+        ),
+        h(`button.mini${this.soMinhas ? '.ativa' : ''}`, {
+          text: this.soMinhas ? `Só as minhas · ${minhas}` : `Catálogo · ${catalogo.length}`,
+          title: 'O catálogo inteiro mostra também o que ainda não dá para comprar — é como saber o que existe para perseguir.',
+          onclick: () => { this.soMinhas = !this.soMinhas; sim.touch(); },
+        }),
+      ),
+
+      h('.hangar-corpo', {},
+        h('.hangar-lista', { role: 'listbox' }, ...(lista.length
+          ? lista.map((hull) => this.linha(sim, hull, hull.id === foco?.id))
+          : [h('.armazem-vazio', {}, h('strong', { text: 'Nenhuma nave neste filtro.' }))])),
+
+        foco ? this.ficha(sim, foco) : h('.hangar-ficha'),
+      ),
+    );
+  }
+
+  /**
+   * Uma linha da lista: o mínimo para escolher, e nada além.
+   *
+   * Sprite, nome, tier e ESTADO. O estado é o que a grade de cartões não
+   * conseguia dar de relance — com 49 cartões era preciso ler cada um para
+   * saber qual estava em uso, qual tinha combustível e qual dava para comprar.
+   */
+  private linha(sim: Sim, hull: Hull, ativo: boolean): HTMLElement {
+    const tem = sim.frotaDisponivel.includes(hull.id);
+    const emUso = sim.state.hull === hull.id;
+    const revelado = sim.alcanceLiberado >= hull.requiresSector;
+    const tanque = sim.combustivelDe(hull.id);
+    const el = getElement(hull.element);
+
+    return h(`button.hangar-linha${ativo ? '.ativa' : ''}${tem ? '' : '.bloqueada'}`, {
+      role: 'option',
+      'aria-selected': String(ativo),
+      onclick: () => { this.vendo = hull.id; sim.touch(); },
+    },
+      spriteIcon(hull.sprite, 32, tem ? 'hangar-linha-art' : 'hangar-linha-art silhouette'),
+      h('.hangar-linha-txt', {},
+        h('strong', { text: revelado || tem ? hull.name : `Registro do setor ${hull.requiresSector}` }),
+        h('span.tiny', {
+          text: `T${hull.tier} · ${el.name}`,
+          style: { color: el.color } as Partial<CSSStyleDeclaration>,
+        }),
+      ),
+      // Só as naves que o jogador TEM mostram tanque. Numa nave à venda a barra
+      // não diz nada: ela sai da loja cheia.
+      ...(tem
+        ? [h('.hangar-linha-fuel', {}, progressBar(
+            tanque,
+            tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a',
+            3,
+          ))]
+        : [h('span.hangar-linha-preco.tiny', { text: revelado ? `${fmt(hull.cost)}◈` : '—' })]),
+      ...(emUso ? [h('i.hangar-pip', { title: 'Em uso' })] : []),
+    );
+  }
+
+  /** A ficha completa, parada no mesmo lugar enquanto a lista muda ao lado. */
+  private ficha(sim: Sim, hull: Hull): HTMLElement {
+    const tem = sim.frotaDisponivel.includes(hull.id);
+    const emUso = sim.state.hull === hull.id;
+    const revelado = sim.alcanceLiberado >= hull.requiresSector;
+    const tanque = sim.combustivelDe(hull.id);
+    const custo = sim.custoParaEncher(hull.id);
+
+    return h('.hangar-ficha', {},
+      // A ficha guarda o mesmo SEGREDO que a lista. Ela dizia o nome real de um
+      // casco que a lista ao lado mostrava como "Registro do setor 198" — o
+      // sigilo da lista ficava sem efeito, bastando clicar ao lado.
+      h('.hangar-ficha-topo', {},
+        h('.fleet-art', {}, spriteIcon(hull.sprite, 84, revelado || tem ? '' : 'silhouette')),
+        h('.hangar-ficha-id', {},
+          h('strong', { text: revelado || tem ? hull.name : 'Registro selado' }),
+          h('span.tier', { text: `T${hull.tier}` }),
+          ...(revelado || tem ? [shipBuild(hull)] : []),
+        ),
+      ),
+      ...(revelado || tem
+        ? [shipBadges(hull), h('p.muted.tiny', { text: hull.blurb })]
+        : [h('p.muted.tiny', { text: `Os registros deste casco abrem ao alcançar o setor ${hull.requiresSector}.` })]),
+      shipBars(hull),
+
+      ...(tem
+        ? [h('.fleet-fuel', {},
             h('span.tiny.muted', { text: `Combustível ${Math.round(tanque * 100)}% · autonomia ${duration(autonomiaDoCasco(hull.id))}` }),
             progressBar(
               tanque,
               tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a',
               5,
             ),
-            // Reabastecer só aparece com tanque incompleto. Um botão que não
-            // faz nada num cartão cheio é convite a clicar e não entender.
+            // Reabastecer só aparece com tanque incompleto: um botão que não faz
+            // nada é convite a clicar e não entender.
             ...(custo > 0
               ? [h('button.mini.fleet-reabastecer', {
                   disabled: !sim.can('nucleo', custo),
@@ -91,29 +187,27 @@ export class FleetPanel implements Panel {
                   onclick: () => { sim.reabastecer(hull.id); },
                 }, h('span', { text: `Reabastecer · ${fmt(custo)}` }))]
               : []),
-          )] : []),
+          )]
+        : []),
 
-          owned
-            ? active
-              ? h('.fleet-action.active', { text: 'EM USO' })
-              : h('button.btn', {
-                  text: 'Ativar',
-                  // Sem combustível não decola. Deixar ativar e a nave cair no
-                  // primeiro segundo devolveria o jogador à mesma tela.
-                  disabled: !podeDecolar(sim.state, hull.id),
-                  title: podeDecolar(sim.state, hull.id) ? undefined : 'Sem combustível para decolar',
-                  onclick: () => { sim.selectHull(hull.id); },
-                })
-            : h('button.btn.buy', {
-                disabled: !sim.can('cristal', hull.cost),
-                onclick: () => { sim.buyHull(hull.id); },
-              }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' })),
-        );
-      })),
+      tem
+        ? emUso
+          ? h('.fleet-action.active', { text: 'EM USO' })
+          : h('button.btn', {
+              text: 'Ativar',
+              disabled: !podeDecolar(sim.state, hull.id),
+              title: podeDecolar(sim.state, hull.id) ? undefined : 'Sem combustível para decolar',
+              onclick: () => { sim.selectHull(hull.id); },
+            })
+        : revelado
+          ? h('button.btn.buy', {
+              disabled: !sim.can('cristal', hull.cost),
+              onclick: () => { sim.buyHull(hull.id); },
+            }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' }))
+          : h('.fleet-action', { text: `Alcance o setor ${hull.requiresSector}` }),
     );
   }
 }
-
 /** Arquétipo, calibração e arma vêm da ficha autoral, não de inferência visual. */
 function shipBuild(hull: Hull): HTMLElement {
   const spec = SPACESHIPS2_HULL_SPEC_BY_ID.get(hull.id);

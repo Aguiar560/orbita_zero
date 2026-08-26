@@ -366,17 +366,70 @@ em `command.refunds`.
 
 ## Hangar — `id: 'frota'`
 
-`ui/panels/FleetPanel.ts` · 115 linhas · camada
+`ui/panels/FleetPanel.ts` · **lista + ficha**
 
-Os **49 cascos**. Cada nave tem **nível e XP próprios** (`state.naves`), e
-**trocar não transfere** (§17): é o que dá sentido a manter uma frota em vez de
-uma nave só.
+Era uma grade de cartões de 376×381, um por casco. Medido com 49 deles:
+**4.413px de rolagem contra 648 de tela — 6,8 telas.** Com os 50+ que o catálogo
+vai ter, comparar duas naves significaria rolar, memorizar e rolar de volta.
 
-Os 29 cascos Spaceships 2.0 estão liberados diretamente em campanhas novas e
-existentes. O sistema definitivo de desbloqueio será desenhado depois.
+| | grade de cartões | lista + ficha |
+|---|---|---|
+| naves por tela | ~1,7 | **12** |
+| rolagem (catálogo) | 6,8 telas | **4,2** |
+| rolagem (só as minhas) | 6,8 telas | **1,0** |
+| rolagem (um tier) | 6,8 telas | **1,0** |
 
-- **Lê:** `HULLS`, `state.fleet`, `state.naves`, `sim.naveAtiva`
-- **Escreve:** `state.hull`
+A lista compacta cabe muitas naves por tela e a ficha fica parada ao lado, no
+mesmo lugar sempre: trocar de nave troca só o painel direito. É a mesma
+gramática que a Central de Serviços já usa, e a familiaridade vale mais aqui do
+que qualquer invenção.
+
+### Filtros, que é o que faz a lista caber
+
+Chips por **tier** e um alternador **catálogo / só as minhas**. Sozinha, a lista
+ainda daria 4,2 telas para 49 naves; com filtro cai para 1,0 nos dois casos que
+o jogador realmente usa — escolher entre as suas, ou olhar um tier específico.
+
+O alternador mostra a CONTAGEM (`Catálogo · 49` / `Só as minhas · 2`), porque a
+diferença entre os dois modos é justamente quantas naves existem em cada.
+
+### Duas armadilhas encontradas por medição
+
+**O corte responsivo estava em 1100px e produzia o oposto do pretendido.** Numa
+janela de 966 o painel tem 775px — a ficha lado a lado ficaria com 481, que
+cabe — mas a media query empilhava mesmo assim e deixava a lista com 190px de
+altura: **três naves por tela e 13,4 telas de rolagem**, pior que a grade que o
+painel veio substituir. O corte foi para 900, e quando empilha a lista fica com
+300px, não 190.
+
+**A ficha revelava o nome de casco selado.** A lista mostra
+"Registro do setor 198" para o que ainda não foi alcançado, mas a ficha ao lado
+dizia "Seta Quântica" — bastava clicar para furar o sigilo. Agora ela diz
+"Registro selado", esconde o sprite em silhueta e troca a ficha técnica pelo
+setor que a abre.
+
+### Linha, ficha e o que cada uma carrega
+
+A **linha** tem o mínimo para escolher: sprite, nome, tier, elemento e ESTADO.
+O estado é o que a grade não dava de relance — com 49 cartões era preciso ler
+cada um para saber qual estava em uso, qual tinha combustível e qual dava para
+comprar. Naves que o jogador tem mostram barra de tanque; as à venda mostram o
+preço, porque numa nave à venda a barra não diz nada (ela sai da loja cheia).
+
+A **ficha** tem tudo o mais: arte grande, arquétipo, nota, barras de eixo,
+combustível com autonomia e custo de reabastecer, e a ação — Ativar, comprar,
+ou o setor que falta.
+
+Casco bloqueado continua **legível**, só apagado. O catálogo existe para o
+jogador saber o que perseguir, e o que ele não consegue ler não persegue.
+
+### Combustível
+
+`Ativar` fica desabilitado abaixo do piso de 5% — deixar ativar e a nave cair no
+primeiro segundo devolveria o jogador à mesma tela. `Reabastecer` só aparece com
+tanque incompleto: um botão que não faz nada é convite a clicar e não entender.
+
+Detalhes do sistema em [`SISTEMAS.md`](SISTEMAS.md).
 
 ---
 
