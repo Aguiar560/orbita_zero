@@ -143,7 +143,6 @@ function build(): EnemyDef[] {
 
         bulletSprite: desviado ? info.bullet[cls.elite ? 0 : 1] : `void/tiro/${fleet.id}_${ammo}`,
         bulletSpeed: fleet.bulletSpeed,
-        bulletColor: desviado ? info.color : fleet.color,
 
         // Cada frota some quando a seguinte já dominou o espaço por um tempo,
         // exceto a última — senão os setores altos ficariam sem variedade.

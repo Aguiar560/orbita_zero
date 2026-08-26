@@ -315,7 +315,6 @@ function bossAsEnemy(id: string): EnemyDef {
     shots: 1,
     bulletSprite: 'shot/void_light',
     bulletSpeed: 220,
-    bulletColor: '#c07dff',
     sectors: [1, 0],
     weight: 0,
     blast: 'blast/fire',

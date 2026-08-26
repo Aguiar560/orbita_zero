@@ -345,11 +345,11 @@ contraste interno**. Um planeta escuro mas texturado destrói leitura igual.
 
 | # | frente | esforço | ganho |
 |---|---|---|---|
-| 1 | Tipos por onda 1–2 → 2–4 | trivial | altíssimo |
-| 2 | Presença de projétil | médio | altíssimo |
-| 3 | Hitstop e faísca de impacto | baixo | altíssimo |
-| 4 | Cor reservada de perigo | baixo | alto |
-| 5 | Teto e posição do corpo celeste | baixo | alto |
+| 1 | Tipos por onda 1–2 → 2–4 | trivial | altíssimo ✅ |
+| 2 | Presença de projétil | médio | altíssimo ✅ |
+| 3 | Hitstop e faísca de impacto | baixo | altíssimo ✅ |
+| 4 | Marca de perigo pela FORMA (a cor é do elemento) | baixo | alto ✅ |
+| 5 | Corpo celeste na margem e sem textura | baixo | alto ✅ |
 | 6 | Vinheta e estrelas dessaturadas | trivial | médio |
 | 7 | Barra inferior no padrão dos módulos | baixo | médio |
 | 8 | Variação dentro do tipo de inimigo | médio | médio |

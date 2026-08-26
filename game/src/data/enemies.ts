@@ -77,7 +77,6 @@ export interface EnemyDef {
   shots: number;
   bulletSprite: string;
   bulletSpeed: number;
-  bulletColor: string;
 
   /** Faixa de setor em que aparece: `[min, max]` (max 0 = sem limite). */
   sectors: readonly [number, number];
@@ -92,7 +91,6 @@ export interface EnemyDef {
 const base = {
   bulletSprite: 'shot/void_light',
   bulletSpeed: 260,
-  bulletColor: '#c07dff',
   blast: 'blast/fire',
   element: 'cosmico',
 } as const;
@@ -103,7 +101,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     id: 'dardo', name: 'Dardo', sprite: 'enemy/verdant_a', element: 'quimico',
     radius: 17, scale: 0.52, hp: 0.55, dano: 0.8, reward: 0.8,
     speed: 155, move: 'mergulho', attack: 'nenhum', fireRate: 0, shots: 0,
-    bulletColor: '#8dff5c', sectors: [1, 0], weight: 100,
+sectors: [1, 0], weight: 100,
   },
   {
     ...base,
@@ -117,8 +115,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     id: 'tecelao', name: 'Tecelão', sprite: 'enemy/verdant_b', element: 'quimico',
     radius: 20, scale: 0.56, hp: 0.9, dano: 0.9, reward: 1.1,
     speed: 110, move: 'senoide', attack: 'leque', fireRate: 0.5, shots: 3,
-    bulletSprite: 'shot/bio_light', bulletSpeed: 210, bulletColor: '#8dff5c',
-    sectors: [3, 0], weight: 80,
+    bulletSprite: 'shot/bio_light', bulletSpeed: 210,    sectors: [3, 0], weight: 80,
   },
   {
     ...base,
@@ -126,7 +123,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     bank: ['sr/enemy/enemy_1_g_l2', 'sr/enemy/enemy_1_g_l1', 'sr/enemy/enemy_1_g_m', 'sr/enemy/enemy_1_g_r1', 'sr/enemy/enemy_1_g_r2'],
     radius: 13, scale: 0.7, hp: 0.3, dano: 0.6, reward: 0.5,
     speed: 195, move: 'senoide', attack: 'nenhum', fireRate: 0, shots: 0,
-    bulletColor: '#8dff5c', sectors: [2, 0], weight: 110, blast: 'arc/boom_plasma',
+sectors: [2, 0], weight: 110, blast: 'arc/boom_plasma',
   },
   {
     ...base,
@@ -141,37 +138,35 @@ export const ENEMIES: readonly EnemyDef[] = [
     bank: ['sr/enemy/enemy_2_r_l2', 'sr/enemy/enemy_2_r_l1', 'sr/enemy/enemy_2_r_m', 'sr/enemy/enemy_2_r_r1', 'sr/enemy/enemy_2_r_r2'],
     radius: 16, scale: 0.72, hp: 0.8, dano: 1.3, reward: 1.2,
     speed: 240, move: 'investida', attack: 'direto', fireRate: 0.9, shots: 1,
-    bulletSprite: 'shot/pyro_light', bulletSpeed: 300, bulletColor: '#ff9a4d',
-    sectors: [8, 0], weight: 70,
+    bulletSprite: 'shot/pyro_light', bulletSpeed: 300,    sectors: [8, 0], weight: 70,
   },
   {
     ...base,
     id: 'mina', name: 'Mina Flutuante', sprite: 'mina/a_0', clip: 'arc/mina_a', element: 'fogo',
     radius: 18, scale: 1.2, hp: 1.6, dano: 2.4, reward: 1.0,
     speed: 42, move: 'deriva', attack: 'explosivo', fireRate: 0, shots: 0,
-    bulletColor: '#ff6a3d', sectors: [5, 0], weight: 45, blast: 'arc/mina_a_boom',
+sectors: [5, 0], weight: 45, blast: 'arc/mina_a_boom',
   },
   {
     ...base,
     id: 'asteroide', name: 'Asteroide', sprite: 'rock/g_0', element: 'padrao',
     radius: 24, scale: 1.1, hp: 2.2, dano: 1.8, reward: 0.6,
     speed: 90, move: 'deriva', attack: 'nenhum', fireRate: 0, shots: 0,
-    bulletColor: '#c9b28f', sectors: [1, 0], weight: 60, blast: 'arc/boom_fogo',
+sectors: [1, 0], weight: 60, blast: 'arc/boom_fogo',
   },
   {
     ...base,
     id: 'cometa', name: 'Cometa', sprite: 'hazard/comet_fire', element: 'fogo',
     radius: 26, scale: 0.6, hp: 1.4, dano: 2.6, reward: 1.4,
     speed: 300, move: 'mergulho', attack: 'nenhum', fireRate: 0, shots: 0,
-    bulletColor: '#ff9a4d', sectors: [10, 0], weight: 30, blast: 'blast/fire',
+sectors: [10, 0], weight: 30, blast: 'blast/fire',
   },
   {
     ...base,
     id: 'serafim', name: 'Serafim', sprite: 'enemy/verdant_c', element: 'quimico',
     radius: 28, scale: 0.7, hp: 5.5, dano: 1.6, reward: 4.0,
     speed: 72, move: 'orbita', attack: 'teleguiado', fireRate: 0.5, shots: 2,
-    bulletSprite: 'shot/bio_orb', bulletSpeed: 170, bulletColor: '#8dff5c',
-    sectors: [14, 0], weight: 22, elite: true, blast: 'blast/void',
+    bulletSprite: 'shot/bio_orb', bulletSpeed: 170,    sectors: [14, 0], weight: 22, elite: true, blast: 'blast/void',
   },
   {
     ...base,
@@ -275,7 +270,6 @@ const CORSARIO_ENEMIES: readonly EnemyDef[] = CORSARIOS.map((c) => {
     // de vantagens ao jogador, e ela não pode divergir do dano que ele causa.
     bulletSprite: info.bullet[c.elite ? 0 : 1],
     bulletSpeed: 240,
-    bulletColor: info.color,
     sectors: [c.from, 0] as const,
     weight: c.weight,
     blast: info.blast,

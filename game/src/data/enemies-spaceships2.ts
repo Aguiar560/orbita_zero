@@ -95,7 +95,6 @@ export const SPACESHIPS2_ENEMIES: readonly EnemyDef[] = IDENTITIES.map((identity
     shots: elite ? profile.shots + 2 : profile.shots,
     bulletSprite: element.bullet[elite ? 0 : 1],
     bulletSpeed: profile.bulletSpeed,
-    bulletColor: element.color,
     // O elenco por galáxia é quem decide aparição; a faixa ampla permite que
     // a composição faça rodízio sem criar buracos em fases iniciais.
     sectors: [1, 0],

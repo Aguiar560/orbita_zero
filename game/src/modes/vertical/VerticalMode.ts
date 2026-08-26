@@ -1,7 +1,7 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
 import {
-  ALFA_MAX_DE_CORPO, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, CONGELAMENTO,
-  POEIRA, PROFUNDIDADE, PROJETIL,
+  ALFA_MAX_DE_CORPO, AMEACA, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, CONGELAMENTO,
+  CORPO_CELESTE, POEIRA, PROFUNDIDADE, PROJETIL,
 } from '@data/cenario';
 import {
   CLIMAS, CLIMA_POR_ID, DETRITOS_MAX, INTERVALO_MAX, INTERVALO_MIN,
@@ -387,8 +387,20 @@ export class VerticalMode {
     // jogador trocava de fase e via um céu vazio, que é justamente a queixa que
     // motivou trocar os planetas.
     const props: typeof this.skyProps = [
-      // Herói: grande, próximo, mais opaco.
-      { key: hero, fx: rng.range(0.12, 0.82), y: rng.range(-460, 520), size: rng.range(250, 420), speed: rng.range(14, 22), alpha: 0.78 },
+      // Herói: grande, próximo, mais opaco — e na MARGEM, cortado pela tela.
+      //
+      // O `fx` ia de 0,12 a 0,82: o centro do planeta caía dentro da pista de
+      // jogo em 72% dos setores, e ele cobria 75% dela. Inimigo passando por
+      // cima sumia. Agora o centro fica fora da pista, dos dois lados, e o que
+      // aparece é um pedaço de um corpo grande — que lê como MAIOR do que o
+      // disco inteiro no meio da tela, não menor.
+      {
+        key: hero,
+        fx: rng.chance(0.5)
+          ? rng.range(-0.06, CORPO_CELESTE.margem)
+          : rng.range(1 - CORPO_CELESTE.margem, 1.06),
+        y: rng.range(-460, 520), size: rng.range(250, 420), speed: rng.range(14, 22), alpha: 0.78,
+      },
       // Distantes: pequenos, lentos e apagados, só para dar profundidade.
       { key: rng.pick(vizinhos[0]!), fx: rng.range(0.05, 0.95), y: rng.range(-1500, 780), size: rng.range(96, 168), speed: rng.range(5, 9), alpha: 0.42 },
       { key: rng.pick(vizinhos[1]!), fx: rng.range(0.05, 0.95), y: rng.range(-2600, 900), size: rng.range(64, 116), speed: rng.range(3, 6), alpha: 0.3 },
@@ -538,7 +550,7 @@ export class VerticalMode {
       bank: undefined, clip: undefined, engineClip: undefined, weaponClip: undefined, shieldClip: undefined,
       move: c.enemyMove, attack: c.enemyAttack, element: c.enemyElement,
       hp: 1, dano: 1, speed: c.enemySpeed, fireRate: c.enemyFireRate, shots: c.enemyShots,
-      bulletSpeed: c.enemyBulletSpeed, bulletSprite: shotEnemy.bulletSprite, bulletColor: shotEnemy.bulletColor,
+      bulletSpeed: c.enemyBulletSpeed, bulletSprite: shotEnemy.bulletSprite,
     };
     this.labStats = { ...this.sim.stats,
       dano: c.playerDamage, cadencia: c.playerFireRate, projeteis: c.playerShots,
@@ -1070,7 +1082,12 @@ export class VerticalMode {
     e.fireTimer -= dt;
     if (e.fireTimer <= 0) {
       e.fireTimer = 1 / Math.max(0.1, phase.fireRate);
-      this.emitPattern(e, phase.attack, phase.shots, phase.bulletSpeed, boss.bulletSprite, boss.bulletColor, 1.1);
+      // A cor vem do ELEMENTO, sempre. Era um campo por chefe, e ele derivou:
+      // havia chefe cósmico atirando '#66d9ff' e químico atirando '#8dff5c'
+      // onde a tabela diz #7ee858. Num jogo em que o anel elemental decide o
+      // dano, a cor do tiro é informação de regra, não enfeite.
+      const corDoChefe = getElement(boss.element).color;
+      this.emitPattern(e, phase.attack, phase.shots, phase.bulletSpeed, boss.bulletSprite, corDoChefe, 1.1);
     }
 
     if (phase.summon) {
@@ -1189,7 +1206,7 @@ export class VerticalMode {
     // A pressão do perfil da onda entra aqui: é o eixo "quantos tiros", que
     // deixa a tela mais perigosa sem inflar nenhum número da ficha.
     e.fireTimer = 1 / Math.max(0.05, def.fireRate * e.pressao);
-    this.emitPattern(e, def.attack, def.shots, def.bulletSpeed, def.bulletSprite, def.bulletColor, 1);
+    this.emitPattern(e, def.attack, def.shots, def.bulletSpeed, def.bulletSprite, getElement(def.element).color, 1);
   }
 
   private emitPattern(
@@ -2096,6 +2113,16 @@ export class VerticalMode {
     // Saem do atlas `orbe`, não de imagens soltas: cada corpo tem proporção
     // própria (um anel é largo e baixo, uma cauda de cometa é oblíqua) e forçar
     // tudo num quadrado, como fazia o `drawImage` anterior, achatava a arte.
+    // Textura interna achatada. O que engole a silhueta de um inimigo não é o
+    // brilho médio do corpo — é a TEXTURA: cratera, faixa de nuvem, mancha. Um
+    // planeta escuro cheio de detalhe destrói leitura igual a um claro, e foi
+    // por isso que a medição por PICO de luminância deu o cenário como
+    // aprovado enquanto ele continuava comendo inimigo.
+    //
+    // `brightness` acompanha o `contrast` porque este puxa tudo para o cinza
+    // médio, e sozinho deixaria o lado ESCURO do planeta mais claro que antes.
+    s.ctx.save();
+    s.ctx.filter = `contrast(${CORPO_CELESTE.contraste}) brightness(${CORPO_CELESTE.luminosidade})`;
     for (let i = this.skyProps.length - 1; i >= 0; i--) {
       const prop = this.skyProps[i]!;
       const found = assets.atlases.lookup(prop.key);
@@ -2103,6 +2130,7 @@ export class VerticalMode {
       const escala = prop.size / Math.max(found.frame.sw, found.frame.sh);
       s.sprite(prop.key, prop.fx * VIEW.w, prop.y + prop.size / 2, { scale: escala, alpha: prop.alpha });
     }
+    s.ctx.restore();
 
     this.rebaixarCenario(s);
     this.drawPoeira(s);
@@ -2343,12 +2371,41 @@ export class VerticalMode {
    * translúcido.
    */
   private drawBullets(s: Surface): void {
+    const ctx = s.ctx;
     this.bullets.each((b) => {
       const rotation = Math.atan2(b.vy, b.vx) + Math.PI / 2;
       const escala = b.scale * (b.crit ? 1.25 : 1);
 
+      // Duas gramáticas de forma, e é ELA que diz ameaça — a cor está ocupada
+      // dizendo o elemento, e o anel elemental precisa dessa leitura.
+      const passos = b.friendly ? PROJETIL.rastroPassos : AMEACA.rastroPassos;
+
+      // A auréola escura do tiro inimigo.
+      //
+      // É um ANEL e não um disco, e a primeira versão errou nisso: o disco
+      // ficava por baixo do halo aditivo, que é maior (2,4 contra 1,9) e vem
+      // depois — o halo simplesmente pintava por cima e a auréola sumia.
+      // Medido, o anel do tiro hostil saía 3,1 mais CLARO que o fundo local,
+      // quando a intenção era o oposto.
+      //
+      // Agora ele mora FORA do halo, num gradiente que nasce transparente,
+      // escurece no raio da borda e volta a sumir. Assim o contorno aparece sem
+      // apagar a cor do elemento, que é a informação que não pode ser perdida.
+      if (!b.friendly) {
+        const r = b.radius * AMEACA.auroraRaio * escala;
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+        g.addColorStop(0, 'rgba(3, 6, 14, 0)');
+        g.addColorStop(AMEACA.auroraInterna, 'rgba(3, 6, 14, 0)');
+        g.addColorStop(AMEACA.auroraPico, `rgba(3, 6, 14, ${AMEACA.auroraAlfa})`);
+        g.addColorStop(1, 'rgba(3, 6, 14, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Do mais fraco para o mais forte: o rastro fica por baixo do núcleo.
-      for (let k = PROJETIL.rastroPassos; k >= 1; k--) {
+      for (let k = passos; k >= 1; k--) {
         const t = PROJETIL.rastroPasso * k;
         s.sprite(b.sprite, b.x - b.vx * t, b.y - b.vy * t, {
           scale: escala * (1 - k * 0.16),

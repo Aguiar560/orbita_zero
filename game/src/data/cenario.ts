@@ -161,3 +161,104 @@ export const CONGELAMENTO = {
   /** Teto acumulado, para uma rajada não gastar tudo de uma vez. */
   reserva: 0.16,
 } as const;
+/**
+ * A marca do que MACHUCA.
+ *
+ * ## O problema, e por que a solução do gênero não serve aqui
+ *
+ * Ikaruga, Touhou e Nex Machina reservam uma COR para "isto encosta em você e
+ * dói", e nada mais na tela usa essa cor. É a regra mais rígida do gênero.
+ *
+ * Aqui ela não cabe: a cor do projétil é a do ELEMENTO, e o anel elemental é
+ * quem decide o dano. Pintar todo tiro inimigo de uma cor só apagaria a única
+ * informação que o jogador precisa ler no ar — de que elemento vem o golpe.
+ *
+ * ## O que se reserva quando não se pode reservar a cor
+ *
+ * A FORMA. O tiro do jogador é um risco: alongado, com rastro comprido, subindo.
+ * O tiro inimigo é um olho: redondo, com auréola escura em volta e rastro curto.
+ * Duas gramáticas distintas que sobrevivem a qualquer matiz — e o jogador lê
+ * ameaça pelo formato e elemento pela cor, sem que uma leitura custe a outra.
+ *
+ * A auréola ESCURA é a peça central. Ela resolve dois problemas de uma vez:
+ * separa o hostil do amistoso, e dá ao projétil um contorno que o destaca de
+ * qualquer fundo — inclusive do planeta claro que o item 5 ainda deixa em cena.
+ */
+export const AMEACA = {
+  /**
+   * Raio externo do anel escuro, multiplicando o raio do projétil.
+   *
+   * Maior que o halo (2,4) de propósito: o anel precisa sobrar POR FORA dele.
+   * A primeira versão usava 1,9 e ficava por baixo do halo aditivo, que pintava
+   * por cima e apagava a auréola — medido, o anel saía 3,1 mais CLARO que o
+   * fundo local, o oposto do que se queria.
+   */
+  auroraRaio: 3.2,
+  /** Onde o escuro começa a aparecer. Antes disso, transparente. */
+  auroraInterna: 0.68,
+  /** Onde o escuro é máximo. Depois disso, some de volta. */
+  auroraPico: 0.84,
+  /** Opacidade no pico. */
+  auroraAlfa: 0.8,
+  /**
+   * Passos de rastro do tiro INIMIGO.
+   *
+   * Um contra os três do jogador. O rastro comprido diz "eu saí daqui e vou
+   * para lá", que é leitura de quem atira; de quem desvia, o que importa é
+   * ONDE a coisa está agora.
+   */
+  rastroPassos: 1,
+} as const;
+
+/**
+ * O corpo celeste sai da pista.
+ *
+ * Medido em 200 setores, o corpo principal ocupava 62% da largura da tela (até
+ * 78%), cobria **75% da pista central** e nascia com o centro DENTRO dela em
+ * 72% dos setores. Inimigos passavam por cima e a silhueta sumia.
+ *
+ * ## Por que não basta encolher
+ *
+ * Um planeta pequeno no meio da tela é um adesivo; um planeta enorme cortado
+ * pela borda é um mundo. Cortar é o que os filmes fazem para dar escala, e sai
+ * de graça: a parte que sobra na tela é menor, e a parte que o olho IMAGINA é
+ * maior. Então o corpo continua grande e vai para a margem.
+ *
+ * ## Contraste interno, não brilho
+ *
+ * A medição anterior olhou o PICO de luminância e disse que o cenário estava
+ * dentro da faixa. Estava — e mesmo assim comia silhueta, porque o que engole
+ * um contorno não é o brilho médio, é a TEXTURA: um planeta escuro cheio de
+ * crateras destrói leitura igual a um claro.
+ *
+ * `contrast` achata a textura interna; `brightness` compensa o efeito colateral
+ * de o `contrast` puxar tudo na direção do cinza médio, que sozinho deixaria o
+ * lado escuro do planeta MAIS claro do que era.
+ *
+ * ## A calibração, medida em quatro corpos
+ *
+ * O primeiro par que escrevi — `contrast(0,62) brightness(0,82)` — cortava 44%
+ * do contraste interno e CLAREAVA todos os quatro, de +4 a +11. O `brightness`
+ * estava compensando de menos, e eu só descobri porque medi a média junto com o
+ * desvio em vez de olhar só o desvio, que era o número que eu queria ver.
+ *
+ * | par | queda do contraste | pior clareamento |
+ * |---|---|---|
+ * | 0,62 / 0,82 | 44% | **+11** |
+ * | 0,70 / 0,68 | 48% | −2,9 |
+ * | 0,62 / 0,62 | 56% | −3,0 |
+ * | **0,55 / 0,60** | **60%** | **−1,7** |
+ *
+ * O escolhido ganha nos dois critérios ao mesmo tempo. E as médias dos quatro
+ * corpos, que iam de 42 a 68, passam a ir de 40 a 55: além de achatar cada
+ * corpo por dentro, o par aproxima os corpos ENTRE SI — que é o que "cenário"
+ * quer dizer, um plano só em vez de quatro objetos disputando.
+ */
+export const CORPO_CELESTE = {
+  /** Até onde o centro do corpo principal pode entrar, por lado. */
+  margem: 0.22,
+  /** Achatamento da textura interna. */
+  contraste: 0.55,
+  /** Compensação, para o achatamento não clarear o corpo. */
+  luminosidade: 0.6,
+} as const;
