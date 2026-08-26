@@ -2307,18 +2307,80 @@ export class VerticalMode {
     });
   }
 
+  /**
+   * A moldura dos dois cantos do HUD.
+   *
+   * Um retângulo com o canto EXTERNO chanfrado — o de cima-esquerda no módulo
+   * da esquerda, o de cima-direita no da direita. É o chanfro que dá a leitura
+   * "instrumento" sem custar espaço: uma moldura completa em volta de tudo
+   * seria o painel gigante que não se quer.
+   *
+   * Fundo bem escuro e borda de um pixel. O HUD não precisa brilhar — ele
+   * precisa não ser confundido com a cena, e uma superfície mais escura que o
+   * espaço já faz isso.
+   */
+  private moduloHud(s: Surface, x: number, y: number, w: number, h: number, espelhado: boolean): void {
+    const ctx = s.ctx;
+    const corte = 11;
+
+    ctx.save();
+    ctx.beginPath();
+    if (espelhado) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w - corte, y);
+      ctx.lineTo(x + w, y + corte);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+    } else {
+      ctx.moveTo(x + corte, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x, y + corte);
+    }
+    ctx.closePath();
+
+    ctx.fillStyle = 'rgba(5, 11, 20, .72)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(107, 155, 190, .3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Um filete na aresta interna, do lado que aponta para o centro da tela.
+    // É o detalhe que faz o módulo parecer encaixado na borda em vez de
+    // flutuando sobre ela.
+    ctx.strokeStyle = 'rgba(79, 195, 255, .45)';
+    ctx.beginPath();
+    const fx = espelhado ? x : x + w;
+    ctx.moveTo(fx, y + (espelhado ? 0 : corte));
+    ctx.lineTo(fx, y + h);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   private drawHud(s: Surface): void {
     const p = this.player;
     const sim = this.sim;
     const pad = 16;
 
-    // Barra de casco e escudo, canto superior esquerdo.
-    const barW = 190;
-    s.rect(pad, pad, barW, 9, 'rgba(6,12,24,.75)');
-    s.rect(pad, pad, barW * clamp01(p.hp / Math.max(1, p.hpMax)), 9, '#ff5d7a');
-    s.rect(pad, pad + 12, barW, 6, 'rgba(6,12,24,.75)');
-    s.rect(pad, pad + 12, barW * clamp01(p.shield / Math.max(1, p.shieldMax)), 6, '#4db8ff');
-    s.text(`${fmt(p.hp, 0)} / ${fmt(p.hpMax, 0)}`, pad, pad + 30, { size: 12, color: '#c8d8ee' });
+    // Casco e escudo, dentro de um módulo. Antes eram barras soltas sobre o
+    // combate, e é isso que faz um HUD parecer COLADO: sem moldura, o olho não
+    // separa o que é instrumento do que é cena, e as duas coisas disputam.
+    const barW = 158;
+    const moduloW = barW + 20;
+    this.moduloHud(s, pad, pad, moduloW, 40, false);
+
+    const bx = pad + 10;
+    const by = pad + 11;
+    s.rect(bx, by, barW, 7, 'rgba(4,10,20,.9)');
+    s.rect(bx, by, barW * clamp01(p.hp / Math.max(1, p.hpMax)), 7, '#ff5d7a');
+    s.rect(bx, by + 10, barW, 5, 'rgba(4,10,20,.9)');
+    s.rect(bx, by + 10, barW * clamp01(p.shield / Math.max(1, p.shieldMax)), 5, '#4db8ff');
+    // O número fica DENTRO do módulo, alinhado à direita: fora dele voltaria a
+    // ser texto solto sobre a cena, que é o problema que o módulo resolve.
+    s.text(`${fmt(p.hp, 0)} / ${fmt(p.hpMax, 0)}`, pad + moduloW - 10, pad + 33, {
+      size: 10.5, color: '#94aec4', align: 'right',
+    });
 
     if (sim.laboratorio.active) {
       const m = sim.laboratorio.metrics;
@@ -2336,9 +2398,20 @@ export class VerticalMode {
     // Setor e onda, canto superior direito.
     const boss = this.enemies.items.find((e) => e.alive && e.boss);
 
-    s.text(`SETOR ${sim.state.run.sector}`, VIEW.w - pad, pad + 6, { size: 17, color: '#9fe8ff', align: 'right' });
+    // O MESMO módulo, espelhado. Dois cantos com a mesma gramática lêem como um
+    // instrumento só; dois desenhos diferentes leriam como duas interfaces.
+    const dirW = 132;
+    this.moduloHud(s, VIEW.w - pad - dirW, pad, dirW, 40, true);
+
+    s.text(`SETOR ${sim.state.run.sector}`, VIEW.w - pad - 10, pad + 17, {
+      size: 14, color: '#9fe8ff', align: 'right',
+    });
     // Com chefe em tela o nome já aparece na barra dele; repetir aqui só polui.
-    if (!boss) s.text(sim.encounterLabel, VIEW.w - pad, pad + 26, { size: 12, color: '#8ba0bd', align: 'right' });
+    if (!boss) {
+      s.text(sim.encounterLabel, VIEW.w - pad - 10, pad + 33, {
+        size: 10.5, color: '#7f95ad', align: 'right',
+      });
+    }
 
     // Chefe: barra larga no topo.
     if (boss) {

@@ -252,6 +252,132 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Direção visual — a régua que separa cena de jogo
+
+Seis decisões que fazem a tela dizer o que importa. Os números todos saíram de
+medição no canvas, não de gosto.
+
+#### 1. Escala unificada
+
+O tamanho renderizado não formava hierarquia: um inimigo comum grande era MAIOR
+que um elite pequeno, e a nave competia em massa com um elite.
+
+| | antes (min/med/max) | depois | faixa |
+|---|---|---|---|
+| jogador | 48/74/88 | **48/58/64** | 48–64 |
+| comuns | 32/59/87 | **40/54/70** | 40–70 |
+| elites | 50/88/105 | **70/91/100** | 70–100 |
+| chefes | 130/162/190 | intocados | 120+ |
+
+**Remapeado, não limitado.** Cortar tudo que passa do teto comprimiria a
+categoria num valor só — dez inimigos de tamanhos diferentes virariam dez do
+mesmo tamanho. O remapeamento linear preserva ordem e espalhamento.
+
+**A hitbox andou junto.** Escala e caixa são tabelas independentes, mas foram
+calibradas olhando uma para a outra: a caixa foi desenhada sobre o sprite no
+tamanho em que ele aparecia. Mexer só na escala descolaria a colisão da arte, e
+a nave pareceria menor do que acerta — a pior injustiça num jogo de desvio.
+
+A ferramenta é `tools/unificar-escala.ts`, e ela é reexecutável: arte nova entra,
+roda de novo, a faixa se mantém.
+
+#### 2. Cenário atrás do jogo
+
+Aqui errei duas vezes antes de acertar, e as duas por medir a coisa errada.
+
+Um véu global de 45% de escurecimento **não mudou quase nada**: o fundo já é
+escuríssimo (luminância média 12,9 de 255), e escurecer o quase-preto não faz
+efeito. O que compete pela atenção é o **pico**, não a média.
+
+Medindo o percentil 99,9 do fundo contra o do gameplay, o cenário **já estava em
+57%** — dentro da faixa de 40 a 65 —, e o véu o havia empurrado para **36%**,
+abaixo dela. O fundo sumia em vez de recuar.
+
+O competidor real era **um prop**: `planeta/infernal` a 0,78 de alfa com 297 px
+de lado, contra 0,22 da nebulosa e 0,42 do anel.
+
+| | |
+|---|---|
+| teto de alfa de corpo celeste | **0,65** |
+| véu: luminosidade conservada | 0,82 |
+| véu: saturação conservada | 0,68 |
+| **pico do fundo, medido** | **41% do gameplay** |
+
+O teto é aplicado na MONTAGEM dos props e não linha a linha, para corpo novo
+nascer obedecendo.
+
+**Armadilha de medição:** eu apagava os desenhos de gameplay mas deixava o HUD,
+e o pico que atribuía ao fundo era texto de HUD.
+
+#### 3. Três camadas de profundidade
+
+| camada | conteúdo | velocidade |
+|---|---|---|
+| distante | nebulosa, estrelas pequenas | 0,25× |
+| média | planetas, luas, estruturas | 0,60× |
+| ambiente | poeira estelar | 1,60× |
+
+O que cria profundidade não é a arte, é a **diferença** de velocidade: três
+imagens rolando junto são três imagens sobrepostas. Com duas camadas o olho lê
+"fundo e frente"; com três lê espaço.
+
+A poeira passa **depois** do véu, porque é primeiro plano ambiental e não
+cenário distante. Dentro dela o grão maior é mais rápido e mais opaco — a mesma
+relação do parallax, aplicada dentro de uma camada, que é o que impede a leitura
+de "folha de papel com pontos".
+
+Baixa intensidade de propósito: 46 grãos, alfa máximo 0,34. Partícula demais
+vira ruído e come a legibilidade que o véu acabou de comprar. Respeita
+"reduzir efeitos".
+
+#### 4. Padrão de arte
+
+A regra para arte nova é **painted sci-fi sprite: bordas nítidas, detalhe
+interno simplificado, iluminação vinda de cima**.
+
+A parte enforçável já está no pipeline:
+
+- **Sprite pequeno não é ampliado.** Reduzir é limpo, ampliar borra — o
+  pipeline sempre parte de arte maior que o uso final.
+- **WebP sem perda em toda arte de contorno.** O modo com perda mistura cor
+  entre pixels vizinhos e borra a aresta que faz a silhueta funcionar em
+  tamanho pequeno.
+- **Normalização por grupo.** Detritos e ícones de elemento entram por área
+  opaca ou por lado maior, não pelo tamanho do arquivo de origem — que costuma
+  mentir.
+
+O que não é enforçável — estilo de pintura, direção da luz — é briefing de arte,
+e vive aqui para ser copiado no pedido.
+
+#### 5. Integração ambiental
+
+Poeira estelar em três faixas de velocidade dentro da própria camada, detritos
+lentos passando (ver seção de Detritos) e as três camadas de parallax. Tudo em
+intensidade baixa.
+
+#### 6. HUD que não fica colado
+
+Eram barras e texto soltos sobre o combate — e é isso que faz um HUD parecer
+colado: sem moldura, o olho não separa instrumento de cena e as duas coisas
+disputam.
+
+Agora há **um módulo**, usado duas vezes: retângulo com o canto EXTERNO
+chanfrado, fundo escuro, borda de 1 px e um filete na aresta que aponta para o
+centro. O da direita é o mesmo espelhado — dois cantos com a mesma gramática
+lêem como um instrumento só; dois desenhos diferentes leriam como duas
+interfaces.
+
+| | antigo | novo |
+|---|---|---|
+| cobertura da faixa superior | 7,0% | 19,4% |
+| **luminância média** | **119,7** | **38,4** |
+| pixels brilhantes | — | 15% (só o texto) |
+
+Cobre **mais área** e pesa **um terço**. Presença é brilho, não área: a moldura
+escura ocupa espaço vazio para separar instrumento de cena, e as marcas caíram
+68% em luminosidade. O chanfro dá a leitura de "instrumento" sem custar espaço —
+uma moldura completa em volta de tudo seria o painel gigante que não se quer.
+
 ### Detritos — asteroides e lixo espacial
 
 66 sprites em seis grupos, num atlas de 512×512 (274 KB). São **obstáculo de
