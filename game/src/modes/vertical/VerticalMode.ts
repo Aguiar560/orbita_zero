@@ -1,5 +1,8 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
-import { ALFA_MAX_DE_CORPO, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, POEIRA, PROFUNDIDADE } from '@data/cenario';
+import {
+  ALFA_MAX_DE_CORPO, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, CONGELAMENTO,
+  POEIRA, PROFUNDIDADE, PROJETIL,
+} from '@data/cenario';
 import {
   CLIMAS, CLIMA_POR_ID, DETRITOS_MAX, INTERVALO_MAX, INTERVALO_MIN,
   PERFIL_DE_DETRITO, VELOCIDADE_BASE, spriteDeDetrito, tamanhoSorteado,
@@ -149,6 +152,11 @@ export class VerticalMode {
   /** Último `dt`, para a contagem da vitória rodar fora de `update`. */
   private lastDt = 1 / 60;
   private shake = 0;
+
+  /** Quanto ainda falta congelar, em segundos. */
+  private congelamento = 0;
+  /** Congelamento disponível. Recarrega com o tempo; ver `CONGELAMENTO`. */
+  private reservaDeCongelamento: number = CONGELAMENTO.reserva;
   private flash = 0;
   private banner = '';
   private bannerTime = 0;
@@ -464,6 +472,22 @@ export class VerticalMode {
       this.shake = damp(this.shake, 0, 0.09, dt);
       this.particles.update(dt);
       this.checkCleared();
+      return;
+    }
+
+    // Congelamento de impacto. Fica DEPOIS da vitória e ANTES de tudo o mais:
+    // o mundo inteiro para, inclusive partículas e cenário. Congelar só os
+    // inimigos deixaria o fundo rolando, e o olho lê isso como travada e não
+    // como efeito.
+    //
+    // `draw()` é chamado à parte pelo laço, então a tela continua sendo
+    // desenhada — é o quadro parado que dá o peso.
+    this.reservaDeCongelamento = Math.min(
+      CONGELAMENTO.reserva,
+      this.reservaDeCongelamento + dt * CONGELAMENTO.porSegundo,
+    );
+    if (this.congelamento > 0) {
+      this.congelamento -= dt;
       return;
     }
 
@@ -1240,6 +1264,24 @@ export class VerticalMode {
     }
   }
 
+  /**
+   * Pede congelamento, dentro do orçamento.
+   *
+   * Não SOMA, pega o maior: seis abates no mesmo quadro são um acontecimento
+   * só, e somar seis congelamentos daria um terço de segundo de tela travada
+   * por uma explosão em área.
+   *
+   * Desligado junto com "reduzir efeitos" — é um efeito de tela que mexe com
+   * o tempo, exatamente a categoria que a opção existe para desligar.
+   */
+  private congelar(segundos: number): void {
+    if (this.sim.state.settings.reduceEffects) return;
+    const cabe = Math.min(segundos, this.reservaDeCongelamento);
+    if (cabe <= 0) return;
+    this.reservaDeCongelamento -= cabe;
+    this.congelamento = Math.max(this.congelamento, cabe);
+  }
+
   private killEnemy(e: Enemy, byPlayer: boolean): void {
     e.alive = false;
     // A animação de destruição própria da nave vale mais que uma explosão
@@ -1260,6 +1302,13 @@ export class VerticalMode {
 
     this.particles.debris(e.x, e.y, e.boss ? 26 : 6, '#9aa7bd', e.boss ? 240 : 120);
     this.shake = Math.max(this.shake, e.boss ? 16 : 2.5);
+    // Mesma leitura de categoria que o resto do arquivo já usa: a instância não
+    // carrega `kind` — quem sabe se é elite é a DEFINIÇÃO.
+    this.congelar(
+      e.boss ? CONGELAMENTO.chefe
+        : e.def.elite ? CONGELAMENTO.elite
+          : CONGELAMENTO.comum,
+    );
 
     if (this.sim.laboratorio.active) {
       if (byPlayer) this.sim.laboratorio.metrics.kills++;
@@ -2276,17 +2325,42 @@ export class VerticalMode {
     ctx.restore();
   }
 
+  /**
+   * Rastro, halo e núcleo — nessa ordem, que é a ordem da profundidade.
+   *
+   * O desenho anterior era um sprite a 0,92 de alfa, e o comentário explicava
+   * que aditivo estouraria em branco. O diagnóstico estava certo; a conclusão,
+   * não. Desistir da presença num jogo cuja linguagem É o projétil custou caro:
+   * mediana medida de 1,3 marcas em tela.
+   *
+   * O rastro sai da VELOCIDADE, não de um histórico guardado. Como o projétil
+   * anda em linha reta, a posição de dois quadros atrás é `x - vx * t` — e um
+   * buffer de posições por projétil seria memória e trabalho para reproduzir
+   * uma conta de uma linha.
+   *
+   * O núcleo subiu para alfa 1. Se a régua do cenário diz que o projétil é o
+   * elemento mais legível da tela, ele não pode ser o único desenhado
+   * translúcido.
+   */
   private drawBullets(s: Surface): void {
     this.bullets.each((b) => {
       const rotation = Math.atan2(b.vy, b.vx) + Math.PI / 2;
-      // Sem mistura aditiva: com cadência e multishot altos são dezenas de
-      // sprites sobrepostos, e em `lighter` eles somam até estourar em branco —
-      // era o que apagava o cenário inteiro atrás da nave.
-      s.sprite(b.sprite, b.x, b.y, {
-        scale: b.scale * (b.crit ? 1.25 : 1),
-        rotation,
-        alpha: 0.92,
-      });
+      const escala = b.scale * (b.crit ? 1.25 : 1);
+
+      // Do mais fraco para o mais forte: o rastro fica por baixo do núcleo.
+      for (let k = PROJETIL.rastroPassos; k >= 1; k--) {
+        const t = PROJETIL.rastroPasso * k;
+        s.sprite(b.sprite, b.x - b.vx * t, b.y - b.vy * t, {
+          scale: escala * (1 - k * 0.16),
+          rotation,
+          alpha: 0.3 / k,
+        });
+      }
+
+      // O halo é aditivo, mas é um gradiente de alfa baixo e não um sprite
+      // cheio: mesmo empilhado numa salva de multishot ele soma devagar.
+      s.glow(b.x, b.y, b.radius * PROJETIL.haloRaio * escala, b.color, PROJETIL.haloAlfa);
+      s.sprite(b.sprite, b.x, b.y, { scale: escala, rotation });
     });
   }
 

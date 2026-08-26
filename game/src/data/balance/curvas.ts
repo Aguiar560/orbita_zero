@@ -334,10 +334,10 @@ export interface PerfilDeOnda {
  * curva foi calibrada.
  */
 export const PERFIS_DE_ONDA: readonly PerfilDeOnda[] = [
-  { id: 'enxame', nome: 'Enxame', densidade: 2.4, pressao: 0.5, tipos: [1, 2], peso: 22 },
-  { id: 'pelotao', nome: 'Pelotão', densidade: 1, pressao: 1, tipos: [2, 3], peso: 38 },
-  { id: 'vanguarda', nome: 'Vanguarda', densidade: 0.45, pressao: 1.9, tipos: [1, 2], peso: 20 },
-  { id: 'fuzilaria', nome: 'Fuzilaria', densidade: 1.2, pressao: 1.05, tipos: [2, 4], peso: 20 },
+  { id: 'enxame', nome: 'Enxame', densidade: 2.4, pressao: 0.5, tipos: [2, 3], peso: 22 },
+  { id: 'pelotao', nome: 'Pelotão', densidade: 1, pressao: 1, tipos: [2, 4], peso: 38 },
+  { id: 'vanguarda', nome: 'Vanguarda', densidade: 0.45, pressao: 1.9, tipos: [2, 3], peso: 20 },
+  { id: 'fuzilaria', nome: 'Fuzilaria', densidade: 1.2, pressao: 1.05, tipos: [3, 4], peso: 20 },
 ];
 
 // ── progressão do jogador ───────────────────────────────────────────────────

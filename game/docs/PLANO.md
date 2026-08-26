@@ -249,6 +249,114 @@ regrede depois de nova calibração.
 
 ---
 
+### Passo 4.2 — O jogo precisa PARECER um shooter 🟡
+
+Auditoria de direção de arte feita em 26/08, com quadro capturado em combate e
+medição no canvas. A passada anterior (Passo 4.1 e a direção visual) tratou do
+FUNDO. Esta trata do que o jogador de fato olha.
+
+Três medições mudam o diagnóstico:
+
+| | medido | referência do gênero |
+|---|---|---|
+| projéteis em tela | mediana **1,3**, máximo 3 | 15 a 60 |
+| silhuetas de inimigo por onda | **1** (de 6 no elenco, 18 no catálogo) | 3 a 5 |
+| planeta de fundo | **371 de 540 = 69% da largura** | — |
+
+O jogo tem 21 inimigos cadastrados e mostra um. É de um gênero cuja linguagem
+visual é o projétil, e a mediana em tela é um.
+
+#### 1. Tipos por onda
+
+`PERFIS_DE_ONDA` sorteia `tipos: [1, 2]`. Em 518 amostras de um setor inteiro,
+um único sprite. O elenco por setor tem seis, e a arte já está paga.
+
+É a melhoria mais barata da lista: um par de números.
+
+**Critério de aceite:** a mediana de silhuetas distintas simultâneas em tela
+passa de 1 para 2 ou mais, sem que a contagem total de inimigos nem a XP do
+setor mudem.
+
+#### 2. Presença de projétil
+
+A nave dispara sprites a `alpha: 0.92`, sem brilho e sem rastro. O comentário
+em `drawBullets` explica por quê — em `lighter`, dezenas de sprites somam até
+estourar em branco — mas a conclusão foi DESLIGAR a presença.
+
+A saída que o gênero usa não é aditivo puro: é **halo saturado não-aditivo por
+baixo, núcleo claro por cima**. Some sem estourar.
+
+- Rastro: posições anteriores com alfa decrescente. É o que dá velocidade.
+- Clarão de disparo no bico da nave.
+- Desacoplar o projétil VISTO do projétil SIMULADO — um projétil lógico pode
+  ser desenhado como dois ou três traços. Resolve densidade sem tocar em
+  balanceamento.
+
+**Critério de aceite:** a mediana de marcas de projétil visíveis sobe para 6 ou
+mais sem que a contagem simulada mude, e o pico de luminância do quadro não
+cresce mais que 15% (o estouro em branco é o que se está evitando).
+
+#### 3. Hitstop e impacto
+
+**Não existe hitstop no projeto.** É o efeito com maior retorno por linha
+escrita em todo shooter: dois a quatro quadros de congelamento no abate.
+
+Falta também faísca no ponto de acerto, na cor do elemento.
+
+**Critério de aceite:** o abate congela o mundo por um tempo medido e limitado,
+o congelamento não acumula com múltiplos abates no mesmo quadro, e a simulação
+de balanceamento em Node não muda em nada — o congelamento é de APRESENTAÇÃO.
+
+#### 4. Cor reservada para perigo
+
+As balas inimigas usam cinco cores, e quatro inimigos atiram `#8dff5c` — verde,
+sendo que os próprios inimigos são verdes.
+
+Ikaruga, Touhou e Nex Machina reservam uma cor para "isto encosta em você e
+dói", e nada mais na tela usa essa cor. É a regra mais rígida do gênero e a mais
+barata de aplicar. Agravante: as estrelas do setor 8 são rosa saturado, mesmo
+registro visual de um projétil.
+
+#### 5. O corpo celeste é uma parede
+
+371 unidades numa tela de 540 — seis vezes a largura da nave, contra o teto de
+100 imposto aos elites. E ele nasce no MEIO da pista: nos quadros capturados há
+inimigos voando por cima dele com a silhueta sumindo.
+
+A medição anterior (pico de luminância a 41% do gameplay) passou por cima disso,
+e o erro vale registrar: ela media BRILHO, e o que come silhueta é **área ×
+contraste interno**. Um planeta escuro mas texturado destrói leitura igual.
+
+- Teto de tamanho relativo à tela (~45% da largura), não absoluto.
+- Nunca centrado na pista: corpo grande vive na borda, cortado.
+- Reduzir o contraste INTERNO, não o brilho geral.
+- A arte tem banding e franja roxa na borda, sinal de ampliação.
+
+#### 6. Acabamento
+
+- A barra AMEAÇA é uma linha nua na largura toda, enquanto o topo tem os
+  módulos com moldura. Mesma gramática, ou ela lê como sobra.
+- Números de dano em cinza pequeno, ilegíveis sobre fundo texturado.
+- Sem telegrafia de ataque inimigo.
+- Sem vinheta. O gênero usa escurecimento de borda para empurrar o olho ao
+  centro.
+
+#### Ordem
+
+| # | frente | esforço | ganho |
+|---|---|---|---|
+| 1 | Tipos por onda 1–2 → 2–4 | trivial | altíssimo |
+| 2 | Presença de projétil | médio | altíssimo |
+| 3 | Hitstop e faísca de impacto | baixo | altíssimo |
+| 4 | Cor reservada de perigo | baixo | alto |
+| 5 | Teto e posição do corpo celeste | baixo | alto |
+| 6 | Vinheta e estrelas dessaturadas | trivial | médio |
+| 7 | Barra inferior no padrão dos módulos | baixo | médio |
+| 8 | Variação dentro do tipo de inimigo | médio | médio |
+| 9 | Telegrafia de ataque | alto | alto (game feel, não só arte) |
+
+---
+
 ### Passo 5 — Som 🔴
 
 **Não existe nenhum áudio no projeto.** Zero referências a `Audio`,

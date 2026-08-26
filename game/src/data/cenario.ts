@@ -93,3 +93,71 @@ export const POEIRA = {
   raioMin: 0.6,
   raioMax: 1.8,
 } as const;
+
+/**
+ * Presença do projétil.
+ *
+ * O gênero inteiro se comunica por projétil, e o nosso saía como um sprite a
+ * 0,92 de alfa, sem brilho e sem rastro — medido: mediana de 1,3 marcas em
+ * tela, contra as dezenas de qualquer shooter. O jogo não PARECIA um shooter.
+ *
+ * O comentário antigo em `drawBullets` estava certo no diagnóstico e errado na
+ * conclusão: em `lighter`, dezenas de sprites somam até estourar em branco. A
+ * saída do gênero não é aditivo puro nem desistir — é HALO por baixo e NÚCLEO
+ * por cima. O halo dá massa, o núcleo dá a leitura, e nenhum dos dois precisa
+ * de opacidade cheia para isso.
+ */
+export const PROJETIL = {
+  /**
+   * Quantas marcas de rastro cada projétil deixa.
+   *
+   * Três e não oito: o rastro serve para dizer DIREÇÃO e velocidade, e a
+   * partir da quarta marca ele deixa de informar e começa a sujar a tela —
+   * que é exatamente o custo que se está tentando não pagar.
+   */
+  rastroPassos: 3,
+  /**
+   * Distância entre marcas, em segundos de voo.
+   *
+   * Em segundos e não em pixels de propósito: o rastro sai da VELOCIDADE do
+   * projétil, então um tiro rápido deixa risco longo e um lento deixa risco
+   * curto, sem tabela nenhuma. E como a posição anterior é dedutível de
+   * `x - vx * t`, não é preciso guardar histórico de posição por projétil.
+   */
+  rastroPasso: 0.014,
+  /** Raio do halo, multiplicando o raio do projétil. */
+  haloRaio: 2.4,
+  /** Opacidade do halo. Baixa porque ele é aditivo e vai se somar. */
+  haloAlfa: 0.2,
+} as const;
+
+/**
+ * Congelamento de impacto — o "hitstop" do gênero.
+ *
+ * Dois a quatro quadros de mundo parado no abate. É o efeito com maior retorno
+ * por linha escrita num shooter: sem ele o inimigo simplesmente some, e o
+ * golpe não tem peso nenhum.
+ *
+ * ## Por que o comum congela tão pouco
+ *
+ * Uma onda tem de 50 a 90 inimigos comuns. Congelar três quadros em cada um
+ * daria uma tela piscando o setor inteiro — não é crocância, é estroboscópio.
+ * O comum leva o mínimo perceptível; o peso fica guardado para quando o abate
+ * significa alguma coisa.
+ *
+ * ## Por que existe orçamento
+ *
+ * Abates vêm em rajada — uma explosão em área mata seis de uma vez. Sem teto,
+ * a rajada viraria meio segundo de tela travada, que o jogador lê como queda
+ * de quadros e não como efeito. O orçamento recarrega a `porSegundo` e limita
+ * QUANTO do tempo real pode estar congelado, não quantos abates cabem.
+ */
+export const CONGELAMENTO = {
+  comum: 0.022,
+  elite: 0.06,
+  chefe: 0.14,
+  /** Segundos de congelamento ganhos por segundo real. */
+  porSegundo: 0.1,
+  /** Teto acumulado, para uma rajada não gastar tudo de uma vez. */
+  reserva: 0.16,
+} as const;
