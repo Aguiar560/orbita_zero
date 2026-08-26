@@ -8,7 +8,19 @@ export type ShopEffect =
   | 'refaz_matriz'
   | 'tentativa_provacao'
   | 'sucata_para_nucleo'
-  | 'nucleo_para_cristal';
+  | 'nucleo_para_cristal'
+  | 'elemento_item'
+  | 'elemento_nave';
+
+/**
+ * Serviços que precisam de um ALVO antes de cobrar.
+ *
+ * O resto do catálogo é um botão só: paga e acontece. Estes dois não podem
+ * ser — "trocar o elemento" sem dizer de quê e para quê cobraria por uma
+ * decisão que o jogador ainda não tomou. O painel vê este campo e abre um
+ * seletor em vez de comprar direto.
+ */
+export type ShopAlvo = 'item' | 'nave';
 
 export interface ShopQuota {
   /** Operações liberadas desde o começo. */
@@ -41,6 +53,8 @@ export interface ShopItem {
   /** Estoque que cresce com o nível, evitando conversão infinita. */
   quota?: ShopQuota;
   requiresSector?: number;
+  /** Serviço que exige escolher um alvo antes de cobrar. */
+  alvo?: ShopAlvo;
 }
 
 /**
@@ -62,6 +76,20 @@ export const SHOP: readonly ShopItem[] = [
     detail: 'Instala um compartimento físico permanente. Existem quatro módulos, cada um registrado separadamente no manifesto da nave.',
     art: 'loja_servico_carga.webp', currency: 'nucleo', cost: 400, growth: 1.85, max: 4,
     effect: 'carga',
+  },
+  {
+    id: 'elemento_item', name: 'Recalibrador de Munição', category: 'sistemas', kind: 'servico',
+    desc: 'Converte uma peça do inventário para outro elemento.',
+    detail: 'A peça mantém nível, raridade e afixos — só a assinatura elemental muda. É o que impede um achado raro de elemento errado de virar peso morto: nave só monta neutro ou do próprio elemento.',
+    art: 'loja_servico_matriz.webp', currency: 'cristal', cost: 6, growth: 1, max: 0,
+    effect: 'elemento_item', alvo: 'item',
+  },
+  {
+    id: 'elemento_nave', name: 'Reator de Assinatura', category: 'sistemas', kind: 'servico',
+    desc: 'Troca o elemento de uma nave da frota.',
+    detail: 'Não desmonta o conjunto: as peças que deixarem de servir continuam instaladas até você decidir o que fazer com elas. Custa cinco vezes mais que recalibrar uma peça — mudar a identidade da nave é decisão, não ajuste.',
+    art: 'loja_servico_matriz.webp', currency: 'cristal', cost: 30, growth: 1, max: 0,
+    effect: 'elemento_nave', alvo: 'nave', requiresSector: 8,
   },
   {
     id: 'refaz_matriz', name: 'Chave de Reconfiguração', category: 'sistemas', kind: 'servico',

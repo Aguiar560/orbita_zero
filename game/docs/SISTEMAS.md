@@ -252,6 +252,77 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Regra elemental — o que uma nave aceita montar
+
+Uma nave só monta item **neutro** ou **do próprio elemento**. É o que dá
+identidade tática ao casco: uma nave de gelo é uma nave de gelo, não um chassi
+onde cabe o que caiu.
+
+**Sozinha, a regra seria cruel de um jeito invisível.** A chance de um item
+sair neutro CAI com a raridade — 80% no Comum, 3% no Divino —, então quanto
+mais raro o achado, menor a chance de servir. Medido, um Divino serviria em 22%
+das vezes: a peça mais difícil do jogo chegaria inútil quatro vezes em cinco.
+
+Por isso ela só existe junto do serviço de conversão:
+
+| | |
+|---|---|
+| caem prontos | **81,7%** |
+| passam pela loja | 18,3% |
+| viram lixo | **0%** |
+
+O custo é a moeda, não a peça. E 18,3% dos drops passando por um serviço é um
+sorvedouro que a economia não tinha.
+
+#### Os dois serviços da Central
+
+| serviço | custo | setor | o que faz |
+|---|---|---|---|
+| **Recalibrador de Munição** | 6 cristais | 0 | converte uma peça do inventário |
+| **Reator de Assinatura** | 30 cristais | 8 | troca o elemento de uma nave |
+
+Cinco vezes mais caro para a nave de propósito: mudar a identidade do casco é
+decisão, não ajuste. Ambos cobram em cristal, a moeda mais rara — a conversão
+precisa doer o bastante para o jogador preferir a peça que já veio certa,
+senão o elemento do drop deixaria de significar algo.
+
+São os únicos serviços do catálogo com **alvo**: o resto é um botão que paga e
+acontece. `ShopItem.alvo` faz o painel abrir um seletor em vez de comprar —
+cobrar por "trocar o elemento" sem dizer de quê e para quê seria cobrar por uma
+decisão que o jogador ainda não tomou. O botão do elemento em que o alvo já
+está fica desabilitado: recusar depois de cobrar seria pior que não deixar
+clicar.
+
+#### Trocar o elemento da nave NÃO desmonta o conjunto
+
+As peças que deixaram de servir continuam instaladas até o jogador decidir.
+Esvaziar o conjunto sem avisar seria a pior forma de descobrir a regra;
+`pecasIncompativeis` é quem a tela consulta para mostrar o estrago.
+
+Verificado no jogo: trocar de raio para gelo custou 30 cristais e deixou as
+**8 peças montadas** onde estavam.
+
+#### A recusa mora no modelo, e a régua obedece
+
+Anatomia, inventário e auto-equipar são três caminhos até `equip`, que passou a
+devolver `boolean`. Uma regra escrita em cada um seria a mesma regra três
+vezes, com duas chances de divergir.
+
+O **arnês de balanceamento** obedece também, e isso não é detalhe: sem mudá-lo,
+ele montaria conjuntos que nenhum jogador consegue montar e toda medição de
+ritmo mediria uma nave que não existe — o oposto da premissa do projeto. Ele
+modela o jogador que converte na loja, porque o serviço existe e ele o usaria.
+
+#### Elemento da nave no save
+
+`naves[id].elemento` guarda só a EXCEÇÃO. Ausente significa "como saiu de
+fábrica", e o nativo continua vindo de `hulls.ts` — save antigo migra sem tocar
+em nada.
+
+Nave de elemento `padrao` aceita só neutro. Não é caso especial: `padrao` é o
+elemento dela e a regra é a mesma. É o preço de voar sem aposta elemental — em
+troca, dano neutro nunca é resistido.
+
 ### Posturas do piloto de IA — três, sem meio-termo
 
 O jogador não pilota: escolhe uma postura. Eram quatro, e a quarta não era uma

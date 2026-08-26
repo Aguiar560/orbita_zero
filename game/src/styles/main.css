@@ -5512,3 +5512,15 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   color: #ffcf7a; font: 700 9.5px/1.5 'Chakra Petch', sans-serif; letter-spacing: .12em;
 }
 .ranking-demo-aviso span:last-child { color: #b9a789; line-height: 1.5; }
+
+/* ── seletor de alvo dos serviços elementais ─────────────────────────────── */
+
+.loj-seletor { display: grid; gap: 9px; max-width: 460px; text-align: left; }
+.loj-seletor h2 { margin: 0; }
+.loj-seletor p { margin: 0; line-height: 1.5; }
+.loj-seletor > span { letter-spacing: .1em; }
+/* Uma coluna por elemento: são seis e não crescem, então a fileira nunca quebra
+ * de forma imprevisível e o olho compara os seis de uma vez. */
+.loj-elementos { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
+.loj-elementos .chip { padding: 7px 4px; font-size: 11px; }
+.loj-elementos .chip:disabled { opacity: .35; cursor: not-allowed; }
