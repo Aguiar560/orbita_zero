@@ -1,6 +1,7 @@
 import { autonomiaDoCasco, podeDecolar, recargaDoCasco } from '@sim/combustivel';
 import { duration, fmt } from '@core/format';
 import { HULLS, type Hull } from '@data/hulls';
+import { loreDeCasco } from '@data/hulls-lore';
 import {
   HULL_ARCHETYPES, HULL_TUNINGS, HULL_WEAPONS, SPACESHIPS2_HULL_SPEC_BY_ID,
 } from '@data/hulls-spaceships2';
@@ -168,6 +169,7 @@ export class FleetPanel implements Panel {
       ...(revelado || tem
         ? [shipBadges(hull), h('p.muted.tiny', { text: hull.blurb })]
         : [h('p.muted.tiny', { text: `Os registros deste casco abrem ao alcançar o setor ${hull.requiresSector}.` })]),
+
       shipBars(hull),
 
       ...(tem
@@ -205,9 +207,40 @@ export class FleetPanel implements Panel {
               onclick: () => { sim.buyHull(hull.id); },
             }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' }))
           : h('.fleet-action', { text: `Alcance o setor ${hull.requiresSector}` }),
+
+      // A lore vem DEPOIS da ação, no fim da ficha. Ela é o que se lê depois de
+      // decidir, não o que decide — quem abriu o Hangar para trocar de nave não
+      // deve passar por dois parágrafos até achar o botão. Medido: com ela no
+      // meio, o botão ficava abaixo de 6 linhas de prosa.
+      //
+      // Só para casco revelado: a história de uma nave que o jogador ainda não
+      // pode ver é justamente o que o selo do registro guarda.
+      ...(revelado || tem ? [this.lore(hull)] : []),
+    );
+  }
+
+  /**
+   * História e curiosidade, no fim da ficha.
+   *
+   * Duas peças com pesos diferentes: a história é parágrafo corrido, a
+   * curiosidade é uma linha destacada. Dar o mesmo tratamento às duas faria a
+   * segunda parecer continuação da primeira — e ela existe justamente por ser
+   * o fato que sobra, o que o jogador repetiria para alguém.
+   */
+  private lore(hull: Hull): HTMLElement {
+    const texto = loreDeCasco(hull.id);
+    if (!texto) return h('.hangar-lore.vazia');
+    return h('.hangar-lore', {},
+      h('h4.hangar-lore-titulo', { text: 'REGISTRO' }),
+      h('p', { text: texto.historia }),
+      h('.hangar-curiosidade', {},
+        h('span.hangar-curiosidade-selo', { text: 'CURIOSIDADE' }),
+        h('span', { text: texto.curiosidade }),
+      ),
     );
   }
 }
+
 /** Arquétipo, calibração e arma vêm da ficha autoral, não de inferência visual. */
 function shipBuild(hull: Hull): HTMLElement {
   const spec = SPACESHIPS2_HULL_SPEC_BY_ID.get(hull.id);

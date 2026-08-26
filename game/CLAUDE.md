@@ -110,6 +110,11 @@ Regras de camada, em ordem de importância:
   contagem absurda de entidades.
 - **Nenhuma nave e nenhum atributo pode dominar todo o conteúdo.** Progressão é
   horizontal tanto quanto vertical.
+- **Casco novo entra com HISTÓRIA e CURIOSIDADE.** Ficam em
+  `data/hulls-lore.ts`, e `tests/hulls-lore.test.ts` quebra o build se faltar.
+  A regra é testada e não combinada porque convenção que depende de memória se
+  perde na terceira nave — e um catálogo com metade das naves mudas é pior que
+  um sem nenhuma.
 - **A nave evolui por item, craft e Matriz. Só.** Não existe sistema paralelo de
   upgrade. Já foram removidos por serem um: o menu **Melhorias** (§31) e os
   **Power Ups** de batalha (§30). Qualquer proposta de nova fonte de poder fora

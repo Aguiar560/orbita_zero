@@ -423,6 +423,30 @@ ou o setor que falta.
 Casco bloqueado continua **legível**, só apagado. O catálogo existe para o
 jogador saber o que perseguir, e o que ele não consegue ler não persegue.
 
+### Registro: história e curiosidade de cada casco
+
+Os 53 cascos têm ficha própria em `data/hulls-lore.ts` — dois períodos de
+história e uma curiosidade. Elas aparecem no FIM da ficha, depois da ação.
+
+A ordem importa e foi corrigida por medição: com a lore no meio, o botão de
+Ativar ficava abaixo de seis linhas de prosa. Quem abre o Hangar para trocar de
+nave não deve passar por dois parágrafos até achar o botão — a lore é o que se
+lê depois de decidir, não o que decide.
+
+História e curiosidade têm **pesos visuais diferentes**: a primeira é parágrafo
+corrido, a segunda é uma linha destacada com filete. Com o mesmo tratamento a
+curiosidade pareceria continuação do parágrafo, e ela existe justamente por ser
+o fato que SOBRA — o que o jogador repetiria para alguém.
+
+Casco selado não mostra lore: a história de uma nave que o jogador ainda não
+pode ver é exatamente o que o selo do registro guarda.
+
+**A regra é testada.** `tests/hulls-lore.test.ts` exige lore para todo casco
+jogável, recusa texto vazio, recusa lore órfã de casco apagado, recusa
+curiosidade que só repete a história e recusa texto duplicado entre cascos.
+"Sempre que criar uma nave, criar a história junto" é convenção, e convenção
+que depende de memória se perde na terceira nave.
+
 ### Combustível
 
 `Ativar` fica desabilitado abaixo do piso de 5% — deixar ativar e a nave cair no

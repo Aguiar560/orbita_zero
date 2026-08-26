@@ -5773,3 +5773,44 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 @media (max-width: 900px) {
   .hangar-corpo { grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px minmax(0, 1fr); }
 }
+
+/* ── registro da nave: história e curiosidade ─────────────────────────────── */
+
+/*
+ * Fica no FIM da ficha, depois das barras e da ação. É o que se lê depois de
+ * decidir, não o que decide — quem abriu o Hangar para trocar de nave não deve
+ * rolar dois parágrafos para achar o botão.
+ */
+.hangar-lore {
+  display: grid; gap: 7px;
+  margin-top: 4px; padding-top: 12px;
+  border-top: 1px solid var(--painel-linha);
+}
+.hangar-lore.vazia { display: none; }
+.hangar-lore-titulo {
+  margin: 0; color: var(--muted);
+  font: 700 9.5px/1 'Chakra Petch', sans-serif; letter-spacing: .16em;
+}
+.hangar-lore p {
+  margin: 0; color: #a8bccd; font-size: 12.5px; line-height: 1.6;
+  /* Corrido e justificado à esquerda: é prosa, e prosa em coluna estreita com
+   * entrelinha apertada não se lê, se atravessa. */
+  max-width: 68ch;
+}
+
+/*
+ * A curiosidade tem peso VISUAL diferente da história, e não só texto diferente.
+ * Com o mesmo tratamento ela pareceria continuação do parágrafo — e ela existe
+ * justamente por ser o fato que sobra, o que o jogador repetiria para alguém.
+ */
+.hangar-curiosidade {
+  display: grid; gap: 4px;
+  padding: 9px 11px; border-radius: 6px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  background: rgba(255, 255, 255, .03);
+}
+.hangar-curiosidade-selo {
+  color: var(--accent);
+  font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .16em;
+}
+.hangar-curiosidade span:last-child { color: #b9cbd9; font-size: 12px; line-height: 1.55; }
