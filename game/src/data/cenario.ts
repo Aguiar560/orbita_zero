@@ -186,20 +186,36 @@ export const CONGELAMENTO = {
  */
 export const AMEACA = {
   /**
-   * Raio externo do anel escuro, multiplicando o raio do projétil.
+   * Deslocamento do contorno, em unidades lógicas.
    *
-   * Maior que o halo (2,4) de propósito: o anel precisa sobrar POR FORA dele.
-   * A primeira versão usava 1,9 e ficava por baixo do halo aditivo, que pintava
-   * por cima e apagava a auréola — medido, o anel saía 3,1 mais CLARO que o
-   * fundo local, o oposto do que se queria.
+   * O contorno é a MESMA silhueta do projétil, escura, desenhada quatro vezes
+   * deslocada por baixo do núcleo. Não é um anel em volta: é a borda da forma.
+   *
+   * ## Duas tentativas erradas antes desta
+   *
+   * A primeira foi um disco escuro de raio 1,9, por baixo do halo aditivo (raio
+   * 2,4): o halo pintava por cima e a auréola sumia. Medido, o contorno saía
+   * 3,1 mais CLARO que o fundo local.
+   *
+   * A segunda foi um anel radial de raio 3,2, por fora do halo. O vale de
+   * luminância ficou perfeito — 44% mais escuro, no raio exato previsto — e o
+   * resultado em tela foi uma BOLA PRETA em volta de cada tiro. Com raio 8 e
+   * escala 0,6, aquele anel tinha 30 unidades de diâmetro, maior que vários
+   * inimigos.
+   *
+   * O erro foi de método, e vale registrar: calibrei medindo a profundidade do
+   * vale, que era o número que eu queria ver, e nunca medi o TAMANHO. Um efeito
+   * de contorno tem duas dimensões, e eu só olhei uma.
+   *
+   * Um contorno que acompanha a forma não pode crescer além do sprite, porque
+   * ELE É o sprite. É o mesmo motivo pelo qual jogo nenhum desenha "brilho em
+   * volta" quando o que quer dizer é "esta coisa tem borda".
    */
-  auroraRaio: 3.2,
-  /** Onde o escuro começa a aparecer. Antes disso, transparente. */
-  auroraInterna: 0.68,
-  /** Onde o escuro é máximo. Depois disso, some de volta. */
-  auroraPico: 0.84,
-  /** Opacidade no pico. */
-  auroraAlfa: 0.8,
+  contornoPasso: 1.6,
+  /** Cor do contorno. Escura o bastante para separar de qualquer fundo. */
+  contornoCor: '#03060e',
+  /** Opacidade do contorno. */
+  contornoAlfa: 0.9,
   /**
    * Passos de rastro do tiro INIMIGO.
    *

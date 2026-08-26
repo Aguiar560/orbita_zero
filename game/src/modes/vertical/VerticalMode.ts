@@ -2371,7 +2371,6 @@ export class VerticalMode {
    * translúcido.
    */
   private drawBullets(s: Surface): void {
-    const ctx = s.ctx;
     this.bullets.each((b) => {
       const rotation = Math.atan2(b.vy, b.vx) + Math.PI / 2;
       const escala = b.scale * (b.crit ? 1.25 : 1);
@@ -2379,30 +2378,6 @@ export class VerticalMode {
       // Duas gramáticas de forma, e é ELA que diz ameaça — a cor está ocupada
       // dizendo o elemento, e o anel elemental precisa dessa leitura.
       const passos = b.friendly ? PROJETIL.rastroPassos : AMEACA.rastroPassos;
-
-      // A auréola escura do tiro inimigo.
-      //
-      // É um ANEL e não um disco, e a primeira versão errou nisso: o disco
-      // ficava por baixo do halo aditivo, que é maior (2,4 contra 1,9) e vem
-      // depois — o halo simplesmente pintava por cima e a auréola sumia.
-      // Medido, o anel do tiro hostil saía 3,1 mais CLARO que o fundo local,
-      // quando a intenção era o oposto.
-      //
-      // Agora ele mora FORA do halo, num gradiente que nasce transparente,
-      // escurece no raio da borda e volta a sumir. Assim o contorno aparece sem
-      // apagar a cor do elemento, que é a informação que não pode ser perdida.
-      if (!b.friendly) {
-        const r = b.radius * AMEACA.auroraRaio * escala;
-        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
-        g.addColorStop(0, 'rgba(3, 6, 14, 0)');
-        g.addColorStop(AMEACA.auroraInterna, 'rgba(3, 6, 14, 0)');
-        g.addColorStop(AMEACA.auroraPico, `rgba(3, 6, 14, ${AMEACA.auroraAlfa})`);
-        g.addColorStop(1, 'rgba(3, 6, 14, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
 
       // Do mais fraco para o mais forte: o rastro fica por baixo do núcleo.
       for (let k = passos; k >= 1; k--) {
@@ -2417,6 +2392,31 @@ export class VerticalMode {
       // O halo é aditivo, mas é um gradiente de alfa baixo e não um sprite
       // cheio: mesmo empilhado numa salva de multishot ele soma devagar.
       s.glow(b.x, b.y, b.radius * PROJETIL.haloRaio * escala, b.color, PROJETIL.haloAlfa);
+
+      // O contorno do tiro inimigo: a MESMA silhueta, escura, deslocada para
+      // os quatro lados e desenhada por baixo do núcleo.
+      //
+      // A versão anterior era um anel radial de raio 3,2 — e virou uma bola
+      // preta em volta de cada tiro. O erro foi de método: calibrei o anel
+      // medindo a profundidade do vale de luminância, que ficou linda (44%
+      // mais escuro no raio previsto), e nunca medi o TAMANHO da coisa. Com
+      // raio 8 e escala 0,6, aquele anel tinha 30 unidades de diâmetro:
+      // maior que vários inimigos.
+      //
+      // Um contorno que acompanha a forma não tem esse problema — ele não
+      // pode crescer além do sprite, porque É o sprite. E vem DEPOIS do halo
+      // de propósito: por baixo dele, o aditivo o clareava de volta, que foi
+      // exatamente o defeito da primeira tentativa.
+      if (!b.friendly) {
+        const p = AMEACA.contornoPasso;
+        for (const [dx, dy] of [[-p, 0], [p, 0], [0, -p], [0, p]] as const) {
+          s.sprite(b.sprite, b.x + dx, b.y + dy, {
+            scale: escala, rotation,
+            tint: AMEACA.contornoCor, tintAlpha: 1, alpha: AMEACA.contornoAlfa,
+          });
+        }
+      }
+
       s.sprite(b.sprite, b.x, b.y, { scale: escala, rotation });
     });
   }

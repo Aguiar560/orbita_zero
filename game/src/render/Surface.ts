@@ -36,6 +36,9 @@ export class Surface {
   scale = 1;
   dpr = 1;
 
+  /** Texturas tingidas já prontas, por recorte + cor + força. */
+  private readonly tintCache = new Map<string, HTMLCanvasElement>();
+
   private readonly tintCanvas = document.createElement('canvas');
   private readonly tintCtx: CanvasRenderingContext2D;
 
@@ -133,11 +136,24 @@ export class Surface {
   }
 
   /**
-   * Recolore um quadro num canvas auxiliar usando `source-atop`, preservando o
-   * alpha do sprite. Reusa o mesmo canvas a cada chamada: só um sprite tingido
-   * existe por vez durante um `drawImage`, então não há conflito.
+   * Recolore um quadro usando `source-atop`, preservando o alpha do sprite.
+   *
+   * Gerado UMA VEZ por combinação de recorte, cor e força, e guardado. Ver
+   * abaixo por que o cache precisou existir.
    */
   private tinted(f: Frame, image: CanvasImageSource, color: string, strength: number): HTMLCanvasElement {
+    // O comentário acima sempre disse "gerada uma vez por combinação imagem+cor",
+    // e o cache que fazia isso não existia: cada chamada limpava a tela de apoio
+    // e redesenhava. Passou despercebido enquanto o único uso era o flash branco
+    // de um inimigo levando tiro — um por quadro, no máximo.
+    //
+    // O contorno do projétil hostil chama quatro vezes POR TIRO, e a conta
+    // apareceu de uma vez: com onze tiros em tela o desenho de projétil passou a
+    // custar 20,9 ms por quadro, sozinho, contra um orçamento total de 16,7.
+    const chave = `${f.x},${f.y},${f.w},${f.h}|${color}|${strength}`;
+    const guardado = this.tintCache.get(chave);
+    if (guardado) return guardado;
+
     const { tintCanvas: c, tintCtx: g } = this;
     if (c.width < f.w || c.height < f.h) {
       c.width = Math.max(c.width, f.w);
@@ -153,7 +169,22 @@ export class Surface {
     g.fillRect(0, 0, f.w, f.h);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = 1;
-    return c;
+
+    // Cópia própria, e não a tela de apoio: ela é compartilhada e a próxima
+    // chamada a limpa. Guardar `c` daria a todo mundo a mesma imagem, a última
+    // desenhada — o tipo de defeito que só aparece quando duas coisas diferentes
+    // pedem tinta no mesmo quadro.
+    const copia = document.createElement('canvas');
+    copia.width = f.w;
+    copia.height = f.h;
+    copia.getContext('2d')!.drawImage(c, 0, 0, f.w, f.h, 0, 0, f.w, f.h);
+
+    // Teto simples. As combinações reais são poucas — um punhado de sprites de
+    // tiro numa cor só, e o flash branco — mas um cache sem limite num laço de
+    // render é dívida esperando por um caso que ninguém previu.
+    if (this.tintCache.size >= 96) this.tintCache.clear();
+    this.tintCache.set(chave, copia);
+    return copia;
   }
 
   // ── primitivas de apoio ───────────────────────────────────────────────────
