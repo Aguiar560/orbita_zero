@@ -20,7 +20,7 @@ export const SAVE_KEY = 'orbita-zero:save';
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -73,6 +73,7 @@ export function createState(
     armazem: {},
 
     shop: {},
+    servicos: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
     naves: {},
 
@@ -165,6 +166,7 @@ export function migrate(raw: unknown): GameState | null {
     stats: { ...fresh.stats, ...data.stats },
     settings: { ...fresh.settings, ...data.settings },
     shop: { ...data.shop },
+    servicos: { ...data.servicos },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
     inventory: Array.isArray(data.inventory) ? data.inventory : [],

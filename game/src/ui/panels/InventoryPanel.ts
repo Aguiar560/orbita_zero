@@ -32,6 +32,7 @@ function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
 
 import { h, spriteIcon } from '../dom';
 import { buildItemCard } from '../ItemCard';
+import { encerrarSelecao, selecaoPendente } from '../selecao';
 import type { Panel } from './types';
 
 function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string {
@@ -189,7 +190,14 @@ export class InventoryPanel implements Panel {
     const info = rarityInfo(item.rarity);
     const gain = scoreItem(sim.state, item);
 
-    const cell = h('.inv-cell', {
+    // Com uma carga de serviço ativa, a grade vira SELETOR. A peça que já está
+    // no elemento de destino fica apagada: gastar a carga para não mudar nada
+    // é o erro óbvio, e recusar depois de consumir seria pior que não deixar
+    // clicar.
+    const mira = selecaoPendente();
+    const alvoValido = !!mira && (item.element ?? 'padrao') !== mira.elemento;
+
+    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}`, {
       style: { borderColor: info.color, boxShadow: `inset 0 0 16px ${info.glow}` },
     }, spriteIcon(item.icon, 40));
 
@@ -212,6 +220,23 @@ export class InventoryPanel implements Panel {
     cell.addEventListener('mouseenter', () => this.showTip(sim, item, cell, gain));
     cell.addEventListener('mouseleave', () => this.tip.classList.add('hidden'));
     cell.addEventListener('click', (e) => {
+      // Modo de seleção intercepta TUDO: enquanto a carga está ativa, clicar
+      // não equipa nem vende. Uma grade que faz duas coisas diferentes conforme
+      // um estado invisível seria a forma mais rápida de queimar uma carga sem
+      // querer.
+      if (mira) {
+        e.preventDefault();
+        if (!alvoValido) {
+          toast('Esta peça já está nesse elemento', 'bad');
+          return;
+        }
+        if (sim.usarCargaNoItem(mira.servico, item.uid, mira.elemento)) {
+          toast(`Convertida para ${getElement(mira.elemento).name.toLowerCase()}`, 'good');
+          encerrarSelecao();
+          sim.touch();
+        }
+        return;
+      }
       if (e.altKey) {
         e.preventDefault();
         const valor = sim.sell(item.uid);

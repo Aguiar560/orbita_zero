@@ -462,6 +462,19 @@ export interface GameState {
   shop: Record<string, number>;
 
   /**
+   * Cargas de serviço compradas e ainda não usadas. id → quantidade.
+   *
+   * Separado de `shop`, que conta COMPRAS acumuladas para cota e preço
+   * crescente. Aqui é estoque: sobe ao comprar, desce ao usar. Juntar os dois
+   * faria usar uma carga baratear a próxima compra.
+   *
+   * Existe porque comprar e usar deixaram de ser o mesmo instante: o serviço
+   * elemental precisa de um alvo, e o alvo se escolhe no inventário, com a
+   * peça à vista — não num modal aberto no meio da loja.
+   */
+  servicos: Record<string, number>;
+
+  /**
    * O personagem: nível global, XP da faixa atual e a Matriz.
    *
    * O nível dele é a principal referência do §17 e o que abre a Matriz. Vive

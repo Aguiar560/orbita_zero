@@ -4,13 +4,9 @@ import {
   type ShopCategory, type ShopItem,
 } from '@data/shop';
 import { nivelExigido } from '@data/balance/curvas';
-import { ELEMENTS, getElement } from '@data/elements';
-import { HULL_BY_ID } from '@data/hulls';
-import { SLOT_BY_ID } from '@data/items';
-import { rarityInfo } from '@data/rarity';
-import type { ElementId, ResourceId } from '@sim/types';
+import type { ResourceId } from '@sim/types';
 import type { Sim } from '@sim/index';
-import { clear, h, progressBar, spriteIcon } from '../dom';
+import { h, progressBar, spriteIcon } from '../dom';
 import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
 
@@ -162,11 +158,16 @@ export class ShopPanel implements Panel {
       h('button.btn.loj-executar', {
         disabled: !ready,
         onclick: () => {
-          // Serviço com alvo não compra no clique: abre o seletor. Cobrar
-          // antes de saber DE QUÊ e PARA QUÊ seria cobrar por uma decisão que
-          // o jogador ainda não tomou.
-          if (item.alvo) { this.abrirSeletor(sim, item); return; }
           if (!sim.buyShopItem(item.id)) return;
+          // Serviço com alvo não acontece aqui: a compra guarda uma CARGA no
+          // Armazém, e o alvo se escolhe lá, com a peça à vista. A loja tentou
+          // resolver isso num modal com a lista de todas as peças, e obrigava
+          // o jogador a decorar "Reator nv 30 · Raro · Fogo" para achar o
+          // ícone certo depois — traduzir do texto para a grade.
+          if (item.alvo) {
+            this.feedback = `${item.name.toUpperCase()} · CARGA NO ARMAZÉM`;
+            return;
+          }
           this.feedback = `${item.name.toUpperCase()} · OPERAÇÃO CONCLUÍDA`;
         },
       },
@@ -174,85 +175,6 @@ export class ShopPanel implements Panel {
         h('.loj-preco', {}, spriteIcon(meta.icon, 20), h('strong', { text: fmt(cost) })),
       ),
     );
-  }
-
-  /**
-   * Seletor de alvo dos serviços elementais.
-   *
-   * Modal em vez de painel próprio: a escolha é curta (o que, e para qual
-   * elemento) e o jogador acabou de sair do catálogo — tirá-lo da loja para
-   * uma tela inteira e devolvê-lo depois custaria mais atenção do que a
-   * decisão vale.
-   *
-   * Mostra o elemento ATUAL de cada alvo e desabilita o botão do elemento em
-   * que ele já está: pagar para trocar pelo mesmo é o erro óbvio, e recusar
-   * depois de cobrar seria pior que não deixar clicar.
-   */
-  private abrirSeletor(sim: Sim, servico: ShopItem): void {
-    const paraNave = servico.alvo === 'nave';
-    let alvo = paraNave
-      ? sim.state.hull
-      : sim.state.inventory[0]?.uid ?? '';
-
-    const modal = h('.modal-backdrop');
-    const fechar = () => modal.remove();
-
-    const desenhar = (): void => {
-      const atual: ElementId = paraNave
-        ? sim.elementoDe(alvo)
-        : (sim.state.inventory.find((i) => i.uid === alvo)?.element ?? 'padrao');
-
-      clear(modal).append(h('.modal.loj-seletor', {},
-        h('h2', { text: servico.name }),
-        h('p.muted.tiny', { text: servico.detail }),
-
-        h('span.muted.tiny', { text: paraNave ? 'NAVE' : 'PEÇA' }),
-        paraNave
-          ? h('select.select', {
-              onchange: (e: Event) => { alvo = (e.target as HTMLSelectElement).value; desenhar(); },
-            }, ...sim.state.fleet.map((id) => {
-              const o = h('option', {
-                value: id,
-                text: `${HULL_BY_ID.get(id)?.name ?? id} · ${getElement(sim.elementoDe(id)).name}`,
-              }) as HTMLOptionElement;
-              if (id === alvo) o.selected = true;
-              return o;
-            }))
-          : h('select.select', {
-              onchange: (e: Event) => { alvo = (e.target as HTMLSelectElement).value; desenhar(); },
-            }, ...sim.state.inventory.map((it) => {
-              const o = h('option', {
-                value: it.uid,
-                text: `${SLOT_BY_ID.get(it.slot)?.name ?? it.slot} nv ${it.ilvl} · ${rarityInfo(it.rarity).name} · ${getElement(it.element ?? 'padrao').name}`,
-              }) as HTMLOptionElement;
-              if (it.uid === alvo) o.selected = true;
-              return o;
-            })),
-
-        h('span.muted.tiny', { text: `DE ${getElement(atual).name.toUpperCase()} PARA` }),
-        h('.loj-elementos', {}, ...ELEMENTS.map((el) => h('button.chip', {
-          text: el.name,
-          disabled: el.id === atual || !alvo,
-          style: { color: el.color } as Partial<CSSStyleDeclaration>,
-          onclick: () => {
-            const ok = paraNave
-              ? sim.trocarElementoDaNave(alvo, el.id, servico.cost)
-              : sim.trocarElementoDoItem(alvo, el.id, servico.cost);
-            this.feedback = ok
-              ? `${servico.name.toUpperCase()} · AGORA ${el.name.toUpperCase()}`
-              : 'CRISTAL INSUFICIENTE';
-            if (ok) fechar(); else desenhar();
-          },
-        }))),
-
-        h('p.muted.tiny', { text: `Custo: ${servico.cost} cristal por operação.` }),
-        h('button.btn', { onclick: fechar }, h('span', { text: 'Cancelar' })),
-      ));
-    };
-
-    desenhar();
-    modal.addEventListener('click', (e) => { if (e.target === modal) fechar(); });
-    document.body.append(modal);
   }
 
   private serviceContext(sim: Sim, item: ShopItem): HTMLElement {

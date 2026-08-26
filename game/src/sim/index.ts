@@ -1976,6 +1976,13 @@ export class Sim {
         if (concessao) this.concederCarga(concessao);
         break;
       }
+      case 'elemento_item':
+      case 'elemento_nave':
+        // Serviço com alvo não age na compra: vira CARGA no Armazém. Comprar e
+        // usar deixaram de ser o mesmo instante justamente para o jogador
+        // escolher o alvo com a peça à vista, e não de memória.
+        this.state.servicos[id] = (this.state.servicos[id] ?? 0) + 1;
+        break;
       case 'refaz_matriz': respec(this.state); break;
       case 'tentativa_provacao': {
         const p = this.state.provacao;
@@ -2050,6 +2057,49 @@ export class Sim {
   }
 
   // ── frota ─────────────────────────────────────────────────────────────────
+
+  /** Quantas cargas deste serviço estão guardadas. */
+  cargasDe(servico: string): number {
+    return this.state.servicos[servico] ?? 0;
+  }
+
+  /**
+   * Consome uma carga. Devolve `false` se não havia.
+   *
+   * Separado das funções de troca porque elas também são chamadas por teste e
+   * por caminho administrativo, onde não há carga envolvida — e porque debitar
+   * antes de saber se a troca deu certo perderia a carga num alvo inválido.
+   */
+  private gastarCarga(servico: string): boolean {
+    const n = this.state.servicos[servico] ?? 0;
+    if (n <= 0) return false;
+    if (n === 1) delete this.state.servicos[servico];
+    else this.state.servicos[servico] = n - 1;
+    return true;
+  }
+
+  /** Aplica uma carga guardada a uma peça. */
+  usarCargaNoItem(servico: string, uid: string, alvo: ElementId): boolean {
+    if (this.cargasDe(servico) <= 0) return false;
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    if (!item || (item.element ?? "padrao") === alvo) return false;
+    if (!this.gastarCarga(servico)) return false;
+    item.element = alvo;
+    this.touch();
+    return true;
+  }
+
+  /** Aplica uma carga guardada a uma nave. */
+  usarCargaNaNave(servico: string, hullId: string, alvo: ElementId): boolean {
+    if (this.cargasDe(servico) <= 0) return false;
+    if (!this.state.fleet.includes(hullId)) return false;
+    if (elementoDaNave(this.state, hullId) === alvo) return false;
+    if (!this.gastarCarga(servico)) return false;
+    const nave = (this.state.naves[hullId] ??= { nivel: 1, xp: 0, equipped: {} });
+    nave.elemento = alvo;
+    this.touch();
+    return true;
+  }
 
   /**
    * Troca o elemento de uma PEÇA. É o que impede a regra elemental de
