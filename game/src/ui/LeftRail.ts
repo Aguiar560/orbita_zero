@@ -3,7 +3,7 @@ import { autonomiaDoCasco } from '@sim/combustivel';
 import { bus } from '@app/Bus';
 import { fmt, duration, pct } from '@core/format';
 import { clamp01 } from '@core/math';
-import { ELEMENTOS_RESISTIVEIS, counterOf, getElement, matchup } from '@data/elements';
+import { ELEMENTOS_RESISTIVEIS, getElement, matchup } from '@data/elements';
 import { dps, effectiveHp } from '@sim/stats';
 import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
@@ -229,7 +229,6 @@ export class LeftRail {
 
     const ataque = matchup(sim.element, sim.threatElement);
     const recebido = matchup(sim.threatElement, sim.defenseElement);
-    const contra = counterOf(sim.threatElement);
 
     const chip = (info: ReturnType<typeof getElement>, label: string) =>
       h('.elem-chip', { style: { borderColor: info.color }, title: info.blurb },
@@ -256,17 +255,22 @@ export class LeftRail {
         h('span.muted.tiny', { text: `Escudo ${defesa.name} ×${recebido.toFixed(2)}` }),
         veredito(recebido, 'você absorve', 'você sofre'),
       ),
-      ...(contra && contra !== sim.element
-        ? [h('.elem-dica', { style: { color: getElement(contra).color } },
-            `Contra ${alvo.name.toLowerCase()}: leve ${getElement(contra).name.toLowerCase()}.`)]
-        : []),
+      // Um RÓTULO, não um conselho. A linha dizia "Contra químico: leve raio" e
+      // entregava a resposta junto com a pergunta — o anel elemental deixava de
+      // ser algo que o jogador aprende e virava etiqueta que ele obedece. As duas
+      // linhas acima já mostram o multiplicador do tiro e o do escudo; com elas à
+      // vista, a conta é dele.
+      h('span.muted.tiny.elem-titulo', { text: 'RESISTÊNCIAS' }),
       h('.elem-res', {}, ...ELEMENTOS_RESISTIVEIS.map((e) => {
         const v = sim.resistance(e.id);
         return h('.elem-pip', {
           title: `Resistência a ${e.name.toLowerCase()}: ${pct(v)}`,
           style: { borderColor: e.color, opacity: String(0.35 + clamp01(v / 0.75) * 0.65) },
         },
-          h('span', { text: e.sigla, style: { color: e.color } }),
+          // Ícone e não sigla, como no resto do jogo. Aqui a letra era pior que
+          // em qualquer outro lugar: cinco delas lado a lado, em 14px, e o
+          // jogador tinha de traduzir cada uma antes de comparar os números.
+          iconeDeElemento(e.id, 14),
           h('span.tiny', { text: pct(v, 0) }),
         );
       })),

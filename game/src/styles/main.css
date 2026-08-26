@@ -5847,3 +5847,23 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   background: none; border-radius: 0;
   display: grid; place-items: center;
 }
+
+/* O rótulo das resistências. Substituiu a linha de conselho ("Contra químico:
+ * leve raio"), que dava a resposta junto com a pergunta. */
+.elem-titulo { display: block; letter-spacing: .12em; margin-top: 2px; }
+/* O pip ganhou ícone no lugar da sigla: cinco letras lado a lado em 14px
+ * obrigavam a traduzir cada uma antes de comparar os números. */
+.elem-pip { gap: 2px; padding: 4px 0; }
+
+/*
+ * O pip de resistência precisa caber o ícone, nos DOIS layouts do trilho.
+ *
+ * Abaixo de 1080px o cockpit vira faixa horizontal e cada bloco fica com a
+ * largura do próprio conteúdo — ali `repeat(5, 1fr)` resolvia em 16px por
+ * coluna. Com sigla ninguém notava, porque uma letra cabe em 16px; com ícone
+ * de 14px sobrava 1px de cada lado.
+ *
+ * O piso vai na COLUNA e não no bloco: esticar o bloco resolveria só no layout
+ * de coluna, e na faixa horizontal ele deve mesmo ter a largura do conteúdo.
+ */
+.elem-res { grid-template-columns: repeat(5, minmax(24px, 1fr)); }
