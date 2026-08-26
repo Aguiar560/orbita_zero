@@ -1071,6 +1071,13 @@ export class Sim {
    * Avança a patrulha. `dt` em segundos; `intensity` permite que o modo ao vivo
    * reporte um ritmo diferente do abstrato (a faixa visível mata mais rápido).
    */
+  /**
+   * Fração de abate ainda não fechada na patrulha.
+   *
+   * Transitória de propósito — ver `patrolTick`.
+   */
+  private patrolKillCarry = 0;
+
   patrolTick(dt: number, intensity = 1): void {
     // O combustível corre aqui, no tempo AO VIVO, e em `abstractTick`, no tempo
     // offline. São os dois únicos relógios do jogo, e a nave está em campo nos
@@ -1079,10 +1086,38 @@ export class Sim {
     const bar = this.state.bar;
 
     bar.distance += 120 * dt * intensity;
-    const kills = this.patrolKillRate * dt * intensity;
+
+    // O bioma segue a DISTÂNCIA, que é o relógio do tempo — por isso ele fica
+    // aqui em cima, antes do corte por abate lá embaixo. Misturar os dois faria
+    // a liberação de bioma esperar o próximo abate fechar.
+    // Bioma segue a distância acumulada: sempre o melhor liberado.
+    // No modo de teste todos os biomas ficam visíveis, sem mexer na distância.
+    const best = (this.testMode ? BIOMES : unlockedBiomes(bar.distance)).at(-1);
+    if (best && best.id !== bar.biome) {
+      bar.biome = best.id;
+      toast(`Novo setor de patrulha: ${best.name}`, 'epic', 'powerup/icon_bounty');
+    }
+
+    // Abates INTEIROS.
+    //
+    // Eram fracionários: `patrolKillRate * dt` dava 0,02 de abate por quadro, e
+    // tudo o que deriva deles subia de forma contínua. Ligar a sucata aos
+    // abates, como eu tinha feito, não mudou nada do que se vê — os abates ERAM
+    // o relógio, e eu só troquei um relógio por outro.
+    //
+    // Meio abate não existe. A fração fica guardada e paga quando fecha um, o
+    // que faz a sucata chegar em degraus, cada degrau com um abate atrás.
+    //
+    // A sobra é de sessão e não entra no save: perder menos de um abate ao
+    // fechar a aba não vale um campo persistido nem uma migração.
+    this.patrolKillCarry += this.patrolKillRate * dt * intensity;
+    const kills = Math.floor(this.patrolKillCarry);
+    this.patrolKillCarry -= kills;
+    if (kills === 0) return;
+
     bar.kills += kills;
 
-    // A sucata sai DAQUI, do abate, e não do relógio. Ver `patrolScrapPerKill`.
+    // A sucata sai DAQUI, do abate. Ver `patrolScrapPerKill`.
     this.grant('sucata', kills * this.patrolScrapPerKill);
     this.state.stats.kills += kills;
 
@@ -1103,13 +1138,6 @@ export class Sim {
       this.grantChest('bronze', 1, 'patrulha');
     }
 
-    // Bioma segue a distância acumulada: sempre o melhor liberado.
-    // No modo de teste todos os biomas ficam visíveis, sem mexer na distância.
-    const best = (this.testMode ? BIOMES : unlockedBiomes(bar.distance)).at(-1);
-    if (best && best.id !== bar.biome) {
-      bar.biome = best.id;
-      toast(`Novo setor de patrulha: ${best.name}`, 'epic', 'powerup/icon_bounty');
-    }
   }
 
   patrolXpNeeded(): number {
