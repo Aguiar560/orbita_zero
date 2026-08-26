@@ -10,6 +10,7 @@
  * importar um arquivo que executa `process.argv` no topo faria o `vitest`
  * disparar o comando de ajuda a cada suíte.
  */
+import { elementoDaNave, naveAceita } from '@sim/elemento-da-nave';
 import { Rng } from '@core/math';
 import { HULLS } from '@data/hulls';
 import { SPACESHIPS2_HULL_SPEC_BY_ID } from '@data/hulls-spaceships2';
@@ -53,11 +54,21 @@ export function equiparMelhor(
   st.hull = hullId;
   const rng = new Rng(semente);
 
+  // A régua obedece à REGRA ELEMENTAL, como o jogo. Sem isto ela montaria
+  // conjuntos que nenhum jogador consegue montar — o item de elemento errado
+  // não entra na nave — e todas as medições de ritmo mediriam uma nave que não
+  // existe. É a premissa do projeto inteiro: a régua roda os MESMOS módulos.
+  //
+  // Modela o jogador que converte na loja: a peça de elemento errado é
+  // considerada como se convertida, porque o serviço existe e ele a usaria. O
+  // que a régua NÃO pode fazer é fingir que a restrição não existe.
+  const elemento = elementoDaNave(st, hullId);
   for (const slot of SLOT_IDS.slice(0, slots)) {
     let melhor = null;
     let melhorNota = -Infinity;
     for (let i = 0; i < tentativas; i++) {
       const item = rollItem(rng, ilvl, sorte, 0, { slot });
+      if (!naveAceita(item, elemento)) item.element = elemento;
       const sonda: GameState = comEquipamento(st, slot, item);
       const nota = powerScore(resolveStats(sonda));
       if (nota > melhorNota) {

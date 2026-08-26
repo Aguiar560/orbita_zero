@@ -193,6 +193,14 @@ export interface NivelProgresso {
 
 export interface NaveProgresso extends NivelProgresso {
   /**
+   * Elemento ATUAL da nave, quando trocado na Central de Serviços.
+   *
+   * Ausente significa "como saiu de fábrica" — o nativo de `hulls.ts`. Guardar
+   * só a exceção mantém a tabela como fonte do padrão e faz save antigo migrar
+   * sem tocar em nada.
+   */
+  elemento?: ElementId;
+  /**
    * O equipamento DAQUELA nave.
    *
    * Cada casco carrega o próprio conjunto: uma nave pode usar um item e outra,

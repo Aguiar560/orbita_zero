@@ -12,6 +12,7 @@ import {
 import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/missoes';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
 import { PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
+import { elementoDaNave, podeEquipar } from './elemento-da-nave';
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import {
   abrirDesafio, encontroDoDesafio, tickDoDesafio, type DesafioAtivo,
@@ -1692,7 +1693,10 @@ export class Sim {
     // o desfaca no passo seguinte, e a missao de coleta conta o que caiu.
     this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
 
-    if (this.state.settings.autoEquip && scoreItem(this.state, item) > 0) {
+    // O auto-equipar passa pela MESMA regra. Sem isto, a automação montaria
+    // o que a mão não consegue montar — e o jogador descobriria a restrição
+    // pela contradição entre as duas.
+    if (this.state.settings.autoEquip && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) {
       // Auto-equipar mira a nave EM CAMPO: o item acabou de cair na incursão
       // dela, e mandá-lo para uma nave guardada seria decidir pelo jogador.
       const previous = this.equipamentoDe()[item.slot];
@@ -1748,15 +1752,25 @@ export class Sim {
     this.touch();
   }
 
-  equip(uid: string, hullId = this.state.hull): void {
+  /**
+   * Monta a peça. Devolve `false` se a nave não a aceita.
+   *
+   * A recusa é do MODELO e não da tela: a anatomia, o inventário e o
+   * auto-equipar são três caminhos diferentes até aqui, e uma regra que
+   * morasse em cada um deles seria a mesma regra escrita três vezes — com
+   * duas chances de divergir.
+   */
+  equip(uid: string, hullId = this.state.hull): boolean {
     const idx = this.state.inventory.findIndex((i) => i.uid === uid);
-    if (idx < 0) return;
+    if (idx < 0) return false;
     const item = this.state.inventory[idx]!;
+    if (!podeEquipar(this.state, item, hullId)) return false;
     const previous = this.equipamentoDe(hullId)[item.slot];
     this.state.inventory.splice(idx, 1);
     this.equipamentoDe(hullId)[item.slot] = item;
     if (previous) this.state.inventory.push(previous);
     this.touch();
+    return true;
   }
 
   unequip(slot: SlotId, hullId = this.state.hull): void {
@@ -2036,6 +2050,50 @@ export class Sim {
   }
 
   // ── frota ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Troca o elemento de uma PEÇA. É o que impede a regra elemental de
+   * transformar drop raro em lixo.
+   *
+   * Cobra em cristal e não em sucata de propósito: a conversão precisa doer o
+   * suficiente para o jogador preferir a peça que já veio certa, senão o
+   * elemento do drop deixaria de significar qualquer coisa.
+   */
+  trocarElementoDoItem(uid: string, alvo: ElementId, custo: number): boolean {
+    const item = this.state.inventory.find((i) => i.uid === uid);
+    if (!item) return false;
+    if ((item.element ?? "padrao") === alvo) return false;
+    if (!this.spend("cristal", custo)) return false;
+    item.element = alvo;
+    // Os afixos ficam. Eles foram rolados sob o elemento antigo, mas
+    // re-rolá-los transformaria a conversão numa segunda loteria — e o
+    // jogador pagaria para PIORAR a peça metade das vezes.
+    this.touch();
+    return true;
+  }
+
+  /**
+   * Troca o elemento de uma NAVE.
+   *
+   * Não desequipa nada. As peças que deixaram de servir continuam montadas até
+   * o jogador resolver o que fazer com elas — desmontar o conjunto sem avisar
+   * seria a pior forma de descobrir a regra. `pecasIncompativeis` é quem a tela
+   * consulta para mostrar o estrago antes de cobrar.
+   */
+  trocarElementoDaNave(hullId: string, alvo: ElementId, custo: number): boolean {
+    if (!this.state.fleet.includes(hullId)) return false;
+    if (elementoDaNave(this.state, hullId) === alvo) return false;
+    if (!this.spend("cristal", custo)) return false;
+    const nave = (this.state.naves[hullId] ??= { nivel: 1, xp: 0, equipped: {} });
+    nave.elemento = alvo;
+    this.touch();
+    return true;
+  }
+
+  /** O elemento em que a nave está agora. */
+  elementoDe(hullId = this.state.hull): ElementId {
+    return elementoDaNave(this.state, hullId);
+  }
 
   /**
    * Registra a escolha da primeira tela.
