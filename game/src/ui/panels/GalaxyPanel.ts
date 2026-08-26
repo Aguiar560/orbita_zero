@@ -1,4 +1,5 @@
 ﻿import { assets } from '@render/Assets';
+import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector, PHASES_PER_GALAXY } from '@data/galaxies';
@@ -136,7 +137,18 @@ export class GalaxyPanel implements Panel {
           `.phase${active ? '.atual' : ''}${cleared ? '.vencida' : ''}${reachable ? '' : '.travada'}${p.isBoss ? '.chefe' : ''}`,
           { title, style: p.isBoss ? { borderColor: info.color } : {} },
           h('.phase-art', {}, spriteIcon(p.icon, p.isBoss ? 46 : 36, reachable ? '' : 'silhouette')),
-          h('span.phase-num', { text: p.isBoss ? 'CHEFE' : String(p.phase) }),
+          // O número é o SETOR ABSOLUTO, não a posição dentro da galáxia.
+          //
+          // Mostrava 1..10 em toda galáxia, então a galáxia 2 tinha uma "fase 1"
+          // que era o setor 11 — e o jogador via 1 na tela, 11 na HUD e 11 no
+          // placar. Três números para a mesma coisa, e nenhum deles errado
+          // sozinho.
+          //
+          // O chefe também mostra o número. Ele já se distingue por três outras
+          // marcas (arte maior, borda na cor da galáxia e o nome embaixo);
+          // trocar o número por "CHEFE" custava a única informação que a
+          // célula não repete em outro lugar.
+          h('span.phase-num', { text: String(p.sector) }),
           ...(p.isBoss && reachable ? [h('span.phase-boss', { text: p.bossName ?? '' })] : []),
         );
 
@@ -144,6 +156,10 @@ export class GalaxyPanel implements Panel {
           cell.addEventListener('click', () => {
             sim.jumpSector(p.sector);
             this.viewing = galaxyOfSector(p.sector);
+            // Escolher a fase FECHA o mapa. Ele é uma camada em tela cheia:
+            // ficava aberto por cima do combate que o próprio clique acabou de
+            // começar, e o jogador tinha de fechá-lo para ver o que pediu.
+            bus.emit('panel:close');
           });
         }
         return cell;

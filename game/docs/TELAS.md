@@ -212,6 +212,32 @@ chefe específico.
 - **Lê:** `run.sector`, `universe.bestSector`, `describeGalaxy()`, `galaxyPhases()`
 - **Escreve:** `sim.jumpSector()`
 
+### A grade mostra o SETOR, não a posição na galáxia
+
+Mostrava 1..10 em toda galáxia. A galáxia 2 tinha uma "fase 1" que era o setor
+11 — e o jogador via **1** na grade, **11** na HUD do combate e **11** no placar.
+Três números para a mesma coisa, e nenhum errado sozinho.
+
+Agora:
+
+| galáxia | grade |
+|---|---|
+| 1 | 1 … 10 |
+| 2 | 11 … 20 |
+| 3 | 21 … 30 |
+| 5 | 41 … 50 |
+
+O chefe também mostra o número. Ele já se distingue por três outras marcas —
+arte maior, borda na cor da galáxia e o nome embaixo —, e trocar o número por
+"CHEFE" custava a única informação que a célula não repete em outro lugar.
+
+### Escolher a fase fecha o mapa
+
+O mapa é camada em tela cheia. Clicar numa fase já saltava para ela, mas a
+camada continuava aberta **por cima do combate que o próprio clique acabou de
+começar** — e o jogador tinha de fechá-la para ver o que pediu.
+
+
 ---
 
 ## Armazém — `id: 'armazem'`
