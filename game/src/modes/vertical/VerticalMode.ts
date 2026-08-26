@@ -1696,6 +1696,18 @@ export class VerticalMode {
     d.vida = perfil.vida;
     d.vidaMax = perfil.vida;
     d.sprite = spriteDeDetrito(familia, tamanho, this.rng.int(0, 999));
+
+    // A escala sai do tamanho REAL do sprite, como os corpos celestes já fazem.
+    //
+    // O desenho dividia por 96 fixo, mas o atlas assa cada grupo num tamanho
+    // diferente — 26 o pequeno, 52 o médio, 96 o grande. Só o grande saía no
+    // tamanho que o raio prometia: o médio vinha a 54% dele e o pequeno a 27%,
+    // uma pedrinha de 6 unidades comendo tiro num raio de 11.
+    //
+    // Normalizar pelo lado MAIOR (e não pela largura) preserva a proporção de
+    // arte que não é quadrada, que é a maioria do lixo espacial.
+    const found = assets.atlases.lookup(d.sprite);
+    d.escala = found ? (perfil.raio * 2) / Math.max(found.frame.sw, found.frame.sh) : 1;
     d.giro = this.rng.range(0, Math.PI * 2);
     d.giroVel = this.rng.range(-perfil.giro, perfil.giro) * Math.PI * 2;
     d.impacto = this.sim.encounter.damage * perfil.impacto;
@@ -1732,11 +1744,10 @@ export class VerticalMode {
 
   private drawDetritos(s: Surface): void {
     this.detritos.each((d) => {
-      const escala = (d.raio * 2) / 96;
-      s.sprite(d.sprite, d.x, d.y, { scale: escala, rotation: d.giro });
+      s.sprite(d.sprite, d.x, d.y, { scale: d.escala, rotation: d.giro });
       if (d.flash > 0) {
         s.sprite(d.sprite, d.x, d.y, {
-          scale: escala, rotation: d.giro,
+          scale: d.escala, rotation: d.giro,
           alpha: d.flash * 0.8, composite: 'lighter',
         });
       }

@@ -48,11 +48,27 @@ export interface PerfilDeDetrito {
  * é a que o olho espera de massa — e é ela que faz o jogador tratar um
  * asteroide grande como parede e um cascalho como poeira, sem precisar de
  * tutorial.
+ *
+ * ## Por que a escada desceu um degrau
+ *
+ * Os raios eram 11 / 21 / 38, e o grande ocupava 76 unidades — mais largo que
+ * QUALQUER elite depois da unificação de escala (que fecha em 100 no maior
+ * lado, e a maioria fica perto de 91). Uma pedra sem recompensa nenhuma não
+ * pode ter porte de chefe: o tamanho é a primeira coisa que o olho lê como
+ * importância, e ele estava anunciando a coisa menos importante da tela.
+ *
+ * Agora cada classe herda o porte da classe de baixo, e a pequena vira
+ * cascalho de verdade. A escada de proporção entre elas — 1 : 1,6 : 3 — é a
+ * mesma de antes; o que mudou foi onde ela começa.
+ *
+ * Vida, velocidade e impacto NÃO acompanharam. Eles descrevem massa e papel,
+ * não pixels: um asteroide grande continua sendo a parede que aguenta oito
+ * tiros, só que uma parede que cabe na tela junto com o combate.
  */
 export const PERFIL_DE_DETRITO: Record<TamanhoDeDetrito, PerfilDeDetrito> = {
-  p: { raio: 11, vida: 1, velocidade: 1.35, giro: 0.55, impacto: 0.25 },
-  m: { raio: 21, vida: 3, velocidade: 1.0, giro: 0.3, impacto: 0.5 },
-  g: { raio: 38, vida: 8, velocidade: 0.72, giro: 0.14, impacto: 1.0 },
+  p: { raio: 7, vida: 1, velocidade: 1.35, giro: 0.55, impacto: 0.25 },
+  m: { raio: 11, vida: 3, velocidade: 1.0, giro: 0.3, impacto: 0.5 },
+  g: { raio: 21, vida: 8, velocidade: 0.72, giro: 0.14, impacto: 1.0 },
 };
 
 /** Quantas variações de arte cada grupo tem no atlas. */

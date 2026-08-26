@@ -260,6 +260,15 @@ export interface Detrito {
   /** Velocidade de rotação, em radianos por segundo. */
   giroVel: number;
   sprite: string;
+  /**
+   * Escala de desenho, calculada no nascimento a partir do tamanho REAL do
+   * sprite no atlas.
+   *
+   * Guardada aqui, e não recalculada a cada quadro, porque a consulta ao atlas
+   * custa um mapa: nascer é raro (cinco por segundo no pico), desenhar é
+   * setenta vezes por quadro.
+   */
+  escala: number;
   /** Dano no encontrão com a nave. */
   impacto: number;
   /** Piscada branca ao levar tiro. */
@@ -276,7 +285,7 @@ export function createDetritoPool(capacity = 80): Pool<Detrito> {
   return new Pool<Detrito>(
     () => ({
       alive: false, x: 0, y: 0, vx: 0, vy: 0, raio: 12,
-      vida: 1, vidaMax: 1, giro: 0, giroVel: 0, sprite: '',
+      vida: 1, vidaMax: 1, giro: 0, giroVel: 0, sprite: '', escala: 1,
       impacto: 0, flash: 0, bateu: false,
     }),
     (d) => { d.flash = 0; d.bateu = false; d.vx = 0; d.giro = 0; },
