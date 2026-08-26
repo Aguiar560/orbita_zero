@@ -3,7 +3,7 @@ import { bus, toast } from '@app/Bus';
 import { BIOMES, getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
-import { quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
+import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
 import {
@@ -1115,8 +1115,8 @@ export class Sim {
   rewardKill(fraction: number): void {
     const e = this.encounter;
     const s = this.stats;
-    this.grantCarga('nucleo', e.bounty * fraction * 0.34 * (1 + s.nucleoGanho));
-    this.grantCarga('sucata', e.bounty * fraction * 1.6 * (1 + s.sucataGanho));
+    this.grantCarga('nucleo', e.bounty * fraction * RENDA_POR_ABATE.nucleo * (1 + s.nucleoGanho));
+    this.grantCarga('sucata', e.bounty * fraction * RENDA_POR_ABATE.sucata * (1 + s.sucataGanho));
     // XP por abate divide um ORÇAMENTO DA ONDA, em vez de pagar por cabeça.
     //
     // Continua sem usar `fraction` — a fatia de um inimigo numa onda de 200 é

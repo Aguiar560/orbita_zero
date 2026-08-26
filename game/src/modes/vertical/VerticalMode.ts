@@ -28,10 +28,9 @@ import type { Sim } from '@sim/index';
 import { labEnemyHitbox, labHitbox, labScenario, type LaboratorioMetrics, type LabScenarioId } from '@sim/laboratorio';
 import { PilotAI, type PilotOutput } from './PilotAI';
 import { WaveDirector } from './WaveDirector';
-import {
-  PICKUP_CLIP, PICKUP_COLOR, PICKUP_SPRITE, VIEW,
+import { VIEW,
   createBulletPool, createDetritoPool, createEnemyPool, createPickupPool,
-  type Bullet, type Detrito, type Enemy, type PickupKind, type Player,
+  type Bullet, type Detrito, type Enemy, type Player,
 } from './entities';
 
 /** Segundos parado após a nave cair, antes de reiniciar o encontro. */
@@ -1343,12 +1342,6 @@ export class VerticalMode {
     if (e.counts) this.sim.creditKill();
     this.sim.rewardKill(e.boss ? 1 : Math.max(e.share, 0.02));
 
-    // Cápsula de moeda: uma fração dos abates deixa recompensa para a IA
-    // coletar. Não é melhoria — os power-ups de reparo, escudo e dano saíram
-    // com o §30, e o que restou aqui é economia, não poder.
-    if (e.boss || this.rng.chance(0.07 + this.sim.stats.sorte * 0.05)) {
-      this.spawnPickup(e.x, e.y, 'recompensa');
-    }
 
     // Loot físico: o item é rolado agora e vira uma cápsula na tela. Só entra
     // no inventário se a IA alcançar a cápsula.
@@ -1625,15 +1618,6 @@ export class VerticalMode {
 
   // ── coletáveis ────────────────────────────────────────────────────────────
 
-  private spawnPickup(x: number, y: number, kind: PickupKind): void {
-    const p = this.pickups.spawn();
-    if (!p) return;
-    p.kind = kind;
-    p.x = x;
-    p.y = y;
-    p.vy = 70;
-    p.vx = this.rng.range(-30, 30);
-  }
 
   /**
    * Move a poeira e a recicla pelo topo.
@@ -1853,29 +1837,14 @@ export class VerticalMode {
       }
       if (p.alive && d < p.radius + 22) {
         item.alive = false;
-        if (item.kind === 'item' && item.item) {
+        if (item.item) {
           this.sim.acquire(item.item);
           this.particles.shockwave(p.x, p.y, 44, item.color, 0.35);
           this.particles.sparks(p.x, p.y, 10, item.color, 170);
-        } else {
-          this.collect(item.kind);
         }
       }
     });
     this.pickups.compact();
-  }
-
-  private collect(kind: PickupKind): void {
-    const p = this.player;
-    const stats = this.sim.stats;
-
-    if (kind === 'recompensa') {
-      // Cápsula coletada em combate: vai para a carga da incursão, e some se a
-      // nave cair antes de o setor fechar.
-      this.sim.grantCarga('nucleo', this.sim.encounter.bounty * 0.25 * (1 + stats.nucleoGanho));
-      this.sim.grantCarga('sucata', this.sim.encounter.bounty * 1.2 * (1 + stats.sucataGanho));
-    }
-    this.particles.shockwave(p.x, p.y, 36, PICKUP_COLOR[kind], 0.3);
   }
 
   // ── fim de encontro ───────────────────────────────────────────────────────
@@ -2445,27 +2414,16 @@ export class VerticalMode {
     this.pickups.each((item) => {
       const bob = Math.sin(item.time * 6) * 2;
 
-      if (item.kind === 'item') {
-        // Cápsula de loot: halo pulsante na cor da raridade + o ícone real da
-        // peça, para dar para reconhecer o que caiu antes mesmo de coletar.
-        const pulse = 0.55 + Math.sin(item.time * 5) * 0.2;
-        s.glow(item.x, item.y, 30, item.color, pulse);
-        s.ctx.strokeStyle = item.color;
-        s.ctx.lineWidth = 1.5;
-        s.ctx.globalAlpha = 0.8;
-        s.ctx.strokeRect(item.x - 13, item.y - 13 + bob, 26, 26);
-        s.ctx.globalAlpha = 1;
-        s.sprite(item.icon, item.x, item.y + bob, { scale: 0.5 });
-        return;
-      }
-
-      s.glow(item.x, item.y, 22, PICKUP_COLOR[item.kind], 0.55);
-      const clip = getClip(PICKUP_CLIP[item.kind]);
-      if (clip) {
-        s.sprite(frameAt(clip, item.time), item.x, item.y + bob, { scale: 1.1 });
-      } else {
-        s.sprite(PICKUP_SPRITE[item.kind], item.x, item.y + bob, { scale: 0.5, composite: 'lighter' });
-      }
+      // Cápsula de loot: halo pulsante na cor da raridade + o ícone real da
+      // peça, para dar para reconhecer o que caiu antes mesmo de coletar.
+      const pulse = 0.55 + Math.sin(item.time * 5) * 0.2;
+      s.glow(item.x, item.y, 30, item.color, pulse);
+      s.ctx.strokeStyle = item.color;
+      s.ctx.lineWidth = 1.5;
+      s.ctx.globalAlpha = 0.8;
+      s.ctx.strokeRect(item.x - 13, item.y - 13 + bob, 26, 26);
+      s.ctx.globalAlpha = 1;
+      s.sprite(item.icon, item.x, item.y + bob, { scale: 0.5 });
     });
   }
 

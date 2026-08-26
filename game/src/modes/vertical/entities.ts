@@ -136,7 +136,17 @@ export interface Enemy {
  * melhoria — moeda e item —, e é por isso que a máquina de coletáveis continua
  * de pé apesar de o sistema de power-up ter sido removido.
  */
-export type PickupKind = 'recompensa' | 'item';
+/**
+ * Só existe UM tipo de coisa coletável: a cápsula de item.
+ *
+ * Havia também uma cápsula de `recompensa` — um orbe rosa que dava núcleo e
+ * sucata. Ela não era melhoria (os power-ups de reparo, escudo e dano saíram
+ * com o §30), mas era desenhada com a arte de um: `powerup/drop_bounty`. Quem
+ * jogava lia um power-up, porque era isso que estava na tela.
+ *
+ * A renda dela não sumiu: foi para dentro do abate. Ver `rewardKill`.
+ */
+export type PickupKind = 'item';
 
 export interface Pickup {
   alive: boolean;
@@ -295,7 +305,7 @@ export function createDetritoPool(capacity = 80): Pool<Detrito> {
 
 export function createPickupPool(capacity = 80): Pool<Pickup> {
   return new Pool<Pickup>(
-    () => ({ alive: false, kind: 'recompensa', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
+    () => ({ alive: false, kind: 'item', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
     (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.icon = ''; p.color = '#fff'; },
     capacity,
   );
@@ -303,18 +313,15 @@ export function createPickupPool(capacity = 80): Pool<Pickup> {
 
 /** Clipe animado de cada coletável, vindo da folha `Bonuses`. */
 export const PICKUP_CLIP: Record<PickupKind, string> = {
-  recompensa: 'pick/bonus',
   item: '',
 };
 
 /** Fallback estático, caso a folha arcade não tenha sido gerada. */
 export const PICKUP_SPRITE: Record<PickupKind, string> = {
-  recompensa: 'powerup/drop_bounty',
   item: '',
 };
 
 export const PICKUP_COLOR: Record<PickupKind, string> = {
-  recompensa: '#ffb638',
   // Cápsulas de item usam a cor da raridade, guardada no próprio pickup.
   item: '#ffffff',
 };
