@@ -108,6 +108,7 @@ async function main() {
   await buildHullAtlas(manifest);
   await buildSpaceships2Atlas(manifest);
   await buildCharactersAtlas(manifest);
+  await buildDetritosAtlas(manifest);
   await buildDroneAtlas(manifest);
   await buildParallax(manifest);
   await buildDeepSpace(manifest);
@@ -1080,6 +1081,75 @@ async function buildCharactersAtlas(manifest) {
 
   log(`Characters: ${sprites.length} retratos`);
   await writeAtlas('characters', sprites, manifest, 2048, { lazy: true });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Detritos — asteroides e lixo espacial, os obstáculos do cenário
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Os seis grupos de detrito, e o tamanho em que cada um entra em campo.
+ *
+ * As pastas se chamam pequeno/médio/grande, mas a arte NÃO respeita isso: o
+ * "asteroide médio" vem de 50 a 313px de origem. Normalizar por pasta é o que
+ * transforma seis pastas desiguais em três escalas de verdade, e é a razão de
+ * o tamanho morar aqui e não sair do arquivo.
+ *
+ * Os números são o LADO MAIOR em pixels de jogo, medidos contra a nave: o
+ * casco do jogador tem hitbox de ~27px, então um detrito pequeno de 26 passa
+ * como cascalho, um médio de 52 é do tamanho dele, e um grande de 96 é uma
+ * parede que ele contorna.
+ */
+const GRUPOS_DE_DETRITO = [
+  ['asteroide pequeno', 'asteroide/p', 26],
+  ['asteroide medio', 'asteroide/m', 52],
+  ['asteroide grande', 'asteroide/g', 96],
+  ['lixo pequeno', 'lixo/p', 26],
+  ['lixo medio', 'lixo/m', 52],
+  ['lixo grande', 'lixo/g', 96],
+];
+
+async function buildDetritosAtlas(manifest) {
+  const root = path.join(RAW, 'asteroides e lixo');
+  if (!existsSync(root)) return;
+
+  const sprites = [];
+  const contagem = [];
+  for (const [pasta, prefixo, lado] of GRUPOS_DE_DETRITO) {
+    const dir = path.join(root, pasta);
+    if (!existsSync(dir)) continue;
+    const files = (await readdir(dir)).filter((file) => file.toLowerCase().endsWith('.png')).sort(natural);
+
+    let i = 0;
+    for (const file of files) {
+      let raw = await toRaw(path.join(dir, file));
+      // Recorta antes de escalar. Sem isso, uma arte com muita margem vazia
+      // entraria menor que outra do mesmo grupo — e o grupo é justamente o que
+      // deveria garantir que todas tenham o mesmo porte.
+      // `trimAlpha` devolve { raw, ox, oy } — aqui só a imagem interessa, porque
+      // o detrito é desenhado pelo centro e não tem âncora a preservar.
+      raw = trimAlpha(raw, 8).raw;
+      const escala = lado / Math.max(raw.width, raw.height);
+      const w = Math.max(1, Math.round(raw.width * escala));
+      const h = Math.max(1, Math.round(raw.height * escala));
+      const png = await rawToSharp(raw)
+        .resize(w, h, { fit: 'fill', kernel: 'lanczos3' })
+        .png()
+        .toBuffer();
+      const escalado = await toRaw(png);
+      sprites.push({
+        id: `detrito/${prefixo}_${i}`,
+        raw: escalado,
+        ox: 0, oy: 0, sw: escalado.width, sh: escalado.height,
+      });
+      i++;
+    }
+    contagem.push(`${prefixo}=${i}`);
+  }
+
+  if (!sprites.length) return;
+  log(`Detritos: ${sprites.length} sprites (${contagem.join(' ')})`);
+  await writeAtlas('detritos', sprites, manifest, 2048);
 }
 
 // ────────────────────────────────────────────────────────────────────────────

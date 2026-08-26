@@ -252,6 +252,90 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Detritos — asteroides e lixo espacial
+
+66 sprites em seis grupos, num atlas de 512×512 (274 KB). São **obstáculo de
+cenário**, não inimigo.
+
+#### O que eles NÃO rendem
+
+Nada. Nem XP, nem recurso, nem item, nem abate, e não entram na contagem que
+fecha a onda. Destruir um detrito não aproxima o jogador de coisa alguma.
+
+Isso é a definição, não um esquecimento — e é por isso que `Detrito` é um TIPO
+PRÓPRIO e não um inimigo com recompensa zero. Um inimigo passa por
+`rewardKill`, entra em `restam`, alimenta missão e conta abate; desligar cada
+uma dessas coisas com um `if` deixaria quatro lugares onde alguém poderia
+esquecer. Sendo outro tipo, ele nunca chega perto desses caminhos.
+
+**Verificado:** 26 detritos nascidos e destruídos, e nenhum dos onze campos de
+estado do jogador mudou — XP, nível, sucata, núcleo, cristal, itens, itens
+achados, abates, `restam`, onda e setor.
+
+#### O que eles são
+
+Comem projétil dos **dois lados** e machucam no encontrão. É o que os separa de
+um plano de fundo: um cenário que não interfere é decoração, e a nave passaria
+por ele sem nunca reparar. Comendo tiro, um asteroide entre o jogador e o alvo
+vira decisão — atirar em volta, furar a pedra, ou usá-la de escudo contra quem
+está atrás.
+
+Perfuração vale contra pedra: quem pagou por atravessar fileiras não deve ser
+parado pelo cenário.
+
+| tamanho | raio | vida | velocidade | impacto |
+|---|---|---|---|---|
+| pequeno | 11 | 1 golpe | 1,35× | 0,25 do dano do setor |
+| médio | 21 | 3 | 1,00× | 0,50 |
+| grande | 38 | 8 | 0,72× | 1,00 |
+
+Grande é lento, duro e dói; pequeno é rápido, frágil e mal arranha. É a relação
+que o olho espera de massa, e é ela que faz o jogador tratar um asteroide grande
+como parede e um cascalho como poeira, sem tutorial.
+
+**O dano do encontrão vem da curva do setor**, como fração — não de um número
+próprio. Uma constante fixa seria trivial no setor 200 e letal no 2; puxar da
+curva faz o detrito acompanhar o jogo sem inventar uma segunda régua.
+
+#### Os momentos
+
+| clima | taxa | duração | total | mistura |
+|---|---|---|---|---|
+| esparso (repouso) | 0,35/s | permanente | — | 60/32/8 |
+| **CHUVA DE METEOROS** | 5/s | 8 s | **40** | 62/30/8 |
+| **CAMPO DE SUCATA** | 3,2/s | 9 s | ~29 | 40/42/18 |
+
+Medido: a chuva de meteoros solta **exatamente 40** — 26 pequenos, 13 médios e
+1 grande — com pico de **34 em tela**, e volta ao repouso sozinha.
+
+A mistura pende para o pequeno de propósito: quarenta asteroides grandes seriam
+uma parede intransponível, quarenta cascalhos são uma chuva. O punhado de
+grandes é o que dá peso ao momento.
+
+O intervalo entre momentos é sorteado entre **22 e 48 s**. Faixa larga de
+propósito: um evento que chega em relógio fixo deixa de ser evento e vira fase.
+
+#### Detalhes que valem registro
+
+**O spawn usa acumulador fracionário.** A taxa de repouso é 0,35/s, que num
+quadro de 1/60 dá 0,006 detrito — arredondar por quadro nunca soltaria nada.
+
+**Não roda no Laboratório.** Aquela tela existe para COMPARAR fichas, e um
+asteroide atravessando a medição a invalidaria sem avisar.
+
+**Desenhados atrás dos inimigos.** Por cima esconderiam o que precisa ser
+acertado; no fundo virariam textura.
+
+**Não reaparecem pelo topo.** Um detrito que volta quebra a leitura de que a
+nave está avançando pelo espaço.
+
+**Só o grande sacode a tela.** Um cascalho tremendo a câmera daria a um detrito
+o peso de um chefe.
+
+**As pastas de origem mentem sobre o tamanho** — o "asteroide médio" vem de 50 a
+313 px. O pipeline recorta ao conteúdo e normaliza por grupo, o que transforma
+seis pastas desiguais em três escalas de verdade.
+
 ### Combustível — o que força a rotação de frota
 
 Sem ele a frota é decoração: o jogador compra o casco mais forte que pode e voa

@@ -1,4 +1,9 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
+import {
+  CLIMAS, CLIMA_POR_ID, DETRITOS_MAX, INTERVALO_MAX, INTERVALO_MIN,
+  PERFIL_DE_DETRITO, VELOCIDADE_BASE, spriteDeDetrito, tamanhoSorteado,
+  type Clima, type ClimaDeDetrito, type FamiliaDeDetrito,
+} from '@data/detritos';
 import { fmt } from '@core/format';
 import { assets } from '@render/Assets';
 import { Particles } from '@render/Particles';
@@ -21,8 +26,8 @@ import { PilotAI, type PilotOutput } from './PilotAI';
 import { WaveDirector } from './WaveDirector';
 import {
   PICKUP_CLIP, PICKUP_COLOR, PICKUP_SPRITE, VIEW,
-  createBulletPool, createEnemyPool, createPickupPool,
-  type Bullet, type Enemy, type PickupKind, type Player,
+  createBulletPool, createDetritoPool, createEnemyPool, createPickupPool,
+  type Bullet, type Detrito, type Enemy, type PickupKind, type Player,
 } from './entities';
 
 /** Segundos parado após a nave cair, antes de reiniciar o encontro. */
@@ -66,6 +71,17 @@ export class VerticalMode {
   private readonly bullets = createBulletPool();
   private readonly enemies = createEnemyPool();
   private readonly pickups = createPickupPool();
+
+  /** Asteroides e lixo: obstáculo de cenário, sem recompensa nenhuma. */
+  private readonly detritos = createDetritoPool();
+  /** Clima corrente. `esparso` é o repouso; os outros são momentos. */
+  private climaAtual: ClimaDeDetrito = 'esparso';
+  /** Quanto falta do momento atual. Zero = de volta ao esparso. */
+  private climaRestante = 0;
+  /** Quanto falta para o PRÓXIMO momento começar. */
+  private climaEspera = 0;
+  /** Acumulador fracionário de spawn — a taxa não é inteira por quadro. */
+  private detritoAcumulado = 0;
 
   /**
    * Não há mais campos de estrela avulsos.
@@ -450,6 +466,7 @@ export class VerticalMode {
     this.updateDangerZones(dt);
     this.updateBullets(dt);
     this.updatePickups(dt);
+    this.updateDetritos(dt);
     this.particles.update(dt);
 
     this.checkCleared();
@@ -492,6 +509,7 @@ export class VerticalMode {
     this.bullets.clear();
     this.enemies.clear();
     this.pickups.clear();
+    this.detritos.clear();
     this.dangerZones.length = 0;
     this.particles.clear();
     this.ai.reset(c.seed ^ 0x9117);
@@ -1302,6 +1320,36 @@ export class VerticalMode {
         return;
       }
 
+      // Detrito come projétil dos DOIS lados.
+      //
+      // É o que o separa de um plano de fundo: um cenário que não interfere é
+      // decoração, e a nave passaria por ele sem nunca reparar. Comendo tiro,
+      // um asteroide entre o jogador e o alvo é uma decisão — atirar em volta,
+      // furar a pedra, ou usá-la de escudo contra quem está atrás dela.
+      //
+      // Antes da checagem de inimigo, e de propósito: a pedra está no caminho,
+      // então é ela que responde primeiro.
+      this.detritos.each((d) => {
+        if (!b.alive || !d.alive) return;
+        const dx = d.x - b.x;
+        const dy = d.y - b.y;
+        const alcance = d.raio + b.radius;
+        if (dx * dx + dy * dy > alcance * alcance) return;
+
+        d.flash = 1;
+        // Um golpe é um golpe. O detrito não tem resistência, elemento nem
+        // crítico: dar-lhe qualquer um deles o faria participar de um sistema
+        // de combate do qual ele não é parte.
+        d.vida -= 1;
+        if (d.vida <= 0) this.quebrarDetrito(d);
+
+        // Perfuração vale contra pedra também: quem pagou por atravessar
+        // fileiras não deve ser parado pelo cenário.
+        if (b.pierce > 0) b.pierce--;
+        else b.alive = false;
+      });
+      if (!b.alive) return;
+
       if (b.friendly) {
         this.enemies.each((e) => {
           if (!b.alive || !e.alive || e.time < 0 || e.id === b.hitId) return;
@@ -1502,6 +1550,151 @@ export class VerticalMode {
     p.y = y;
     p.vy = 70;
     p.vx = this.rng.range(-30, 30);
+  }
+
+  // ── detritos: o cenário que atrapalha ───────────────────────────────────
+
+  /**
+   * Faz o tempo do clima e move o que está em campo.
+   *
+   * Não roda no Laboratório: lá a tela existe para COMPARAR fichas, e um
+   * asteroide atravessando a medição a invalidaria sem avisar.
+   */
+  private updateDetritos(dt: number): void {
+    if (this.sim.laboratorio.active) { this.detritos.clear(); return; }
+
+    this.girarClima(dt);
+    this.semearDetritos(dt);
+
+    const p = this.player;
+    this.detritos.each((d) => {
+      d.y += d.vy * dt;
+      d.x += d.vx * dt;
+      d.giro += d.giroVel * dt;
+      d.flash = Math.max(0, d.flash - dt * 4);
+
+      // Sai por baixo e some. Não volta pelo topo: um detrito que reaparece
+      // quebra a leitura de que a nave está avançando pelo espaço.
+      if (d.y - d.raio > VIEW.h + 40) { d.alive = false; return; }
+
+      // `invuln` e não `invulnerable`: aquele é do Player, em segundos de
+      // graça pós-respawn; este é do Enemy. Cobrar encontrão de uma nave que
+      // acabou de renascer seria matá-la de novo antes de ela poder reagir.
+      if (!d.bateu && p.alive && p.invuln <= 0) {
+        const dx = d.x - p.x;
+        const dy = d.y - p.y;
+        const alcance = d.raio + Math.max(p.hitbox.width, p.hitbox.height) * 0.5;
+        if (dx * dx + dy * dy < alcance * alcance) {
+          d.bateu = true;
+          // Dano NORMAL, sem elemento: uma pedra não tem afinidade, e dar-lhe
+          // uma faria o anel elemental responder por algo que não é combate.
+          this.damagePlayer(d.impacto);
+          this.quebrarDetrito(d, true);
+        }
+      }
+    });
+    this.detritos.compact();
+  }
+
+  /**
+   * Alterna entre o repouso e os momentos.
+   *
+   * O intervalo é sorteado numa faixa larga (22 a 48s) de propósito: um evento
+   * que chega em relógio fixo deixa de ser evento e vira fase.
+   */
+  private girarClima(dt: number): void {
+    if (this.climaRestante > 0) {
+      this.climaRestante -= dt;
+      if (this.climaRestante <= 0) {
+        this.climaAtual = 'esparso';
+        this.climaEspera = this.rng.range(INTERVALO_MIN, INTERVALO_MAX);
+      }
+      return;
+    }
+
+    this.climaEspera -= dt;
+    if (this.climaEspera > 0) return;
+
+    const momentos = CLIMAS.filter((c) => c.peso > 0);
+    const escolhido = this.rng.weighted(momentos, (c) => c.peso);
+    this.climaAtual = escolhido.id;
+    this.climaRestante = escolhido.duracao;
+    this.setBanner(escolhido.nome);
+  }
+
+  /** Solta detritos conforme a taxa do clima corrente. */
+  private semearDetritos(dt: number): void {
+    const clima = CLIMA_POR_ID.get(this.climaAtual) ?? CLIMAS[0]!;
+    if (this.detritos.size >= DETRITOS_MAX) return;
+
+    // Acumulador fracionário: a taxa de repouso é 0,35/s, que num quadro de
+    // 1/60 dá 0,006 detrito. Arredondar por quadro nunca soltaria nada.
+    this.detritoAcumulado += clima.taxa * dt;
+    while (this.detritoAcumulado >= 1) {
+      this.detritoAcumulado -= 1;
+      this.nascerDetrito(clima);
+    }
+  }
+
+  private nascerDetrito(clima: Clima): void {
+    const d = this.detritos.spawn();
+    if (!d) return;
+
+    const familia: FamiliaDeDetrito = clima.familia === 'ambas'
+      ? (this.rng.chance(0.62) ? 'asteroide' : 'lixo')
+      : clima.familia;
+    const tamanho = tamanhoSorteado(this.rng, clima.mistura);
+    const perfil = PERFIL_DE_DETRITO[tamanho];
+
+    d.raio = perfil.raio;
+    d.vida = perfil.vida;
+    d.vidaMax = perfil.vida;
+    d.sprite = spriteDeDetrito(familia, tamanho, this.rng.int(0, 999));
+    d.giro = this.rng.range(0, Math.PI * 2);
+    d.giroVel = this.rng.range(-perfil.giro, perfil.giro) * Math.PI * 2;
+    d.impacto = this.sim.encounter.damage * perfil.impacto;
+
+    // Nasce acima da tela, na largura inteira. A deriva lateral é pequena: um
+    // campo de detritos atravessando na diagonal leria como ataque, e estes
+    // não atacam — eles só estão ali.
+    d.x = this.rng.range(d.raio, VIEW.w - d.raio);
+    d.y = -d.raio - this.rng.range(0, 60);
+    d.vx = this.rng.range(-14, 14);
+    d.vy = VELOCIDADE_BASE * perfil.velocidade * this.rng.range(0.85, 1.15);
+  }
+
+  /**
+   * Tira um detrito de campo, com estouro.
+   *
+   * Não chama `rewardKill`, não mexe em `restam`, não registra fato e não conta
+   * abate. Isso não é esquecimento: é a definição do que um detrito é.
+   */
+  private quebrarDetrito(d: Detrito, colisao = false): void {
+    d.alive = false;
+    // `debris` e não `burst`: aquele é para clipe animado de explosão, este é
+    // estilhaço solto — que é literalmente o que sobra de uma pedra quebrada.
+    this.particles.debris(
+      d.x, d.y,
+      Math.round(6 + d.raio * 0.45),
+      colisao ? '#ffd08a' : '#b9a58c',
+      40 + d.raio * 2.2,
+    );
+    // Só o grande sacode a tela. Um cascalho tremendo a câmera daria a um
+    // detrito o peso de um chefe.
+    if (d.raio >= 30) this.shake = Math.max(this.shake, colisao ? 9 : 5);
+  }
+
+  private drawDetritos(s: Surface): void {
+    this.detritos.each((d) => {
+      const escala = (d.raio * 2) / 96;
+      s.sprite(d.sprite, d.x, d.y, { scale: escala, rotation: d.giro });
+      if (d.flash > 0) {
+        s.sprite(d.sprite, d.x, d.y, {
+          scale: escala, rotation: d.giro,
+          alpha: d.flash * 0.8, composite: 'lighter',
+        });
+      }
+    });
   }
 
   private updatePickups(dt: number): void {
@@ -1739,6 +1932,10 @@ export class VerticalMode {
     if (jitter) s.ctx.translate(this.rng.range(-jitter, jitter), this.rng.range(-jitter, jitter));
 
     this.drawDangerZones(s);
+    // Detritos ficam ATRÁS dos inimigos e à frente do fundo. São cenário com
+    // volume: passar por cima do inimigo esconderia o que o jogador precisa
+    // acertar, e ficar no fundo os transformaria em textura.
+    this.drawDetritos(s);
     this.drawPickups(s);
     this.drawEnemies(s);
     this.drawPlayer(s);

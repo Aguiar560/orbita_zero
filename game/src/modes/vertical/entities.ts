@@ -238,6 +238,52 @@ export function createEnemyPool(capacity = 260): Pool<Enemy> {
   );
 }
 
+/**
+ * Um detrito em campo: asteroide ou lixo espacial.
+ *
+ * Entidade PRÓPRIA e não um inimigo com recompensa zero. Um inimigo passa por
+ * `rewardKill`, entra em `restam`, alimenta missão e conta abate — e desligar
+ * cada uma dessas coisas com um `if` deixaria quatro lugares onde alguém
+ * poderia esquecer. Sendo outro tipo, ele nunca chega perto desses caminhos.
+ */
+export interface Detrito {
+  alive: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  raio: number;
+  vida: number;
+  vidaMax: number;
+  /** Rotação atual, em radianos. */
+  giro: number;
+  /** Velocidade de rotação, em radianos por segundo. */
+  giroVel: number;
+  sprite: string;
+  /** Dano no encontrão com a nave. */
+  impacto: number;
+  /** Piscada branca ao levar tiro. */
+  flash: number;
+  /** Já bateu na nave? Impede o mesmo detrito cobrar duas vezes. */
+  bateu: boolean;
+}
+
+/**
+ * Capacidade 80: o teto de vivos é 70 (`DETRITOS_MAX`), e a folga cobre o
+ * quadro em que uma chuva solta a última leva antes de a primeira sair de tela.
+ */
+export function createDetritoPool(capacity = 80): Pool<Detrito> {
+  return new Pool<Detrito>(
+    () => ({
+      alive: false, x: 0, y: 0, vx: 0, vy: 0, raio: 12,
+      vida: 1, vidaMax: 1, giro: 0, giroVel: 0, sprite: '',
+      impacto: 0, flash: 0, bateu: false,
+    }),
+    (d) => { d.flash = 0; d.bateu = false; d.vx = 0; d.giro = 0; },
+    capacity,
+  );
+}
+
 export function createPickupPool(capacity = 80): Pool<Pickup> {
   return new Pool<Pickup>(
     () => ({ alive: false, kind: 'recompensa', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
