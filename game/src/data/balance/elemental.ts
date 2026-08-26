@@ -39,10 +39,30 @@ export function bateDe(e: ElementId): ElementId | null {
 
 // ── multiplicadores do anel ─────────────────────────────────────────────────
 
-/** Atacar quem o seu elemento castiga. */
+/**
+ * Atacar quem o seu elemento castiga.
+ *
+ * Continua 1,5. A especificação propunha baixar para 1,25 e subir a
+ * desvantagem para 0,80, o que fecharia a deriva — mas ENCOLHERIA a escolha:
+ * acertar o elemento passaria a valer 56% em vez de 114%, e a ida e volta do
+ * anel deixaria de ser a decisão que faz o jogador trocar de nave.
+ */
 export const VANTAGEM = 1.5;
-/** Atacar quem castiga o seu elemento. */
-export const DESVANTAGEM = 0.7;
+
+/**
+ * Atacar quem castiga o seu elemento. É o RECÍPROCO da vantagem.
+ *
+ * Era 0,7, e `1,5 × 0,7 = 1,05`: ir e voltar pelo anel rendia 5% de graça, um
+ * viés sistemático que não estava no desenho de ninguém. Sendo `1 / VANTAGEM`,
+ * o produto é 1,000 por construção — não por um número escolhido para dar
+ * certo, e sim porque as duas pontas são a mesma razão em direções opostas.
+ * Mexer na vantagem não reabre a deriva.
+ *
+ * De quebra, errar o elemento ficou 4,8% mais caro (0,700 → 0,667), o que
+ * empurra na direção certa: o chefe tem de ser barreira, e levar a nave errada
+ * precisa doer.
+ */
+export const DESVANTAGEM = 1 / VANTAGEM;
 /**
  * Atacar o próprio elemento.
  *

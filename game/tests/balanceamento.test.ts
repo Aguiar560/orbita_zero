@@ -349,13 +349,21 @@ describe('matriz elemental (§5)', () => {
    * este teste falha, e é aí que ele deve ser trocado pela propriedade correta:
    * `expect(ida * volta).toBeCloseTo(1, 5)`.
    */
-  it('LINHA DE BASE: o par vantagem/desvantagem tem deriva de 5%', () => {
+  it('ir e voltar pelo anel fecha em 1,000 — sem deriva', () => {
+    // Era 1,05: ida e volta rendiam 5% de graça, um viés sistemático que não
+    // estava no desenho de ninguém. A desvantagem virou `1 / VANTAGEM`, então
+    // o produto é 1 por CONSTRUÇÃO — mexer na vantagem não reabre a deriva.
     const ida = matchup('fogo', 'gelo');
     const volta = matchup('gelo', 'fogo');
-    expect(ida * volta).toBeCloseTo(1.05, 5);
+    expect(ida * volta).toBeCloseTo(1, 5);
   });
 
-  it.todo('Fase 2: vantagem × desvantagem = 1,000 exato (1,25 × 0,80)');
+  it('mas a ESCOLHA continua grande — 2,25× entre acertar e errar', () => {
+    // A saída da especificação (1,25 × 0,80) também fecharia a deriva, e foi
+    // recusada por isto: encolheria a diferença para 1,56×, e o anel deixaria
+    // de ser a decisão que faz trocar de nave antes de um chefe.
+    expect(matchup('fogo', 'gelo') / matchup('gelo', 'fogo')).toBeGreaterThan(2.2);
+  });
 });
 
 /**
