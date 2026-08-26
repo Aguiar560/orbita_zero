@@ -252,6 +252,86 @@ o grupo impede o acúmulo dentro de uma.
 
 **300 setores** · 10 por galáxia · 5 ondas + 1 chefe por setor.
 
+### Combustível — o que força a rotação de frota
+
+Sem ele a frota é decoração: o jogador compra o casco mais forte que pode e voa
+só com ele até comprar o próximo. Os outros quarenta ficam no hangar sem nunca
+sair.
+
+**A autonomia é INVERSA ao poder.** Uma nave forte que também durasse mais seria
+estritamente melhor, e a rotação nunca aconteceria. Há teste percorrendo todos
+os pares de cascos para garantir que mais poder nunca dá mais autonomia.
+
+| tier | exemplo | autonomia | recarga | encher |
+|---|---|---|---|---|
+| T1 | Lança Rubra | 19,7 h | 4,2 h | 129 núcleos |
+| T2 | Ignis Mk I | 19,1 h | 4,5 h | 318 |
+| T3 | Ignis Mk II | 16,5 h | 6,0 h | 1.080 |
+| T4 | Centurião Atlas | 14,3 h | 7,3 h | 1.741 |
+| T5 | Víbora Helix | 9,5 h | 10,0 h | 3.155 |
+| T6 | Martelo Hélios | 8,3 h | 10,7 h | 3.519 |
+| T7 | Aurora Negra | 7,3 h | 11,3 h | 3.824 |
+
+Extremos medidos: **Aurora Mk I 20,0 h** · **Bastião-8 6,0 h**.
+
+#### Por que a escala é logarítmica
+
+O poder dos cascos vai de 79 a 13.691 — **173×**. Numa escala linear, todos os
+cascos abaixo do tier 6 cairiam praticamente no mesmo ponto da curva e teriam a
+mesma autonomia. O poder cresce por tier de forma geométrica, então a autonomia
+tem de ler o poder do mesmo jeito.
+
+O poder vem de `powerScore` sobre um casco **nu** — sem item, sem nível. Uma
+nave fraca bem equipada não merece o tanque de uma forte, senão o jogador
+contornaria a rotação empilhando itens na primeira nave.
+
+#### As 6 h do casco mais forte não são número redondo por acaso
+
+São o mesmo teto de ausência diária do placar. A melhor nave do jogo carrega
+**exatamente uma janela de offline**: nem mais, para não existir nave que
+dispense rotação; nem menos, para o teto de ausência não ser inalcançável com a
+melhor frota.
+
+#### A recarga é a inversa da autonomia
+
+Por um motivo diferente: se a nave forte enchesse tão rápido quanto a fraca,
+bastaria ter DUAS fortes e alternar — a rotação viraria um par, não uma frota.
+Com recarga lenta, é preciso gente para voar enquanto a melhor descansa.
+
+A recarga do hangar é grátis e lenta. Pagar em núcleo é comprar TEMPO, e o preço
+é proporcional ao que falta — cobrar o cheio por um tanque em 90% seria cobrar
+por combustível que já está lá.
+
+#### O tanque é uma FRAÇÃO, e ausente significa cheio
+
+Guardar segundos amarraria o save à autonomia do dia da gravação: qualquer
+ajuste na curva faria naves antigas aparecerem transbordando ou pela metade sem
+ninguém ter voado. Ausente = cheio é o que faz save antigo migrar sem aterrissar
+a frota de quem já jogava.
+
+#### Um relógio só, e o que acontece ao secar
+
+`passarTempo` roda em `patrolTick` (ao vivo) e em `abstractTick` (offline). São
+os dois únicos relógios do jogo, e a nave está em campo nos dois — gastar só num
+deles faria a aba fechada, ou aberta, ser de graça.
+
+Ao secar, o comando passa sozinho para a **melhor nave que ainda tem tanque**.
+Deixar o jogador parado numa nave que não decola transformaria o sistema numa
+punição por estar ausente; a rotação é o objetivo, o castigo não.
+
+Com a frota inteira em terra, **a incursão para**. Medido: `patrolTick` rendeu
+0 de sucata com todas as naves abaixo do piso. Sem isso o combustível seria uma
+barra decorativa.
+
+Mas o relógio continua correndo mesmo em terra — é assim que as naves paradas
+voltam a encher. Parar tudo ao secar deixaria o jogador sem saída nenhuma.
+
+#### O piso para decolar não é zero
+
+É 5%. Uma nave que decola com 0,5% cai em vinte segundos e devolve o jogador à
+mesma tela — o piso faz "sem combustível" ser um estado que se resolve, e não um
+ciclo de decolar e cair. No Hangar, "Ativar" fica desabilitado abaixo dele.
+
 ### Regra elemental — o que uma nave aceita montar
 
 Uma nave só monta item **neutro** ou **do próprio elemento**. É o que dá

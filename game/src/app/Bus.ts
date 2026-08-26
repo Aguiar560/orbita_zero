@@ -22,6 +22,15 @@ export interface GameEvents {
   'provacao:falhou': { piso: number };
   'provacao:marco': { piso: number };
 
+  /**
+   * A nave em campo secou e o comando passou para outra.
+   *
+   * Evento e não FATO: fato alimenta missão, e ficar sem combustível não é
+   * conquista de ninguém. A tela usa para avisar; se ninguém ouvir, o jogo
+   * continua igual.
+   */
+  'combustivel:seco': { trocouPara: string };
+
   'loot:dropped': { item: Item };
   'chest:granted': { tier: string; source: string };
   'chest:opened': { tier: string; items: Item[] };

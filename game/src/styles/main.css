@@ -5678,3 +5678,16 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* Os elementos na faixa: fase 1, antes de mirar. */
 .selecao-elementos { display: flex; flex-wrap: wrap; gap: 5px; }
 .selecao-elementos .chip { padding: 6px 10px; font-size: 11.5px; }
+
+/* ── combustível ──────────────────────────────────────────────────────────── */
+
+/*
+ * No trilho, ao lado da sincronia. É a única informação do jogo que expira
+ * SOZINHA — o jogador precisa ver a nave secando antes de ela secar, e não
+ * descobrir depois que o comando já passou para outra.
+ */
+.rail-fuel { margin-top: 2px; }
+
+.fleet-fuel { display: grid; gap: 4px; margin: 6px 0 2px; }
+.fleet-reabastecer { justify-self: stretch; margin-top: 3px; }
+.fleet-reabastecer:disabled { opacity: .45; cursor: not-allowed; }

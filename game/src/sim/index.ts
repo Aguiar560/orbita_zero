@@ -13,6 +13,7 @@ import { MISSAO_POR_ID, MISSOES, type FatoDeJogo, type MissaoDef } from '@data/m
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, PERSONAGENS, ROMANOS, contatoDoChefe, type PersonagemDef } from '@data/personagens';
 import { PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
 import { elementoDaNave, podeEquipar } from './elemento-da-nave';
+import { combustivelDe, custoParaEncher, passarTempo, podeDecolar, proximaComCombustivel } from './combustivel';
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import {
   abrirDesafio, encontroDoDesafio, tickDoDesafio, type DesafioAtivo,
@@ -1048,6 +1049,10 @@ export class Sim {
    * reporte um ritmo diferente do abstrato (a faixa visível mata mais rápido).
    */
   patrolTick(dt: number, intensity = 1): void {
+    // O combustível corre aqui, no tempo AO VIVO, e em `abstractTick`, no tempo
+    // offline. São os dois únicos relógios do jogo, e a nave está em campo nos
+    // dois — gastar só num deles faria a aba fechada (ou aberta) ser de graça.
+    if (this.gastarCombustivel(dt)) return;
     const bar = this.state.bar;
     const scrap = this.patrolScrapRate * dt * intensity;
     this.grant('sucata', scrap);
@@ -1303,6 +1308,10 @@ export class Sim {
    */
   abstractTick(dt: number): void {
     const run = this.state.run;
+    // Combustível corre no MESMO ponto do tempo ao vivo e do offline. Se
+    // fossem dois caminhos, aba aberta e fechada renderiam tanques diferentes
+    // — e o jogador descobriria qual dos dois compensa.
+    if (this.gastarCombustivel(dt)) return;
     // Converte dano por segundo em ABATES por segundo, para o caminho abstrato
     // medir a mesma coisa que a cena mede. Sem isso os dois divergiriam: um
     // contaria dano e o outro naves destruídas.
@@ -2057,6 +2066,70 @@ export class Sim {
   }
 
   // ── frota ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Passa o tempo do combustível. Devolve `true` se a nave secou agora.
+   *
+   * Ao secar, troca sozinho para a melhor nave que ainda tem tanque. Deixar o
+   * jogador parado numa nave que não decola seria transformar o sistema numa
+   * punição por estar ausente — a rotação é o objetivo, ficar de castigo não.
+   *
+   * Sem nenhuma nave disponível, a frota fica em terra e a incursão para: aí
+   * não há o que fazer senão reabastecer.
+   */
+  gastarCombustivel(dt: number): boolean {
+    if (this.testMode) return false;
+
+    // O tanque corre SEMPRE — inclusive com a frota em terra, porque é assim
+    // que as naves paradas voltam a encher. Parar o relógio ao secar deixaria
+    // o jogador sem saída nenhuma.
+    const secou = passarTempo(this.state, dt);
+
+    if (secou) {
+      const proxima = proximaComCombustivel(this.state);
+      if (proxima) {
+        this.trocarCasco(proxima);
+        // Evento e não FATO: fato alimenta missão, e "trocou de nave por falta
+        // de combustível" não é conquista de ninguém. A tela usa para avisar.
+        bus.emit('combustivel:seco', { trocouPara: proxima });
+      }
+      this.touch();
+    }
+
+    // Sem nenhuma nave capaz de decolar, a incursão PARA. Sem isto, a frota em
+    // terra continuaria rendendo — e o combustível seria uma barra decorativa
+    // que não muda nada.
+    return !podeDecolar(this.state);
+  }
+
+  /** A frota inteira está em terra? */
+  get frotaEmTerra(): boolean {
+    return !this.state.fleet.some((id) => podeDecolar(this.state, id));
+  }
+
+  /** Tanque da nave, de 0 a 1. */
+  combustivelDe(hullId = this.state.hull): number {
+    return combustivelDe(this.state, hullId);
+  }
+
+  /** Núcleos para encher esta nave agora. */
+  custoParaEncher(hullId = this.state.hull): number {
+    return custoParaEncher(this.state, hullId);
+  }
+
+  /**
+   * Reabastece pagando. A recarga do hangar é grátis e lenta; isto é comprar
+   * TEMPO, e por isso o preço cresce com o poder do casco.
+   */
+  reabastecer(hullId = this.state.hull): boolean {
+    const custo = custoParaEncher(this.state, hullId);
+    if (custo <= 0) return false;
+    if (!this.spend('nucleo', custo)) return false;
+    const nave = (this.state.naves[hullId] ??= { nivel: 1, xp: 0, equipped: {} });
+    nave.combustivel = 1;
+    this.touch();
+    return true;
+  }
 
   /** Quantas cargas deste serviço estão guardadas. */
   cargasDe(servico: string): number {

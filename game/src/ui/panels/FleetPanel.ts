@@ -1,4 +1,5 @@
-import { fmt } from '@core/format';
+import { autonomiaDoCasco, podeDecolar, recargaDoCasco } from '@sim/combustivel';
+import { duration, fmt } from '@core/format';
 import { HULLS, type Hull } from '@data/hulls';
 import {
   HULL_ARCHETYPES, HULL_TUNINGS, HULL_WEAPONS, SPACESHIPS2_HULL_SPEC_BY_ID,
@@ -6,7 +7,7 @@ import {
 import { getElement } from '@data/elements';
 import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
-import { h, spriteIcon } from '../dom';
+import { h, progressBar, spriteIcon } from '../dom';
 import { nivelExigido } from '@data/balance/curvas';
 import type { Panel } from './types';
 
@@ -42,6 +43,8 @@ export class FleetPanel implements Panel {
       h('.fleet-grid', {}, ...HULLS.filter((hull) => !hull.piloto || sim.frotaDisponivel.includes(hull.id)).map((hull) => {
         const owned = sim.frotaDisponivel.includes(hull.id);
         const active = sim.state.hull === hull.id;
+        const tanque = sim.combustivelDe(hull.id);
+        const custo = sim.custoParaEncher(hull.id);
         const revealed = sim.alcanceLiberado >= hull.requiresSector;
 
         if (!revealed && !owned) {
@@ -68,10 +71,39 @@ export class FleetPanel implements Panel {
           shipBuild(hull),
           h('p.muted.tiny', { text: hull.blurb }),
           shipBars(hull),
+
+          // O tanque aparece SÓ nas naves que o jogador tem. Numa nave à venda
+          // ele não diz nada: ela sai da loja cheia, e a barra ali só somaria
+          // ruído a um cartão que já tem ficha, tier e preço.
+          ...(owned ? [h('.fleet-fuel', {},
+            h('span.tiny.muted', { text: `Combustível ${Math.round(tanque * 100)}% · autonomia ${duration(autonomiaDoCasco(hull.id))}` }),
+            progressBar(
+              tanque,
+              tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a',
+              5,
+            ),
+            // Reabastecer só aparece com tanque incompleto. Um botão que não
+            // faz nada num cartão cheio é convite a clicar e não entender.
+            ...(custo > 0
+              ? [h('button.mini.fleet-reabastecer', {
+                  disabled: !sim.can('nucleo', custo),
+                  title: `Encher agora custa ${fmt(custo)} núcleos. No hangar ela enche sozinha em ${duration(recargaDoCasco(hull.id))}, de graça.`,
+                  onclick: () => { sim.reabastecer(hull.id); },
+                }, h('span', { text: `Reabastecer · ${fmt(custo)}` }))]
+              : []),
+          )] : []),
+
           owned
             ? active
               ? h('.fleet-action.active', { text: 'EM USO' })
-              : h('button.btn', { text: 'Ativar', onclick: () => { sim.selectHull(hull.id); } })
+              : h('button.btn', {
+                  text: 'Ativar',
+                  // Sem combustível não decola. Deixar ativar e a nave cair no
+                  // primeiro segundo devolveria o jogador à mesma tela.
+                  disabled: !podeDecolar(sim.state, hull.id),
+                  title: podeDecolar(sim.state, hull.id) ? undefined : 'Sem combustível para decolar',
+                  onclick: () => { sim.selectHull(hull.id); },
+                })
             : h('button.btn.buy', {
                 disabled: !sim.can('cristal', hull.cost),
                 onclick: () => { sim.buyHull(hull.id); },

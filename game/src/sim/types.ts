@@ -193,6 +193,18 @@ export interface NivelProgresso {
 
 export interface NaveProgresso extends NivelProgresso {
   /**
+   * Tanque, de 0 a 1. AUSENTE significa cheio.
+   *
+   * Fração e não segundos: guardar segundos amarraria o save à autonomia do
+   * dia da gravação, e qualquer ajuste na curva faria naves antigas aparecerem
+   * transbordando ou pela metade sem ninguém ter voado.
+   *
+   * Ausente = cheio é o que faz save antigo migrar sem aterrissar a frota de
+   * quem já jogava.
+   */
+  combustivel?: number;
+
+  /**
    * Elemento ATUAL da nave, quando trocado na Central de Serviços.
    *
    * Ausente significa "como saiu de fábrica" — o nativo de `hulls.ts`. Guardar

@@ -1,3 +1,4 @@
+import { autonomiaDoCasco } from '@sim/combustivel';
 import { bus } from '@app/Bus';
 import { fmt, duration, pct } from '@core/format';
 import { clamp01 } from '@core/math';
@@ -148,6 +149,21 @@ export class LeftRail {
         h('span.tiny.muted', { text: `Sincronia ${pct(stats.iaSkill)}` }),
         progressBar(stats.iaSkill, '#7fe4ff', 4),
       ),
+
+      // Combustível fica no trilho, e não só no Hangar, porque é a única
+      // informação do jogo que expira SOZINHA — o jogador precisa ver a nave
+      // secando antes de ela secar, não descobrir depois que já trocou.
+      ...(() => {
+        const tanque = sim.combustivelDe();
+        const restam = tanque * autonomiaDoCasco(sim.state.hull);
+        // Vermelho abaixo de 15%: é aproximadamente o ponto em que uma sessão
+        // comum não termina antes de o tanque acabar.
+        const cor = tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a';
+        return [h('.rail-sync.rail-fuel', {},
+          h('span.tiny.muted', { text: `Combustível ${pct(tanque)} · ${duration(restam)}` }),
+          progressBar(tanque, cor, 4),
+        )];
+      })(),
 
       // As missões rastreadas moram SOBRE o campo de combate (`.mission-hud`,
       // em `Shell`), e só lá. Tinham cópia aqui também, e duas listas do mesmo
