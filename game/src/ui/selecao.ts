@@ -36,6 +36,13 @@ export const selecaoPendente = (): SelecaoPendente | null => pendente;
 
 export function pedirSelecao(s: SelecaoPendente): void {
   pendente = s;
+  // FECHA a camada. O Armazém abre em tela cheia (z-index 60) e cobre
+  // exatamente o inventário que precisa ser clicado — pedir para clicar numa
+  // peça e deixar um painel opaco por cima dela é um beco sem saída.
+  //
+  // Fechar tira o botão de cancelar junto, então a faixa de instrução do Shell
+  // assume os dois papéis: dizer o que fazer e oferecer a saída.
+  bus.emit('panel:close');
   bus.emit('state:changed');
 }
 

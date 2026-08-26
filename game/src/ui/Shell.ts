@@ -11,6 +11,7 @@ import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
 import { Anatomia } from './Anatomia';
+import { encerrarSelecao, selecaoPendente } from './selecao';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
@@ -72,6 +73,15 @@ export class Shell {
   private dirty = true;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
+
+  /**
+   * Faixa de instrução enquanto uma carga de serviço espera um alvo.
+   *
+   * Vive no Shell, e não num painel, porque o painel que a originou ACABOU DE
+   * FECHAR — a camada cobria o inventário. Ela é a única coisa na tela que
+   * lembra o jogador do que ele está no meio de fazer, e a única saída.
+   */
+  private faixaSelecao: HTMLElement | null = null;
   private resultadoHost: HTMLElement | null = null;
   private aoTeclar: ((e: KeyboardEvent) => void) | null = null;
 
@@ -213,6 +223,7 @@ export class Shell {
       this.renderPanel();
     });
     bus.on('panel:close', () => this.voltarDaCamada());
+    bus.on('state:changed', () => this.atualizarFaixaDeSelecao());
     bus.on('laboratorio:changed', () => {
       this.dirty = true;
       this.updateLaboratorioToolbar();
@@ -386,6 +397,24 @@ export class Shell {
   /** O painel que mora na coluna direita. */
   private get painelFixo(): Panel {
     return this.panels.find((p) => p.id === 'inventario') ?? this.panels[0]!;
+  }
+
+  private atualizarFaixaDeSelecao(): void {
+    const s = selecaoPendente();
+    if (!s) {
+      this.faixaSelecao?.remove();
+      this.faixaSelecao = null;
+      return;
+    }
+    if (!this.faixaSelecao) {
+      this.faixaSelecao = h('.selecao-faixa');
+      this.root.append(this.faixaSelecao);
+    }
+    clear(this.faixaSelecao).append(
+      h('span.selecao-selo', { text: 'ESCOLHA O ALVO' }),
+      h('span', { text: s.instrucao }),
+      h('button.mini', { text: 'Cancelar', onclick: () => encerrarSelecao() }),
+    );
   }
 
   /** Monta (ou re-renderiza) a camada do painel ativo. */

@@ -5606,3 +5606,32 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 }
 /* Quem pediu para reduzir movimento não deve levar uma grade piscando. */
 .efeitos-reduzidos .inv-cell.mirado, [data-contrast='high'] .inv-cell.mirado { animation: none; }
+
+/* ── faixa de seleção de alvo ─────────────────────────────────────────────── */
+
+/*
+ * Fica ACIMA da camada de painel (60) porque ela sobrevive ao fechamento dela:
+ * a camada cobria o inventário, então pedir o alvo obriga a fechá-la, e a faixa
+ * passa a ser a única coisa na tela que lembra o jogador do que ele está no meio
+ * de fazer — e a única saída.
+ */
+.selecao-faixa {
+  position: fixed; z-index: 70;
+  left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px;
+  max-width: min(620px, 92vw);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(10, 26, 42, .96), rgba(5, 12, 20, .97));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .55);
+  color: #dbe9f5; font-size: 12.5px;
+}
+.selecao-selo {
+  padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--accent);
+  font: 700 9.5px/1.5 'Chakra Petch', sans-serif; letter-spacing: .12em;
+}
+.selecao-faixa > span:nth-child(2) { flex: 1; min-width: 0; }
