@@ -4,9 +4,9 @@ import { ESCOPO_LABEL, FAMILIAS_ORDENADAS, FAMILIA_LABEL, RECURSOS, iconeDeRecur
 import { ELEMENTS, getElement } from '@data/elements';
 import { HULL_BY_ID } from '@data/hulls';
 import { SHOP } from '@data/shop';
-import { encerrarSelecao, pedirSelecao, selecaoPendente } from '../selecao';
+import { pedirSelecao } from '../selecao';
 import type { Sim } from '@sim/index';
-import { h, spriteIcon } from '../dom';
+import { clear, h, spriteIcon } from '../dom';
 import type { Panel } from './types';
 
 /**
@@ -141,15 +141,15 @@ export class ArmazemPanel implements Panel {
   }
 
   /**
-   * A aba de Serviços: as cargas compradas na loja, prontas para usar.
+   * A aba de Serviços: uma LISTA de cargas, como qualquer outro estoque.
    *
-   * Elas existem porque comprar e usar deixaram de ser o mesmo instante. O
-   * serviço elemental precisa de um ALVO, e a loja tentou resolver isso com um
-   * modal listando todas as peças em texto — o que obrigava o jogador a decorar
-   * "Reator nv 30 · Raro · Fogo" para depois achar o ícone certo na grade.
+   * Antes cada carga era um cartão com os seis botões de elemento por dentro —
+   * e a de nave trazia a frota inteira, seis botões CADA. Com quarenta naves
+   * aquilo vira uma parede de duzentos e quarenta botões numa aba que deveria
+   * ser um inventário.
    *
-   * Aqui ele escolhe o elemento de destino e a grade do inventário, que já está
-   * na tela, vira o seletor.
+   * A linha só diz o que é e quantas você tem. O que fazer com ela acontece
+   * onde faz sentido: peça, no inventário; nave, num modal com a frota.
    */
   private abaDeServicos(sim: Sim): HTMLElement[] {
     const cargas = SHOP.filter((s) => s.alvo && (sim.state.servicos?.[s.id] ?? 0) > 0);
@@ -160,80 +160,88 @@ export class ArmazemPanel implements Panel {
       )];
     }
 
-    const pendente = selecaoPendente();
-    return cargas.map((s) => {
+    return [h('.armazem-servicos', {}, ...cargas.map((s) => {
       const n = sim.state.servicos[s.id] ?? 0;
-      const mirando = pendente?.servico === s.id;
-      return h(`.armazem-carga${mirando ? '.mirando' : ''}`, {},
-        h('.armazem-carga-topo', {},
+      return h('button.armazem-servico', {
+        onclick: () => {
+          if (s.alvo === 'nave') { this.abrirModalDeNaves(sim, s.id, s.name); return; }
+          // Peça: a faixa assume a partir daqui — elemento, depois alvo.
+          pedirSelecao({ servico: s.id, nome: s.name, elemento: null });
+          sim.touch();
+        },
+      },
+        spriteIcon('geral/b_1', 34, 'armazem-servico-art'),
+        h('.armazem-servico-txt', {},
           h('strong', { text: s.name }),
-          h('i.armazem-conta', { text: `${n}` }),
+          h('span.muted.tiny', { text: s.desc }),
         ),
-        h('span.muted.tiny', { text: s.desc }),
-
-        ...(s.alvo === 'nave'
-          ? [this.alvosDeNave(sim, s.id)]
-          : [
-              h('span.muted.tiny', { text: 'CONVERTER PARA' }),
-              h('.armazem-elementos', {}, ...ELEMENTS.map((el) => h('button.chip', {
-                text: el.name,
-                style: { color: el.color } as Partial<CSSStyleDeclaration>,
-                onclick: () => {
-                  pedirSelecao({
-                    servico: s.id,
-                    elemento: el.id,
-                    instrucao: `Clique na peça que vai virar ${el.name.toLowerCase()}`,
-                  });
-                  sim.touch();
-                },
-              }))),
-              ...(mirando
-                ? [h('.armazem-mirando', {},
-                    h('span.tiny', { text: pendente!.instrucao }),
-                    h('button.mini', {
-                      text: 'Cancelar',
-                      onclick: () => { encerrarSelecao(); sim.touch(); },
-                    }),
-                  )]
-                : []),
-            ]),
+        h('i.armazem-conta', { text: String(n) }),
+        h('span.armazem-servico-seta', { text: '›', 'aria-hidden': true }),
       );
-    });
+    }))];
   }
 
   /**
-   * Alvos de nave: grade visual, não lista de texto.
+   * Modal da frota: escolher nave e elemento num lugar só.
    *
-   * A frota é pequena e cada casco tem silhueta própria, então aqui o problema
-   * do modal não existia — mas mostrar a nave é melhor que nomeá-la de qualquer
-   * jeito, e mantém a mesma gramática da aba.
+   * Naves não sofrem o problema que o `<select>` de peças tinha — cada casco
+   * tem silhueta própria e a lista é curta hoje. Mas ela pode chegar a quarenta,
+   * e é por isso que aqui é modal ROLÁVEL e não linhas soltas na aba: uma lista
+   * longa precisa de um lugar com fim, não de uma aba que cresce para sempre.
+   *
+   * O elemento fica em cada linha, e não numa etapa separada, porque a decisão
+   * é sempre "esta nave, para aquele elemento" — separar em dois passos faria o
+   * jogador escolher o elemento sem ver de que nave está falando.
    */
-  private alvosDeNave(sim: Sim, servico: string): HTMLElement {
-    return h('.armazem-naves', {}, ...sim.state.fleet.map((id) => {
-      const casco = HULL_BY_ID.get(id);
-      if (!casco) return null;
-      const atual = sim.elementoDe(id);
-      return h('.armazem-nave', {},
-        spriteIcon(casco.sprite, 34, 'armazem-nave-art'),
-        h('.armazem-nave-txt', {},
-          h('strong.tiny', { text: casco.name }),
-          h('span.tiny', {
-            text: getElement(atual).name,
-            style: { color: getElement(atual).color } as Partial<CSSStyleDeclaration>,
-          }),
-        ),
-        h('.armazem-elementos', {}, ...ELEMENTS.filter((el) => el.id !== atual).map((el) => h('button.chip', {
-          text: el.sigla,
-          title: `Trocar para ${el.name}`,
-          style: { color: el.color } as Partial<CSSStyleDeclaration>,
-          onclick: () => {
-            if (sim.usarCargaNaNave(servico, id, el.id)) sim.touch();
-          },
-        }))),
-      );
-    }).filter(Boolean) as HTMLElement[]);
-  }
+  private abrirModalDeNaves(sim: Sim, servico: string, nome: string): void {
+    const modal = h('.modal-backdrop');
+    const fechar = () => modal.remove();
 
+    const desenhar = (): void => {
+      const restam = sim.cargasDe(servico);
+      clear(modal).append(h('.modal.armazem-modal', {},
+        h('h2', { text: nome }),
+        h('p.muted.tiny', { text: restam > 0
+          ? `${restam} carga${restam > 1 ? 's' : ''} · escolha a nave e o elemento de destino. As peças que deixarem de servir continuam instaladas.`
+          : 'Sem cargas. Compre outra na Central de Serviços.' }),
+
+        h('.armazem-frota', {}, ...sim.state.fleet.map((id) => {
+          const casco = HULL_BY_ID.get(id);
+          if (!casco) return null;
+          const atual = sim.elementoDe(id);
+          return h('.armazem-nave', {},
+            spriteIcon(casco.sprite, 34, 'armazem-nave-art'),
+            h('.armazem-nave-txt', {},
+              h('strong.tiny', { text: casco.name }),
+              h('span.tiny', {
+                text: getElement(atual).name,
+                style: { color: getElement(atual).color } as Partial<CSSStyleDeclaration>,
+              }),
+            ),
+            h('.armazem-elementos', {}, ...ELEMENTS.filter((el) => el.id !== atual).map((el) => h('button.chip', {
+              text: el.sigla,
+              title: `Trocar para ${el.name}`,
+              disabled: restam <= 0,
+              style: { color: el.color } as Partial<CSSStyleDeclaration>,
+              onclick: () => {
+                if (!sim.usarCargaNaNave(servico, id, el.id)) return;
+                sim.touch();
+                // Redesenha em vez de fechar: quem tem duas cargas costuma
+                // usar as duas, e reabrir o modal a cada uso seria atrito.
+                if (sim.cargasDe(servico) > 0) desenhar(); else fechar();
+              },
+            }))),
+          );
+        }).filter(Boolean) as HTMLElement[]),
+
+        h('button.btn', { onclick: fechar }, h('span', { text: 'Fechar' })),
+      ));
+    };
+
+    desenhar();
+    modal.addEventListener('click', (e) => { if (e.target === modal) fechar(); });
+    document.body.append(modal);
+  }
   badge(sim: Sim): number {
     // O marcador avisa que o depósito está no limite, não quantos materiais há:
     // acumular material não é problema, deixar de recolher um tipo novo é.

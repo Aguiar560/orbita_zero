@@ -11,7 +11,8 @@ import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
 import { Anatomia } from './Anatomia';
-import { encerrarSelecao, selecaoPendente } from './selecao';
+import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
+import { ELEMENTS, getElement } from '@data/elements';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
@@ -410,9 +411,23 @@ export class Shell {
       this.faixaSelecao = h('.selecao-faixa');
       this.root.append(this.faixaSelecao);
     }
+    // Duas fases numa faixa só. Separar em dois lugares faria o jogador
+    // procurar a segunda pergunta depois de responder a primeira.
     clear(this.faixaSelecao).append(
-      h('span.selecao-selo', { text: 'ESCOLHA O ALVO' }),
-      h('span', { text: s.instrucao }),
+      ...(s.elemento
+        ? [
+            h('span.selecao-selo', { text: 'ESCOLHA A PEÇA' }),
+            h('span', { text: `Clique na peça que vai virar ${getElement(s.elemento).name.toLowerCase()}` }),
+          ]
+        : [
+            h('span.selecao-selo', { text: s.nome.toUpperCase() }),
+            h('span', { text: 'Converter para' }),
+            h('.selecao-elementos', {}, ...ELEMENTS.map((el) => h('button.chip', {
+              text: el.name,
+              style: { color: el.color } as Partial<CSSStyleDeclaration>,
+              onclick: () => escolherElemento(el.id),
+            }))),
+          ]),
       h('button.mini', { text: 'Cancelar', onclick: () => encerrarSelecao() }),
     );
   }

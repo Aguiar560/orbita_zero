@@ -32,7 +32,7 @@ function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
 
 import { h, spriteIcon } from '../dom';
 import { buildItemCard } from '../ItemCard';
-import { encerrarSelecao, selecaoPendente } from '../selecao';
+import { encerrarSelecao, mirandoAlvo } from '../selecao';
 import type { Panel } from './types';
 
 function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string {
@@ -194,7 +194,10 @@ export class InventoryPanel implements Panel {
     // no elemento de destino fica apagada: gastar a carga para não mudar nada
     // é o erro óbvio, e recusar depois de consumir seria pior que não deixar
     // clicar.
-    const mira = selecaoPendente();
+    // `mirandoAlvo` e não `selecaoPendente`: na fase 1 o jogador ainda está
+    // escolhendo o elemento na faixa, e a grade não deve piscar antes de haver
+    // um destino — piscar sem alvo definido ensinaria o gesto errado.
+    const mira = mirandoAlvo();
     const alvoValido = !!mira && (item.element ?? 'padrao') !== mira.elemento;
 
     const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}`, {
