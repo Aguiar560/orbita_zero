@@ -1,7 +1,7 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
 import {
-  ALFA_MAX_DE_CORPO, AMEACA, CENARIO_LUMINOSIDADE, CENARIO_SATURACAO, CONGELAMENTO,
-  CORPO_CELESTE, POEIRA, PROFUNDIDADE, PROJETIL,
+  ALFA_MAX_DE_CORPO, AMEACA, CENARIO_LUMINOSIDADE, CONGELAMENTO, CORPO_CELESTE,
+  POEIRA, PROFUNDIDADE, PROJETIL, VEU_DE_CENARIO,
 } from '@data/cenario';
 import {
   CLIMAS, CLIMA_POR_ID, DETRITOS_MAX, INTERVALO_MAX, INTERVALO_MIN,
@@ -2088,6 +2088,11 @@ export class VerticalMode {
      * estrelas rápidas), que é o que cria profundidade: sem a diferença de
      * velocidade seriam três imagens sobrepostas, não um parallax.
      */
+    // O véu inteiro é aplicado no DESENHO, e não depois, por cima. Ver
+    // `rebaixarCenario` para o que estava errado antes.
+    s.ctx.save();
+    s.ctx.filter = VEU_DE_CENARIO;
+
     for (const camada of this.galaxyLayers) {
       const img = assets.peek(camada.src);
       if (!img) continue;
@@ -2121,8 +2126,23 @@ export class VerticalMode {
     //
     // `brightness` acompanha o `contrast` porque este puxa tudo para o cinza
     // médio, e sozinho deixaria o lado ESCURO do planeta mais claro que antes.
-    s.ctx.save();
-    s.ctx.filter = `contrast(${CORPO_CELESTE.contraste}) brightness(${CORPO_CELESTE.luminosidade})`;
+    // O filtro do corpo celeste, numa string só: `ctx.filter` substitui e não
+    // acumula, então aninhar não existe.
+    //
+    // A ordem é a da intenção, e cada etapa desfaz um efeito colateral da
+    // anterior: recuar (brilho do véu) → achatar a textura (contraste) →
+    // compensar o clareamento que o achatamento causa (brilho) → devolver o
+    // croma que o achatamento comeu (saturação).
+    //
+    // Note que o `saturate` do véu NÃO entra aqui: o achatamento já dessatura
+    // muito mais do que o véu pretendia, e somar os dois deixava o corpo em 20%
+    // de saturação contra os 28 a 45% da régua.
+    s.ctx.filter = [
+      `brightness(${CENARIO_LUMINOSIDADE})`,
+      `contrast(${CORPO_CELESTE.contraste})`,
+      `brightness(${CORPO_CELESTE.luminosidade})`,
+      `saturate(${CORPO_CELESTE.saturacaoDeVolta})`,
+    ].join(' ');
     for (let i = this.skyProps.length - 1; i >= 0; i--) {
       const prop = this.skyProps[i]!;
       const found = assets.atlases.lookup(prop.key);
@@ -2132,42 +2152,42 @@ export class VerticalMode {
     }
     s.ctx.restore();
 
-    this.rebaixarCenario(s);
     this.drawPoeira(s);
   }
 
   /**
-   * Empurra o cenário para trás do jogo.
+   * Havia aqui um `rebaixarCenario` que passava DUAS demãos por cima do
+   * cenário pronto: uma de `globalCompositeOperation = 'saturation'` e uma de
+   * preto translúcido. As duas saíram, e a de saturação estava simplesmente
+   * errada.
    *
-   * Aplicado DEPOIS do fundo e ANTES de qualquer coisa jogável — é essa posição
-   * na ordem de desenho que faz dele uma separação e não um filtro de tela
-   * inteira. Um véu por cima de tudo escureceria também o projétil que o
-   * jogador precisa ver.
+   * O modo `saturation` toma a saturação da FONTE e o matiz e a luminosidade
+   * do destino. Preenchendo a tela com `hsl(0, 68%, 50%)`, o que ele faz não é
+   * conservar 68% da saturação de cada pixel — é FIXAR a saturação de todos em
+   * 68%. Medido:
    *
-   * Duas passadas, porque uma só não resolve: `saturation` tira a cor mas
-   * mantém o brilho, e um fundo pálido continua puxando o olho; o escurecimento
-   * sozinho deixa cinza-sujo e mata a identidade de cor da galáxia. Juntos
-   * produzem "longe" — um planeta que ainda é laranja, só que um laranja que
-   * não grita.
+   * | pixel | antes | depois |
+   * |---|---|---|
+   * | rgb(30,40,90) | 67% | 97% |
+   * | rgb(60,120,70) | 50% | 100% |
+   * | **rgb(100,96,92)** | **8%** | **100%** |
+   *
+   * Um cinza quase neutro virava laranja vivo. É de onde vinham as manchas
+   * roxas e a borda verde nos planetas: toda variação sutil de matiz dentro da
+   * textura era esticada até o máximo.
+   *
+   * O defeito é antigo — nasceu junto com o véu — e ficou escondido porque a
+   * arte crua já era saturada, e forçar 68% num pixel que já tinha 80% quase
+   * não aparece. O `contrast` dos corpos celestes é que o revelou: ele
+   * dessatura o planeta e produz justamente os pixels quase-cinza que o blend
+   * explodia.
+   *
+   * A saturação agora é `saturate()` no `ctx.filter`, que é um MULTIPLICADOR
+   * de verdade, aplicado no desenho de cada camada. E a luminosidade virou
+   * `brightness()` na mesma string, o que dispensa a segunda demão: escurecer
+   * multiplicando preserva a proporção entre os canais, enquanto pintar preto
+   * translúcido por cima empurra tudo na direção de uma cor só.
    */
-  private rebaixarCenario(s: Surface): void {
-    const ctx = s.ctx;
-
-    // 1. saturação: o modo `saturation` toma a saturação da FONTE e mantém
-    //    matiz e luminosidade do que já está desenhado.
-    ctx.save();
-    ctx.globalCompositeOperation = 'saturation';
-    ctx.fillStyle = `hsl(0, ${Math.round(CENARIO_SATURACAO * 100)}%, 50%)`;
-    ctx.fillRect(0, 0, VIEW.w, VIEW.h);
-    ctx.restore();
-
-    // 2. luminosidade: preto por cima, na fração que falta para o alvo.
-    ctx.save();
-    ctx.fillStyle = `rgba(4, 8, 16, ${1 - CENARIO_LUMINOSIDADE})`;
-    ctx.fillRect(0, 0, VIEW.w, VIEW.h);
-    ctx.restore();
-  }
-
   /**
    * Poeira estelar: a terceira referência de profundidade.
    *

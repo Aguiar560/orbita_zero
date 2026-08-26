@@ -43,6 +43,22 @@ export const CENARIO_LUMINOSIDADE = 0.82;
 export const CENARIO_SATURACAO = 0.68;
 
 /**
+ * O véu, como string de `ctx.filter`.
+ *
+ * Aplicado no DESENHO de cada camada de cenário, e não como demão por cima do
+ * resultado. A diferença não é de estilo: `saturate()` é um multiplicador, e o
+ * modo de composição `saturation`, que estava aqui antes, FIXA a saturação de
+ * todo pixel no valor da fonte. Um cinza de 8% de saturação saía com 100% —
+ * era de onde vinham as manchas roxas e as bordas verdes nos planetas.
+ *
+ * `brightness` pela mesma razão: escurecer multiplicando preserva a proporção
+ * entre os canais; pintar preto translúcido por cima empurra todo pixel na
+ * direção da mesma cor, e cor de galáxia é justamente o que o cenário existe
+ * para dar.
+ */
+export const VEU_DE_CENARIO = `saturate(${CENARIO_SATURACAO}) brightness(${CENARIO_LUMINOSIDADE})`;
+
+/**
  * Teto de opacidade de um corpo celeste.
  *
  * O verdadeiro competidor não era o fundo inteiro: era UM prop. Medido, o
@@ -277,4 +293,19 @@ export const CORPO_CELESTE = {
   contraste: 0.55,
   /** Compensação, para o achatamento não clarear o corpo. */
   luminosidade: 0.6,
+  /**
+   * Croma devolvido DEPOIS do achatamento.
+   *
+   * `contrast` comprime os três canais na direção do cinza médio de forma
+   * independente, e comprimir a distância entre eles é dessaturar. Não é efeito
+   * colateral pequeno: com o véu e o achatamento em sequência, o corpo caía de
+   * 69% de saturação para 20%, contra os 28 a 45% que a régua pede. Um planeta
+   * cinza não diz de que galáxia é, e dizer isso é o trabalho dele.
+   *
+   * Vem por ÚLTIMO na string porque é uma correção do que o achatamento fez —
+   * antes dele, seria amplificado pelo próprio `contrast` e o número perderia
+   * o sentido. Medido nesta posição: 39% de saturação, zero pixels em saturação
+   * extrema, e a queda de contraste interno intacta em 69%.
+   */
+  saturacaoDeVolta: 1.6,
 } as const;
