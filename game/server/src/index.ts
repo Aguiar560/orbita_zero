@@ -1,4 +1,5 @@
 import { usuarioDoToken } from './auth';
+import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 
 /**
  * A API do Órbita Zero.
@@ -104,6 +105,20 @@ export default {
       if (req.method === 'PUT') return subirSave(req, env, usuario.id, origem);
     }
 
+    if (url.pathname === '/apelido' && req.method === 'PUT') {
+      return definirApelido(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/marcas' && req.method === 'PUT') {
+      return enviarMarcas(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/placar' && req.method === 'GET') {
+      const qual = url.searchParams.get('id') ?? '';
+      const dados = await lerPlacar(env, qual, usuario.id);
+      return json(dados, 200, origem);
+    }
+
     return json({ erro: 'nao_encontrado' }, 404, origem);
   },
 } satisfies ExportedHandler<Env>;
@@ -162,4 +177,94 @@ async function subirSave(req: Request, env: Env, id: string, origem: string): Pr
     .run();
 
   return json({ ok: true, atualizadoEm: agora }, 200, origem);
+}
+
+
+// ── placar ─────────────────────────────────────────────────────────────────
+
+/**
+ * Reivindica o apelido público do jogador.
+ *
+ * A unicidade é do banco (`apelido_normal UNIQUE`) e não de um SELECT antes do
+ * INSERT: entre a checagem e a escrita cabem duas requisições simultâneas, e o
+ * segundo lugar levaria o mesmo nome. Deixar a restrição falhar é a única forma
+ * que não tem janela.
+ */
+async function definirApelido(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  let corpo: { apelido?: unknown };
+  try {
+    corpo = await req.json();
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const apelido = apelidoValido(corpo.apelido);
+  if (!apelido) return json({ erro: 'apelido_invalido' }, 400, origem);
+
+  try {
+    await env.DB.prepare(`
+      INSERT INTO apelidos (usuario, apelido, apelido_normal, criado_em)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(usuario) DO UPDATE SET
+        apelido = excluded.apelido,
+        apelido_normal = excluded.apelido_normal
+    `).bind(id, apelido, normalizar(apelido), Math.floor(Date.now() / 1000)).run();
+  } catch {
+    // A única restrição que pode estourar aqui é a de `apelido_normal`.
+    return json({ erro: 'apelido_em_uso' }, 409, origem);
+  }
+
+  return json({ ok: true, apelido }, 200, origem);
+}
+
+/**
+ * Recebe as marcas do jogador, uma por placar.
+ *
+ * Cada marca é conferida SOZINHA: uma recusada não derruba as outras. O
+ * jogador que subiu de nível legitimamente e tem um andar de Provação
+ * implausível deve ter o nível registrado — e a resposta diz o que foi recusado.
+ */
+async function enviarMarcas(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  let corpo: { marcas?: MarcaRecebida[] };
+  try {
+    corpo = await req.json();
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+  if (!Array.isArray(corpo.marcas)) return json({ erro: 'corpo_incompleto' }, 400, origem);
+  // Teto de itens: o placar de naves tem uma marca por casco, e são ~50.
+  if (corpo.marcas.length > 80) return json({ erro: 'marcas_demais' }, 413, origem);
+
+  const temApelido = await env.DB.prepare('SELECT 1 FROM apelidos WHERE usuario = ?').bind(id).first();
+  if (!temApelido) return json({ erro: 'sem_apelido' }, 409, origem);
+
+  const agora = Math.floor(Date.now() / 1000);
+  const aceitas: string[] = [];
+  const recusadas: { placar: string; casco: string; motivo: string }[] = [];
+
+  for (const m of corpo.marcas) {
+    const casco = typeof m.casco === 'string' ? m.casco.slice(0, 40) : '';
+    const anterior = await env.DB
+      .prepare('SELECT valor, desempate, atualizado_em FROM marcas WHERE usuario = ? AND placar = ? AND casco = ?')
+      .bind(id, m.placar, casco)
+      .first<{ valor: number; desempate: number; atualizado_em: number }>();
+
+    const v = conferir(m, anterior, agora);
+    if (!v.ok) {
+      recusadas.push({ placar: String(m.placar), casco, motivo: v.motivo });
+      continue;
+    }
+
+    await env.DB.prepare(`
+      INSERT INTO marcas (usuario, placar, casco, valor, desempate, atualizado_em)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(usuario, placar, casco) DO UPDATE SET
+        valor = excluded.valor,
+        desempate = excluded.desempate,
+        atualizado_em = excluded.atualizado_em
+    `).bind(id, m.placar, casco, v.valor, v.desempate, agora).run();
+    aceitas.push(`${m.placar}${casco ? ':' + casco : ''}`);
+  }
+
+  return json({ ok: true, aceitas, recusadas }, 200, origem);
 }

@@ -4,7 +4,6 @@ import {
   dataDeBrasilia, horaDeBrasilia, segundosAteVirar, temporadaComecou, temporadaEm,
 } from '@data/temporadas';
 import { PLACARES, marcaDoJogador, missoesEntregues, navesClassificaveis } from '@sim/ranking';
-import { DEMO_ATIVA, DEMO_TOPO, placarDeDemonstracao } from '@sim/ranking-demo';
 import { createState } from '@sim/state';
 
 /**
@@ -142,87 +141,5 @@ describe('placares', () => {
     expect(marcaDoJogador(st, 'provacao').valor).toBe(0);
     expect(marcaDoJogador(st, 'missoes').valor).toBe(0);
     expect(marcaDoJogador(st, 'personagem').valor).toBe(1);
-  });
-});
-
-describe('placar de demonstração', () => {
-  /**
-   * Andaime para avaliar o layout enquanto não há servidor. O que os testes
-   * seguram não é a beleza da lista: é ela não MENTIR na direção (marca maior
-   * tem de dar posição melhor) e não passar despercebida quando for hora de
-   * desligá-la.
-   */
-  const agora = TEMPORADA_1_INICIO + 1000;
-
-  it('a chave de desligar existe e é uma linha só', () => {
-    // Se este teste falhar depois de o servidor entrar, é porque alguém
-    // esqueceu de virar a chave — e a lista falsa foi para produção.
-    expect(typeof DEMO_ATIVA).toBe('boolean');
-  });
-
-  it('é determinístico: a mesma temporada dá a mesma lista', () => {
-    // O painel reconstrói a ~5 Hz. Sem isto a lista tremeria a cada quadro e
-    // não daria para julgar nada.
-    const st = createState(11);
-    const a = placarDeDemonstracao(st, 'galaxia', undefined, agora);
-    const b = placarDeDemonstracao(st, 'galaxia', undefined, agora + 30_000);
-    expect(a.topo.map((l) => l.nome)).toEqual(b.topo.map((l) => l.nome));
-    expect(a.total).toBe(b.total);
-  });
-
-  it('muda quando a temporada vira', () => {
-    const st = createState(11);
-    const t1 = placarDeDemonstracao(st, 'galaxia', undefined, agora);
-    const t2 = placarDeDemonstracao(st, 'galaxia', undefined, agora + TEMPORADA_MS);
-    expect(t1.topo.map((l) => l.nome)).not.toEqual(t2.topo.map((l) => l.nome));
-  });
-
-  it('não repete nome — repetido lê como bug, não como coincidência', () => {
-    const st = createState(11);
-    for (const placar of ['provacao', 'galaxia', 'personagem', 'naves', 'missoes'] as const) {
-      const { topo } = placarDeDemonstracao(st, placar, undefined, agora);
-      expect(new Set(topo.map((l) => l.nome)).size).toBe(topo.length);
-    }
-  });
-
-  it('respeita o teto de cada placar — andar 4.100 na Provação denunciaria tudo', () => {
-    const st = createState(11);
-    const tetos = { provacao: 100, galaxia: 300, personagem: 300, naves: 60, missoes: 140 } as const;
-    for (const [placar, teto] of Object.entries(tetos)) {
-      const { topo } = placarDeDemonstracao(st, placar as keyof typeof tetos, undefined, agora);
-      for (const l of topo) {
-        expect(l.valor).toBeGreaterThan(0);
-        expect(l.valor).toBeLessThanOrEqual(teto);
-      }
-    }
-  });
-
-  it('o topo desce, nunca sobe', () => {
-    const st = createState(11);
-    const { topo } = placarDeDemonstracao(st, 'personagem', undefined, agora);
-    expect(topo).toHaveLength(DEMO_TOPO);
-    for (let i = 1; i < topo.length; i++) {
-      expect(topo[i]!.valor).toBeLessThanOrEqual(topo[i - 1]!.valor);
-      expect(topo[i]!.posicao).toBe(i + 1);
-    }
-  });
-
-  it('marca maior dá posição melhor — a demonstração não pode mentir na direção', () => {
-    const fraco = createState(11);
-    fraco.universe.bestSectorEver = 5;
-    const forte = createState(11);
-    forte.universe.bestSectorEver = 250;
-    const a = placarDeDemonstracao(fraco, 'galaxia', undefined, agora);
-    const b = placarDeDemonstracao(forte, 'galaxia', undefined, agora);
-    expect(b.eu.posicao).toBeLessThan(a.eu.posicao);
-  });
-
-  it('quem não tem marca fica em último, e nunca acima do topo', () => {
-    const st = createState(11);
-    const { eu, total } = placarDeDemonstracao(st, 'missoes', undefined, agora);
-    expect(eu.valor).toBe(0);
-    expect(eu.posicao).toBe(total);
-    expect(eu.posicao).toBeGreaterThan(DEMO_TOPO);
-    expect(eu.euMesmo).toBe(true);
   });
 });

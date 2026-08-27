@@ -109,3 +109,10 @@
 16:29:39 [vite] (client) hmr update /src/styles/main.css
 17:03:14 [vite] (client) page reload src/data/servidor.ts
 17:06:13 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+17:24:48 [vite] (client) page reload src/ui/panels/RankingPanel.ts
+17:25:40 [vite] (client) page reload src/ui/panels/RankingPanel.ts
+17:25:58 [vite] (client) page reload src/app/placar.ts
+17:26:19 [vite] (client) page reload src/app/Game.ts
+17:26:19 [vite] (client) page reload src/sim/ranking-demo.ts
+17:27:37 [vite] (client) hmr update /src/styles/main.css
+17:27:37 [vite] (client) hmr update /src/styles/main.css

@@ -5,7 +5,11 @@ import {
 } from '@data/temporadas';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
-import { DEMO_ATIVA, placarDeDemonstracao } from '@sim/ranking-demo';
+import {
+  apelidoValido, buscarPlacar, definirApelido,
+  type EstadoDaBusca, type LinhaDoPlacar,
+} from '@app/placar';
+import { bus } from '@app/Bus';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
@@ -46,6 +50,32 @@ export class RankingPanel implements Panel {
   private casco = '';
   /** Galáxia trazida pelo mapa; nula deixa o placar de campanha amplo. */
   private galaxy: number | null = null;
+
+  /**
+   * O placar buscado, por seção.
+   *
+   * Em cache porque o painel se redesenha a cada `PANEL_HZ`: buscar a cada
+   * desenho seriam dezenas de requisições por minuto, a cota da camada gratuita
+   * acabaria numa tarde, e a lista piscaria a cada resposta fora de ordem.
+   */
+  private busca = new Map<string, EstadoDaBusca>();
+  /** O que o jogador digitou no campo de apelido, entre um desenho e outro. */
+  private apelidoDigitado = '';
+  private erroDeApelido = '';
+
+  /** Dispara a busca da seção, uma vez. */
+  private garantirBusca(id: PlacarId): EstadoDaBusca {
+    const atual = this.busca.get(id) ?? { fase: 'nunca' as const };
+    if (atual.fase !== 'nunca') return atual;
+
+    this.busca.set(id, { fase: 'buscando' });
+    void buscarPlacar(id).then((r) => {
+      this.busca.set(id, r);
+      // O painel não sabe sozinho que a resposta chegou: ele desenha do cache.
+      bus.emit('state:changed');
+    });
+    return { fase: 'buscando' };
+  }
 
   abrirPlacarDaGalaxia(galaxy: number): void {
     this.secao = 'galaxia';
@@ -147,7 +177,7 @@ export class RankingPanel implements Panel {
         ),
       ),
 
-      DEMO_ATIVA ? this.listaDemo(sim, placar.nome, casco) : this.listaPendente(placar.nome),
+      this.lista(sim, placar.nome),
     );
   }
 
@@ -171,83 +201,156 @@ export class RankingPanel implements Panel {
   }
 
   /**
-   * A lista com jogadores FICTÍCIOS, para avaliar o layout.
+   * A lista de verdade.
    *
-   * Andaime, e a tela diz isso num selo que não dá para não ver — o risco de
-   * dado falso num placar é o jogador se comparar com gente que não existe.
-   * `DEMO_ATIVA` desliga tudo numa linha.
-   *
-   * Mostra o topo E a linha do jogador na posição real dele, separadas por uma
-   * quebra. Só o topo esconderia justamente o que precisa ser julgado: como a
-   * própria linha se destaca quando não está entre os primeiros.
+   * Cinco estados, e cada um diz o que está acontecendo em vez de mostrar uma
+   * lista vazia: sem conta, sem apelido, buscando, erro, ou o placar. A tela
+   * anterior tinha um sexto — pilotos inventados no navegador — e ele saiu:
+   * o jogador decidia o que jogar comparando-se com gente que não existe.
    */
-  private listaDemo(sim: Sim, nome: string, casco: string | undefined): HTMLElement {
-    const { topo, eu, total } = placarDeDemonstracao(sim.state, this.secao, casco, Date.now());
-    const foraDoTopo = eu.posicao > topo.length;
+  private lista(sim: Sim, nome: string): HTMLElement {
+    const cabecalho = h('.ranking-cabecalho', {},
+      h('span.tiny', { text: '#' }),
+      h('span.tiny', { text: 'PILOTO' }),
+      h('span.tiny', { text: nome.toUpperCase() }),
+    );
 
-    return h('.ranking-lista', {},
-      h('.ranking-cabecalho', {},
-        h('span.tiny', { text: '#' }),
-        h('span.tiny', { text: 'PILOTO' }),
-        h('span.tiny', { text: nome.toUpperCase() }),
-      ),
-      h('.ranking-linhas', {}, ...topo.map((l) => this.linha(l))),
-      // A linha do jogador fica FORA da rolagem. Ela é a que ele abriu a tela
-      // para ver, e dentro do container ela nasce abaixo da dobra — medido, com
-      // doze linhas de topo era preciso rolar para se encontrar. É também como
-      // todo placar de verdade se comporta.
-      ...(foraDoTopo
+    const estado = this.garantirBusca(this.secao);
+
+    if (estado.fase === 'sem-conta') {
+      return h('.ranking-lista', {}, cabecalho, this.aviso(
+        'O placar precisa de conta.',
+        'O jogo inteiro funciona sem uma — mas sem conta não há para onde enviar a sua marca nem de onde trazer a dos outros. '
+        + 'A sua marca acima continua real e registrada; nada do que você conquistar agora se perde.',
+      ));
+    }
+
+    if (estado.fase === 'buscando') {
+      return h('.ranking-lista', {}, cabecalho,
+        h('.ranking-vazio', {}, h('span.tiny.muted', { text: 'Buscando o placar…' })));
+    }
+
+    if (estado.fase === 'erro') {
+      return h('.ranking-lista', {}, cabecalho, this.aviso(
+        'Não deu para falar com o placar.',
+        `${estado.motivo}. A sua marca continua guardada — quando a conexão voltar, ela sobe sozinha.`,
+      ));
+    }
+
+    if (estado.fase !== 'pronto') {
+      return h('.ranking-lista', {}, cabecalho,
+        h('.ranking-vazio', {}, h('span.tiny.muted', { text: 'Buscando o placar…' })));
+    }
+
+    // Sem apelido não dá para aparecer: a lista mostra nomes, e o servidor
+    // recusa marca de quem não tem um. Pedir aqui, e não numa tela de entrada,
+    // é o que evita cobrar um nome de quem nunca vai abrir o placar.
+    if (!estado.dados.meuApelido) return h('.ranking-lista', {}, cabecalho, this.pedirApelido(sim));
+
+    const { linhas, minhaPosicao, total } = estado.dados;
+
+    if (!linhas.length) {
+      return h('.ranking-lista', {}, cabecalho, this.aviso(
+        'Ninguém marcou ainda neste placar.',
+        'Você pode ser o primeiro — a sua marca sobe sozinha nos próximos minutos.',
+      ));
+    }
+
+    const estouNoTopo = linhas.some((l) => l.voce);
+
+    return h('.ranking-lista', {}, cabecalho,
+      h('.ranking-linhas', {}, ...linhas.map((l) => this.linha(l))),
+      // A linha do jogador fica FORA da rolagem quando ele não está no topo.
+      // Ela é a que ele abriu a tela para ver, e dentro do container nasce
+      // abaixo da dobra.
+      ...(!estouNoTopo && minhaPosicao
         ? [h('.ranking-eu', {},
-            h('.ranking-quebra', {}, h('span.tiny', { text: `${total - topo.length} pilotos entre você e o topo` })),
-            this.linha(eu),
+            h('.ranking-quebra', {}, h('span.tiny', {
+              text: `${Math.max(0, minhaPosicao - linhas.length - 1)} pilotos entre você e o topo`,
+            })),
+            this.linha({
+              posicao: minhaPosicao, apelido: estado.dados.meuApelido,
+              valor: 0, casco: '', voce: true,
+            }, true),
           )]
         : []),
-      h('.ranking-demo-aviso', {},
-        h('span.ranking-demo-selo', { text: 'DEMONSTRAÇÃO' }),
-        h('span.tiny', {
-          text: 'Estes pilotos não existem. A lista é gerada no seu navegador para dar forma à tela enquanto o placar mundial não tem servidor — '
-            + 'a SUA marca, acima, é a única coisa real aqui.',
-        }),
-      ),
+      h('span.tiny.muted.ranking-total', { text: `${fmt(total)} pilotos classificados` }),
     );
   }
 
-  private linha(l: ReturnType<typeof placarDeDemonstracao>['topo'][number]): HTMLElement {
-    return h(`.ranking-linha${l.euMesmo ? '.eu' : ''}`, {},
-      h('span.ranking-pos', { text: `${l.posicao}` }),
-      h('.ranking-nome', {},
-        h('strong', { text: l.nome, style: { color: l.cor } as Partial<CSSStyleDeclaration> }),
-        ...(l.detalhe ? [h('span.muted.tiny', { text: l.detalhe })] : []),
-      ),
-      h('strong.ranking-pontos', { text: l.valor > 0 ? fmt(l.valor) : '—' }),
+  private aviso(titulo: string, corpo: string): HTMLElement {
+    return h('.ranking-vazio', {},
+      spriteIcon('geral/b_4', 26, 'ranking-vazio-icone'),
+      h('strong', { text: titulo }),
+      h('span.tiny', { text: corpo }),
     );
   }
 
   /**
-   * O lugar da lista, e o que falta para ela existir.
+   * O campo de apelido.
    *
-   * Desenhado como uma lista de verdade — cabeçalho de colunas e tudo — para o
-   * jogador ver o formato do que vem. Um retângulo vazio com um texto no meio
-   * pareceria erro; isto parece o que é: um placar esperando os outros.
+   * O nome é público e único, então ele é reivindicado no servidor — e a
+   * validação daqui é só para o jogador saber que não serve ENQUANTO digita.
+   * Quem decide é o servidor; divergir para o lado permissivo é seguro, para o
+   * outro seria recusar nome válido sem explicação.
    */
-  private listaPendente(nome: string): HTMLElement {
-    return h('.ranking-lista', {},
-      h('.ranking-cabecalho', {},
-        h('span.tiny', { text: '#' }),
-        h('span.tiny', { text: 'PILOTO' }),
-        h('span.tiny', { text: nome.toUpperCase() }),
+  private pedirApelido(sim: Sim): HTMLElement {
+    const campo = h('input.ranking-apelido-campo', {
+      type: 'text',
+      maxlength: '16',
+      placeholder: 'Seu nome no placar',
+      'aria-label': 'Apelido no placar',
+      value: this.apelidoDigitado,
+      oninput: (e: Event) => { this.apelidoDigitado = (e.target as HTMLInputElement).value; },
+    }) as HTMLInputElement;
+
+    const enviar = async (): Promise<void> => {
+      const r = await definirApelido(this.apelidoDigitado);
+      if (r.ok) {
+        this.erroDeApelido = '';
+        // Força a busca de novo: agora há apelido, e a lista muda.
+        this.busca.delete(this.secao);
+        sim.touch();
+        return;
+      }
+      this.erroDeApelido = {
+        invalido: 'De 3 a 16 caracteres, começando e terminando com letra ou número.',
+        em_uso: 'Esse nome já é de outro piloto. Tente outro.',
+        sem_conta: 'Entre na sua conta para escolher um nome.',
+        rede: 'Não deu para falar com o servidor. Tente de novo.',
+      }[r.erro];
+      sim.touch();
+    };
+
+    return h('.ranking-vazio.ranking-apelido', {},
+      h('strong', { text: 'Escolha seu nome no placar.' }),
+      h('span.tiny', {
+        text: 'É como os outros pilotos vão ver você. De 3 a 16 caracteres; dá para trocar depois.',
+      }),
+      h('.ranking-apelido-linha', {},
+        campo,
+        h('button.btn', {
+          onclick: () => { void enviar(); },
+        }, h('span', { text: 'CONFIRMAR' })),
       ),
-      h('.ranking-vazio', {},
-        spriteIcon('geral/b_4', 26, 'ranking-vazio-icone'),
-        h('strong', { text: 'O placar mundial ainda não está no ar.' }),
-        h('span.tiny', {
-          text: 'Ele precisa de conta e save em nuvem, que ainda não existem — sem isso não há para onde enviar a sua marca nem de onde trazer a dos outros. '
-            + 'A sua marca acima é real e continua sendo registrada; nada do que você conquistar agora se perde.',
-        }),
-        h('span.tiny.ranking-vazio-nota', {
-          text: 'A temporada e o horário de Brasília já são os definitivos: quando o servidor entrar, ele e o jogo vão concordar sobre qual temporada está correndo.',
-        }),
+      ...(this.erroDeApelido ? [h('span.tiny.ranking-apelido-erro', { text: this.erroDeApelido })] : []),
+      ...(this.apelidoDigitado && !apelidoValido(this.apelidoDigitado) && !this.erroDeApelido
+        ? [h('span.tiny.muted', { text: 'De 3 a 16 caracteres, começando e terminando com letra ou número.' })]
+        : []),
+    );
+  }
+
+  private linha(l: LinhaDoPlacar, semValor = false): HTMLElement {
+    return h(`.ranking-linha${l.voce ? '.eu' : ''}`, {},
+      h('span.ranking-pos', { text: `${l.posicao}` }),
+      h('.ranking-nome', {},
+        // `text:` e não marcação: este é o único texto da tela escrito por
+        // OUTRO jogador, e `h()` grava por `textContent`. Um teste impede o
+        // sink de `innerHTML` de voltar ao `dom.ts`.
+        h('strong', { text: l.voce ? `${l.apelido} (você)` : l.apelido }),
+        ...(l.casco ? [h('span.muted.tiny', { text: l.casco })] : []),
       ),
+      h('strong.ranking-pontos', { text: semValor ? '—' : (l.valor > 0 ? fmt(l.valor) : '—') }),
     );
   }
 }

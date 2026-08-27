@@ -13,6 +13,7 @@ import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
 import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
 import { reconciliar, subirSave } from './nuvem';
+import { enviarMarcas } from './placar';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -223,6 +224,10 @@ export class Game {
     // Sem `await`: a subida é de fundo e não pode segurar um quadro. Falha fica
     // registrada em `nuvem.ultimoErro` e a próxima tentativa vem sozinha.
     void subirSave(this.sim.state);
+    // As marcas do placar sobem no mesmo ritmo, e so as que MUDARAM: reenviar
+    // quarenta marcas iguais a cada ciclo gastaria a cota de escrita do D1
+    // para nao mudar nada.
+    void enviarMarcas(this.sim.state);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {
