@@ -107,3 +107,5 @@
 16:29:09 [vite] (client) page reload src/ui/PerfilMenu.ts
 16:29:32 [vite] (client) page reload src/ui/PerfilMenu.ts
 16:29:39 [vite] (client) hmr update /src/styles/main.css
+17:03:14 [vite] (client) page reload src/data/servidor.ts
+17:06:13 [vite] (client) page reload src/ui/panels/SettingsPanel.ts

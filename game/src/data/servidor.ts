@@ -51,5 +51,6 @@ export const API_URL = 'https://orbita-zero-api.orbitazero.workers.dev';
  * embaixo do e-mail, pronto para copiar.
  */
 export const ADMINS: readonly string[] = [
-  // Cole aqui o `usuarioId` da sua conta.
+  // Rafael
+  '8d4be4e6-52d6-437c-ad4e-556cca3aa43b',
 ];

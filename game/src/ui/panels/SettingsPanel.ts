@@ -51,7 +51,12 @@ export class SettingsPanel implements Panel {
   render(sim: Sim): HTMLElement {
     return h('.panel-body.ajustes', {},
       h('nav.ajustes-abas', { role: 'tablist', 'aria-label': 'Seções dos ajustes' },
-        ...ABAS.map((a) => h(`button.ajustes-aba${a.id === this.aba ? '.ativa' : ''}`, {
+        // A aba de Teste some junto com o conteúdo dela. Esconder só o conteúdo
+        // deixaria um botão que abre uma página em branco — que é pior que o
+        // problema original: em vez de uma ferramenta perigosa aparecendo, um
+        // defeito aparente aparecendo, e um relato de bug atrás.
+        ...ABAS.filter((a) => a.id !== 'teste' || ehAdmin())
+          .map((a) => h(`button.ajustes-aba${a.id === this.aba ? '.ativa' : ''}`, {
           role: 'tab',
           'aria-selected': String(a.id === this.aba),
           onclick: () => { this.aba = a.id; sim.touch(); },
@@ -65,6 +70,10 @@ export class SettingsPanel implements Panel {
   }
 
   private conteudo(sim: Sim): HTMLElement[] {
+    // Sair da conta com a aba de Teste aberta deixaria o painel vazio até o
+    // jogador clicar em outra coisa. Cai para a primeira, que sempre existe.
+    if (this.aba === 'teste' && !ehAdmin()) this.aba = 'jogabilidade';
+
     switch (this.aba) {
       case 'video': return this.video(sim);
       case 'audio': return this.audio(sim);

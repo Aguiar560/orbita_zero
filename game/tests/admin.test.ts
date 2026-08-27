@@ -83,3 +83,33 @@ describe('portão de admin', () => {
     });
   });
 });
+
+/**
+ * A lista de verdade, sem substituir `@data/servidor`.
+ *
+ * Os testes acima usam ids fictícios para exercitar a lógica; este confere o
+ * arquivo que vai para o pacote. A diferença importa: uma lista vazia passaria
+ * em todos os outros e deixaria o admin de fora do próprio jogo — que foi
+ * exatamente o estado em que o commit anterior ficou.
+ */
+describe('a lista de admins que vai para produção', async () => {
+  const { ADMINS } = await vi.importActual<typeof import('@data/servidor')>('@data/servidor');
+
+  it('não está vazia', () => {
+    expect(ADMINS.length, 'sem ninguém na lista, nem o admin tem as ferramentas')
+      .toBeGreaterThan(0);
+  });
+
+  it('são UUIDs, e não e-mails ou apelidos', () => {
+    // O que o Supabase manda no `sub` do token é um UUID. Um e-mail aqui nunca
+    // casaria com `sessao.usuarioId`, e o portão ficaria fechado em silêncio.
+    for (const id of ADMINS) {
+      expect(id, `não parece um id do Supabase: ${id}`)
+        .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    }
+  });
+
+  it('sem repetição', () => {
+    expect(new Set(ADMINS).size).toBe(ADMINS.length);
+  });
+});
