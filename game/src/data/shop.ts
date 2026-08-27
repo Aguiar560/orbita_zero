@@ -116,7 +116,7 @@ export const SHOP: readonly ShopItem[] = [
   {
     id: 'refinar_nucleo', name: 'Refino de Cristal', category: 'cambio', kind: 'cambio',
     desc: 'Converte 1.200 núcleos em 5 cristais.',
-    detail: 'Uma conversão rara e limitada. Ela reduz excesso de núcleo sem transformar a patrulha numa fábrica infinita de cristais.',
+    detail: 'Uma conversão rara e limitada. Ela reduz excesso de núcleo sem transformar a moagem numa fábrica infinita de cristais.',
     art: 'loja_servico_refino.webp', currency: 'nucleo', cost: 1200, growth: 1, max: 0,
     output: { cristal: 5 }, effect: 'nucleo_para_cristal', requiresSector: 10,
     quota: { base: 1, everyLevels: 15, cap: 20 },

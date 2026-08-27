@@ -1,7 +1,6 @@
 ﻿import { POSTO_POR_CASCO } from '@data/balance/cascos';
 import { HULLS } from '@data/hulls';
 import { PILOTO_PADRAO, PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
-import { BIOMES } from '@data/biomes';
 import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
@@ -81,7 +80,6 @@ export function createState(
       sector: 1, wave: 1, kind: 'onda', restam: 0, unidades: 0, elapsed: 0, cleared: 0,
       carga: { sucata: 0, nucleo: 0, cristal: 0 },
     },
-    bar: { biome: BIOMES[0]!.id, distance: 0, kills: 0, cacheProgress: 0, patrol: 1, patrolXp: 0 },
     universe: { index: 0, seed, modifiers: [], bestSector: 1, bestSectorEver: 1 },
 
     chests: {},
@@ -161,7 +159,6 @@ export function migrate(raw: unknown): GameState | null {
     resources: { ...fresh.resources, ...data.resources },
     lifetime: { ...fresh.lifetime, ...data.lifetime },
     run: { ...fresh.run, ...data.run },
-    bar: { ...fresh.bar, ...data.bar },
     universe: { ...fresh.universe, ...data.universe },
     stats: { ...fresh.stats, ...data.stats },
     settings: { ...fresh.settings, ...data.settings },

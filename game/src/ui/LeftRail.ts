@@ -171,17 +171,6 @@ export class LeftRail {
       // conteúdo na mesma tela competem pelo olhar sem acrescentar nada — o
       // trilho é da nave e dos recursos.
 
-      // ── patrulha ──────────────────────────────────────────────────────────
-      h('.rail-section', { text: 'Patrulha' }),
-      h('.rail-stats', {},
-        row('Nível', String(sim.state.bar.patrol), '#9fe8ff'),
-        row('Sucata/s', fmt(sim.patrolScrapRate, 1), '#ffd98a'),
-        row('Por abate', fmt(sim.patrolScrapPerKill, 1), '#ffd98a'),
-      ),
-      h('.rail-cache', {},
-        h('span.tiny.muted', { text: 'Próxima cápsula' }),
-        progressBar(sim.state.bar.cacheProgress, '#ffb638', 4),
-      ),
     );
   }
 

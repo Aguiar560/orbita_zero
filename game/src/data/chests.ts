@@ -48,11 +48,3 @@ export const CHESTS: readonly ChestDef[] = [
 
 export const CHEST_BY_ID = new Map(CHESTS.map((c) => [c.id, c]));
 
-/**
- * Abates de patrulha por cápsula de bronze.
- *
- * Calibrado para ~7 minutos de patrulha no início. Um valor baixo demais faz o
- * jogador voltar de uma ausência curta com dezenas de baús na fila, o que
- * transforma a recompensa em tarefa.
- */
-export const PATROL_CACHE_KILLS = 500;

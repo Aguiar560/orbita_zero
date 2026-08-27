@@ -44,7 +44,7 @@ export type FatoDeJogo =
   | { tipo: 'item'; raridade: Rarity; slot: SlotId; elemento: ElementId }
   | { tipo: 'setor'; setor: number; galaxia: number }
   | { tipo: 'galaxia'; galaxia: number }
-  | { tipo: 'nivel'; qual: 'nave' | 'patrulha' | 'personagem'; nivel: number }
+  | { tipo: 'nivel'; qual: 'nave' | 'personagem'; nivel: number }
   | { tipo: 'fusao'; entrada: Rarity; saida: Rarity; subiu: boolean }
   | { tipo: 'bau'; tier: string };
 
@@ -72,7 +72,7 @@ export interface FiltroDeFato {
   setorMin?: number;
   galaxiaMin?: number;
   nivelMin?: number;
-  qual?: 'nave' | 'patrulha' | 'personagem';
+  qual?: 'nave' | 'personagem';
   tier?: string;
 }
 

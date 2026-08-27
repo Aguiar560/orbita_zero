@@ -1,10 +1,10 @@
 import { fmt } from '@core/format';
-import { CHEST_BY_ID, CHESTS, PATROL_CACHE_KILLS, type ChestDef } from '@data/chests';
+import { CHEST_BY_ID, CHESTS,  type ChestDef } from '@data/chests';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { itemName } from '@sim/loot';
 import type { Item, Rarity } from '@sim/types';
 import type { Sim } from '@sim/index';
-import { h, progressBar, spriteIcon } from '../dom';
+import { h, spriteIcon } from '../dom';
 import { buildItemCard } from '../ItemCard';
 import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
@@ -110,8 +110,6 @@ export class ChestsPanel implements Panel {
   }
 
   private header(sim: Sim): HTMLElement {
-    const progress = sim.state.bar.cacheProgress;
-    const kills = Math.floor(progress * PATROL_CACHE_KILLS);
     const total = this.badge(sim);
 
     return h('.bau-topo', {},
@@ -121,13 +119,6 @@ export class ChestsPanel implements Panel {
           h('h1', { text: 'CÂMARA DE AQUISIÇÃO' }),
           h('span.muted.tiny', { text: `${total} cápsula${total === 1 ? '' : 's'} em estoque` }),
         ),
-      ),
-      h('.bau-cache', {},
-        h('.bau-cache-linha', {},
-          h('span', { text: 'PRÓXIMA CÁPSULA DE PATRULHA' }),
-          h('strong', { text: `${kills} / ${PATROL_CACHE_KILLS}` }),
-        ),
-        progressBar(progress, '#55bddc', 5),
       ),
     );
   }

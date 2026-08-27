@@ -81,7 +81,7 @@ function resumo(sim: Sim): HTMLElement {
       row('Tempo de jogo', duration(sim.state.playtime)), row('Abates', fmt(st.kills)),
       row('Chefes derrotados', fmt(st.bossKills)), row('Cascos perdidos', fmt(st.deaths)),
       row('Itens encontrados', fmt(st.itemsFound)), row('Baús abertos', fmt(st.chestsOpened)),
-      row('Melhor setor', fmt(sim.alcanceLiberado)), row('Distância de patrulha', `${fmt(sim.state.bar.distance)} km`),
+      row('Melhor setor', fmt(sim.alcanceLiberado)),
       row('Sucata acumulada', fmt(sim.state.lifetime.sucata)), row('Núcleos acumulados', fmt(sim.state.lifetime.nucleo))),
     h('h3.section', { text: 'Cobertura do arquivo' }),
     h('.codex-progress-grid', {},

@@ -26,13 +26,20 @@ const REPORT_THRESHOLD = 120;
 /**
  * Orquestrador: junta simulação, os dois modos e a interface num só laço.
  *
- * Regra central de tempo: a patrulha (`sim.patrolTick`) e o combate correm
- * SEMPRE. Aba oculta continua simulando ao vivo, num relógio próprio do laço —
- * o que muda é só que não se desenha. `sim.abstractTick()` existe apenas para o
- * tempo de JANELA FECHADA, onde não há cena para rodar.
+ * Regra central de tempo: o combate corre SEMPRE. Aba oculta continua simulando
+ * ao vivo, num relógio próprio do laço — o que muda é só que não se desenha.
+ * `sim.abstractTick()` existe apenas para o tempo de JANELA FECHADA, onde não há
+ * cena para rodar.
  *
- * A patrulha continua rendendo sem cena própria: virou uma renda de fundo lida
- * no painel esquerdo, e a tela inteira ficou para o combate.
+ * Havia aqui uma segunda fonte, a PATRULHA, rodando em paralelo ao combate e
+ * rendendo sem cena própria. Ela era o resto de um modo horizontal que foi
+ * removido: os biomas dela — Mar da Tranquilidade, Cinturão de Dunas, Bioma
+ * Verdejante, Alta Estratosfera — descreviam uma subida da superfície de um
+ * planeta até a órbita, e não tinham lugar num jogo de galáxias e setores.
+ *
+ * Medida antes de sair, ela era 97 a 99,9% de toda a sucata do jogo. Uma renda
+ * invisível, sem decisão do jogador e sem lugar na ficção, maior que o jogo
+ * inteiro.
  */
 export class Game {
   private readonly sim: Sim;
@@ -122,7 +129,6 @@ export class Game {
     // O modo de teste acelera o jogo repetindo o passo fixo, e não esticando
     // `dt`: a IA e as colisões dependem de um passo constante para não falhar.
     for (let i = 0; i < speed; i++) {
-      if (!this.sim.laboratorio.active) this.sim.patrolTick(dt);
       this.vertical.update(dt);
     }
     if (!this.sim.laboratorio.active) this.sim.tickSave(dt);

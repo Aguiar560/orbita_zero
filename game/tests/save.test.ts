@@ -30,7 +30,7 @@ describe('o boot sobrevive a qualquer entrada', () => {
     const s = migrate({ version: SAVE_VERSION });
     expect(s).not.toBeNull();
     for (const chave of [
-      'resources', 'lifetime', 'run', 'bar', 'universe',
+      'resources', 'lifetime', 'run', 'universe',
       'stats', 'settings', 'shop', 'command', 'chests',
     ] as const) {
       expect(s![chave], chave).toBeDefined();

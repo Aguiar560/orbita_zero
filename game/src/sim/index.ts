@@ -1,6 +1,5 @@
 ﻿import { Rng, clamp } from '@core/math';
 import { bus, toast } from '@app/Bus';
-import { BIOMES, getBiome, unlockedBiomes } from '@data/biomes';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
@@ -70,7 +69,7 @@ import { rarityInfo } from '@data/rarity';
 const PILHA_MAX = 999_999_999;
 
 import { galaxyOfSector } from '@data/galaxies';
-import { CHEST_BY_ID, PATROL_CACHE_KILLS } from '@data/chests';
+import { CHEST_BY_ID } from '@data/chests';
 import { getHull, HULLS, normalizeHullHitbox, type HullHitbox } from '@data/hulls';
 import { ALL_ENEMIES } from '@data/enemies';
 import { BOSSES } from '@data/bosses';
@@ -92,7 +91,7 @@ import {
   type CustoDeModulacao, type OperacaoDeModulacaoId,
 } from '@data/balance/modulacao';
 import { aplicarModulacao, type ResultadoDeModulacao } from './modulacao';
-import { NIVEL_MAX, TAXA_DE_ENTRADA, curvaXpNave, curvaXpPatrulha, curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
+import { NIVEL_MAX, TAXA_DE_ENTRADA, curvaXpNave,  curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
 
 /**
  * Multiplicador global de XP.
@@ -108,7 +107,7 @@ import { NIVEL_MAX, TAXA_DE_ENTRADA, curvaXpNave, curvaXpPatrulha, curvaXpPerson
  * resultado só e não devem ser mexidos em separado.
  *
  * Fica aqui, num ponto único, e não espalhado pelas fontes de XP: assim missão,
- * baú, patrulha e Provação herdam o ajuste sem saber que ele existe.
+ * baú e Provação herdam o ajuste sem saber que ele existe.
  */
 export const XP_GANHO_GLOBAL = 24;
 import { cobrarMorte } from './morte';
@@ -303,41 +302,6 @@ export class Sim {
 
   get offlineCap(): number {
     return OFFLINE_BASE_CAP;
-  }
-
-  /** Rendimento de sucata por segundo da faixa horizontal. */
-  /**
-   * Sucata por ABATE na patrulha.
-   *
-   * Era sucata por SEGUNDO, e era a única coisa na patrulha que não passava
-   * pelos abates: XP, patente e progresso de cápsula já derivavam de `kills`.
-   * Sucata caindo no relógio enquanto tudo o mais cai no abate é duas
-   * economias no mesmo lugar — e a que anda sozinha é a que o jogador não
-   * consegue influenciar por jogar melhor.
-   *
-   * O valor é o mesmo: a taxa antiga dividida pela taxa de abate. Isso é
-   * álgebra e não recalibração — a renda por segundo em patrulha parada sai
-   * idêntica. O que muda é o ACOPLAMENTO: se algum dia um modificador mexer
-   * na cadência de abate da patrulha, a sucata acompanha sozinha, que é o que
-   * não acontecia.
-   *
-   * O nível de patrulha continua dentro do número, e faz sentido que continue:
-   * patrulha alta é caça em setor melhor, e cada carcaça vale mais.
-   */
-  get patrolScrapPerKill(): number {
-    const biome = getBiome(this.state.bar.biome);
-    const patrol = 1 + (this.state.bar.patrol - 1) * 0.28;
-    return 2.4 * biome.bounty * patrol * (1 + this.stats.sucataGanho) / this.patrolKillRate;
-  }
-
-  /** Só para o trilho mostrar um ritmo. A renda de verdade vem do abate. */
-  get patrolScrapRate(): number {
-    return this.patrolScrapPerKill * this.patrolKillRate;
-  }
-
-  /** Abates por segundo da faixa horizontal. */
-  get patrolKillRate(): number {
-    return 0.9 + this.state.bar.patrol * 0.06;
   }
 
   // ── invalidação ───────────────────────────────────────────────────────────
@@ -1065,85 +1029,6 @@ export class Sim {
     return true;
   }
 
-  // ── camada horizontal (patrulha) ──────────────────────────────────────────
-
-  /**
-   * Avança a patrulha. `dt` em segundos; `intensity` permite que o modo ao vivo
-   * reporte um ritmo diferente do abstrato (a faixa visível mata mais rápido).
-   */
-  /**
-   * Fração de abate ainda não fechada na patrulha.
-   *
-   * Transitória de propósito — ver `patrolTick`.
-   */
-  private patrolKillCarry = 0;
-
-  patrolTick(dt: number, intensity = 1): void {
-    // O combustível corre aqui, no tempo AO VIVO, e em `abstractTick`, no tempo
-    // offline. São os dois únicos relógios do jogo, e a nave está em campo nos
-    // dois — gastar só num deles faria a aba fechada (ou aberta) ser de graça.
-    if (this.gastarCombustivel(dt)) return;
-    const bar = this.state.bar;
-
-    bar.distance += 120 * dt * intensity;
-
-    // O bioma segue a DISTÂNCIA, que é o relógio do tempo — por isso ele fica
-    // aqui em cima, antes do corte por abate lá embaixo. Misturar os dois faria
-    // a liberação de bioma esperar o próximo abate fechar.
-    // Bioma segue a distância acumulada: sempre o melhor liberado.
-    // No modo de teste todos os biomas ficam visíveis, sem mexer na distância.
-    const best = (this.testMode ? BIOMES : unlockedBiomes(bar.distance)).at(-1);
-    if (best && best.id !== bar.biome) {
-      bar.biome = best.id;
-      toast(`Novo setor de patrulha: ${best.name}`, 'epic', 'powerup/icon_bounty');
-    }
-
-    // Abates INTEIROS.
-    //
-    // Eram fracionários: `patrolKillRate * dt` dava 0,02 de abate por quadro, e
-    // tudo o que deriva deles subia de forma contínua. Ligar a sucata aos
-    // abates, como eu tinha feito, não mudou nada do que se vê — os abates ERAM
-    // o relógio, e eu só troquei um relógio por outro.
-    //
-    // Meio abate não existe. A fração fica guardada e paga quando fecha um, o
-    // que faz a sucata chegar em degraus, cada degrau com um abate atrás.
-    //
-    // A sobra é de sessão e não entra no save: perder menos de um abate ao
-    // fechar a aba não vale um campo persistido nem uma migração.
-    this.patrolKillCarry += this.patrolKillRate * dt * intensity;
-    const kills = Math.floor(this.patrolKillCarry);
-    this.patrolKillCarry -= kills;
-    if (kills === 0) return;
-
-    bar.kills += kills;
-
-    // A sucata sai DAQUI, do abate. Ver `patrolScrapPerKill`.
-    this.grant('sucata', kills * this.patrolScrapPerKill);
-    this.state.stats.kills += kills;
-
-    bar.patrolXp += kills * 4 * (1 + this.stats.xpGanho);
-    // A patrulha também alimenta a patente, mas devagar: a matriz é recompensa
-    // de campanha, e a faixa não deve virar o caminho ótimo para pontos.
-    this.grantXp(kills * 0.35 * (1 + this.state.universe.index * 0.5));
-    const need = this.patrolXpNeeded();
-    if (bar.patrolXp >= need) {
-      bar.patrolXp -= need;
-      bar.patrol++;
-      toast(`Patrulha nível ${bar.patrol}`, 'good', 'ui/icon_star');
-    }
-
-    bar.cacheProgress += kills / PATROL_CACHE_KILLS;
-    while (bar.cacheProgress >= 1) {
-      bar.cacheProgress -= 1;
-      this.grantChest('bronze', 1, 'patrulha');
-    }
-
-  }
-
-  patrolXpNeeded(): number {
-    return curvaXpPatrulha(this.state.bar.patrol);
-  }
-
   // ── camada vertical (combate) ─────────────────────────────────────────────
 
   /**
@@ -1203,11 +1088,16 @@ export class Sim {
    */
   completeEncounter(abstract = false): void {
     const e = this.encounter;
-    const s = this.stats;
     const run = this.state.run;
 
-    this.grantCarga('sucata', e.bounty * 4 * (1 + s.sucataGanho));
-    this.grantCarga('nucleo', e.bounty * 0.8 * (1 + s.nucleoGanho));
+    // A sucata e o núcleo NÃO caem aqui.
+    //
+    // Havia um bolo de fim de onda — `bounty × 4` e `bounty × 0,8` — pago por
+    // limpar, independente de quantos inimigos morreram. Recurso agora sai só
+    // do abate, e o abate é a única porta: ver `RENDA_POR_ABATE`.
+    //
+    // O bolo não sumiu, mudou de lugar. A soma continua a mesma; o que muda é
+    // que ela chega em pedaços, cada pedaço com uma carcaça atrás.
     this.grantXp(e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2));
 
     if (e.kind === 'chefe' && e.boss) {
@@ -2339,7 +2229,6 @@ export class Sim {
     const eff = OFFLINE_EFFICIENCY;
 
     for (let i = 0; i < steps; i++) {
-      this.patrolTick(STEP * eff);
       this.abstractTick(STEP * eff);
     }
 

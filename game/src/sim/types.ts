@@ -1,7 +1,7 @@
 // ── Recursos ────────────────────────────────────────────────────────────────
 
 /**
- * `sucata`  — moeda de farm, corre sozinha com a patrulha. Paga melhorias comuns.
+ * `sucata`  — moeda de farm, sai dos abates. Paga melhorias comuns.
  * `nucleo`  — sai de abates. Paga melhorias avançadas e fabricação.
  * `cristal` — sai de chefes e baús. Paga frota, loja e baús.
  *
@@ -251,10 +251,14 @@ export interface RunState {
   /**
    * Recursos ganhos nesta incursão, ainda NÃO depositados.
    *
-   * Sucata, núcleos e cristais de combate ficam retidos até o setor inteiro
-   * cair. Morrer no meio perde tudo o que está aqui — é o que dá peso à morte
-   * sem tocar no que o jogador já tinha guardado. Renda de patrulha não passa
-   * por aqui: ela é a camada ociosa, não faz parte da incursão.
+   * Sucata, núcleos e cristais ficam retidos até o setor inteiro cair. Morrer
+   * no meio perde tudo o que está aqui — é o que dá peso à morte sem tocar no
+   * que o jogador já tinha guardado.
+   *
+   * Hoje TODO recurso de jogo passa por aqui, sem exceção. Havia uma: a
+   * patrulha depositava direto no banco, sem risco e sem incursão — e era 97 a
+   * 99,9% de toda a sucata. Uma exceção desse tamanho não é exceção, é a regra
+   * com outro nome.
    */
   carga: Resources;
   /** Tempo gasto no encontro atual, para detectar bloqueio de progresso. */
@@ -280,19 +284,6 @@ export interface RunState {
   cleared: number;
 }
 
-export interface BarState {
-  /** Bioma atual da faixa horizontal. */
-  biome: string;
-  /** Distância percorrida, alimenta marcos e trocas de bioma. */
-  distance: number;
-  /** Abates acumulados na faixa. */
-  kills: number;
-  /** Progresso 0..1 até o próximo baú de patrulha. */
-  cacheProgress: number;
-  /** Nível de patrulha — escala inimigos e recompensa da faixa. */
-  patrol: number;
-  patrolXp: number;
-}
 
 /**
  * Estado da campanha.
@@ -501,7 +492,6 @@ export interface GameState {
   };
 
   run: RunState;
-  bar: BarState;
   universe: UniverseState;
 
   chests: Record<string, number>;

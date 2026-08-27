@@ -2,8 +2,8 @@
  * Todas as curvas de progressão do jogo, num lugar só (§2, §36).
  *
  * Antes disto os expoentes viviam espalhados por sete arquivos — dificuldade em
- * `sim/progression.ts`, custo da Matriz em `sim/tree.ts`, XP de patrulha em
- * `sim/index.ts`, escala de afixo em `sim/loot.ts`. O efeito prático era que
+ * `sim/progression.ts`, custo da Matriz em `sim/tree.ts`, escala de afixo em
+ * `sim/loot.ts`. O efeito prático era que
  * ninguém nunca havia calculado a RAZÃO entre a curva do inimigo e a do
  * jogador, que é justamente o número que define o ritmo do jogo. A auditoria da
  * FASE 0 mediu essa razão em 1,129 por setor: 131 mil vezes acumuladas em 99
@@ -358,7 +358,7 @@ export const NIVEL_MAX = 300;
  *
  * Era 90 x nivel^1,75, e com ela o teto de 300 niveis era batido por volta do
  * SETOR 140 — mais da metade da campanha sem dar nivel nenhum, com XP virando
- * lixo para missao, bau, patrulha e Provacao, e a Matriz parando de ganhar
+ * lixo para missao, bau e Provacao, e a Matriz parando de ganhar
  * pontos.
  *
  * Os valores saem de busca numérica CONJUNTA com o multiplicador de renda
@@ -394,10 +394,6 @@ export const NAVE_GANHO_POR_NIVEL = 0.012;
 /** Sincronia do piloto concedida por patente, e o teto dessa fonte. */
 export const COMANDO_IA_POR_NIVEL = 0.011;
 export const COMANDO_IA_MAX = 0.4;
-
-/** XP para subir o nível de patrulha da faixa horizontal. */
-export const PATRULHA_XP_BASE = 120;
-export const PATRULHA_XP_RAZAO = 1.24;
 
 // ── itens ───────────────────────────────────────────────────────────────────
 
@@ -446,9 +442,6 @@ export const DROP_TETO = 0.75;
 
 // ── funções de curva ────────────────────────────────────────────────────────
 
-const geometrica = (base: number, razao: number, n: number): number =>
-  base * Math.pow(razao, n - 1);
-
 export const curvaIlvl = (setor: number): number =>
   Math.max(1, Math.floor(setor * ILVL_POR_SETOR));
 
@@ -465,9 +458,6 @@ export const curvaIlvl = (setor: number): number =>
 export const curvaHp = (setor: number): number => poderEsperado(setor) * tempoAlvo(setor);
 export const curvaDano = (setor: number): number => defesaEsperada(setor) / golpesAlvo(setor);
 export const curvaRecompensa = (setor: number): number => RECOMPENSA_FRACAO * curvaHp(setor);
-
-export const curvaXpPatrulha = (nivel: number): number =>
-  Math.ceil(geometrica(PATRULHA_XP_BASE, PATRULHA_XP_RAZAO, nivel));
 
 /** XP para sair do nível `n` do personagem — o tamanho da faixa desse nível. */
 export const curvaXpPersonagem = (nivel: number): number =>

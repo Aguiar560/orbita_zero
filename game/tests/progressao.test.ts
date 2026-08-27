@@ -102,9 +102,14 @@ describe('progresso do encontro (§16)', () => {
     for (let w = s.state.run.wave; w <= 5; w++) s.completeEncounter();
     expect(s.state.resources.sucata).toBe(banco);
 
-    // A última fecha o setor e deposita.
+    // A última fecha o setor e deposita EXATAMENTE a carga.
+    //
+     // Era `toBeGreaterThan`, porque concluir pagava um bolo próprio por cima
+    // do que a incursão tinha juntado. Esse bolo saiu: recurso vem só do abate,
+    // e a conclusão do setor não gera nada — ela apenas deixa de arriscar o que
+    // já foi ganho. A igualdade é a afirmação mais forte, e é a regra nova.
     s.completeEncounter();
-    expect(s.state.resources.sucata).toBeGreaterThan(banco + 500);
+    expect(s.state.resources.sucata).toBe(banco + 500);
     expect(s.state.run.carga.sucata).toBe(0);
   });
 
