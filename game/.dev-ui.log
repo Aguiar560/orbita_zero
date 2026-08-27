@@ -142,3 +142,17 @@
 19:26:31 [vite] (client) page reload src/app/Bus.ts
 19:26:31 [vite] (client) page reload src/ui/Shell.ts
 19:26:31 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+19:32:29 [vite] (client) page reload src/sim/state.ts
+19:32:29 [vite] (client) page reload src/sim/types.ts
+19:32:58 [vite] (client) page reload src/sim/state.ts
+19:33:40 [vite] (client) page reload src/render/Surface.ts
+19:33:40 [vite] (client) page reload src/app/Game.ts
+19:33:40 [vite] (client) page reload src/app/Game.ts
+19:34:46 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+19:35:23 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+19:35:53 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+19:36:14 [vite] (client) page reload src/app/Bus.ts
+19:36:14 [vite] (client) page reload src/app/Game.ts
+19:36:52 [vite] (client) hmr update /src/styles/main.css
+19:36:52 [vite] (client) hmr update /src/styles/main.css
+19:41:20 [vite] (client) page reload src/ui/panels/SettingsPanel.ts

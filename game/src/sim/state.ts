@@ -121,6 +121,9 @@ export function createState(
       volumeMusica: 0.6,
       volumeEfeitos: 0.8,
       highContrast: false,
+      escalaDaInterface: 1,
+      qualidade: 1,
+      mostrarFps: false,
       pinnedMissions: [],
       anatomiaAberta: true,
       muted: false,
@@ -342,12 +345,22 @@ export function migrate(raw: unknown): GameState | null {
   // alguém que não está olhando. Perder progresso porque o jogo mudou por
   // baixo é pior do que voar conservador até ele reparar e escolher.
   if (!['agressivo', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'evasivo';
-  for (const key of ['testMode', 'guiaVisto', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela'] as const) {
+  for (const key of ['testMode', 'guiaVisto', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
   }
   // Volume fora de 0..1 não é só feio: quando o áudio existir, um multiplicador
   // negativo ou acima de 1 vira estouro de amplitude. Sanear na carga é mais
   // barato que descobrir isso com alto-falante.
+  // Escala e qualidade tem faixa propria: fora dela o save volta ao padrao em
+  // vez de propagar um valor que a interface nao sabe desenhar — zoom 0 some
+  // com a tela, e qualidade 20 tenta alocar um canvas gigante.
+  for (const [chave, min, max, padrao] of [
+    ['escalaDaInterface', 0.8, 1.25, 1],
+    ['qualidade', 0.5, 2, 1],
+  ] as const) {
+    const v = Number(state.settings[chave]);
+    state.settings[chave] = Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : padrao;
+  }
   for (const key of ['volumeMestre', 'volumeMusica', 'volumeEfeitos'] as const) {
     const v = Number(state.settings[key]);
     state.settings[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8;

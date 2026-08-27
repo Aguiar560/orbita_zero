@@ -146,20 +146,20 @@ describe('o caminho para rever o guia', () => {
     const fonte = await import('node:fs').then((fs) =>
       fs.readFileSync('src/ui/panels/SettingsPanel.ts', 'utf8'));
 
-    const jogabilidade = fonte.indexOf('private jogabilidade(');
+    const jogo = fonte.indexOf('private jogo(');
     const video = fonte.indexOf('private video(');
-    const abrirGuia = fonte.indexOf("text: 'Abrir guia'");
+    const abrirGuia = fonte.indexOf('Rever o guia do jogo');
 
     expect(abrirGuia, 'o botão sumiu').toBeGreaterThan(0);
-    expect(abrirGuia > jogabilidade && abrirGuia < video,
-      'o botão saiu da aba Jogabilidade').toBe(true);
+    expect(abrirGuia > jogo && abrirGuia < video,
+      'o botão saiu da primeira aba').toBe(true);
   });
 
   it('o botão fecha o MODAL, não a camada', async () => {
     const fonte = await import('node:fs').then((fs) =>
       fs.readFileSync('src/ui/panels/SettingsPanel.ts', 'utf8'));
-    const trecho = fonte.slice(fonte.indexOf("bus.emit('ajustes:fechar')") - 400,
-      fonte.indexOf("text: 'Abrir guia'"));
+    const i = fonte.indexOf('Rever o guia do jogo');
+    const trecho = fonte.slice(i, i + 700);
 
     expect(trecho).toContain("bus.emit('ajustes:fechar')");
     expect(trecho).toContain("bus.emit('guia:abrir')");

@@ -32,6 +32,15 @@ export class Surface {
   /** Dimensões no espaço lógico do jogo. */
   width = 0;
   height = 0;
+  /**
+   * Multiplicador de resolução, 0.5 a 2.
+   *
+   * Estático porque o `Surface` é criado antes de o save ser lido, e porque
+   * todas as superfícies devem concordar — duas com qualidades diferentes na
+   * mesma tela seriam um defeito visual difícil de rastrear.
+   */
+  static qualidade = 1;
+
   /** Escala de lógico → CSS px aplicada no último `resize`. */
   scale = 1;
   dpr = 1;
@@ -55,7 +64,11 @@ export class Surface {
    * `cssW/H` é o tamanho real do elemento.
    */
   resize(cssW: number, cssH: number, logicalW: number, logicalH: number): void {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // A qualidade multiplica o teto, não substitui: abaixo de 1 o jogo desenha
+    // menos pixels e estica (perde nitidez, ganha quadros), acima aproveita
+    // telas densas. O teto de 2 continua valendo porque acima disso o custo
+    // sobe ao quadrado sem ninguém enxergar diferença.
+    this.dpr = Math.min((window.devicePixelRatio || 1) * Surface.qualidade, 2);
     this.width = logicalW;
     this.height = logicalH;
     this.scale = cssW / logicalW;

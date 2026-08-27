@@ -25,13 +25,23 @@ import type { Panel } from './types';
  * alguém encontra.
  */
 
-type AbaId = 'jogabilidade' | 'video' | 'audio' | 'dados' | 'teste';
+type AbaId = 'jogo' | 'video' | 'audio' | 'interface' | 'conta' | 'teste';
 
+/**
+ * Seis assuntos, nomes de uma palavra.
+ *
+ * "Jogabilidade" e "Dados" viraram "Jogo" e "Conta": rótulo de aba é lido de
+ * relance, e palavra curta acha mais rápido que palavra certa. A ordem é por
+ * frequência de uso — Jogo primeiro porque é onde se mexe toda semana, Teste
+ * por último porque muda o jogo inteiro e não deve ser a primeira coisa que
+ * alguém encontra.
+ */
 const ABAS: readonly { id: AbaId; nome: string; icone: string }[] = [
-  { id: 'jogabilidade', nome: 'Jogabilidade', icone: '🎮' },
+  { id: 'jogo', nome: 'Jogo', icone: '🎮' },
   { id: 'video', nome: 'Vídeo', icone: '🖵' },
   { id: 'audio', nome: 'Áudio', icone: '🔊' },
-  { id: 'dados', nome: 'Dados', icone: '💾' },
+  { id: 'interface', nome: 'Interface', icone: '🗔' },
+  { id: 'conta', nome: 'Conta', icone: '💾' },
   { id: 'teste', nome: 'Teste', icone: '🧪' },
 ];
 
@@ -47,7 +57,7 @@ export class SettingsPanel implements Panel {
    * estava — não uma preferência. Reabrir Ajustes numa aba que ele viu há dois
    * dias seria lembrar da coisa errada.
    */
-  private aba: AbaId = 'jogabilidade';
+  private aba: AbaId = 'jogo';
 
   render(sim: Sim): HTMLElement {
     return h('.panel-body.ajustes', {},
@@ -73,84 +83,63 @@ export class SettingsPanel implements Panel {
   private conteudo(sim: Sim): HTMLElement[] {
     // Sair da conta com a aba de Teste aberta deixaria o painel vazio até o
     // jogador clicar em outra coisa. Cai para a primeira, que sempre existe.
-    if (this.aba === 'teste' && !ehAdmin()) this.aba = 'jogabilidade';
+    if (this.aba === 'teste' && !ehAdmin()) this.aba = 'jogo';
 
     switch (this.aba) {
       case 'video': return this.video(sim);
       case 'audio': return this.audio(sim);
-      case 'dados': return this.dados(sim);
+      case 'interface': return this.interface(sim);
+      case 'conta': return this.dados(sim);
       case 'teste': return this.teste(sim);
-      default: return this.jogabilidade(sim);
+      default: return this.jogo(sim);
     }
   }
 
   // ── jogabilidade ──────────────────────────────────────────────────────────
 
-  private jogabilidade(sim: Sim): HTMLElement[] {
+  private jogo(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
     return [
-      // O guia abre a lista, e fica na PRIMEIRA aba de propósito.
-      //
-      // Estava em "Dados", ao lado de exportar e apagar save. Ninguém procura
-      // um tutorial na gaveta do backup — a pergunta "como eu vejo o tutorial
-      // de novo?" foi a prova de que o lugar estava errado. Jogabilidade é a
-      // aba que Ajustes já abre, então agora ele aparece sem nenhum clique
-      // extra.
+      // O guia abre a PRIMEIRA aba de proposito. Ja esteve em "Dados", ao lado de
+      // exportar e apagar save, e a pergunta "como eu vejo o tutorial de novo?"
+      // foi a prova de que ninguem procura tutorial na gaveta do backup.
       h('h3.section', { text: 'Guia' }),
       h('.setting', {},
-        h('.setting-text', {},
-          h('strong', { text: 'Rever o guia do jogo' }),
-          h('span', { text: 'O passeio que explica cada parte da tela.' }),
-        ),
+        h('.setting-text', {}, h('strong', { text: 'Rever o guia do jogo' })),
         h('button.btn', {
           onclick: () => {
             // Fecha Ajustes ANTES de abrir o guia: ele aponta para a tela de
-            // trás, e com o modal por cima o passeio destacava coisas
-            // escondidas — foi exatamente o que aconteceu.
+            // tras, e com o modal por cima o passeio destacava coisas escondidas.
             //
-            // `ajustes:fechar` e não `panel:close`: Ajustes é MODAL, e aquele
-            // evento só fecha CAMADAS. Passava reto, sem erro nenhum.
+            // `ajustes:fechar` e nao `panel:close`: Ajustes e MODAL, e aquele
+            // evento so fecha CAMADAS. Passava reto, sem erro nenhum.
             bus.emit('ajustes:fechar');
             bus.emit('guia:abrir');
           },
-        }, h('span', { text: 'Abrir guia' })),
+        }, h('span', { text: 'Abrir' })),
       ),
 
-      h('h3.section', { text: 'Controle de combate' }),
-      h('p.muted.hint', { text: 'Vale na campanha e na Provação. O Laboratório mantém seu seletor próprio para comparar IAs. No manual a arma continua automática; use WASD ou as setas para pilotar.' }),
-      h('.setting', {},
-        h('.setting-text', {},
-          h('strong', { text: 'Piloto da nave' }),
-          h('span.muted.tiny', { text: s.controlMode === 'manual' ? 'Manual · WASD ou setas' : 'Idle · IA no comando' }),
-        ),
-        h('.speed-picker', { role: 'group', 'aria-label': 'Modo de controle' },
-          h(`button.chip${s.controlMode === 'idle' ? '.active' : ''}`, {
-            text: 'Idle', 'aria-pressed': String(s.controlMode === 'idle'),
-            onclick: () => { s.controlMode = 'idle'; sim.touch(); },
-          }),
-          h(`button.chip${s.controlMode === 'manual' ? '.active' : ''}`, {
-            text: 'WASD / setas', 'aria-pressed': String(s.controlMode === 'manual'),
-            onclick: () => { s.controlMode = 'manual'; sim.touch(); },
-          }),
-        ),
-      ),
+      h('h3.section', { text: 'Pilotagem' }),
+      escolha('Quem pilota', [
+        ['idle', 'IA'],
+        ['manual', 'Você'],
+      ], s.controlMode, (v) => { s.controlMode = v as typeof s.controlMode; sim.touch(); },
+      s.controlMode === 'manual' ? 'WASD ou setas · tiro automático' : ''),
+      escolha('Postura da IA', [
+        ['agressivo', 'Agressiva'],
+        ['evasivo', 'Evasiva'],
+        ['coletor', 'Coletora'],
+      ], s.pilot, (v) => { s.pilot = v as typeof s.pilot; sim.touch(); }),
 
       h('h3.section', { text: 'Em campo' }),
-      // O escudo é um TOGGLE de jogabilidade e não de vídeo: a bolha cobre o
-      // casco, e quem pilota no manual perde a nave de vista exatamente quando
-      // o escudo está cheio — que é quando se avança.
-      toggle('Mostrar a bolha de escudo', s.mostrarEscudo, (v) => { s.mostrarEscudo = v; sim.touch(); },
-        'Ela mostra a carga pela opacidade, mas cobre o casco. Desligue se atrapalhar a leitura da nave.'),
-      toggle('Repetir a fase em vez de avançar', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); },
-        'Não muda o que a vitória rende: recompensa, XP e drops continuam iguais. Só segura o ponteiro da incursão.'),
+      toggle('Repetir a fase', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); }),
+      toggle('Bolha de escudo', s.mostrarEscudo, (v) => { s.mostrarEscudo = v; sim.touch(); }),
+      toggle('Números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); }),
 
       h('h3.section', { text: 'Automação' }),
-      toggle('Equipar automaticamente o que for melhor', s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); }),
+      toggle('Equipar o melhor', s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); }),
       h('.setting', {},
-        h('.setting-text', {},
-          h('strong', { text: 'Descartar automaticamente abaixo de' }),
-          h('span.muted.tiny', { text: 'Aplica o destino escolhido ao cair. Se o Armazém lotar, a desmontagem automática vende a peça para não perder valor.' }),
-        ),
+        h('.setting-text', {}, h('strong', { text: 'Descartar abaixo de' })),
         h('select.select', {
           onchange: (e: Event) => { s.autoSalvage = Number((e.target as HTMLSelectElement).value) as Rarity; sim.touch(); },
         },
@@ -158,24 +147,14 @@ export class SettingsPanel implements Panel {
           ...RARITIES.slice(1).map((r) => h('option', { value: String(r.id), text: r.name, selected: s.autoSalvage === r.id })),
         ),
       ),
-      h('.setting', {},
-        h('.setting-text', {},
-          h('strong', { text: 'Destino do descarte automático' }),
-          h('span.muted.tiny', { text: 'Venda gera Sucata. Desmontagem gera materiais de craft. Nunca os dois.' }),
-        ),
-        h('select.select', {
-          onchange: (e: Event) => {
-            s.autoDispose = (e.target as HTMLSelectElement).value as typeof s.autoDispose;
-            sim.touch();
-          },
-        },
-          h('option', { value: 'desmontar', text: 'Desmontar', selected: s.autoDispose === 'desmontar' }),
-          h('option', { value: 'vender', text: 'Vender', selected: s.autoDispose === 'vender' }),
-        ),
-      ),
+      escolha('Destino do descarte', [
+        ['desmontar', 'Desmontar'],
+        ['vender', 'Vender'],
+      ], s.autoDispose, (v) => { s.autoDispose = v as typeof s.autoDispose; sim.touch(); }),
 
-      h('h3.section', { text: 'Progresso offline' }),
-      h('p.muted.hint', { text: `Teto atual: ${duration(sim.offlineCap)}. O nó de Legado "Piloto Automático" aumenta esse limite. O rendimento offline é 60% do rendimento ativo.` }),
+      h('h3.section', { text: 'Offline' }),
+      linha('Teto de progresso', duration(sim.offlineCap)),
+      linha('Rendimento', '60% do ativo'),
     ];
   }
 
@@ -184,26 +163,61 @@ export class SettingsPanel implements Panel {
   private video(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
     return [
+      h('h3.section', { text: 'Tela' }),
+      h('.setting', {},
+        h('.setting-text', {}, h('strong', { text: 'Tela cheia' })),
+        h('button.btn', {
+          onclick: () => {
+            // Não é preferência salva: tela cheia é estado do NAVEGADOR, e ele
+            // a desfaz sozinho ao trocar de aba ou apertar Esc. Guardar no save
+            // faria o jogo prometer algo que não controla.
+            if (document.fullscreenElement) void document.exitFullscreen();
+            else void document.documentElement.requestFullscreen().catch(() => {});
+          },
+        }, h('span', { text: document.fullscreenElement ? 'Sair' : 'Ativar' })),
+      ),
+      deslizante('Resolução', s.qualidade, 0.5, 2, 0.25, (v) => {
+        s.qualidade = v;
+        sim.touch();
+        bus.emit('preferencias:visuais');
+      }, (v) => `${Math.round(v * 100)}%`),
+      toggle('Contador de FPS', s.mostrarFps, (v) => {
+        s.mostrarFps = v;
+        sim.touch();
+        bus.emit('preferencias:visuais');
+      }),
+
       h('h3.section', { text: 'Efeitos' }),
-      toggle('Reduzir efeitos e movimento', s.reduceEffects, (v) => { s.reduceEffects = v; sim.touch(); },
-        'Corta brilhos e animações dos painéis. Use se o jogo estiver pesado.'),
-      // Separado de "reduzir efeitos" porque atinge gente diferente: efeito pesa
-      // na MÁQUINA, tremor pesa em quem sente enjoo de movimento. Junto, alguém
-      // teria de desligar partícula para parar de passar mal.
-      toggle('Tremor de tela', s.tremorDeTela, (v) => { s.tremorDeTela = v; sim.touch(); },
-        'A tela balança em impacto, morte e entrada de chefe. Desligue se causar desconforto.'),
-      toggle('Mostrar números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); },
-        'Cada acerto imprime o valor sobre o alvo. Em ondas cheias vira ruído.'),
+      toggle('Efeitos reduzidos', s.reduceEffects, (v) => { s.reduceEffects = v; sim.touch(); }),
+      // Separado de "efeitos reduzidos" porque atinge gente diferente: efeito
+      // pesa na MÁQUINA, tremor pesa em quem sente enjoo de movimento. Junto,
+      // alguém teria de desligar partícula para parar de passar mal.
+      toggle('Tremor de tela', s.tremorDeTela, (v) => { s.tremorDeTela = v; sim.touch(); }),
+    ];
+  }
+
+  // ── interface ─────────────────────────────────────────────────────────────
+
+  private interface(sim: Sim): HTMLElement[] {
+    const s = sim.state.settings;
+    return [
+      h('h3.section', { text: 'Tamanho' }),
+      deslizante('Escala da interface', s.escalaDaInterface, 0.8, 1.25, 0.05, (v) => {
+        s.escalaDaInterface = v;
+        sim.touch();
+        bus.emit('preferencias:visuais');
+      }, (v) => `${Math.round(v * 100)}%`),
 
       h('h3.section', { text: 'Acessibilidade' }),
       toggle('Alto contraste', s.highContrast, (v) => {
         s.highContrast = v;
         document.documentElement.dataset.contrast = v ? 'high' : '';
         sim.touch();
-      }, 'Aumenta a separação entre texto, fundo e estados interativos.'),
+      }),
 
-      h('h3.section', { text: 'Enquadramento' }),
-      h('p.muted.hint', { text: 'O campo de jogo se adapta à janela: a altura é constante (o tempo que um inimigo leva para atravessar não pode variar com o monitor) e a largura acompanha a proporção. Não há o que ajustar aqui — redimensionar a janela é o controle.' }),
+      h('h3.section', { text: 'Painéis' }),
+      toggle('Anatomia aberta', s.anatomiaAberta !== false, (v) => { s.anatomiaAberta = v; sim.touch(); }),
+
     ];
   }
 
@@ -406,5 +420,74 @@ function toggle(
         control.setAttribute('aria-pressed', String(!value));
       },
     }, h('span.knob')),
+  );
+}
+
+/**
+ * Escolha entre poucas opções, como fichas lado a lado.
+ *
+ * Fichas e não `<select>` quando são duas ou três: o valor atual fica visível
+ * sem abrir nada, e trocar é um clique em vez de dois. Acima de três opções o
+ * `<select>` volta a ganhar — cinco fichas não cabem na linha desta tela, que é
+ * estreita de propósito.
+ */
+function escolha<T extends string>(
+  rotulo: string,
+  opcoes: readonly (readonly [T, string])[],
+  atual: T,
+  aoTrocar: (v: T) => void,
+  nota = '',
+): HTMLElement {
+  return h('.setting', {},
+    h('.setting-text', {},
+      h('strong', { text: rotulo }),
+      ...(nota ? [h('span.muted.tiny', { text: nota })] : []),
+    ),
+    h('.speed-picker', { role: 'group', 'aria-label': rotulo },
+      ...opcoes.map(([valor, nome]) => h(`button.chip${valor === atual ? '.active' : ''}`, {
+        text: nome,
+        'aria-pressed': String(valor === atual),
+        onclick: () => aoTrocar(valor),
+      })),
+    ),
+  );
+}
+
+/**
+ * Valor contínuo, com o número ao lado.
+ *
+ * O número não é enfeite: um controle deslizante sozinho diz "mais ou menos
+ * aqui", e resolução e escala são coisas que a pessoa quer conseguir repetir
+ * depois — "estava em 75%" é reproduzível, uma posição de alça não é.
+ *
+ * `oninput` e não `onchange`: o efeito aparece enquanto se arrasta, que é como
+ * se acha o ponto certo de uma escala.
+ */
+function deslizante(
+  rotulo: string,
+  valor: number,
+  min: number,
+  max: number,
+  passo: number,
+  aoMudar: (v: number) => void,
+  formatar: (v: number) => string,
+): HTMLElement {
+  const num = h('span.ajustes-volume-num.tiny', { text: formatar(valor) });
+  return h('.setting', {},
+    h('.setting-text', {}, h('strong', { text: rotulo })),
+    h('.ajustes-volume', {},
+      h('input.ajustes-slider', {
+        type: 'range',
+        min: String(min), max: String(max), step: String(passo),
+        value: String(valor),
+        'aria-label': rotulo,
+        oninput: (e: Event) => {
+          const v = Number((e.target as HTMLInputElement).value);
+          num.textContent = formatar(v);
+          aoMudar(v);
+        },
+      }),
+      num,
+    ),
   );
 }

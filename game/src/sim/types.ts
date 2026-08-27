@@ -377,6 +377,24 @@ export interface Settings {
   tremorDeTela: boolean;
   /** Aumenta a separação entre texto, fundo e estados interativos. */
   highContrast: boolean;
+
+  /**
+   * Escala de toda a interface, 0.8 a 1.25.
+   *
+   * Aplicada como `zoom` na raiz. Escala MENOR não deixa a tela menor: deixa o
+   * pixel do CSS menor, então cabe mais coisa — é o que resolve uma tela de
+   * notebook onde o inventário não cabe inteiro.
+   */
+  escalaDaInterface: number;
+  /**
+   * Resolução do palco, 0.5 a 2, multiplicando o teto do `devicePixelRatio`.
+   *
+   * Abaixo de 1 o jogo desenha menos pixels e depois estica — perde nitidez e
+   * ganha quadros, que é a troca que uma máquina fraca precisa poder fazer.
+   */
+  qualidade: number;
+  /** Contador de quadros por segundo, num canto do palco. */
+  mostrarFps: boolean;
   /** Missões escolhidas pelo jogador para acompanhar na tela principal. */
   pinnedMissions: string[];
   /**

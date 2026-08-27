@@ -1,6 +1,7 @@
 import { Loop } from './Loop';
 import { assets } from '@render/Assets';
 import { Surface } from '@render/Surface';
+import { h } from '@ui/dom';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
@@ -109,6 +110,9 @@ export class Game {
       if (document.visibilityState === 'hidden') void this.subirTratandoConflito(true);
     });
 
+    this.rootEl.append(this.fpsNode);
+    this.aplicarPreferenciasVisuais();
+
     window.addEventListener('resize', this.layout);
     // O palco pode mudar de tamanho SEM a janela mudar — um trilho que some,
     // uma faixa que aparece — e `fitView` deriva a largura lógica da proporção
@@ -167,6 +171,7 @@ export class Game {
     // antes porque um relatório sobre um jogo que ele ainda não entende não diz
     // nada. Quem já viu não vê de novo.
     bus.on('guia:abrir', () => this.abrirGuia());
+    bus.on('preferencias:visuais', () => this.aplicarPreferenciasVisuais());
     if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
 
     if (this.offlineSeconds > AWAY_THRESHOLD) {
@@ -269,6 +274,29 @@ export class Game {
     tour.comecar(this.rootEl);
   }
 
+  /**
+   * Aplica as preferências que vivem FORA do estado do jogo.
+   *
+   * Escala e qualidade mudam o documento e o canvas, não a simulação, então
+   * ninguém as lê durante o quadro — elas precisam ser empurradas quando mudam.
+   */
+  aplicarPreferenciasVisuais(): void {
+    const s = this.sim.state.settings;
+
+    // `zoom` na raiz e não `transform`: transform escala os pixels já
+    // desenhados e borra o texto; `zoom` muda o tamanho do PIXEL do CSS, então
+    // a interface se remonta nítida e cabe mais coisa quando se reduz.
+    this.rootEl.style.zoom = s.escalaDaInterface === 1 ? '' : String(s.escalaDaInterface);
+
+    if (Surface.qualidade !== s.qualidade) {
+      Surface.qualidade = s.qualidade;
+      // O canvas só relê o dpr no `resize`, então força um.
+      this.layout();
+    }
+
+    this.fpsNode.classList.toggle('visible', s.mostrarFps);
+  }
+
   // ── laço ──────────────────────────────────────────────────────────────────
 
   private readonly tick = (dt: number): void => {
@@ -309,7 +337,22 @@ export class Game {
   private readonly draw = (_alpha: number, dt: number): void => {
     this.vertical.draw();
     this.shell.update(dt);
+
+    // O contador lê o FPS que o `Loop` já suaviza — medir de novo aqui daria um
+    // número diferente do que o resto do jogo usa.
+    if (this.sim.state.settings.mostrarFps) {
+      this.fpsAcumulado += dt;
+      if (this.fpsAcumulado >= 0.25) {
+        this.fpsAcumulado = 0;
+        this.fpsNode.textContent = `${Math.round(this.loop.fps)} FPS`;
+      }
+    }
   };
+
+  /** Segundos desde a última atualização do contador de FPS. */
+  private fpsAcumulado = 0;
+  /** O contador de FPS, sempre no DOM e escondido por classe. */
+  private readonly fpsNode = h('.fps-contador');
 
   // ── layout ────────────────────────────────────────────────────────────────
 

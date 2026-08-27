@@ -52,6 +52,13 @@ export interface GameEvents {
    * quem o abriu.
    */
   'ajustes:fechar': void;
+  /**
+   * Escala, resolucao ou contador de FPS mudaram.
+   *
+   * Elas vivem FORA do estado da simulacao — mexem no documento e no canvas —,
+   * entao ninguem as le durante o quadro: precisam ser empurradas quando mudam.
+   */
+  'preferencias:visuais': void;
   'laboratorio:changed': void;
   /**
    * Uma peça começou ou terminou de ser arrastada.
