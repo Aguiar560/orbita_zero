@@ -75,7 +75,18 @@ export class Shell {
 
   private readonly settings = new SettingsPanel();
 
-  private active = this.panels[0]!;
+  /**
+   * O painel aberto. Começa no FIXO, que é a tela principal.
+   *
+   * Era `panels[0]` — a Galáxia —, e como ela é painel de CAMADA o jogo abria
+   * com o overlay já por cima da tela principal. O jogador entrava direto num
+   * mapa em vez de ver a própria nave, e o guia de onboarding apontava para uma
+   * Anatomia escondida atrás do overlay.
+   *
+   * `painelFixo` é a mesma coisa que `voltarDaCamada` usa para fechar tudo:
+   * é a definição de "tela principal" que já existia no arquivo.
+   */
+  private active: Panel = this.painelFixo;
   private panelTimer = 0;
   private dirty = true;
   /** Camada do painel em tela cheia, quando há um aberto. */
