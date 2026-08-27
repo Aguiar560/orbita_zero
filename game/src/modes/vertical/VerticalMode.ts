@@ -22,6 +22,7 @@ import { rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
 import { arteElemental } from '@data/arte-elemental';
 import { FRACAO_ELEMENTAL_INIMIGA } from '@data/balance/elemental';
+import { curvaXpNave, curvaXpPersonagem, NIVEL_MAX } from '@data/balance/curvas';
 import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
 import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
 import { HULLS, type Hull } from '@data/hulls';
@@ -2629,20 +2630,19 @@ export class VerticalMode {
       this.medidorHud(s, pad, 76, w, 12, frac, '#ff7a4d', boss.boss!.name.toUpperCase(), `${Math.round(frac * 100)}%`, 12);
     }
 
-    // Progresso do pool do encontro: é ele que decide quando a onda acaba.
+    // O rodapé é reservado para progresso que o jogador realmente carrega de
+    // uma incursão para a outra. Ameaça e progresso interno da onda não davam
+    // decisão nenhuma ao piloto, então saíram daqui.
     const pw = VIEW.w - pad * 2;
-    this.medidorHud(s, pad, VIEW.h - 39, pw, 8, sim.sectorProgress, '#45e6c1', 'PROGRESSO DA INCURSÃO', `${Math.round(sim.sectorProgress * 100)}%`, 10);
-
-    // Indicador de ameaça percebida pela IA — mostra que o piloto está "pensando".
-    const corAmeaca = this.threat > .7 ? '#ff5d7a' : this.threat > .38 ? '#ffb638' : '#75d8ff';
-    this.medidorHud(s, pad, VIEW.h - 21, pw, 6, this.threat, corAmeaca, 'AMEAÇA', `${Math.round(this.threat * 100)}%`, 10);
-
-    // Aviso de parede: a onda já se repetiu e o pool mal andou.
-    if (this.director.cycles >= 2 && sim.sectorProgress < 0.5) {
-      s.text('PROGRESSO TRAVADO · REFORCE A NAVE', VIEW.w / 2, VIEW.h - 52, {
-        size: 13, color: '#ff8a9a', align: 'center', shadow: 'rgba(0,0,0,.85)',
-      });
-    }
+    const nave = sim.state.naves[sim.state.hull] ?? { nivel: 1, xp: 0 };
+    const xpNaveMax = curvaXpNave(nave.nivel);
+    const xpPilotoMax = curvaXpPersonagem(sim.state.command.nivel);
+    const xpNave = nave.nivel >= NIVEL_MAX ? 1 : clamp01(nave.xp / xpNaveMax);
+    const xpPiloto = sim.state.command.nivel >= NIVEL_MAX ? 1 : clamp01(sim.state.command.xp / xpPilotoMax);
+    const leituraNave = nave.nivel >= NIVEL_MAX ? 'NÍVEL MÁXIMO' : `${fmt(nave.xp, 0)} / ${fmt(xpNaveMax, 0)} XP`;
+    const leituraPiloto = sim.state.command.nivel >= NIVEL_MAX ? 'NÍVEL MÁXIMO' : `${fmt(sim.state.command.xp, 0)} / ${fmt(xpPilotoMax, 0)} XP`;
+    this.medidorHud(s, pad, VIEW.h - 41, pw, 8, xpNave, '#39dfff', `NAVE ATIVA · NV. ${nave.nivel}`, leituraNave, 10);
+    this.medidorHud(s, pad, VIEW.h - 20, pw, 8, xpPiloto, '#ae70ff', `PILOTO · NV. ${sim.state.command.nivel}`, leituraPiloto, 10);
 
     if (this.bannerTime > 0) {
       const a = clamp01(this.bannerTime / 0.6);
