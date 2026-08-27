@@ -6580,16 +6580,27 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /*
  * A arte de capa, e o véu que a torna fundo.
  *
- * ## O enquadramento
+ * ## `contain`, e não `cover`
  *
- * `center center` e nao mais um deslocamento calculado: a arte JA e aparada
- * para 16:9 na origem (ver `tools/optimize-capa.mjs`), entao o que sobra para
- * cortar em tela cheia e pequeno e simetrico.
+ * Foram três tentativas com `cover` antes desta, e todas erraram do mesmo
+ * jeito: `cover` OBRIGA a cortar quando a janela não tem a proporção da arte,
+ * e a única escolha que ele oferece é qual conteúdo perder.
  *
- * A versao anterior tentava resolver no CSS o que era problema da imagem — a
- * arte vinha em 3:2 e a tela e 16:9, e nenhum `background-position` conserta
- * isso: ele so escolhe se o corte come o logo ou a nave. Aparar na origem faz a
- * pergunta desaparecer.
+ * Primeiro cortou a nave (238px por baixo). Depois um `background-position`
+ * dividiu a perda, e a nave continuou cortada em 90. Depois a arte foi aparada
+ * para 16:9 na origem — e aí o corte foi para o topo e comeu o anel orbital do
+ * logo, que começa mais alto do que eu tinha estimado.
+ *
+ * A arte tem logo em cima e nave embaixo, e as duas coisas importam. Numa
+ * janela de 1,92:1 contra arte de 1,778 não existe corte que preserve as duas:
+ * o conteúdo é mais alto do que a janela mostra.
+ *
+ * `contain` desiste de preencher e garante que nada seja cortado, nunca. O
+ * custo são faixas nas laterais — e ele é pequeno onde importa: a arte é
+ * exatamente 16:9, então em monitor 16:9 de verdade ela encaixa SEM faixa
+ * nenhuma. Faixa só aparece quando a janela é mais larga que 16:9, que é o caso
+ * de um navegador com barra de ferramentas comendo altura — e aí ela some
+ * dentro do mesmo preto do fundo.
  *
  * O gradiente por cima existe porque a arte é clara e detalhada no meio,
  * exatamente onde a caixa de login fica. Sem ele o campo de e-mail cairia em
@@ -6599,15 +6610,39 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * pôr um véu chapado, e é o que deixa o logo respirar enquanto a metade de
  * baixo vira superfície de leitura.
  */
-.login-fundo {
-  position: absolute; inset: 0;
+.login-fundo { position: absolute; inset: 0; overflow: hidden; }
+
+/*
+ * As faixas laterais, preenchidas com a própria arte desfocada.
+ *
+ * `contain` deixa 68px de cada lado numa janela de 1,92:1 — 7% da tela. Preto
+ * chapado ali seria emenda visível, porque as bordas da arte não são pretas:
+ * há uma estação à esquerda e uma nebulosa roxa à direita, e o corte apareceria
+ * como duas linhas retas.
+ *
+ * Esta camada é a MESMA imagem em `cover`, borrada e escurecida. Ela não
+ * precisa estar em foco: existe só para a cor continuar do outro lado da
+ * borda, e é isso que faz a faixa deixar de ser faixa.
+ *
+ * `scale(1.1)` porque `blur` puxa pixels de fora da caixa e deixaria a borda
+ * transparente — a ampliação empurra esse defeito para fora da tela.
+ */
+.login-fundo::before {
+  content: ''; position: absolute; inset: 0;
+  background: url('/assets/ui/capa/login.webp') center center / cover no-repeat, #04070d;
+  filter: blur(26px) brightness(.45) saturate(.8);
+  transform: scale(1.1);
+}
+
+/* A arte legível, inteira, por cima do preenchimento. */
+.login-fundo::after {
+  content: ''; position: absolute; inset: 0;
   background:
     linear-gradient(180deg,
       rgba(4, 7, 13, .15) 0%,
       rgba(4, 7, 13, .55) 42%,
       rgba(4, 7, 13, .88) 100%),
-    url('/assets/ui/capa/login.webp') center center / cover no-repeat,
-    #04070d;
+    url('/assets/ui/capa/login.webp') center center / contain no-repeat;
 }
 /*
  * A caixa tem porte de tela inicial, não de formulário embutido.
@@ -6622,9 +6657,9 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .login-caixa {
   position: relative;
-  width: min(92vw, 430px);
-  display: grid; gap: 13px;
-  padding: 34px 32px;
+  width: min(92vw, 500px);
+  display: grid; gap: 16px;
+  padding: 42px 40px;
   border: 1px solid var(--painel-linha); border-radius: 10px;
   /* Translúcida com desfoque: deixa a arte aparecer atrás sem que ela
    * atrapalhe a leitura do formulário. Chapa opaca por cima de uma pintura
@@ -6633,11 +6668,11 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 48px rgba(0, 0, 0, .7);
 }
-.login-sub { margin: 0 0 8px; text-align: center; font-size: 13.5px; color: var(--muted); }
+.login-sub { margin: 0 0 10px; text-align: center; font-size: 14.5px; color: var(--muted); }
 
 .login-abas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .login-aba {
-  padding: 10px 0; cursor: pointer;
+  padding: 12px 0; cursor: pointer;
   border: 1px solid var(--painel-linha); border-radius: 6px;
   background: rgba(4, 10, 17, .8); color: var(--muted);
   font: 600 13px/1 'Chakra Petch', sans-serif;
@@ -6646,18 +6681,18 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .login-aba:disabled { opacity: .5; cursor: default; }
 
 .login-campo {
-  width: 100%; padding: 12px 13px;
+  width: 100%; padding: 14px 15px;
   border: 1px solid var(--painel-linha); border-radius: 6px;
   background: rgba(4, 10, 17, .85); color: #dbe6ef;
-  font: 400 14.5px/1.2 'Chakra Petch', sans-serif;
+  font: 400 15.5px/1.2 'Chakra Petch', sans-serif;
 }
 .login-campo:focus { outline: none; border-color: var(--accent); }
 
 .login-enviar {
-  margin-top: 6px; padding: 13px 0; cursor: pointer;
+  margin-top: 8px; padding: 15px 0; cursor: pointer;
   border: 1px solid var(--line-strong); border-radius: 6px;
   background: linear-gradient(180deg, rgba(30, 96, 140, .9), rgba(16, 54, 82, .9));
-  color: #eaf6ff; font: 700 14px/1 'Chakra Petch', sans-serif;
+  color: #eaf6ff; font: 700 15px/1 'Chakra Petch', sans-serif;
   letter-spacing: .06em;
 }
 .login-enviar:disabled { opacity: .55; cursor: default; }
