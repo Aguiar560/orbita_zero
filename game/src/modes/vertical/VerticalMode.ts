@@ -2483,6 +2483,26 @@ export class VerticalMode {
     const sim = this.sim;
     const pad = 16;
 
+    // ── aviso de modo de teste ──────────────────────────────────────────
+    //
+    // O modo de teste torna a nave INDESTRUTÍVEL, e isso só estava escrito
+    // dentro do painel de Ajustes — que ninguém tem aberto enquanto joga.
+    //
+    // O custo disso não é hipotético: com ele ligado o setor 154 aplicou
+    // 284.575 de dano em 60 segundos sem tirar um ponto de vida, e a leitura
+    // honesta de quem estava vendo aquilo foi "o balanceamento está quebrado".
+    // Desligado, o mesmo setor mata em 0,2 segundos. Um modo que muda a regra
+    // mais básica do jogo — morrer — não pode ficar invisível na tela em que a
+    // regra se aplica.
+    //
+    // Fica logo abaixo da barra de vida, que é onde o olho vai quando a
+    // pergunta é "por que não estou morrendo".
+    if (sim.testMode) {
+      s.text('MODO DE TESTE · NAVE INDESTRUTÍVEL', pad, pad + 54, {
+        size: 10, color: '#ffb638', shadow: 'rgba(2,6,14,.9)',
+      });
+    }
+
     // Casco e escudo, dentro de um módulo. Antes eram barras soltas sobre o
     // combate, e é isso que faz um HUD parecer COLADO: sem moldura, o olho não
     // separa o que é instrumento do que é cena, e as duas coisas disputam.

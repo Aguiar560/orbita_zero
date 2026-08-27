@@ -215,9 +215,10 @@ export class Shell {
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
 
-    bus.on('panel:open', ({ id }) => {
+    bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
       if (!panel) return;
+      if (panel instanceof RankingPanel && galaxy !== undefined) panel.abrirPlacarDaGalaxia(galaxy);
       this.active = panel;
       this.dirty = true;
       this.buildTabs();
@@ -447,6 +448,10 @@ export class Shell {
       this.aoTeclar = (e: KeyboardEvent) => { if (e.key === 'Escape') this.voltarDaCamada(); };
       window.addEventListener('keydown', this.aoTeclar);
     }
+    // A casca da camada é comum, mas cada tela recebe uma assinatura estável
+    // para o CSS aplicar o mesmo kit visual sem depender da estrutura interna
+    // (a Matriz, por exemplo, nem usa `.panel-body`).
+    this.camadaHost.dataset.tela = painel.id;
 
     clear(this.camadaHost).append(
       h('.camada-caixa', { role: 'dialog', 'aria-modal': 'true', 'aria-label': painel.title },
@@ -537,7 +542,7 @@ export class Shell {
 
     const off = bus.on('state:changed', draw);
     const modal = h('.modal-backdrop', {},
-      h('.modal.modal-wide', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Configurações' },
+      h('.modal.modal-wide.menu-settings', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Configurações' },
         h('.modal-head', {},
           h('h2', { text: 'Configurações' }),
           h('button.modal-close', { text: '✕', 'aria-label': 'Fechar configurações', onclick: () => close() }),

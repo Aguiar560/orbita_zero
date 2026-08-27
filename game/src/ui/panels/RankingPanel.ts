@@ -4,6 +4,7 @@ import {
   dataDeBrasilia, horaDeBrasilia, segundosAteVirar, temporadaComecou, temporadaEm,
 } from '@data/temporadas';
 import { pilotoDe } from '@data/pilotos';
+import { describeGalaxy } from '@data/galaxies';
 import { DEMO_ATIVA, placarDeDemonstracao } from '@sim/ranking-demo';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
@@ -43,6 +44,13 @@ export class RankingPanel implements Panel {
   private secao: PlacarId = 'provacao';
   /** Casco escolhido no filtro do placar de naves; vazio = a melhor. */
   private casco = '';
+  /** Galáxia trazida pelo mapa; nula deixa o placar de campanha amplo. */
+  private galaxy: number | null = null;
+
+  abrirPlacarDaGalaxia(galaxy: number): void {
+    this.secao = 'galaxia';
+    this.galaxy = galaxy;
+  }
 
   render(sim: Sim): HTMLElement {
     const agora = Date.now();
@@ -54,7 +62,11 @@ export class RankingPanel implements Panel {
         ...PLACARES.map((p) => h(`button.ranking-aba${p.id === this.secao ? '.ativa' : ''}`, {
           role: 'tab',
           'aria-selected': String(p.id === this.secao),
-          onclick: () => { this.secao = p.id; sim.touch(); },
+          onclick: () => {
+            this.secao = p.id;
+            if (p.id !== 'galaxia') this.galaxy = null;
+            sim.touch();
+          },
           text: p.nome,
         })),
       ),
@@ -96,6 +108,9 @@ export class RankingPanel implements Panel {
 
   private corpo(sim: Sim): HTMLElement {
     const placar = PLACARES.find((p) => p.id === this.secao)!;
+    const galaxy = this.secao === 'galaxia' && this.galaxy !== null
+      ? describeGalaxy(this.galaxy)
+      : null;
     const naves = this.secao === 'naves' ? navesClassificaveis(sim.state) : [];
     const casco = this.secao === 'naves' ? (this.casco || naves[0]?.id) : undefined;
     const marca = marcaDoJogador(sim.state, this.secao, casco);
@@ -103,6 +118,14 @@ export class RankingPanel implements Panel {
 
     return h('.ranking-corpo', { role: 'tabpanel' },
       h('p.muted.hint.ranking-criterio', { text: placar.criterio }),
+
+      ...(galaxy
+        ? [h('.ranking-galaxy-context', { style: { '--ranking-galaxy-color': galaxy.color } as Partial<CSSStyleDeclaration> },
+            h('span', { text: 'PLACAR DA GALÁXIA' }),
+            h('strong', { text: galaxy.name }),
+            h('small', { text: `Setores ${galaxy.firstSector} – ${galaxy.lastSector}` }),
+          )]
+        : []),
 
       ...(this.secao === 'naves' && naves.length ? [this.filtroDeNaves(sim, naves, casco)] : []),
 

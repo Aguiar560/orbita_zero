@@ -38,7 +38,8 @@ export interface GameEvents {
   'universe:ascended': { from: number; to: number; aether: number };
 
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; icon?: string };
-  'panel:open': { id: string };
+  /** `galaxy` leva o contexto do mapa para o placar sem persistir uma escolha de UI. */
+  'panel:open': { id: string; galaxy?: number };
   'panel:close': void;
   'laboratorio:changed': void;
   /**

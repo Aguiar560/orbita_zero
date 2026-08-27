@@ -2759,7 +2759,9 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .mis-corpo {
   grid-template-columns: minmax(190px, 22%) minmax(0, 1fr) minmax(180px, 20%);
   grid-template-rows: auto minmax(0, 1fr);
-  align-items: start;
+  /* As três colunas formam uma única placa: acompanham a altura da coluna
+   * central, em vez de cada uma terminar depois do seu próprio conteúdo. */
+  align-items: stretch;
 }
 .mis-contatos { grid-row: 1 / span 2; }
 .mis-ficha { grid-column: 2 / span 2; grid-row: 1; }
@@ -4705,6 +4707,442 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .evt-claim { width: 100%; margin-top: auto; padding: 12px; border: 1px solid var(--evt-cor); background: color-mix(in srgb, var(--evt-cor) 18%, #06101a); color: #edfbff; font: 700 11px 'Chakra Petch', sans-serif; letter-spacing: 1px; }
 .evt-claim:disabled { border-color: rgba(130,155,170,.25); background: #0a111c; color: #596977; }
 .evt-foot { margin-top: 12px; color: #5d7585; font-size: 9px; letter-spacing: 1.5px; text-align: center; }
+
+/* ── Kit unificado das demais telas de menu ────────────────────────────────
+ *
+ * Loja, Códex, Provação e Baús já compartilham uma leitura clara: uma única
+ * moldura externa, fundo de torre discreto, títulos técnicos e cartões com
+ * hierarquia. Estas telas tinham conteúdo bom, mas cada uma vinha de uma
+ * geração visual diferente. A assinatura `data-tela` é posta pelo Shell na
+ * camada do modal, então a normalização não precisa invadir a estrutura de
+ * cada painel — e as cores de estado continuam pertencendo a cada sistema.
+ */
+.camada[data-tela='galaxia'],
+.camada[data-tela='armazem'],
+.camada[data-tela='missoes'],
+.camada[data-tela='eventos'],
+.camada[data-tela='matriz'],
+.camada[data-tela='frota'],
+.camada[data-tela='ranking'],
+.camada[data-tela='laboratorio'] {
+  padding: 6px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(31, 89, 118, .2), transparent 52%),
+    rgba(1, 4, 10, .9);
+  backdrop-filter: blur(8px) saturate(1.08);
+}
+
+.camada[data-tela='galaxia'] .camada-caixa,
+.camada[data-tela='armazem'] .camada-caixa,
+.camada[data-tela='missoes'] .camada-caixa,
+.camada[data-tela='eventos'] .camada-caixa,
+.camada[data-tela='matriz'] .camada-caixa,
+.camada[data-tela='frota'] .camada-caixa,
+.camada[data-tela='ranking'] .camada-caixa,
+.camada[data-tela='laboratorio'] .camada-caixa {
+  width: min(1500px, 99vw);
+  height: min(900px, 98vh);
+  max-height: none;
+  overflow: hidden;
+  padding: 5px 20px 14px;
+  gap: 7px;
+  border: 24px solid transparent !important;
+  border-image: url('/assets/ui/provacao/frames/prv_moldura_externa.png') 84 fill stretch !important;
+  border-radius: 0;
+  clip-path: none;
+  background: rgba(3, 7, 13, .97);
+  box-shadow: 0 28px 100px rgba(0, 0, 0, .82);
+}
+
+.camada[data-tela='galaxia'] .camada-topo,
+.camada[data-tela='armazem'] .camada-topo,
+.camada[data-tela='missoes'] .camada-topo,
+.camada[data-tela='eventos'] .camada-topo,
+.camada[data-tela='matriz'] .camada-topo,
+.camada[data-tela='frota'] .camada-topo,
+.camada[data-tela='ranking'] .camada-topo,
+.camada[data-tela='laboratorio'] .camada-topo {
+  min-height: 48px;
+  margin: 0;
+  padding: 0 8px 5px;
+  border: 0;
+  border-bottom: 1px solid rgba(107, 139, 159, .24);
+  background: linear-gradient(90deg, rgba(20, 34, 45, .32), transparent 58%);
+}
+
+.camada[data-tela='galaxia'] .camada-topo h1,
+.camada[data-tela='armazem'] .camada-topo h1,
+.camada[data-tela='missoes'] .camada-topo h1,
+.camada[data-tela='eventos'] .camada-topo h1,
+.camada[data-tela='matriz'] .camada-topo h1,
+.camada[data-tela='frota'] .camada-topo h1,
+.camada[data-tela='ranking'] .camada-topo h1,
+.camada[data-tela='laboratorio'] .camada-topo h1 {
+  color: #d5e8f1;
+  font: 600 20px/1 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: 2.2px;
+  text-shadow: none;
+}
+
+.camada[data-tela='galaxia'] .camada-x,
+.camada[data-tela='armazem'] .camada-x,
+.camada[data-tela='missoes'] .camada-x,
+.camada[data-tela='eventos'] .camada-x,
+.camada[data-tela='matriz'] .camada-x,
+.camada[data-tela='frota'] .camada-x,
+.camada[data-tela='ranking'] .camada-x,
+.camada[data-tela='laboratorio'] .camada-x {
+  opacity: .55;
+  filter: grayscale(.4) brightness(.8);
+}
+.camada[data-tela] .camada-x:hover { opacity: 1; }
+
+.camada[data-tela='galaxia'] :is(.galaxy-body, .painel-corpo),
+.camada[data-tela='armazem'] .panel-body,
+.camada[data-tela='missoes'] .mis,
+.camada[data-tela='eventos'] .evt,
+.camada[data-tela='frota'] .hangar,
+.camada[data-tela='ranking'] .ranking,
+.camada[data-tela='laboratorio'] .lab,
+.camada[data-tela='matriz'] .tree-root {
+  color: #cbd6df;
+  font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+}
+
+.camada[data-tela='galaxia'] .galaxy-body,
+.camada[data-tela='armazem'] .panel-body,
+.camada[data-tela='missoes'] .mis,
+.camada[data-tela='eventos'] .evt,
+.camada[data-tela='frota'] .hangar,
+.camada[data-tela='ranking'] .ranking,
+.camada[data-tela='laboratorio'] .lab,
+.camada[data-tela='matriz'] .tree-root {
+  min-height: 0;
+  padding: 10px;
+  background:
+    linear-gradient(rgba(3, 8, 14, .88), rgba(3, 8, 14, .96)),
+    url('/assets/ui/provacao/backgrounds/prv_torre_fundo.webp') center / cover no-repeat;
+}
+
+.camada[data-tela='galaxia'] :is(.painel-col, .galaxy-hero),
+.camada[data-tela='armazem'] :is(.armazem-conteudo, .armazem-vazio, .armazem-carga, .armazem-servico),
+.camada[data-tela='missoes'] :is(.mis-col, .mis-card, .mis-ficha, .mis-contato, .mis-confianca),
+.camada[data-tela='eventos'] .evt-card,
+.camada[data-tela='frota'] :is(.hangar-lista, .hangar-ficha, .hangar-linha),
+.camada[data-tela='ranking'] :is(.ranking-topo, .ranking-sua-marca, .ranking-lista, .ranking-filtro),
+.camada[data-tela='laboratorio'] :is(.lab-card, .lab-warning, .lab-help, .lab-visual-selected),
+.camada[data-tela='matriz'] :is(.tree-points, .tree-stage) {
+  border: 1px solid rgba(107, 139, 159, .24);
+  border-radius: 5px;
+  background-color: rgba(6, 13, 21, .82);
+  box-shadow: inset 2px 0 0 rgba(89, 199, 232, .22);
+}
+
+.camada[data-tela='galaxia'] :is(.painel-secao),
+.camada[data-tela='missoes'] :is(.mis-secao, .mis-subtitulo),
+.camada[data-tela='frota'] :is(.hangar-secao, .hangar-lore-titulo),
+.camada[data-tela='ranking'] :is(.ranking-selo, .ranking-demo-selo),
+.camada[data-tela='laboratorio'] .lab-card h3,
+.camada[data-tela='eventos'] :is(.evt-kicker, .evt-card > small) {
+  color: #8ed6ed;
+  font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: 1.25px;
+}
+
+.camada[data-tela='galaxia'] :is(.mini, .chip, .select),
+.camada[data-tela='armazem'] :is(.mini, .chip, .select, .armazem-aba),
+.camada[data-tela='missoes'] :is(.mini, .chip, .select),
+.camada[data-tela='frota'] :is(.mini, .chip, .select),
+.camada[data-tela='ranking'] :is(.mini, .chip, .select, .ranking-aba),
+.camada[data-tela='laboratorio'] :is(.mini, .chip, .select, .lab-preset),
+.camada[data-tela='matriz'] :is(.mini, .chip, .select) {
+  border-radius: 4px;
+  font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: .45px;
+}
+
+@media (max-width: 760px) {
+  .camada[data-tela='galaxia'] .camada-caixa,
+  .camada[data-tela='armazem'] .camada-caixa,
+  .camada[data-tela='missoes'] .camada-caixa,
+  .camada[data-tela='eventos'] .camada-caixa,
+  .camada[data-tela='matriz'] .camada-caixa,
+  .camada[data-tela='frota'] .camada-caixa,
+  .camada[data-tela='ranking'] .camada-caixa,
+  .camada[data-tela='laboratorio'] .camada-caixa {
+    border-width: 18px !important;
+    padding-inline: 8px;
+  }
+  .camada[data-tela='galaxia'] :is(.galaxy-body, .painel-corpo),
+  .camada[data-tela='armazem'] .panel-body,
+  .camada[data-tela='missoes'] .mis,
+  .camada[data-tela='eventos'] .evt,
+  .camada[data-tela='frota'] .hangar,
+  .camada[data-tela='ranking'] .ranking,
+  .camada[data-tela='laboratorio'] .lab,
+  .camada[data-tela='matriz'] .tree-root { padding: 6px; }
+}
+
+/* ── Galáxia: central de comando ───────────────────────────────────────── */
+.camada[data-tela='galaxia'] .galaxy-command {
+  --gc-line: rgba(70, 168, 214, .22);
+  --gc-panel: rgba(4, 13, 23, .9);
+  --gc-panel-deep: rgba(2, 8, 16, .94);
+  display: grid;
+  grid-template-columns: minmax(232px, 22%) minmax(480px, 1fr) minmax(270px, 23%);
+  align-items: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(10, 55, 80, .16), transparent 48%),
+    linear-gradient(rgba(2, 8, 14, .9), rgba(2, 8, 14, .97));
+}
+.galaxy-command :is(button, .sprite) { font-family: 'Chakra Petch', 'Segoe UI', sans-serif; }
+.galaxy-command :is(.galaxy-command-col, .galaxy-command-center, .galaxy-command-sectors, .galaxy-command-sector-detail, .galaxy-command-modifiers, .galaxy-command-rewards, .galaxy-command-progress-card, .galaxy-command-statistics, .galaxy-command-ranking, .galaxy-command-unlocks, .galaxy-command-region-info, .galaxy-command-tip, .galaxy-command-resource) {
+  border: 1px solid var(--gc-line);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(7, 19, 31, .94), var(--gc-panel-deep));
+  box-shadow: inset 0 1px rgba(159, 224, 255, .04), 0 10px 20px rgba(0, 0, 0, .12);
+}
+.galaxy-command-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 25px;
+  color: #76d9ff;
+  font: 700 12px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .8px;
+}
+.galaxy-command-section-title > i { width: 2px; height: 15px; background: #31c9ff; box-shadow: 0 0 8px #20bfff; }
+.galaxy-command-col { min-width: 0; padding: 10px; }
+.galaxy-command > :is(.galaxy-command-col, .galaxy-command-center) { min-height: 0; height: 100%; }
+.galaxy-command-region { display: flex; flex-direction: column; gap: 10px; }
+.galaxy-command-nav { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: center; gap: 8px; }
+.galaxy-command-nav .mini { min-width: 30px; height: 29px; padding: 0; font-size: 22px; line-height: 1; }
+.galaxy-command-nav-name { min-width: 0; display: grid; gap: 2px; text-align: center; }
+.galaxy-command-nav-name span { color: #9ab2c0; font-size: 11px; }
+.galaxy-command-nav-name strong { overflow: hidden; color: #62d1ff; font: 700 16px/1.1 'Chakra Petch', sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.galaxy-command-hero { position: relative; min-height: 214px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--gal-cor) 38%, transparent); border-radius: 7px; background-size: cover; background-position: center; }
+.galaxy-command-hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 12, 22, .9), rgba(4, 12, 20, .6) 70%, rgba(4, 12, 20, .36)); }
+.galaxy-command-hero-body { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 214px; padding: 14px; }
+.galaxy-command-face { flex: 0 0 62px; width: 62px; height: 62px; border: 1px solid rgba(104, 206, 255, .42); border-radius: 6px; background: rgba(2, 8, 14, .66); }
+.galaxy-command-face.sprite { flex: 0 0 62px; border: 1px solid rgba(104, 206, 255, .42); border-radius: 6px; background-color: rgba(2, 8, 14, .66); }
+.galaxy-command-hero-copy { display: grid; gap: 5px; }
+.galaxy-command-hero-copy > strong { color: #cfeeff; font: 700 19px/1.05 'Chakra Petch', sans-serif; }
+.galaxy-command-hero-copy > span { color: #84c9ed; font-size: 12px; }
+.galaxy-command-hero-copy p { margin: 1px 0; color: #bbcad3; font-size: 12px; line-height: 1.35; }
+.galaxy-command-hero-copy > small { color: #d4e0e6; font-weight: 700; }
+.galaxy-command-danger { display: flex; align-items: center; gap: 7px; margin-top: 3px; padding: 5px 7px; border: 1px solid #c63135; border-radius: 5px; color: #ff6b6e; font-size: 11px; }
+.galaxy-command-danger b { font-size: 16px; }
+.galaxy-command-resource { display: flex; align-items: center; gap: 9px; min-height: 59px; padding: 8px; }
+.galaxy-command-resource span { display: grid; gap: 2px; }
+.galaxy-command-resource small { color: #6599b1; font-size: 9px; letter-spacing: .5px; }
+.galaxy-command-resource strong { color: #4bd0ff; font: 700 16px/1 'Chakra Petch', sans-serif; }
+.galaxy-command-region-info { display: grid; gap: 3px; padding: 9px; }
+.galaxy-command-info-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 39px; border-top: 1px solid rgba(92, 137, 161, .12); }
+.galaxy-command-info-row:first-of-type { border-top: 0; }
+.galaxy-command-info-row > i { color: #55cdf9; font-style: normal; text-align: center; }
+.galaxy-command-info-row span { display: grid; gap: 2px; min-width: 0; }
+.galaxy-command-info-row small { color: #8197a5; font-size: 10px; }
+.galaxy-command-info-row b { overflow: hidden; color: #c8dce7; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.galaxy-command-tip { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 10px; }
+.galaxy-command-tip > i { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid rgba(64, 198, 255, .35); border-radius: 6px; color: #5bd6ff; font-size: 26px; font-style: normal; }
+.galaxy-command-tip span { display: grid; gap: 3px; }
+.galaxy-command-tip small { color: #53cdf8; font-size: 9px; font-weight: 700; letter-spacing: .6px; }
+.galaxy-command-tip p { margin: 0; color: #9eb1bc; font-size: 10px; line-height: 1.35; }
+
+.galaxy-command-center { display: grid; grid-template-rows: auto minmax(272px, 1fr) auto; gap: 12px; min-width: 0; padding: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.galaxy-command-sectors { padding: 10px; }
+.galaxy-command-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 7px; }
+.galaxy-command-sector { position: relative; display: grid; place-items: center; align-content: center; min-width: 0; min-height: 100px; padding: 7px 4px 5px; border: 1px solid rgba(67, 155, 183, .2); border-radius: 7px; background: linear-gradient(145deg, rgba(9, 31, 43, .8), rgba(4, 13, 22, .94)); color: #71d6f6; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.galaxy-command-sector:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(63, 204, 255, .8); }
+.galaxy-command-sector.selected { border-color: var(--sector-cor, #27caff); box-shadow: inset 0 0 14px color-mix(in srgb, var(--sector-cor, #27caff) 20%, transparent), 0 0 11px color-mix(in srgb, var(--sector-cor, #27caff) 32%, transparent); }
+.galaxy-command-sector.cleared::after { position: absolute; right: 5px; top: 4px; color: #55d6ff; content: '✓'; font-weight: 800; }
+.galaxy-command-sector.locked { cursor: not-allowed; opacity: .42; filter: grayscale(.75); }
+.galaxy-command-sector.boss { grid-column: span 1; }
+.galaxy-command-sector .sprite { filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .8)); }
+.galaxy-command-sector > span { z-index: 1; color: #d2e7f2; font: 700 13px/1 'Chakra Petch', sans-serif; }
+.galaxy-command-sector > small { overflow: hidden; max-width: 100%; color: #b7d8e6; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.galaxy-command-lock { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 8px; background: rgba(126, 142, 155, .14); color: #a4b0b8; font-size: 26px; }
+.galaxy-command-sector-detail { position: relative; overflow: hidden; min-height: 272px; background-position: center; background-size: cover; }
+.galaxy-command-detail-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 13, 22, .9), rgba(3, 13, 22, .66) 55%, rgba(3, 13, 22, .94)); }
+.galaxy-command-detail-content { position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; min-height: 272px; padding: 12px 14px; }
+.galaxy-command-detail-title { display: flex; flex-direction: column; gap: 2px; padding-bottom: 7px; border-bottom: 1px solid color-mix(in srgb, var(--gal-cor, #29cdff) 32%, transparent); }
+.galaxy-command-detail-title strong { color: #d9f3ff; font: 700 20px/1 'Chakra Petch', sans-serif; letter-spacing: .4px; }
+.galaxy-command-detail-title span { color: #4ecff9; font-size: 10px; font-weight: 700; letter-spacing: .8px; }
+.galaxy-command-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 31%); gap: 20px; }
+.galaxy-command-threats { display: grid; align-content: start; gap: 7px; }
+.galaxy-command-threats > small, .galaxy-command-sector-stats > small { color: #53cdf8; font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .7px; }
+.galaxy-command-enemies { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 5px; }
+.galaxy-command-enemy { display: grid; justify-items: center; align-content: center; gap: 2px; width: 64px; height: 66px; border: 1px solid rgba(69, 157, 190, .24); border-radius: 6px; background: rgba(2, 12, 22, .63); }
+.galaxy-command-enemy span { overflow: hidden; max-width: 56px; color: #a9c9d8; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.galaxy-command-threat-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.galaxy-command-threat-tag { display: inline-flex; align-items: center; gap: 4px; padding: 5px 6px; border: 1px solid rgba(89, 191, 228, .26); border-radius: 5px; background: rgba(1, 10, 18, .72); color: #b4cad3; font-size: 9px; }
+.galaxy-command-threat-tag i { color: #5bd7ff; font-style: normal; }.galaxy-command-threat-tag[data-tone='1'] i { color: #ffba52; }.galaxy-command-threat-tag[data-tone='2'] i { color: #a86bff; }.galaxy-command-threat-tag[data-tone='3'] i { color: #fa5669; }
+.galaxy-command-sector-stats { display: grid; align-content: start; gap: 0; min-width: 0; padding: 8px; border: 1px solid rgba(72, 156, 186, .18); border-radius: 6px; background: rgba(2, 11, 19, .68); }
+.galaxy-command-stat-row { display: flex; justify-content: space-between; gap: 7px; padding: 7px 0; border-top: 1px solid rgba(93, 140, 162, .15); color: #9fb3bf; font-size: 10px; }.galaxy-command-stat-row:first-of-type { margin-top: 4px; }.galaxy-command-stat-row b { color: #d8e7ee; text-align: right; }
+.galaxy-command-select { justify-self: center; min-width: min(100%, 320px); height: 34px; border: 1px solid #26caff; border-radius: 5px; background: linear-gradient(180deg, rgba(17, 105, 140, .5), rgba(4, 38, 59, .8)); box-shadow: inset 0 0 12px rgba(41, 203, 255, .2), 0 0 12px rgba(31, 192, 245, .18); color: #d8f6ff; font: 700 14px/1 'Chakra Petch', sans-serif; letter-spacing: .6px; cursor: pointer; }.galaxy-command-select:hover:not(:disabled) { filter: brightness(1.2); }.galaxy-command-select:disabled { cursor: default; opacity: .55; }
+.galaxy-command-bottom { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; }
+.galaxy-command-modifiers, .galaxy-command-rewards { display: grid; align-content: start; gap: 5px; padding: 10px; }
+.galaxy-command-modifier { display: flex; align-items: center; gap: 8px; min-height: 37px; padding: 5px 7px; border: 1px solid rgba(69, 139, 169, .14); border-radius: 5px; background: rgba(8, 20, 31, .62); }.galaxy-command-modifier > i { color: #ff805f; font-style: normal; }.galaxy-command-modifier span { display: grid; gap: 1px; }.galaxy-command-modifier b { color: #c3d6df; font-size: 10px; }.galaxy-command-modifier small { color: #8da6b4; font-size: 9px; }
+.galaxy-command-reward-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }.galaxy-command-reward { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 83px; padding: 5px; border: 1px solid rgba(69, 139, 169, .16); border-radius: 5px; background: rgba(5, 15, 25, .63); text-align: center; }.galaxy-command-reward > i { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(64, 199, 255, .4); border-radius: 50%; color: #6cddff; font-style: normal; font-weight: 700; }.galaxy-command-reward span { overflow: hidden; max-width: 100%; color: #c4d7df; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }.galaxy-command-reward small { color: #78b7d0; font-size: 8px; }
+
+.galaxy-command-sidebar { display: grid; align-content: start; gap: 10px; overflow: hidden; }
+.galaxy-command-progress-card, .galaxy-command-statistics, .galaxy-command-ranking, .galaxy-command-unlocks { display: grid; gap: 8px; padding: 10px; }
+.galaxy-command-progress-metric { display: grid; gap: 5px; }.galaxy-command-progress-label { display: flex; justify-content: space-between; gap: 7px; color: #a9c1cd; font-size: 10px; }.galaxy-command-progress-label b { color: #d2e0e7; font-size: 10px; }.galaxy-command-progress-metric .bar { background: rgba(47, 77, 93, .54); }
+.galaxy-command-next-reward { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 3px; padding: 7px; border: 1px solid rgba(217, 117, 57, .42); border-radius: 6px; background: linear-gradient(90deg, rgba(24, 35, 36, .7), rgba(29, 11, 8, .52)); }.galaxy-command-next-reward > i { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid rgba(238, 176, 65, .32); border-radius: 5px; color: #f3b94d; font-size: 22px; font-style: normal; }.galaxy-command-next-reward span { display: grid; gap: 3px; }.galaxy-command-next-reward small { color: #43bce9; font-size: 8px; font-weight: 700; }.galaxy-command-next-reward b { color: #f2d08a; font-size: 10px; }.galaxy-command-next-reward em { color: #ff952e; font-size: 25px; font-style: normal; }
+.galaxy-command-statistics-row { display: flex; justify-content: space-between; gap: 8px; color: #98adb9; font-size: 11px; }.galaxy-command-statistics-row b { color: #d4e4ea; font-variant-numeric: tabular-nums; }
+.galaxy-command-ranking-tabs { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border-radius: 5px; background: rgba(2, 9, 16, .72); text-align: center; }.galaxy-command-ranking-tabs > * { padding: 6px; color: #819aa9; font-size: 10px; }.galaxy-command-ranking-tabs b { background: linear-gradient(180deg, rgba(26, 105, 144, .45), rgba(11, 53, 78, .54)); color: #63d8ff; }
+.galaxy-command-rank-row { display: grid; grid-template-columns: 15px 18px minmax(0, 1fr) auto; align-items: center; gap: 5px; min-height: 20px; font-size: 10px; }.galaxy-command-rank-row > b { color: #d2c171; }.galaxy-command-rank-row > i { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid rgba(88, 206, 252, .42); border-radius: 50%; color: #55cefa; font-size: 8px; font-style: normal; }.galaxy-command-rank-row span { overflow: hidden; color: #64cbed; text-overflow: ellipsis; white-space: nowrap; }.galaxy-command-rank-row strong { color: #c8d7dd; font-weight: 600; }.galaxy-command-ranking-button { width: 100%; margin-top: 3px; }
+.galaxy-command-unlock { display: grid; grid-template-columns: 45px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 48px; padding: 5px; border: 1px solid rgba(66, 142, 171, .18); border-radius: 5px; background: rgba(8, 20, 29, .64); }.galaxy-command-unlock > i { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(96, 192, 225, .24); border-radius: 5px; color: #71d8f9; font-style: normal; }.galaxy-command-unlock span { display: grid; gap: 3px; min-width: 0; }.galaxy-command-unlock b { color: #c8dce5; font-size: 10px; }.galaxy-command-unlock small { overflow: hidden; color: #819da9; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Assets raster da central. Cada ícone tem arte própria; nenhum glifo de
+ * fallback fica responsável por comunicar uma mecânica. */
+.galaxy-command-ui-icon {
+  display: block;
+  flex: 0 0 auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  font-style: normal;
+}
+.galaxy-command-danger .galaxy-command-danger-icon { width: 17px; height: 17px; }
+.galaxy-command-info-row > .galaxy-command-region-icon { width: 19px; height: 19px; }
+.galaxy-command-tip > .galaxy-command-tip-icon { width: 52px; height: 52px; border: 0; border-radius: 0; background-color: transparent; color: transparent; font-size: 0; }
+.galaxy-command-threat-tag > .galaxy-command-threat-icon { width: 13px; height: 13px; }
+.galaxy-command-modifier > .galaxy-command-modifier-icon { width: 23px; height: 23px; }
+.galaxy-command-reward > .galaxy-command-reward-icon { width: 36px; height: 36px; border: 0; border-radius: 0; background-color: transparent; color: transparent; }
+.galaxy-command-next-reward > .galaxy-command-next-reward-icon { width: 42px; height: 42px; border: 0; border-radius: 0; background-color: transparent; color: transparent; font-size: 0; mix-blend-mode: screen; }
+.galaxy-command-unlock > .galaxy-command-unlock-icon { width: 40px; height: 40px; border: 0; border-radius: 0; background-color: transparent; color: transparent; font-size: 0; }
+.galaxy-command-rank-row > .galaxy-command-rank-avatar {
+  display: block;
+  width: 18px !important;
+  height: 18px !important;
+  border: 1px solid rgba(88, 206, 252, .42);
+  border-radius: 50%;
+  background-color: rgba(5, 18, 28, .7);
+  filter: none;
+}
+.galaxy-command-lock { position: relative; width: 31px; height: 29px; background: none; }
+.galaxy-command-lock::before { position: absolute; bottom: 1px; left: 4px; width: 23px; height: 17px; border: 2px solid #a4b0b8; border-radius: 3px; background: rgba(91, 107, 118, .34); content: ''; }
+.galaxy-command-lock::after { position: absolute; top: 1px; left: 8px; width: 15px; height: 14px; border: 2px solid #a4b0b8; border-bottom: 0; border-radius: 10px 10px 0 0; content: ''; }
+
+/* Contexto recebido ao abrir o Ranking pelo mapa. */
+.ranking-galaxy-context {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--ranking-galaxy-color, #55cfff) 45%, transparent);
+  border-radius: 6px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ranking-galaxy-color, #55cfff) 12%, transparent), rgba(5, 13, 22, .8));
+}
+.ranking-galaxy-context span { color: var(--ranking-galaxy-color, #55cfff); font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .7px; }
+.ranking-galaxy-context strong { overflow: hidden; color: #d6edf6; font: 700 14px/1 'Chakra Petch', sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-galaxy-context small { color: #9db4c1; font-size: 10px; }
+
+@media (max-width: 1180px) {
+  .camada[data-tela='galaxia'] .galaxy-command { grid-template-columns: minmax(0, 1fr) minmax(270px, 31%); }
+  .galaxy-command-region { display: none; }
+}
+@media (max-width: 820px) {
+  .camada[data-tela='galaxia'] .galaxy-command { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .galaxy-command-sidebar { overflow: visible; }
+}
+@media (max-width: 560px) {
+  .galaxy-command-detail-body, .galaxy-command-bottom { grid-template-columns: 1fr; }
+  .galaxy-command-sector { min-height: 78px; }
+  .galaxy-command-sector .sprite { transform: scale(.78); }
+}
+
+/* A janela principal do jogo tem altura curta em 16:9. Nesta faixa a tela não
+ * rola: ela condensa os cartões e preserva os três desbloqueios na coluna 3. */
+@media (min-width: 821px) and (max-height: 800px) {
+  .camada[data-tela='galaxia'] .galaxy-command { gap: 8px; padding: 8px; }
+  .galaxy-command-col { padding: 8px; }
+  .galaxy-command-section-title { min-height: 19px; font-size: 10px; }
+  .galaxy-command-section-title > i { height: 12px; }
+  .galaxy-command-region { gap: 6px; }
+  .galaxy-command-nav { gap: 5px; }
+  .galaxy-command-nav .mini { width: 26px; min-width: 26px; height: 24px; font-size: 18px; }
+  .galaxy-command-nav-name span { font-size: 9px; }
+  .galaxy-command-nav-name strong { font-size: 13px; }
+  .galaxy-command-hero, .galaxy-command-hero-body { min-height: 155px; }
+  .galaxy-command-hero-body { gap: 5px; padding: 9px; }
+  .galaxy-command-face, .galaxy-command-face.sprite { width: 45px !important; height: 45px !important; flex-basis: 45px; }
+  .galaxy-command-hero-copy { gap: 3px; }
+  .galaxy-command-hero-copy > strong { font-size: 16px; }
+  .galaxy-command-hero-copy > span, .galaxy-command-hero-copy p { font-size: 10px; }
+  .galaxy-command-hero-copy p { line-height: 1.22; }
+  .galaxy-command-hero-copy > small { font-size: 10px; }
+  .galaxy-command-danger { margin-top: 1px; padding: 3px 5px; font-size: 9px; }
+  .galaxy-command-resource { min-height: 45px; padding: 6px; }
+  .galaxy-command-resource .sprite { transform: scale(.78); }
+  .galaxy-command-resource strong { font-size: 13px; }
+  .galaxy-command-region-info { gap: 0; padding: 6px; }
+  .galaxy-command-info-row { min-height: 27px; gap: 4px; }
+  .galaxy-command-info-row small { font-size: 8px; }
+  .galaxy-command-info-row b { font-size: 9px; }
+  .galaxy-command-tip { gap: 6px; padding: 6px; }
+  .galaxy-command-tip > .galaxy-command-tip-icon { width: 36px; height: 36px; }
+  .galaxy-command-tip small { font-size: 8px; }
+  .galaxy-command-tip p { font-size: 8px; line-height: 1.2; }
+
+  .galaxy-command-center { grid-template-rows: 202px 224px 132px; gap: 8px; }
+  .galaxy-command-sectors { padding: 7px; }
+  .galaxy-command-grid { gap: 5px; margin-top: 4px; }
+  .galaxy-command-sector { min-height: 74px; padding: 4px 2px; }
+  .galaxy-command-sector .sprite { transform: scale(.76); }
+  .galaxy-command-sector > span { font-size: 11px; }
+  .galaxy-command-sector > small { font-size: 7px; }
+  .galaxy-command-sector-detail, .galaxy-command-detail-content { min-height: 224px; }
+  .galaxy-command-detail-content { gap: 6px; padding: 8px 10px; }
+  .galaxy-command-detail-title { padding-bottom: 4px; }
+  .galaxy-command-detail-title strong { font-size: 16px; }
+  .galaxy-command-detail-title span { font-size: 8px; }
+  .galaxy-command-detail-body { gap: 12px; }
+  .galaxy-command-threats { gap: 4px; }
+  .galaxy-command-threats > small, .galaxy-command-sector-stats > small { font-size: 8px; }
+  .galaxy-command-enemies { gap: 4px; margin-bottom: 2px; }
+  .galaxy-command-enemy { width: 50px; height: 47px; }
+  .galaxy-command-enemy .sprite { transform: scale(.7); }
+  .galaxy-command-enemy span { display: none; }
+  .galaxy-command-threat-tags { gap: 3px; }
+  .galaxy-command-threat-tag { gap: 3px; padding: 3px 4px; font-size: 8px; }
+  .galaxy-command-sector-stats { padding: 5px; }
+  .galaxy-command-stat-row { padding: 4px 0; font-size: 8px; }
+  .galaxy-command-select { height: 27px; min-width: min(100%, 260px); font-size: 11px; }
+  .galaxy-command-bottom { gap: 8px; }
+  .galaxy-command-modifiers, .galaxy-command-rewards { gap: 3px; padding: 6px; }
+  .galaxy-command-modifier { min-height: 25px; gap: 5px; padding: 3px 4px; }
+  .galaxy-command-modifier > .galaxy-command-modifier-icon { width: 17px; height: 17px; }
+  .galaxy-command-modifier b { font-size: 8px; }
+  .galaxy-command-modifier small { font-size: 7px; }
+  .galaxy-command-reward-list { gap: 3px; }
+  .galaxy-command-reward { min-height: 72px; padding: 3px; }
+  .galaxy-command-reward > .galaxy-command-reward-icon { width: 28px; height: 28px; }
+  .galaxy-command-reward .sprite { transform: scale(.8); }
+  .galaxy-command-reward span { font-size: 8px; }
+  .galaxy-command-reward small { font-size: 7px; }
+
+  .galaxy-command-sidebar { gap: 6px; }
+  .galaxy-command-progress-card, .galaxy-command-statistics, .galaxy-command-ranking, .galaxy-command-unlocks { gap: 5px; padding: 7px; }
+  .galaxy-command-progress-metric { gap: 3px; }
+  .galaxy-command-progress-label { font-size: 8px; }
+  .galaxy-command-progress-label b { font-size: 8px; }
+  .galaxy-command-statistics-row { font-size: 9px; }
+  .galaxy-command-ranking-tabs > * { padding: 4px; font-size: 8px; }
+  .galaxy-command-rank-row { min-height: 16px; font-size: 8px; }
+  .galaxy-command-rank-row > .galaxy-command-rank-avatar { width: 14px !important; height: 14px !important; }
+  .galaxy-command-ranking-button { display: block; height: 20px; margin-top: 0; font-size: 8px; }
+  .galaxy-command-unlock { grid-template-columns: 31px minmax(0, 1fr); min-height: 32px; gap: 5px; padding: 3px; }
+  .galaxy-command-unlock > .galaxy-command-unlock-icon { width: 28px; height: 28px; }
+  .galaxy-command-unlock b { font-size: 8px; }
+  .galaxy-command-unlock small { font-size: 7px; }
+}
 @media (max-width: 900px) { .evt-grid { grid-template-columns: 1fr; } .evt-clock { position: static; text-align: left; } }
 
 /* A Central de Missões é deliberadamente sobrescrita no fim do arquivo: este
@@ -5929,3 +6367,132 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* Com resistência, o pip ganha um halo discreto — é o sinal de "aqui você está
  * protegido", legível de relance sem precisar ler o número. */
 .elem-pip.tem { box-shadow: inset 0 0 10px rgba(255, 255, 255, .06); }
+
+/* A folha recebeu várias telas em momentos diferentes; este fechamento fica no
+   fim intencionalmente para que a casca compartilhada vença os estilos antigos
+   sem apagar as cores, estados e conteúdos próprios de cada tela. */
+.camada[data-tela='galaxia'],
+.camada[data-tela='armazem'],
+.camada[data-tela='missoes'],
+.camada[data-tela='eventos'],
+.camada[data-tela='matriz'],
+.camada[data-tela='frota'],
+.camada[data-tela='ranking'],
+.camada[data-tela='laboratorio'],
+.modal-backdrop:has(.menu-settings) {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(31, 89, 118, .2), transparent 52%),
+    rgba(1, 4, 10, .9);
+  backdrop-filter: blur(8px) saturate(1.08);
+}
+
+.camada[data-tela='galaxia'] .camada-caixa,
+.camada[data-tela='armazem'] .camada-caixa,
+.camada[data-tela='missoes'] .camada-caixa,
+.camada[data-tela='eventos'] .camada-caixa,
+.camada[data-tela='matriz'] .camada-caixa,
+.camada[data-tela='frota'] .camada-caixa,
+.camada[data-tela='ranking'] .camada-caixa,
+.camada[data-tela='laboratorio'] .camada-caixa,
+.menu-settings {
+  width: min(1500px, 99vw);
+  height: min(900px, 98vh);
+  max-height: none;
+  overflow: hidden;
+  padding: 5px 20px 14px;
+  gap: 7px;
+  border: 24px solid transparent !important;
+  border-image: url('/assets/ui/provacao/frames/prv_moldura_externa.png') 84 fill stretch !important;
+  border-radius: 0;
+  clip-path: none;
+  background: rgba(3, 7, 13, .97);
+  box-shadow: 0 28px 100px rgba(0, 0, 0, .82);
+}
+
+.camada[data-tela='galaxia'] .camada-topo,
+.camada[data-tela='armazem'] .camada-topo,
+.camada[data-tela='missoes'] .camada-topo,
+.camada[data-tela='eventos'] .camada-topo,
+.camada[data-tela='matriz'] .camada-topo,
+.camada[data-tela='frota'] .camada-topo,
+.camada[data-tela='ranking'] .camada-topo,
+.camada[data-tela='laboratorio'] .camada-topo,
+.menu-settings .modal-head {
+  min-height: 48px;
+  margin: 0;
+  padding: 0 8px 5px;
+  border: 0;
+  border-bottom: 1px solid rgba(107, 139, 159, .24);
+  background: linear-gradient(90deg, rgba(20, 34, 45, .32), transparent 58%);
+}
+
+.camada[data-tela] .camada-topo h1,
+.menu-settings .modal-head h2 {
+  color: #d5e8f1;
+  font: 600 20px/1 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: 2.2px;
+  text-shadow: none;
+}
+
+.camada[data-tela] .camada-x,
+.menu-settings .modal-close { opacity: .55; filter: grayscale(.4) brightness(.8); }
+.camada[data-tela] .camada-x:hover,
+.menu-settings .modal-close:hover { opacity: 1; }
+
+.camada[data-tela='galaxia'] .galaxy-body,
+.camada[data-tela='armazem'] .panel-body,
+.camada[data-tela='missoes'] .mis,
+.camada[data-tela='eventos'] .evt,
+.camada[data-tela='frota'] .hangar,
+.camada[data-tela='ranking'] .ranking,
+.camada[data-tela='laboratorio'] .lab,
+.camada[data-tela='matriz'] .tree-root,
+.menu-settings .modal-body {
+  min-height: 0;
+  color: #cbd6df;
+  font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+  background:
+    linear-gradient(rgba(3, 8, 14, .88), rgba(3, 8, 14, .96)),
+    url('/assets/ui/provacao/backgrounds/prv_torre_fundo.webp') center / cover no-repeat;
+}
+
+.camada[data-tela='galaxia'] :is(.painel-col, .galaxy-hero),
+.camada[data-tela='armazem'] :is(.armazem-conteudo, .armazem-vazio, .armazem-carga, .armazem-servico),
+.camada[data-tela='missoes'] :is(.mis-col, .mis-card, .mis-ficha, .mis-contato, .mis-confianca),
+.camada[data-tela='eventos'] .evt-card,
+.camada[data-tela='frota'] :is(.hangar-lista, .hangar-ficha, .hangar-linha),
+.camada[data-tela='ranking'] :is(.ranking-topo, .ranking-sua-marca, .ranking-lista, .ranking-filtro),
+.camada[data-tela='laboratorio'] :is(.lab-card, .lab-warning, .lab-help, .lab-visual-selected),
+.camada[data-tela='matriz'] :is(.tree-points, .tree-stage),
+.menu-settings :is(.ajustes-linha, .setting) {
+  border: 1px solid rgba(107, 139, 159, .24);
+  border-radius: 5px;
+  background-color: rgba(6, 13, 21, .82);
+  box-shadow: inset 2px 0 0 rgba(89, 199, 232, .22);
+}
+
+.camada[data-tela='galaxia'] :is(.mini, .chip, .select),
+.camada[data-tela='armazem'] :is(.mini, .chip, .select, .armazem-aba),
+.camada[data-tela='missoes'] :is(.mini, .chip, .select),
+.camada[data-tela='frota'] :is(.mini, .chip, .select),
+.camada[data-tela='ranking'] :is(.mini, .chip, .select, .ranking-aba),
+.camada[data-tela='laboratorio'] :is(.mini, .chip, .select, .lab-preset),
+.camada[data-tela='matriz'] :is(.mini, .chip, .select),
+.menu-settings :is(.mini, .chip, .select, .btn) {
+  border-radius: 4px;
+  font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: .45px;
+}
+
+@media (max-width: 760px) {
+  .camada[data-tela] .camada-caixa,
+  .menu-settings { border-width: 18px !important; padding-inline: 8px; }
+  .camada[data-tela='galaxia'] .galaxy-body,
+  .camada[data-tela='armazem'] .panel-body,
+  .camada[data-tela='missoes'] .mis,
+  .camada[data-tela='eventos'] .evt,
+  .camada[data-tela='frota'] .hangar,
+  .camada[data-tela='ranking'] .ranking,
+  .camada[data-tela='laboratorio'] .lab,
+  .camada[data-tela='matriz'] .tree-root { padding: 6px; }
+}
