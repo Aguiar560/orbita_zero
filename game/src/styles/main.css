@@ -5523,21 +5523,29 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .anat-corpo {
   width: var(--anat-larg, 300px);
-  transition:
-    transform .26s cubic-bezier(.22, .61, .36, 1),
-    opacity .18s ease;
+  transition: opacity .18s ease;
 }
 /*
  * Era `display: none`, que não anima — e é por isso que o painel aparecia de
- * um quadro para o outro. Sai deslizando para a direita e some no caminho; a
- * opacidade termina antes do deslocamento para o cartão não ficar visível
- * espremido contra a borda no fim do trajeto.
+ * um quadro para o outro.
+ *
+ * ## Por que NÃO há `transform` aqui
+ *
+ * A primeira versão somava um `translateX(100%)`, e com ele o corpo andava o
+ * DOBRO: 250px pelo layout, porque a borda esquerda do cartão vai para a
+ * direita enquanto a largura encolhe, mais 250px pelo transform. A alça segue
+ * só o layout — ela é `absolute; left: 0` do cartão —, então o conteúdo
+ * disparava na frente e a alça parecia atrasada.
+ *
+ * O encolhimento da largura JÁ é o deslizamento: o corpo tem largura fixa e
+ * fica ancorado na borda esquerda da janela, que anda para a direita; a janela
+ * o recorta pela direita ao mesmo tempo. Um só movimento, uma só fonte, e a
+ * alça acompanha por construção em vez de por sincronia combinada.
  *
  * `pointer-events: none` faz o papel que o `display: none` fazia de útil:
  * painel fechado não recebe clique, mesmo durante a saída.
  */
 .anatomia.fechada .anat-corpo {
-  transform: translateX(100%);
   opacity: 0;
   pointer-events: none;
 }

@@ -130,7 +130,13 @@ export class Anatomia {
     if (!this.aberta) return;
     // Segue a nave em campo enquanto o jogador não escolher outra: abrir a
     // coluna e ver o conjunto de uma nave guardada seria desorientador.
-    if (!this.fixadoPeloJogador || !sim.state.fleet.includes(this.vendo)) this.vendo = sim.state.hull;
+    // `frotaDisponivel` e não `state.fleet`: é o acessor que o Hangar e o
+    // `selectHull` já usam, e o único que enxerga o modo de teste. Lendo o
+    // save cru, esta coluna oferecia só as naves compradas enquanto o Hangar
+    // listava 53 e deixava voar qualquer uma — e uma nave liberada pelo modo
+    // de teste caía fora da lista, o que zerava a escolha do jogador a cada
+    // repintura.
+    if (!this.fixadoPeloJogador || !sim.frotaDisponivel.includes(this.vendo)) this.vendo = sim.state.hull;
     // Publica para a grade do inventário: sem isto ela equipa sempre na nave
     // EM CAMPO, e a coluna passa a dizer uma coisa enquanto o clique faz outra.
     definirMontagem(this.vendo);
@@ -180,7 +186,7 @@ export class Anatomia {
   /** Escolhe qual nave montar. Só as que o jogador tem. */
   private seletor(): HTMLElement {
     const sim = this.sim;
-    const frota = sim.state.fleet
+    const frota = sim.frotaDisponivel
       .map((id) => HULL_BY_ID.get(id))
       .filter((h): h is NonNullable<typeof h> => !!h)
       .sort((a, b) => a.requiresSector - b.requiresSector || a.name.localeCompare(b.name));
