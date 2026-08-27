@@ -42,3 +42,6 @@
 11:09:03 [vite] changed tsconfig file detected: D:/bbb/game/server/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
 11:42:30 [vite] (client) page reload src/app/Game.ts
 11:42:59 [vite] (client) hmr update /src/styles/main.css
+11:51:33 [vite] (client) page reload src/ui/Login.ts
+11:52:19 [vite] (client) hmr update /src/styles/main.css
+11:55:12 [vite] (client) hmr update /src/styles/main.css

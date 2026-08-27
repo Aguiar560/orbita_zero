@@ -90,7 +90,9 @@ export class Login {
     clear(this.root).append(
       h('.login-fundo'),
       h('.login-caixa', {},
-        h('h1.login-titulo', { text: 'ÓRBITA ZERO' }),
+        // Sem título aqui: a arte de capa JÁ traz o logo, e escrever
+        // "ÓRBITA ZERO" de novo logo abaixo dele seria a mesma informação
+        // duas vezes, com a segunda em tipografia pior que a primeira.
         h('p.login-sub', {
           text: this.modo === 'criar'
             ? 'Uma conta guarda seu progresso e o leva para outros aparelhos.'
