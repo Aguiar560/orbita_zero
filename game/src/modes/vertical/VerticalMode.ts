@@ -2518,18 +2518,22 @@ export class VerticalMode {
     // Setor e onda, canto superior direito.
     const boss = this.enemies.items.find((e) => e.alive && e.boss);
 
-    // O MESMO módulo, espelhado. Dois cantos com a mesma gramática lêem como um
-    // instrumento só; dois desenhos diferentes leriam como duas interfaces.
-    const dirW = 132;
-    this.moduloHud(s, VIEW.w - pad - dirW, pad, dirW, 40, true);
-
-    s.text(`SETOR ${sim.state.run.sector}`, VIEW.w - pad - 10, pad + 17, {
-      size: 14, color: '#9fe8ff', align: 'right',
+    // Setor e onda ficam SEM moldura.
+    //
+    // Eu havia espelhado aqui o mesmo módulo da barra de vida, argumentando que
+    // dois cantos com a mesma gramática leem como um instrumento só. O argumento
+    // está certo para o lado esquerdo e errado para este: lá a moldura tem
+    // função, porque uma barra precisa de fundo para a parte vazia ser legível.
+    // Aqui dentro só há texto, e texto claro sobre o espaço já se lê sozinho —
+    // a moldura virava uma caixa opaca cobrindo o combate para não proteger
+    // nada. Simetria que custa área de jogo não é simetria, é enfeite.
+    s.text(`SETOR ${sim.state.run.sector}`, VIEW.w - pad, pad + 14, {
+      size: 14, color: '#9fe8ff', align: 'right', shadow: 'rgba(2,6,14,.9)',
     });
     // Com chefe em tela o nome já aparece na barra dele; repetir aqui só polui.
     if (!boss) {
-      s.text(sim.encounterLabel, VIEW.w - pad - 10, pad + 33, {
-        size: 10.5, color: '#7f95ad', align: 'right',
+      s.text(sim.encounterLabel, VIEW.w - pad, pad + 30, {
+        size: 10.5, color: '#7f95ad', align: 'right', shadow: 'rgba(2,6,14,.9)',
       });
     }
 

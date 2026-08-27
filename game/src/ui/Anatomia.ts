@@ -1,4 +1,4 @@
-import { bus } from '@app/Bus';
+import { bus, toast } from '@app/Bus';
 import { HULL_BY_ID } from '@data/hulls';
 import { SLOTS, SLOT_BY_ID } from '@data/items';
 import { rarityInfo } from '@data/rarity';
@@ -7,6 +7,8 @@ import type { Sim } from '@sim/index';
 import type { SlotId } from '@sim/types';
 import { buildItemCard } from './ItemCard';
 import { clear, h, spriteIcon } from './dom';
+import { arrasteServeAo, definirMontagem, encerrarArraste, itemArrastado } from './montagem';
+
 
 /**
  * Como os dez slots se distribuem ao redor do chassi.
@@ -74,6 +76,8 @@ export class Anatomia {
   constructor(private readonly sim: Sim) {
     this.root.append(this.alca, this.corpo);
     bus.on('state:changed', () => { this.dirty = true; });
+    // Repinta AGORA, sem passar pelo amostrador: ver `arraste:mudou` no Bus.
+    bus.on('arraste:mudou', () => { this.dirty = false; this.build(); });
     this.build();
   }
 
@@ -111,6 +115,9 @@ export class Anatomia {
     // Segue a nave em campo enquanto o jogador não escolher outra: abrir a
     // coluna e ver o conjunto de uma nave guardada seria desorientador.
     if (!this.fixadoPeloJogador || !sim.state.fleet.includes(this.vendo)) this.vendo = sim.state.hull;
+    // Publica para a grade do inventário: sem isto ela equipa sempre na nave
+    // EM CAMPO, e a coluna passa a dizer uma coisa enquanto o clique faz outra.
+    definirMontagem(this.vendo);
 
     const casco = HULL_BY_ID.get(this.vendo);
     if (!casco) return;
@@ -119,7 +126,7 @@ export class Anatomia {
     clear(this.corpo).append(
       h('.painel-secao', { text: 'ANATOMIA' }),
       this.seletor(),
-      h(`.anat-quadro${emCampo ? '.em-campo' : ''}`, {},
+      h(`.anat-quadro${emCampo ? '.em-campo' : ''}${itemArrastado() ? '.arrastando' : ''}`, {},
         h('.anat-coluna', {}, ...ESQUERDA.map((s) => this.soquete(s, 'esq'))),
         h('.anat-chassi', {},
           h('img.anat-chassi-art', { src: ART('chassi'), alt: '', 'aria-hidden': true, draggable: false }),
@@ -175,7 +182,9 @@ export class Anatomia {
     const item = nave?.equipped?.[slot];
     const def = SLOT_BY_ID.get(slot)!;
 
-    const cel = h(`.anat-soquete.${lado}${item ? '.cheio' : ''}`, {
+    // `.pode` marca os soquetes que aceitam o que está sendo arrastado. Sai da
+    // comparação de slot, e é o CSS que decide como isso aparece.
+    const cel = h(`.anat-soquete.${lado}${item ? '.cheio' : ''}${arrasteServeAo(slot) ? '.pode' : ''}`, {
       title: item ? undefined : `${def.name} — vazio\n${def.hint}`,
       style: item ? { '--rarity': rarityInfo(item.rarity).color } as Partial<CSSStyleDeclaration> : {},
     },
@@ -202,6 +211,34 @@ export class Anatomia {
         sim.touch();
       });
     }
+
+    // ── soltar uma peça aqui ────────────────────────────────────────────
+    //
+    // O soquete só aceita `preventDefault` no `dragover` quando a peça serve
+    // — e é esse `preventDefault`, e nada mais, que faz o navegador permitir
+    // a soltura. Recusar assim é melhor que aceitar e reclamar depois: o
+    // cursor já mostra "proibido" antes de o jogador soltar.
+    cel.addEventListener('dragover', (e) => {
+      if (!arrasteServeAo(slot)) return;
+      e.preventDefault();
+      cel.classList.add('alvo');
+    });
+    cel.addEventListener('dragleave', () => cel.classList.remove('alvo'));
+    cel.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cel.classList.remove('alvo');
+      const peca = itemArrastado();
+      encerrarArraste();
+      if (!peca || peca.slot !== slot) return;
+      // A recusa por ELEMENTO só aparece aqui, e não no `dragover`: ela é
+      // regra de jogo e precisa de explicação, não de um cursor proibido.
+      if (!sim.equip(peca.uid, this.vendo)) {
+        toast('Esta nave não aceita peça deste elemento', 'bad');
+        return;
+      }
+      this.esconderFicha();
+      sim.touch();
+    });
     return cel;
   }
 

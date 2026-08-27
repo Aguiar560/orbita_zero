@@ -5130,6 +5130,36 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .anat-slot-art { position: relative; z-index: 1; width: 28px; height: 28px; opacity: .34; }
 .anat-soquete:hover .anat-slot-art { opacity: .6; }
 
+/*
+ * Arraste de peça até o soquete.
+ *
+ * Enquanto uma peça está no ar, TODOS os soquetes que a aceitam acendem, e os
+ * outros apagam. É o oposto de só destacar aquele sob o cursor: o jogador
+ * precisa saber para onde a peça PODE ir antes de decidir para onde levá-la,
+ * e num boneco de dez soquetes achar o certo por tentativa é o gesto que se
+ * está tentando eliminar.
+ *
+ * A regra é só de SLOT. A de elemento não entra aqui porque é regra de jogo, e
+ * apagar um soquete por causa dela ensinaria "não cabe" quando o certo é
+ * "esta nave não aceita este elemento" — coisas diferentes, e a segunda
+ * merece a explicação que só uma mensagem dá.
+ */
+.anat-quadro.arrastando .anat-soquete { opacity: .3; transition: opacity .12s ease; }
+.anat-quadro.arrastando .anat-soquete.pode { opacity: 1; }
+.anat-quadro.arrastando .anat-soquete.pode .anat-moldura {
+  filter: drop-shadow(0 0 7px rgba(126, 232, 88, .85));
+}
+
+/* Sob o cursor: o alvo confirmado, mais forte que os apenas possíveis. */
+.anat-soquete.alvo { transform: scale(1.08); }
+.anat-soquete.alvo .anat-moldura {
+  filter: drop-shadow(0 0 11px rgba(126, 232, 88, 1));
+}
+
+/* A peça sendo arrastada some da grade só o bastante para não confundir. */
+.inv-cell[draggable="true"] { cursor: grab; }
+.inv-cell:active { cursor: grabbing; }
+
 .anat-ir { width: 100%; }
 
 /*

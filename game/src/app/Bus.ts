@@ -41,6 +41,16 @@ export interface GameEvents {
   'panel:open': { id: string };
   'panel:close': void;
   'laboratorio:changed': void;
+  /**
+   * Uma peça começou ou terminou de ser arrastada.
+   *
+   * Existe separado de `state:changed` porque este é AMOSTRADO: a Anatomia
+   * repinta no máximo a cada 0,2s, e um realce de soquete que aparece até
+   * duzentos milissegundos depois de o arraste começar chega tarde demais —
+   * o jogador já moveu o cursor. Arraste é entrada direta, como o clique da
+   * alça, e entrada direta não espera o relógio.
+   */
+  'arraste:mudou': void;
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;

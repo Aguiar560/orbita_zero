@@ -32,6 +32,7 @@ function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
 }
 
 import { h, spriteIcon } from '../dom';
+import { cascoEmMontagem, encerrarArraste, iniciarArraste } from '../montagem';
 import { buildItemCard } from '../ItemCard';
 import { encerrarSelecao, mirandoAlvo } from '../selecao';
 import type { Panel } from './types';
@@ -130,23 +131,10 @@ export class InventoryPanel implements Panel {
           onclick: () => { this.soFavoritos = !this.soFavoritos; sim.touch(); },
         }),
         h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
-        h('button.mini', {
-          text: 'Vender ≤ incomum',
-          onclick: () => {
-            const result = sim.sellBelow(2);
-            sim.touch();
-            if (result.itens > 0) toast(`${result.itens} itens vendidos · +${fmt(result.sucata)} sucata`, 'good', 'ui/icon_coin');
-          },
-        }),
-        h('button.mini.danger', {
-          text: 'Desmontar ≤ incomum',
-          onclick: () => {
-            const result = sim.salvageBelow(2);
-            sim.touch();
-            if (result.itens > 0) toast(`${result.itens} itens desmontados · ${resumoDeMateriais(result.materiais)}`, 'good', 'recurso/ferrita');
-            else toast('Nenhum item desmontado. Verifique favoritos e espaço no Armazém.', 'bad');
-          },
-        }),
+        // Os botões de VENDER e DESMONTAR em lote saíram: vão voltar como
+        // funcionalidade premium. A venda e o desmonte peça a peça continuam,
+        // por Alt+clique e Shift+clique — o que saiu é fazer os dois de uma vez
+        // na barra inteira, não a ação.
       ),
 
       h('p.muted.tiny.hint', { text: 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),
@@ -222,6 +210,18 @@ export class InventoryPanel implements Panel {
     if (item.set) cell.append(h('i.pip.set'));
     if (item.favorite) cell.append(h('i.pip.fav', { text: '★' }));
 
+    // Arrastável para os soquetes da Anatomia. O clique continua existindo e
+    // faz a mesma coisa — arrastar é o gesto que DIZ para onde vai, e é o que
+    // faltava para montar uma nave guardada sem adivinhar.
+    cell.setAttribute('draggable', 'true');
+    cell.addEventListener('dragstart', (e) => {
+      iniciarArraste(item);
+      e.dataTransfer?.setData('text/plain', item.uid);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      this.tip.classList.add('hidden');
+    });
+    cell.addEventListener('dragend', () => encerrarArraste());
+
     cell.addEventListener('mouseenter', () => this.showTip(sim, item, cell, gain));
     cell.addEventListener('mouseleave', () => this.tip.classList.add('hidden'));
     cell.addEventListener('click', (e) => {
@@ -253,7 +253,15 @@ export class InventoryPanel implements Panel {
         else toast(item.favorite
           ? 'Item favorito: desmarque antes de desmontar.'
           : 'Sem espaço para os novos materiais no Armazém.', 'bad');
-      } else sim.equip(item.uid);
+      } else {
+        // Na nave que a Anatomia está mostrando, não na que está voando.
+        // Eram sempre a mesma até a coluna ganhar seletor; desde então o
+        // jogador podia montar uma nave guardada e ver a peça ir para outra.
+        const casco = cascoEmMontagem() || sim.state.hull;
+        if (!sim.equip(item.uid, casco)) {
+          toast('Esta nave não aceita peça deste elemento', 'bad');
+        }
+      }
       this.tip.classList.add('hidden');
       sim.touch();
     });
