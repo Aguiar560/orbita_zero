@@ -309,3 +309,68 @@ export const CORPO_CELESTE = {
    */
   saturacaoDeVolta: 1.6,
 } as const;
+/**
+ * Rastro de motor do inimigo.
+ *
+ * ## Por que ele é neutro e não elemental
+ *
+ * A cor do elemento está ocupada dizendo uma coisa só: o que MACHUCA. Projétil
+ * hostil usa a cor do elemento e ganha um contorno escuro para se anunciar, e
+ * o anel elemental depende dessa leitura.
+ *
+ * Um rastro elemental competiria com ela — uma nave de raio deixaria um risco
+ * azul atrás de si igual ao tiro que ela dispara, e o jogador passaria a
+ * desviar de fumaça. Escapamento é escapamento: quente, apagado, curto.
+ *
+ * ## E por que ele sai da VELOCIDADE
+ *
+ * O rastro é emitido contra o movimento real da nave, não para baixo do
+ * sprite. Assim mergulho, senoide e deriva ganham a curva certa de graça, e uma
+ * nave parada não solta nada — motor que não empurra não tem escapamento.
+ */
+export const RASTRO_INIMIGO = {
+  /** Cor do escapamento. Quente e sem matiz de elemento. */
+  cor: '#ffd9a8',
+  /**
+   * Velocidade mínima para haver rastro, em unidades por segundo.
+   *
+   * 18 e não 40: medido em campo, um inimigo comum descendo anda a 33 unidades
+   * tipo: eles vagam, não navegam.
+   */
+  velocidadeMinima: 18,
+  /**
+   * Emissões por segundo, por nave.
+   *
+   * Uma por quadro (60/s) é o que o jogador faz, e ele é UM. Com dezessete
+   * inimigos em tela isso seriam mil partículas por segundo só de escapamento —
+   * e o custo não é o pool, é o desenho. 18/s dá rastro contínuo porque cada
+   * partícula vive uns 0,2s. 30/s dá cinco a seis vivas por nave, que é o que se
+   */
+  porSegundo: 30,
+  /** Abertura do jato, em radianos. Estreito: é escapamento, não explosão. */
+  abertura: 0.16,
+} as const;
+/**
+ * Quanto o casco INCLINA ao mudar de direção.
+ *
+ * O jogador já inclinava — `rotation: p.bank * 0.13` —, e o inimigo não: a
+ * rotação dele era zero fora dos que giram à deriva. O resultado é o que se vê
+ * em tela como nave "durona": ela desliza de lado sem se comprometer com o
+ * movimento, e o olho lê isso como sprite arrastado, não como nave voando.
+ *
+ * O valor é o MESMO do jogador de propósito. Se o inimigo inclinasse diferente,
+ * as duas metades da tela obedeceriam a físicas distintas — e é justamente a
+ * coerência entre elas que faz o espaço parecer um só.
+ *
+ * ## O sinal é invertido, e não é engano
+ *
+ * O sprite do inimigo já vem rotacionado 180° do atlas: ele aponta para baixo.
+ * Com o nariz em (0, 1) e a rotação do canvas sendo horária para ângulo
+ * positivo, girar +θ leva o nariz para a ESQUERDA. Para o nariz acompanhar um
+ * movimento para a direita, θ tem de ser negativo.
+ *
+ * O jogador não precisa disso porque o nariz dele é (0, -1) — o mesmo giro
+ * produz o efeito oposto, e é por isso que os dois usam sinais diferentes para
+ * dizer a mesma coisa.
+ */
+export const INCLINACAO_DE_CASCO = 0.13;

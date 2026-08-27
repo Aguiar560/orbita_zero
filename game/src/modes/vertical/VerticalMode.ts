@@ -1,6 +1,8 @@
 ﻿import { Rng, TAU, clamp, clamp01, damp, hashString, lerp } from '@core/math';
 import {
   ALFA_MAX_DE_CORPO, AMEACA, CENARIO_LUMINOSIDADE, CONGELAMENTO, CORPO_CELESTE,
+  INCLINACAO_DE_CASCO,
+  RASTRO_INIMIGO,
   POEIRA, PROFUNDIDADE, PROJETIL, VEU_DE_CENARIO,
 } from '@data/cenario';
 import {
@@ -956,6 +958,8 @@ export class VerticalMode {
         return;
       }
 
+      this.rastroDoInimigo(e, dt);
+
       if (!e.boss) this.enemyAttack(e, dt);
 
       // Colisão com a nave.
@@ -968,6 +972,45 @@ export class VerticalMode {
       }
     });
     this.enemies.compact();
+  }
+
+  /**
+   * Escapamento de motor, contra o movimento.
+   *
+   * Sai da VELOCIDADE e não da orientação do sprite: o inimigo aponta para
+   * baixo, mas mergulha em diagonal e a senoide vai de lado. Um jato colado no
+   * sprite apontaria para o lugar errado justamente quando o movimento é
+   * interessante de ver.
+   *
+   * O acumulador é por nave e não um relógio global: com um só, todas as naves
+   * emitiriam no mesmo quadro e o rastro sairia em pulsos sincronizados, que é
+   * a leitura de "efeito" em vez de "motor".
+   */
+  private rastroDoInimigo(e: Enemy, dt: number): void {
+    if (this.sim.state.settings.reduceEffects) return;
+
+    const v = Math.hypot(e.vx, e.vy);
+    if (v < RASTRO_INIMIGO.velocidadeMinima) {
+      // Zera para a nave que volta a acelerar não cuspir um jorro acumulado.
+      e.rastroTimer = 0;
+      return;
+    }
+
+    e.rastroTimer += dt;
+    const intervalo = 1 / RASTRO_INIMIGO.porSegundo;
+    if (e.rastroTimer < intervalo) return;
+    e.rastroTimer -= intervalo;
+
+    // A saída fica ATRÁS: um raio contra a direção do movimento. Escala com o
+    // tamanho da nave para o jato não brotar do meio de um casco grande.
+    const r = e.radius * e.scale * 0.55;
+    this.particles.thrust(
+      e.x - (e.vx / v) * r,
+      e.y - (e.vy / v) * r,
+      -e.vx / v, -e.vy / v,
+      RASTRO_INIMIGO.cor,
+      RASTRO_INIMIGO.abertura,
+    );
   }
 
   private moveEnemy(e: Enemy, dt: number): void {
@@ -2213,7 +2256,7 @@ export class VerticalMode {
         const idx = clamp(Math.round(p.bank * 2) + 2, 0, 4);
         sprite = hull.bank[idx]!;
       }
-      s.sprite(sprite, p.x, p.y, { scale: this.sim.escalaDoCasco(hull.id), alpha, rotation: p.bank * 0.13 });
+      s.sprite(sprite, p.x, p.y, { scale: this.sim.escalaDoCasco(hull.id), alpha, rotation: p.bank * INCLINACAO_DE_CASCO });
     }
 
     // Duas travas, e a do Laboratório continua mandando lá dentro: ela existe
@@ -2251,7 +2294,15 @@ export class VerticalMode {
 
       const opts: Parameters<Surface['sprite']>[3] = {
         scale: e.scale,
-        rotation: e.def.move === 'deriva' ? e.spin : 0,
+        // Inclina para o lado do movimento, como o jogador. `deriva` continua
+        // girando livre: mina e destroço não têm frente, então inclinar não
+        // diria nada sobre para onde eles vão.
+        //
+        // O sinal negativo vem de o sprite já apontar para baixo — ver
+        // `INCLINACAO_DE_CASCO`.
+        rotation: e.def.move === 'deriva'
+          ? e.spin
+          : -e.facing * INCLINACAO_DE_CASCO,
         ...(e.hitFlash > 0 ? { tint: '#ffffff', tintAlpha: 0.8 } : {}),
       };
 

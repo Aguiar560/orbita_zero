@@ -73,6 +73,8 @@ export interface Bullet {
 }
 
 export interface Enemy {
+  /** Acumulador do rastro de motor. Ver `RASTRO_INIMIGO`. */
+  rastroTimer: number;
   alive: boolean;
   id: number;
   def: EnemyDef;
@@ -209,7 +211,7 @@ export interface Player {
 export function createBulletPool(capacity = 1400): Pool<Bullet> {
   return new Pool<Bullet>(
     () => ({
-      alive: false, x: 0, y: 0, vx: 0, vy: 0, radius: 4,
+      alive: false, x: 0, y: 0, vx: 0, vy: 0, rastroTimer: 0, radius: 4,
       damage: { normal: 1, elementais: {} }, damageTotal: 1, friendly: true,
       sprite: '', color: '#fff', scale: 1, pierce: 0, splash: 0, homing: 0,
       crit: false, critElem: false, element: 'padrao', life: 0, hitId: -1,
@@ -233,7 +235,7 @@ export function createEnemyPool(capacity = 260): Pool<Enemy> {
     () => ({
       alive: false, id: 0, def: null as unknown as EnemyDef, boss: null,
       x: 0, y: 0, vx: 0, vy: 0, hp: 1, maxHp: 1, radius: 16, scale: 1, hitbox: null, damage: 1, share: 0, counts: true,
-      time: 0, fireTimer: 0, pressao: 1, hitFlash: 0, spin: 0, anchorX: 0, anchorY: 0,
+      time: 0, fireTimer: 0, pressao: 1, hitFlash: 0, spin: 0, anchorX: 0, anchorY: 0, rastroTimer: 0,
       entering: true, phase: 0, summonTimer: 0, wobble: 0, facing: 0,
       invulnerable: false, barrierActive: false, challengeClone: false,
     }),

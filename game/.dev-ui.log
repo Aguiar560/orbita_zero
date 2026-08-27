@@ -61,3 +61,10 @@
 13:03:22 [vite] (client) page reload src/ui/Shell.ts
 13:03:22 [vite] (client) page reload src/ui/PerfilMenu.ts
 13:03:22 [vite] (client) hmr update /src/styles/main.css
+13:26:43 [vite] (client) page reload src/data/cenario.ts
+13:26:43 [vite] (client) page reload src/modes/vertical/entities.ts
+13:26:43 [vite] (client) page reload src/modes/vertical/VerticalMode.ts
+13:27:10 [vite] (client) page reload src/modes/vertical/entities.ts
+13:29:35 [vite] (client) page reload src/data/cenario.ts
+13:33:11 [vite] (client) page reload src/data/cenario.ts
+13:33:11 [vite] (client) page reload src/modes/vertical/VerticalMode.ts
