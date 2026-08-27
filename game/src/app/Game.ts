@@ -6,13 +6,14 @@ import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
 import { allowSaving, loadFromStorage } from '@sim/state';
+import { toast } from './Bus';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
 import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
 import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
-import { reconciliar, subirSave } from './nuvem';
+import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 
 /**
@@ -104,7 +105,7 @@ export class Game {
     // `visibilitychange` e não `beforeunload`: este último não roda no celular,
     // que é onde fechar a aba sem avisar é a regra e não a exceção.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') void subirSave(this.sim.state);
+      if (document.visibilityState === 'hidden') void this.subirTratandoConflito(true);
     });
 
     window.addEventListener('resize', this.layout);
@@ -193,6 +194,39 @@ export class Game {
     }
   }
 
+  /**
+   * Sobe o save e resolve o conflito, se houver.
+   *
+   * Conflito quer dizer que OUTRO dispositivo gravou desde a última vez que
+   * este falou com o servidor. Gravar por cima apagaria aquele progresso sem
+   * ninguém notar, então o servidor recusa e devolve o que está guardado.
+   *
+   * A decisão é por TEMPO JOGADO. Se o de lá está mais adiantado, este cliente
+   * ADOTA: quem estava jogando aqui provavelmente acabou de abrir e ainda não
+   * fez nada, e é melhor perder um minuto do que uma sessão inteira do outro
+   * dispositivo. Se o daqui está mais adiantado, sobe de novo — agora com a
+   * versão certa, então passa.
+   */
+  private async subirTratandoConflito(saindo = false): Promise<void> {
+    const r = await subirSave(this.sim.state, saindo);
+    if (r.fase !== 'conflito') return;
+
+    const deLa = r.doServidor;
+    if (deLa && progressoDe(deLa) > progressoDe(this.sim.state)) {
+      allowSaving();
+      this.sim.state = deLa;
+      this.sim.touch();
+      this.sim.save();
+      this.vertical.refreshPlayer(true);
+      toast('Progresso mais recente encontrado em outro dispositivo.', 'info');
+      return;
+    }
+
+    // O daqui é o mais adiantado. A versão já foi atualizada pela resposta do
+    // conflito, então esta subida encontra a base certa.
+    await subirSave(this.sim.state);
+  }
+
   // ── laço ──────────────────────────────────────────────────────────────────
 
   private readonly tick = (dt: number): void => {
@@ -223,7 +257,7 @@ export class Game {
     this.relogioDaNuvem = 0;
     // Sem `await`: a subida é de fundo e não pode segurar um quadro. Falha fica
     // registrada em `nuvem.ultimoErro` e a próxima tentativa vem sozinha.
-    void subirSave(this.sim.state);
+    void this.subirTratandoConflito();
     // As marcas do placar sobem no mesmo ritmo, e so as que MUDARAM: reenviar
     // quarenta marcas iguais a cada ciclo gastaria a cota de escrita do D1
     // para nao mudar nada.

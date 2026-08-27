@@ -116,3 +116,8 @@
 17:26:19 [vite] (client) page reload src/sim/ranking-demo.ts
 17:27:37 [vite] (client) hmr update /src/styles/main.css
 17:27:37 [vite] (client) hmr update /src/styles/main.css
+17:32:26 [vite] (client) page reload src/modes/vertical/VerticalMode.ts
+17:33:56 [vite] (client) page reload src/app/nuvem.ts
+17:35:47 [vite] (client) page reload src/app/Game.ts
+17:36:48 [vite] (client) page reload src/app/nuvem.ts
+17:36:48 [vite] (client) page reload src/app/Game.ts

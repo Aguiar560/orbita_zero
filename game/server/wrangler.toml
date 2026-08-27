@@ -7,7 +7,10 @@ compatibility_date = "2026-08-01"
 # Worker, e essa é a vantagem de verificar o token com chave pública.
 [vars]
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
-ORIGENS = "http://localhost:5180,https://orbita-zero.vercel.app"
+# O terceiro e o padrao dos deploys de PREVIEW da Vercel, que ganham um host
+# por build. Exige o PREFIXO do projeto: `https://*.vercel.app` deixaria
+# qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
+ORIGENS = "http://localhost:5180,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
 
 [[d1_databases]]
 binding = "DB"
