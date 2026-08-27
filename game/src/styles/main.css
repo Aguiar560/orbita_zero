@@ -5523,7 +5523,20 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .anat-corpo {
   width: var(--anat-larg, 300px);
-  transition: opacity .18s ease;
+  /*
+   * SEM transição própria.
+   *
+   * Havia um fade de 180ms aqui, contra os 260ms da largura. Duas duracoes
+   * diferentes no mesmo gesto criam uma assimetria que so aparece num dos
+   * sentidos: FECHANDO, o cartao ficava invisivel aos 180ms e a alca seguia
+   * andando ate os 260 — a alca parecia atrasada porque estava viajando
+   * sozinha no ultimo terco. ABRINDO, o cartao ficava opaco aos 180ms enquanto
+   * ainda expandia, e nada sobrava para se notar.
+   *
+   * A janela ja recorta o cartao ate o nada quando a largura chega a zero, e o
+   * fade nao acrescentava nada que o recorte nao fizesse. Uma propriedade
+   * animada, uma duracao: nao ha o que dessincronizar.
+   */
 }
 /*
  * Era `display: none`, que não anima — e é por isso que o painel aparecia de
@@ -5545,10 +5558,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * `pointer-events: none` faz o papel que o `display: none` fazia de útil:
  * painel fechado não recebe clique, mesmo durante a saída.
  */
-.anatomia.fechada .anat-corpo {
-  opacity: 0;
-  pointer-events: none;
-}
+.anatomia.fechada .anat-corpo { pointer-events: none; }
 
 /*
  * A alça mora no TOPO, colada na quina do cartão — não no meio da trilha.
