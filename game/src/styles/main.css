@@ -6524,13 +6524,38 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .camada[data-tela='matriz'] .camada-caixa,
 .camada[data-tela='frota'] .camada-caixa,
 .camada[data-tela='ranking'] .camada-caixa,
-.camada[data-tela='laboratorio'] .camada-caixa,
-/* Ajustes e MENOR que as outras telas, de proposito.
+.camada[data-tela='laboratorio'] .camada-caixa {
+  width: min(1500px, 99vw);
+  height: min(900px, 98vh);
+  max-height: none;
+  overflow: hidden;
+  padding: 5px 20px 14px;
+  gap: 7px;
+  border: 24px solid transparent !important;
+  border-image: url('/assets/ui/provacao/frames/prv_moldura_externa.png') 84 fill stretch !important;
+  border-radius: 0;
+  clip-path: none;
+  background: rgba(3, 7, 13, .97);
+  box-shadow: 0 28px 100px rgba(0, 0, 0, .82);
+}
+
+/* Ajustes é MENOR que as outras telas, e por isso tem regra PRÓPRIA.
  *
- * As demais sao paineis de TRABALHO — a Galaxia tem mapa, a Fabricacao tem tres
- * colunas — e ocupam a tela porque precisam. Configuracao e uma lista de
- * interruptores: esticada a 1500px, cada linha vira um rotulo na esquerda e um
- * controle a um palmo de distancia na direita, e o olho perde o par. */
+ * ## O erro que esta separação conserta
+ *
+ * `.menu-settings` era o último seletor de uma LISTA compartilhada com Galáxia,
+ * Armazém, Missões, Matriz, Hangar, Ranking e Laboratório. Encolher "só os
+ * ajustes" ali encolheu as oito telas de uma vez — e o pior é que o bloco lê
+ * como se fosse só dos ajustes se a leitura começar na última linha da lista.
+ *
+ * Regra separada custa cinco linhas repetidas e não tem esse modo de falhar.
+ *
+ * ## Por que menor
+ *
+ * As outras são painéis de TRABALHO — a Galáxia tem mapa, a Fabricação tem três
+ * colunas — e ocupam a tela porque precisam. Configuração é uma lista de
+ * interruptores: esticada a 1500px, o rótulo fica na esquerda e o controle a um
+ * palmo na direita, e o olho perde o par. */
 .menu-settings {
   width: min(880px, 94vw);
   height: min(620px, 90vh);

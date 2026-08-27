@@ -84,18 +84,45 @@ describe('configurações', () => {
     expect(PAINEL).toContain("if (this.aba === 'teste' && !ehAdmin())");
   });
 
-  it('o painel de ajustes é menor que os de trabalho', () => {
-    // Configuração é uma lista de interruptores. Esticada à largura da Galáxia,
-    // o rótulo fica na esquerda e o controle a um palmo na direita, e o olho
-    // perde o par.
+  /**
+   * A regra que DEFINE a largura dos ajustes.
+   *
+   * Achar por `lastIndexOf('.menu-settings {')` não serve: existe um
+   * `.menu-settings` mais abaixo, dentro de um `@media (max-width: 760px)`, que
+   * só mexe em borda e recuo. Procurar o último dá esse, que não tem `width`.
+   */
+  const regraDeTamanho = (): { antes: string; largura: number } | null => {
     const css = fonte('src/styles/main.css');
-    const bloco = css.slice(css.indexOf('.menu-settings {'), css.indexOf('.menu-settings {') + 200);
-    const largura = bloco.match(/width: min\((\d+)px/);
-    expect(largura, 'a largura do painel sumiu').not.toBeNull();
-    expect(Number(largura![1]), 'ajustes voltou ao tamanho das telas de trabalho')
+    for (let i = css.indexOf('.menu-settings {'); i >= 0; i = css.indexOf('.menu-settings {', i + 1)) {
+      const bloco = css.slice(i, css.indexOf('}', i));
+      const m = bloco.match(/width: min\((\d+)px/);
+      if (m) return { antes: css.slice(Math.max(0, i - 400), i).trimEnd(), largura: Number(m[1]) };
+    }
+    return null;
+  };
+
+  it('o painel de ajustes é menor que os de trabalho', () => {
+    const r = regraDeTamanho();
+    expect(r, 'a regra de largura dos ajustes sumiu').not.toBeNull();
+    expect(r!.largura, 'ajustes voltou ao tamanho das telas de trabalho')
       .toBeLessThanOrEqual(1000);
   });
 
+  it('a regra de tamanho dos ajustes não é compartilhada', () => {
+    /*
+     * O defeito que isto pega, e ele já aconteceu: `.menu-settings` era o ÚLTIMO
+     * seletor de uma LISTA com Galáxia, Armazém, Missões, Matriz, Hangar,
+     * Ranking e Laboratório. Encolher "só os ajustes" encolheu as oito telas.
+     *
+     * E o bloco lê como se fosse só dos ajustes quando a leitura começa na
+     * última linha da lista — foi exatamente assim que passou.
+     */
+    const r = regraDeTamanho();
+    expect(r).not.toBeNull();
+    // Vírgula antes da regra quer dizer que ela é o rabo de uma lista.
+    expect(r!.antes.endsWith(','), 'a regra dos ajustes voltou a ser compartilhada')
+      .toBe(false);
+  });
   it('escala e resolução têm faixa saneada na carga', () => {
     // Zoom 0 some com a tela; qualidade 20 tenta alocar um canvas gigante. Save
     // adulterado ou de versão futura não pode chegar nesses valores.
