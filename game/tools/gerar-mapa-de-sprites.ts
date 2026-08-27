@@ -38,12 +38,14 @@ interface Entrada {
   sprite: string;
   papel: 'jogador' | 'inimigo' | 'chefe';
   nome: string;
+  /** Decide o pareamento por cor em `preparar-naves.mjs`. */
+  elemento: string;
 }
 
 const entradas: Entrada[] = [
-  ...HULLS.map((h) => ({ id: h.id, sprite: h.sprite, papel: 'jogador' as const, nome: h.name })),
-  ...ALL_ENEMIES.map((e) => ({ id: e.id, sprite: e.sprite, papel: 'inimigo' as const, nome: e.name })),
-  ...BOSSES.map((b) => ({ id: b.id, sprite: b.sprite, papel: 'chefe' as const, nome: b.name })),
+  ...HULLS.map((h) => ({ id: h.id, sprite: h.sprite, papel: 'jogador' as const, nome: h.name, elemento: h.element })),
+  ...ALL_ENEMIES.map((e) => ({ id: e.id, sprite: e.sprite, papel: 'inimigo' as const, nome: e.name, elemento: e.element })),
+  ...BOSSES.map((b) => ({ id: b.id, sprite: b.sprite, papel: 'chefe' as const, nome: b.name, elemento: b.element })),
 ].filter((x): x is Entrada => !!x.sprite);
 
 // Um id pode aparecer duas vezes se alguém repetir — avisa em vez de perder.
@@ -55,7 +57,7 @@ for (const e of entradas) {
 }
 
 const mapa = Object.fromEntries([...vistos.values()].map((e) => [e.id, {
-  sprite: e.sprite, papel: e.papel, nome: e.nome,
+  sprite: e.sprite, papel: e.papel, nome: e.nome, elemento: e.elemento,
 }]));
 
 const saida = path.join(raiz, 'tools', 'mapa-de-sprites.json');

@@ -85,7 +85,7 @@ const BOSSES_BASE: readonly BossDef[] = [
     id: 'sentinela_vazia', element: 'raio',
     name: 'Sentinela Vazia',
     title: 'Guardiã sem tripulação, sem ordens e sem trégua',
-    sprite: 'enemy/wraith_c',
+    sprite: 'chefe/sentinela_vazia',
     scale: 1.6, radius: 56, hp: 1.15, dano: 2.0, reward: 54,
     bulletSprite: 'shot/void_heavy',blast: 'blast/void',
     phases: [
@@ -99,7 +99,7 @@ const BOSSES_BASE: readonly BossDef[] = [
     id: 'colmeia_verdante', element: 'quimico',
     name: 'Colmeia Verdante',
     title: 'Não é uma nave. É um ninho.',
-    sprite: 'enemy/verdant_c',
+    sprite: 'chefe/colmeia_verdante',
     scale: 1.7, radius: 60, hp: 1.22, dano: 1.8, reward: 66,
     bulletSprite: 'shot/bio_orb',blast: 'blast/void',
     phases: [
@@ -127,7 +127,7 @@ const BOSSES_BASE: readonly BossDef[] = [
     id: 'mina_prima', element: 'fogo',
     name: 'Mina Prima',
     title: 'A primeira que colocaram aqui. Ainda armada.',
-    sprite: 'prop/mine_spike',
+    sprite: 'chefe/mina_prima',
     scale: 1.8, radius: 62, hp: 1.40, dano: 2.6, reward: 96,
     bulletSprite: 'shot/pyro_light',blast: 'blast/fire',
     phases: [
@@ -252,6 +252,18 @@ const NOVOS_CHEFES: readonly BossDef[] = BOSS_EXPANSION.map((spec, index) => {
 });
 
 /** Trinta chefes: exatamente um para cada galáxia escrita da campanha. */
+/**
+ * Tres chefes ganharam chave de sprite PROPRIA em 2026-08-27.
+ *
+ * Eles dividiam sprite com inimigos comuns — `sentinela_vazia` com `baluarte`,
+ * `colmeia_verdante` com `serafim`, `mina_prima` com `sentinela`. Enquanto a
+ * arte vinha de um pack compartilhado isso passava como reaproveitamento; ao
+ * instalar arte AUTORAL por id, virou defeito: as duas artes disputavam a mesma
+ * chave e o chefe acabava com a silhueta de um inimigo de onda.
+ *
+ * Chave propria custa uma entrada a mais no atlas e resolve — um chefe que
+ * parece inimigo comum e o oposto do que um chefe precisa comunicar.
+ */
 export const BOSSES: readonly BossDef[] = [...BOSSES_BASE, ...NOVOS_CHEFES];
 
 export const BOSS_BY_ID = new Map(BOSSES.map((b) => [b.id, b]));

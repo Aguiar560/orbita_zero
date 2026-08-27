@@ -2,756 +2,907 @@
   "void_canhao": {
     "sprite": "void/nave/casco_cheio",
     "papel": "jogador",
-    "nome": "Vetor VC-1"
+    "nome": "Vetor VC-1",
+    "elemento": "raio"
   },
   "void_zapper": {
     "sprite": "void/nave/casco_cheio",
     "papel": "jogador",
-    "nome": "Vetor VZ-3"
+    "nome": "Vetor VZ-3",
+    "elemento": "cosmico"
   },
   "void_foguete": {
     "sprite": "void/nave/casco_cheio",
     "papel": "jogador",
-    "nome": "Vetor VF-5"
+    "nome": "Vetor VF-5",
+    "elemento": "fogo"
   },
   "void_canhaozao": {
     "sprite": "void/nave/casco_cheio",
     "papel": "jogador",
-    "nome": "Vetor VX-9"
+    "nome": "Vetor VX-9",
+    "elemento": "padrao"
   },
   "aurora1": {
     "sprite": "ship/aurora_a",
     "papel": "jogador",
-    "nome": "Aurora Mk I"
+    "nome": "Aurora Mk I",
+    "elemento": "raio"
   },
   "aurora2": {
     "sprite": "ship/aurora_b",
     "papel": "jogador",
-    "nome": "Aurora Mk II"
+    "nome": "Aurora Mk II",
+    "elemento": "raio"
   },
   "ignis1": {
     "sprite": "ship/ignis_a",
     "papel": "jogador",
-    "nome": "Ignis Mk I"
+    "nome": "Ignis Mk I",
+    "elemento": "fogo"
   },
   "aurora3": {
     "sprite": "ship/aurora_c",
     "papel": "jogador",
-    "nome": "Aurora Mk III"
+    "nome": "Aurora Mk III",
+    "elemento": "gelo"
   },
   "ignis2": {
     "sprite": "ship/ignis_b",
     "papel": "jogador",
-    "nome": "Ignis Mk II"
+    "nome": "Ignis Mk II",
+    "elemento": "fogo"
   },
   "falcao_b": {
     "sprite": "sr/player/player_b_m",
     "papel": "jogador",
-    "nome": "Falcão Azul"
+    "nome": "Falcão Azul",
+    "elemento": "gelo"
   },
   "falcao_r": {
     "sprite": "sr/player/player_r_m",
     "papel": "jogador",
-    "nome": "Falcão Rubro"
+    "nome": "Falcão Rubro",
+    "elemento": "fogo"
   },
   "aurora4": {
     "sprite": "ship/aurora_d",
     "papel": "jogador",
-    "nome": "Aurora Mk IV"
+    "nome": "Aurora Mk IV",
+    "elemento": "gelo"
   },
   "ignis4": {
     "sprite": "ship/ignis_d",
     "papel": "jogador",
-    "nome": "Ignis Mk IV"
+    "nome": "Ignis Mk IV",
+    "elemento": "fogo"
   },
   "aurora_x": {
     "sprite": "ship/aurora_c",
     "papel": "jogador",
-    "nome": "Aurora Zênite"
+    "nome": "Aurora Zênite",
+    "elemento": "cosmico"
   },
   "prisma_raio": {
     "sprite": "nave/frio_0",
     "papel": "jogador",
-    "nome": "Prisma Arco"
+    "nome": "Prisma Arco",
+    "elemento": "raio"
   },
   "prisma_gelo": {
     "sprite": "nave/frio_1",
     "papel": "jogador",
-    "nome": "Prisma Aegis"
+    "nome": "Prisma Aegis",
+    "elemento": "gelo"
   },
   "prisma_padrao": {
     "sprite": "nave/frio_2",
     "papel": "jogador",
-    "nome": "Prisma Áureo"
+    "nome": "Prisma Áureo",
+    "elemento": "padrao"
   },
   "prisma_fogo": {
     "sprite": "nave/quente_0",
     "papel": "jogador",
-    "nome": "Prisma Pirônio"
+    "nome": "Prisma Pirônio",
+    "elemento": "fogo"
   },
   "prisma_cosmico": {
     "sprite": "nave/quente_1",
     "papel": "jogador",
-    "nome": "Prisma Vazio"
+    "nome": "Prisma Vazio",
+    "elemento": "cosmico"
   },
   "prisma_quimico": {
     "sprite": "nave/quente_2",
     "papel": "jogador",
-    "nome": "Prisma Verdete"
+    "nome": "Prisma Verdete",
+    "elemento": "quimico"
   },
   "nucleo_vektor": {
     "sprite": "nave/frio_0",
     "papel": "jogador",
-    "nome": "Núcleo Vektor"
+    "nome": "Núcleo Vektor",
+    "elemento": "raio"
   },
   "lanca_rubra": {
     "sprite": "nave/quente_0",
     "papel": "jogador",
-    "nome": "Lança Rubra"
+    "nome": "Lança Rubra",
+    "elemento": "fogo"
   },
   "baluarte_glacial": {
     "sprite": "sr/player/player_b_m",
     "papel": "jogador",
-    "nome": "Baluarte Glacial"
+    "nome": "Baluarte Glacial",
+    "elemento": "gelo"
   },
   "sopro_astral": {
     "sprite": "nave/quente_1",
     "papel": "jogador",
-    "nome": "Sopro Astral"
+    "nome": "Sopro Astral",
+    "elemento": "cosmico"
   },
   "bastiao_8": {
     "sprite": "s2/player/p_11",
     "papel": "jogador",
-    "nome": "Bastião 8"
+    "nome": "Bastião 8",
+    "elemento": "cosmico"
   },
   "centuriao_atlas": {
     "sprite": "s2/player/p_22",
     "papel": "jogador",
-    "nome": "Centurião Atlas"
+    "nome": "Centurião Atlas",
+    "elemento": "fogo"
   },
   "ariete_vesper": {
     "sprite": "s2/player/p_24",
     "papel": "jogador",
-    "nome": "Aríete Vesper"
+    "nome": "Aríete Vesper",
+    "elemento": "padrao"
   },
   "lamina_kheiron": {
     "sprite": "s2/player/p_62",
     "papel": "jogador",
-    "nome": "Lâmina Kheiron"
+    "nome": "Lâmina Kheiron",
+    "elemento": "raio"
   },
   "peregrina_sol": {
     "sprite": "s2/player/n_9",
     "papel": "jogador",
-    "nome": "Peregrina do Sol"
+    "nome": "Peregrina do Sol",
+    "elemento": "fogo"
   },
   "lince_polar": {
     "sprite": "s2/player/n_11",
     "papel": "jogador",
-    "nome": "Lince Polar"
+    "nome": "Lince Polar",
+    "elemento": "gelo"
   },
   "cerbero_azul": {
     "sprite": "s2/player/n_15",
     "papel": "jogador",
-    "nome": "Cérbero Azul"
+    "nome": "Cérbero Azul",
+    "elemento": "raio"
   },
   "vipera_helix": {
     "sprite": "s2/player/n_21",
     "papel": "jogador",
-    "nome": "Víbora Helix"
+    "nome": "Víbora Helix",
+    "elemento": "padrao"
   },
   "draco_viridiano": {
     "sprite": "s2/player/d_6",
     "papel": "jogador",
-    "nome": "Draco Viridiano"
+    "nome": "Draco Viridiano",
+    "elemento": "quimico"
   },
   "oraculo_safira": {
     "sprite": "s2/player/d_12",
     "papel": "jogador",
-    "nome": "Oráculo Safira"
+    "nome": "Oráculo Safira",
+    "elemento": "gelo"
   },
   "talon_ignifero": {
     "sprite": "s2/player/d_16",
     "papel": "jogador",
-    "nome": "Talon Ignífero"
+    "nome": "Talon Ignífero",
+    "elemento": "fogo"
   },
   "arraia_boreal": {
     "sprite": "s2/player/d_17",
     "papel": "jogador",
-    "nome": "Arraia Boreal"
+    "nome": "Arraia Boreal",
+    "elemento": "gelo"
   },
   "martelo_helios": {
     "sprite": "s2/player/d_19",
     "papel": "jogador",
-    "nome": "Martelo Hélios"
+    "nome": "Martelo Hélios",
+    "elemento": "fogo"
   },
   "asa_carmim": {
     "sprite": "s2/player/d_23",
     "papel": "jogador",
-    "nome": "Asa Carmim"
+    "nome": "Asa Carmim",
+    "elemento": "padrao"
   },
   "condor_magma": {
     "sprite": "s2/player/d_32",
     "papel": "jogador",
-    "nome": "Condor Magma"
+    "nome": "Condor Magma",
+    "elemento": "fogo"
   },
   "navegante_nox": {
     "sprite": "s2/player/d_35",
     "papel": "jogador",
-    "nome": "Navegante Nox"
+    "nome": "Navegante Nox",
+    "elemento": "cosmico"
   },
   "quimera_verde": {
     "sprite": "s2/player/d_39",
     "papel": "jogador",
-    "nome": "Quimera Verde"
+    "nome": "Quimera Verde",
+    "elemento": "quimico"
   },
   "seta_quantica": {
     "sprite": "s2/player/d_49",
     "papel": "jogador",
-    "nome": "Seta Quântica"
+    "nome": "Seta Quântica",
+    "elemento": "raio"
   },
   "rapina_ambar": {
     "sprite": "s2/player/d_50",
     "papel": "jogador",
-    "nome": "Rapina Âmbar"
+    "nome": "Rapina Âmbar",
+    "elemento": "fogo"
   },
   "leviata_ferro": {
     "sprite": "s2/player/d_52",
     "papel": "jogador",
-    "nome": "Leviatã de Ferro"
+    "nome": "Leviatã de Ferro",
+    "elemento": "padrao"
   },
   "tridente_violeta": {
     "sprite": "s2/player/d_55",
     "papel": "jogador",
-    "nome": "Tridente Violeta"
+    "nome": "Tridente Violeta",
+    "elemento": "cosmico"
   },
   "aurora_negra": {
     "sprite": "s2/player/d_60",
     "papel": "jogador",
-    "nome": "Aurora Negra"
+    "nome": "Aurora Negra",
+    "elemento": "cosmico"
   },
   "eclipse_rubro": {
     "sprite": "s2/player/d_64",
     "papel": "jogador",
-    "nome": "Eclipse Rubro"
+    "nome": "Eclipse Rubro",
+    "elemento": "cosmico"
   },
   "nemesis_alada": {
     "sprite": "s2/player/legacy_p_16",
     "papel": "jogador",
-    "nome": "Nêmesis Alada"
+    "nome": "Nêmesis Alada",
+    "elemento": "cosmico"
   },
   "arca_turquesa": {
     "sprite": "s2/player/legacy_p_60",
     "papel": "jogador",
-    "nome": "Arca Turquesa"
+    "nome": "Arca Turquesa",
+    "elemento": "quimico"
   },
   "vanguarda_dez": {
     "sprite": "s2/player/legacy_n_10",
     "papel": "jogador",
-    "nome": "Vanguarda Dez"
+    "nome": "Vanguarda Dez",
+    "elemento": "raio"
   },
   "fornalha_dezenove": {
     "sprite": "s2/player/legacy_n_19",
     "papel": "jogador",
-    "nome": "Fornalha Dezenove"
+    "nome": "Fornalha Dezenove",
+    "elemento": "fogo"
   },
   "custodio_vinte_tres": {
     "sprite": "s2/player/legacy_n_23",
     "papel": "jogador",
-    "nome": "Custódio Vinte e Três"
+    "nome": "Custódio Vinte e Três",
+    "elemento": "padrao"
   },
   "horizonte_trinta": {
     "sprite": "s2/player/legacy_n_30",
     "papel": "jogador",
-    "nome": "Horizonte Trinta"
+    "nome": "Horizonte Trinta",
+    "elemento": "quimico"
   },
   "dardo": {
     "sprite": "enemy/verdant_a",
     "papel": "inimigo",
-    "nome": "Dardo"
+    "nome": "Dardo",
+    "elemento": "quimico"
   },
   "lanceiro": {
     "sprite": "enemy/wraith_a",
     "papel": "inimigo",
-    "nome": "Lanceiro"
+    "nome": "Lanceiro",
+    "elemento": "cosmico"
   },
   "tecelao": {
     "sprite": "enemy/verdant_b",
     "papel": "inimigo",
-    "nome": "Tecelão"
+    "nome": "Tecelão",
+    "elemento": "quimico"
   },
   "enxame": {
     "sprite": "sr/enemy/enemy_1_g_m",
     "papel": "inimigo",
-    "nome": "Enxame"
+    "nome": "Enxame",
+    "elemento": "quimico"
   },
   "baluarte": {
     "sprite": "enemy/wraith_c",
     "papel": "inimigo",
-    "nome": "Baluarte"
+    "nome": "Baluarte",
+    "elemento": "cosmico"
   },
   "ferrao": {
     "sprite": "sr/enemy/enemy_2_r_m",
     "papel": "inimigo",
-    "nome": "Ferrão"
+    "nome": "Ferrão",
+    "elemento": "fogo"
   },
   "mina": {
     "sprite": "mina/a_0",
     "papel": "inimigo",
-    "nome": "Mina Flutuante"
+    "nome": "Mina Flutuante",
+    "elemento": "fogo"
   },
   "asteroide": {
     "sprite": "rock/g_0",
     "papel": "inimigo",
-    "nome": "Asteroide"
+    "nome": "Asteroide",
+    "elemento": "padrao"
   },
   "cometa": {
     "sprite": "hazard/comet_fire",
     "papel": "inimigo",
-    "nome": "Cometa"
+    "nome": "Cometa",
+    "elemento": "fogo"
   },
   "serafim": {
     "sprite": "enemy/verdant_c",
     "papel": "inimigo",
-    "nome": "Serafim"
+    "nome": "Serafim",
+    "elemento": "quimico"
   },
   "espectro": {
     "sprite": "enemy/wraith_b",
     "papel": "inimigo",
-    "nome": "Espectro"
+    "nome": "Espectro",
+    "elemento": "cosmico"
   },
   "sentinela": {
     "sprite": "prop/mine_spike",
     "papel": "inimigo",
-    "nome": "Sentinela"
+    "nome": "Sentinela",
+    "elemento": "raio"
   },
   "klaed_batedor": {
     "sprite": "void/klaed/batedor_base",
     "papel": "inimigo",
-    "nome": "Batedor Kla'ed"
+    "nome": "Batedor Kla'ed",
+    "elemento": "fogo"
   },
   "klaed_caca": {
     "sprite": "void/klaed/caca_base",
     "papel": "inimigo",
-    "nome": "Caça Kla'ed"
+    "nome": "Caça Kla'ed",
+    "elemento": "fogo"
   },
   "klaed_bombardeiro": {
     "sprite": "void/klaed/bombardeiro_base",
     "papel": "inimigo",
-    "nome": "Bombardeiro Kla'ed"
+    "nome": "Bombardeiro Kla'ed",
+    "elemento": "fogo"
   },
   "klaed_fragata": {
     "sprite": "void/klaed/fragata_base",
     "papel": "inimigo",
-    "nome": "Fragata Kla'ed"
+    "nome": "Fragata Kla'ed",
+    "elemento": "fogo"
   },
   "klaed_torpedeiro": {
     "sprite": "void/klaed/torpedeiro_base",
     "papel": "inimigo",
-    "nome": "Torpedeiro Kla'ed"
+    "nome": "Torpedeiro Kla'ed",
+    "elemento": "raio"
   },
   "klaed_suporte": {
     "sprite": "void/klaed/suporte_base",
     "papel": "inimigo",
-    "nome": "Nave de Suporte Kla'ed"
+    "nome": "Nave de Suporte Kla'ed",
+    "elemento": "gelo"
   },
   "klaed_cruzador": {
     "sprite": "void/klaed/cruzador_base",
     "papel": "inimigo",
-    "nome": "Cruzador de Batalha Kla'ed"
+    "nome": "Cruzador de Batalha Kla'ed",
+    "elemento": "fogo"
   },
   "klaed_encouracado": {
     "sprite": "void/klaed/encouracado_base",
     "papel": "inimigo",
-    "nome": "Encouraçado Kla'ed"
+    "nome": "Encouraçado Kla'ed",
+    "elemento": "padrao"
   },
   "nairan_batedor": {
     "sprite": "void/nairan/batedor_base",
     "papel": "inimigo",
-    "nome": "Batedor Nairan"
+    "nome": "Batedor Nairan",
+    "elemento": "cosmico"
   },
   "nairan_caca": {
     "sprite": "void/nairan/caca_base",
     "papel": "inimigo",
-    "nome": "Caça Nairan"
+    "nome": "Caça Nairan",
+    "elemento": "cosmico"
   },
   "nairan_bombardeiro": {
     "sprite": "void/nairan/bombardeiro_base",
     "papel": "inimigo",
-    "nome": "Bombardeiro Nairan"
+    "nome": "Bombardeiro Nairan",
+    "elemento": "cosmico"
   },
   "nairan_fragata": {
     "sprite": "void/nairan/fragata_base",
     "papel": "inimigo",
-    "nome": "Fragata Nairan"
+    "nome": "Fragata Nairan",
+    "elemento": "cosmico"
   },
   "nairan_torpedeiro": {
     "sprite": "void/nairan/torpedeiro_base",
     "papel": "inimigo",
-    "nome": "Torpedeiro Nairan"
+    "nome": "Torpedeiro Nairan",
+    "elemento": "raio"
   },
   "nairan_suporte": {
     "sprite": "void/nairan/suporte_base",
     "papel": "inimigo",
-    "nome": "Nave de Suporte Nairan"
+    "nome": "Nave de Suporte Nairan",
+    "elemento": "gelo"
   },
   "nairan_cruzador": {
     "sprite": "void/nairan/cruzador_base",
     "papel": "inimigo",
-    "nome": "Cruzador de Batalha Nairan"
+    "nome": "Cruzador de Batalha Nairan",
+    "elemento": "cosmico"
   },
   "nairan_encouracado": {
     "sprite": "void/nairan/encouracado_base",
     "papel": "inimigo",
-    "nome": "Encouraçado Nairan"
+    "nome": "Encouraçado Nairan",
+    "elemento": "padrao"
   },
   "nautolan_batedor": {
     "sprite": "void/nautolan/batedor_base",
     "papel": "inimigo",
-    "nome": "Batedor Nautolan"
+    "nome": "Batedor Nautolan",
+    "elemento": "quimico"
   },
   "nautolan_caca": {
     "sprite": "void/nautolan/caca_base",
     "papel": "inimigo",
-    "nome": "Caça Nautolan"
+    "nome": "Caça Nautolan",
+    "elemento": "quimico"
   },
   "nautolan_bombardeiro": {
     "sprite": "void/nautolan/bombardeiro_base",
     "papel": "inimigo",
-    "nome": "Bombardeiro Nautolan"
+    "nome": "Bombardeiro Nautolan",
+    "elemento": "quimico"
   },
   "nautolan_fragata": {
     "sprite": "void/nautolan/fragata_base",
     "papel": "inimigo",
-    "nome": "Fragata Nautolan"
+    "nome": "Fragata Nautolan",
+    "elemento": "quimico"
   },
   "nautolan_torpedeiro": {
     "sprite": "void/nautolan/torpedeiro_base",
     "papel": "inimigo",
-    "nome": "Torpedeiro Nautolan"
+    "nome": "Torpedeiro Nautolan",
+    "elemento": "raio"
   },
   "nautolan_suporte": {
     "sprite": "void/nautolan/suporte_base",
     "papel": "inimigo",
-    "nome": "Nave de Suporte Nautolan"
+    "nome": "Nave de Suporte Nautolan",
+    "elemento": "gelo"
   },
   "nautolan_cruzador": {
     "sprite": "void/nautolan/cruzador_base",
     "papel": "inimigo",
-    "nome": "Cruzador de Batalha Nautolan"
+    "nome": "Cruzador de Batalha Nautolan",
+    "elemento": "quimico"
   },
   "nautolan_encouracado": {
     "sprite": "void/nautolan/encouracado_base",
     "papel": "inimigo",
-    "nome": "Encouraçado Nautolan"
+    "nome": "Encouraçado Nautolan",
+    "elemento": "padrao"
   },
   "corsario_raio": {
     "sprite": "hostil/frio_0",
     "papel": "inimigo",
-    "nome": "Corsário Arco"
+    "nome": "Corsário Arco",
+    "elemento": "raio"
   },
   "corsario_fogo": {
     "sprite": "hostil/frio_1",
     "papel": "inimigo",
-    "nome": "Corsário Brasa"
+    "nome": "Corsário Brasa",
+    "elemento": "fogo"
   },
   "corsario_gelo": {
     "sprite": "hostil/frio_2",
     "papel": "inimigo",
-    "nome": "Portador Glacial"
+    "nome": "Portador Glacial",
+    "elemento": "gelo"
   },
   "corsario_padrao": {
     "sprite": "hostil/quente_0",
     "papel": "inimigo",
-    "nome": "Corsário Áureo"
+    "nome": "Corsário Áureo",
+    "elemento": "padrao"
   },
   "corsario_lamina": {
     "sprite": "hostil/quente_1",
     "papel": "inimigo",
-    "nome": "Lâmina Rubra"
+    "nome": "Lâmina Rubra",
+    "elemento": "fogo"
   },
   "bastiao_raio": {
     "sprite": "hostil/quente_2",
     "papel": "inimigo",
-    "nome": "Bastião de Arco"
+    "nome": "Bastião de Arco",
+    "elemento": "raio"
   },
   "vigia_rhodes": {
     "sprite": "s2/enemy/n_3",
     "papel": "inimigo",
-    "nome": "Vigia de Rhodes"
+    "nome": "Vigia de Rhodes",
+    "elemento": "quimico"
   },
   "carrasco_coroa": {
     "sprite": "s2/enemy/n_5",
     "papel": "inimigo",
-    "nome": "Carrasco da Coroa"
+    "nome": "Carrasco da Coroa",
+    "elemento": "quimico"
   },
   "sombra_liturgica": {
     "sprite": "s2/enemy/n_44",
     "papel": "inimigo",
-    "nome": "Sombra Litúrgica"
+    "nome": "Sombra Litúrgica",
+    "elemento": "padrao"
   },
   "monolito_silencio": {
     "sprite": "s2/enemy/n_47",
     "papel": "inimigo",
-    "nome": "Monolito do Silêncio"
+    "nome": "Monolito do Silêncio",
+    "elemento": "fogo"
   },
   "vespa_ambar": {
     "sprite": "s2/enemy/d_5",
     "papel": "inimigo",
-    "nome": "Vespa de Âmbar"
+    "nome": "Vespa de Âmbar",
+    "elemento": "raio"
   },
   "escriba_terminal": {
     "sprite": "s2/enemy/d_14",
     "papel": "inimigo",
-    "nome": "Escriba Terminal"
+    "nome": "Escriba Terminal",
+    "elemento": "quimico"
   },
   "quebragelo_forja": {
     "sprite": "s2/enemy/d_15",
     "papel": "inimigo",
-    "nome": "Quebragelo da Forja"
+    "nome": "Quebragelo da Forja",
+    "elemento": "cosmico"
   },
   "cultivador_oxido": {
     "sprite": "s2/enemy/d_18",
     "papel": "inimigo",
-    "nome": "Cultivador de Óxido"
+    "nome": "Cultivador de Óxido",
+    "elemento": "gelo"
   },
   "arraia_tetis": {
     "sprite": "s2/enemy/d_20",
     "papel": "inimigo",
-    "nome": "Arraia de Tétis"
+    "nome": "Arraia de Tétis",
+    "elemento": "padrao"
   },
   "engolidor_azul": {
     "sprite": "s2/enemy/d_21",
     "papel": "inimigo",
-    "nome": "Engolidor Azul"
+    "nome": "Engolidor Azul",
+    "elemento": "fogo"
   },
   "agulha_vazio": {
     "sprite": "s2/enemy/d_22",
     "papel": "inimigo",
-    "nome": "Agulha do Vazio"
+    "nome": "Agulha do Vazio",
+    "elemento": "raio"
   },
   "arauto_nona": {
     "sprite": "s2/enemy/d_25",
     "papel": "inimigo",
-    "nome": "Arauto da Nona"
+    "nome": "Arauto da Nona",
+    "elemento": "quimico"
   },
   "refeito_lazaro": {
     "sprite": "s2/enemy/d_26",
     "papel": "inimigo",
-    "nome": "Refeito de Lázaro"
+    "nome": "Refeito de Lázaro",
+    "elemento": "cosmico"
   },
   "custodio_oco": {
     "sprite": "s2/enemy/d_37",
     "papel": "inimigo",
-    "nome": "Custódio Oco"
+    "nome": "Custódio Oco",
+    "elemento": "gelo"
   },
   "corsario_argenteo": {
     "sprite": "s2/enemy/d_42",
     "papel": "inimigo",
-    "nome": "Corsário Argênteo"
+    "nome": "Corsário Argênteo",
+    "elemento": "padrao"
   },
   "executor_linha": {
     "sprite": "s2/enemy/d_44",
     "papel": "inimigo",
-    "nome": "Executor da Linha"
+    "nome": "Executor da Linha",
+    "elemento": "fogo"
   },
   "caldeireiro_asterion": {
     "sprite": "s2/enemy/d_45",
     "papel": "inimigo",
-    "nome": "Caldeireiro Asterion"
+    "nome": "Caldeireiro Asterion",
+    "elemento": "fogo"
   },
   "embalsamador_khepri": {
     "sprite": "s2/enemy/d_47",
     "papel": "inimigo",
-    "nome": "Embalsamador Khepri"
+    "nome": "Embalsamador Khepri",
+    "elemento": "padrao"
   },
   "fiandeiro_nyx": {
     "sprite": "s2/enemy/d_51",
     "papel": "inimigo",
-    "nome": "Fiandeiro de Nyx"
+    "nome": "Fiandeiro de Nyx",
+    "elemento": "quimico"
   },
   "laminador_carbono": {
     "sprite": "s2/enemy/d_53",
     "papel": "inimigo",
-    "nome": "Laminador de Carbono"
+    "nome": "Laminador de Carbono",
+    "elemento": "raio"
   },
   "duplicata_eos": {
     "sprite": "s2/enemy/d_54",
     "papel": "inimigo",
-    "nome": "Duplicata de Eos"
+    "nome": "Duplicata de Eos",
+    "elemento": "cosmico"
   },
   "operario_icaro": {
     "sprite": "s2/enemy/d_56",
     "papel": "inimigo",
-    "nome": "Operário de Ícaro"
+    "nome": "Operário de Ícaro",
+    "elemento": "quimico"
   },
   "temperador_antares": {
     "sprite": "s2/enemy/d_62",
     "papel": "inimigo",
-    "nome": "Temperador de Antares"
+    "nome": "Temperador de Antares",
+    "elemento": "fogo"
   },
   "paladino_caelum": {
     "sprite": "s2/enemy/d_63",
     "papel": "inimigo",
-    "nome": "Paladino de Caelum"
+    "nome": "Paladino de Caelum",
+    "elemento": "cosmico"
   },
   "dobrador_janus": {
     "sprite": "s2/enemy/d_71",
     "papel": "inimigo",
-    "nome": "Dobrador de Janus"
+    "nome": "Dobrador de Janus",
+    "elemento": "cosmico"
   },
   "eclipse_umbra": {
     "sprite": "s2/enemy/d_81",
     "papel": "inimigo",
-    "nome": "Eclipse Umbra"
+    "nome": "Eclipse Umbra",
+    "elemento": "cosmico"
   },
   "nucleo_ferrugem": {
     "sprite": "prop/reactor_tower",
     "papel": "chefe",
-    "nome": "Núcleo Ferrugem"
+    "nome": "Núcleo Ferrugem",
+    "elemento": "fogo"
   },
   "anel_kessler": {
     "sprite": "prop/ring_station",
     "papel": "chefe",
-    "nome": "Anel de Kessler"
+    "nome": "Anel de Kessler",
+    "elemento": "cosmico"
   },
   "tita_rochoso": {
     "sprite": "prop/spike_rock",
     "papel": "chefe",
-    "nome": "Titã Rochoso"
+    "nome": "Titã Rochoso",
+    "elemento": "padrao"
   },
   "sentinela_vazia": {
-    "sprite": "enemy/wraith_c",
+    "sprite": "chefe/sentinela_vazia",
     "papel": "chefe",
-    "nome": "Sentinela Vazia"
+    "nome": "Sentinela Vazia",
+    "elemento": "raio"
   },
   "colmeia_verdante": {
-    "sprite": "enemy/verdant_c",
+    "sprite": "chefe/colmeia_verdante",
     "papel": "chefe",
-    "nome": "Colmeia Verdante"
+    "nome": "Colmeia Verdante",
+    "elemento": "quimico"
   },
   "destroco_vivo": {
     "sprite": "prop/wreck_beam",
     "papel": "chefe",
-    "nome": "Destroço Vivo"
+    "nome": "Destroço Vivo",
+    "elemento": "gelo"
   },
   "mina_prima": {
-    "sprite": "prop/mine_spike",
+    "sprite": "chefe/mina_prima",
     "papel": "chefe",
-    "nome": "Mina Prima"
+    "nome": "Mina Prima",
+    "elemento": "fogo"
   },
   "obelisco": {
     "sprite": "prop/pillar_broken",
     "papel": "chefe",
-    "nome": "Obelisco Partido"
+    "nome": "Obelisco Partido",
+    "elemento": "cosmico"
   },
   "devorador": {
     "sprite": "hazard/comet_ice",
     "papel": "chefe",
-    "nome": "Cometa Devorador"
+    "nome": "Cometa Devorador",
+    "elemento": "quimico"
   },
   "arquiteto": {
     "sprite": "ship/ignis_d",
     "papel": "chefe",
-    "nome": "O Arquiteto"
+    "nome": "O Arquiteto",
+    "elemento": "gelo"
   },
   "marechal_nival": {
     "sprite": "s2/boss/n_1",
     "papel": "chefe",
-    "nome": "Marechal Nival"
+    "nome": "Marechal Nival",
+    "elemento": "gelo"
   },
   "catedral_corrosao": {
     "sprite": "s2/boss/n_2",
     "papel": "chefe",
-    "nome": "Catedral da Corrosão"
+    "nome": "Catedral da Corrosão",
+    "elemento": "quimico"
   },
   "leviata_tetis": {
     "sprite": "s2/boss/n_4",
     "papel": "chefe",
-    "nome": "Leviatã de Tétis"
+    "nome": "Leviatã de Tétis",
+    "elemento": "gelo"
   },
   "sereia_ions": {
     "sprite": "s2/boss/n_6",
     "papel": "chefe",
-    "nome": "Sereia de Íons"
+    "nome": "Sereia de Íons",
+    "elemento": "raio"
   },
   "vertebrador": {
     "sprite": "s2/boss/n_7",
     "papel": "chefe",
-    "nome": "O Vertebrador"
+    "nome": "O Vertebrador",
+    "elemento": "cosmico"
   },
   "heliarca_nove": {
     "sprite": "s2/boss/d_base",
     "papel": "chefe",
-    "nome": "Heliarca Nove"
+    "nome": "Heliarca Nove",
+    "elemento": "fogo"
   },
   "lazaro_refeito": {
     "sprite": "s2/boss/d_1",
     "papel": "chefe",
-    "nome": "Lázaro Refeito"
+    "nome": "Lázaro Refeito",
+    "elemento": "quimico"
   },
   "regente_sem_rosto": {
     "sprite": "s2/boss/d_2",
     "papel": "chefe",
-    "nome": "Regente Sem Rosto"
+    "nome": "Regente Sem Rosto",
+    "elemento": "cosmico"
   },
   "almirante_argenteo": {
     "sprite": "s2/boss/d_3",
     "papel": "chefe",
-    "nome": "Almirante Argênteo"
+    "nome": "Almirante Argênteo",
+    "elemento": "padrao"
   },
   "terminal_zero": {
     "sprite": "s2/boss/d_4",
     "papel": "chefe",
-    "nome": "Terminal Zero"
+    "nome": "Terminal Zero",
+    "elemento": "raio"
   },
   "fundidor_asterion": {
     "sprite": "s2/boss/d_7",
     "papel": "chefe",
-    "nome": "Fundidor Asterion"
+    "nome": "Fundidor Asterion",
+    "elemento": "fogo"
   },
   "escaravelho_khepri": {
     "sprite": "s2/boss/d_8",
     "papel": "chefe",
-    "nome": "Escaravelho Khepri"
+    "nome": "Escaravelho Khepri",
+    "elemento": "padrao"
   },
   "tecela_nyx": {
     "sprite": "s2/boss/d_9",
     "papel": "chefe",
-    "nome": "Tecelã de Nyx"
+    "nome": "Tecelã de Nyx",
+    "elemento": "quimico"
   },
   "gume_negro": {
     "sprite": "s2/boss/d_10",
     "papel": "chefe",
-    "nome": "Gume Negro"
+    "nome": "Gume Negro",
+    "elemento": "raio"
   },
   "refracao_eos": {
     "sprite": "s2/boss/d_11",
     "papel": "chefe",
-    "nome": "Refração de Eos"
+    "nome": "Refração de Eos",
+    "elemento": "cosmico"
   },
   "icaro_coletivo": {
     "sprite": "s2/boss/d_13",
     "papel": "chefe",
-    "nome": "Ícaro Coletivo"
+    "nome": "Ícaro Coletivo",
+    "elemento": "quimico"
   },
   "martelo_antares": {
     "sprite": "s2/boss/d_24",
     "papel": "chefe",
-    "nome": "Martelo de Antares"
+    "nome": "Martelo de Antares",
+    "elemento": "fogo"
   },
   "soberano_caelum": {
     "sprite": "s2/boss/d_27",
     "papel": "chefe",
-    "nome": "Soberano Caelum"
+    "nome": "Soberano Caelum",
+    "elemento": "gelo"
   },
   "janus_bifronte": {
     "sprite": "s2/boss/d_28",
     "papel": "chefe",
-    "nome": "Janus Bifronte"
+    "nome": "Janus Bifronte",
+    "elemento": "cosmico"
   },
   "umbra_terminal": {
     "sprite": "s2/boss/d_29",
     "papel": "chefe",
-    "nome": "Umbra Terminal"
+    "nome": "Umbra Terminal",
+    "elemento": "cosmico"
   }
 }
