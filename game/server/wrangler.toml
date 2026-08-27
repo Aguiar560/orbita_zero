@@ -12,4 +12,4 @@ ORIGENS = "http://localhost:5180"
 [[d1_databases]]
 binding = "DB"
 database_name = "orbita-zero"
-database_id = "PREENCHER-APOS-CRIAR"
+database_id = "12e2e0fd-80ed-4962-8f31-deaaa00ee06a"
