@@ -827,7 +827,14 @@ export class Sim {
     if (!gastarTentativa(this.state)) return false;
 
     this.desafio = abrirDesafio(piso);
-    this.encounterCache = null;
+    // `refreshEncounter` e não só `encounterCache = null`.
+    //
+    // Limpar o cache faz o encontro ser RECALCULADO na próxima leitura, mas
+    // não escreve `run.restam` — e é `restam` que decide quando o encontro
+    // acabou. Sem esta linha o piso herdava o contador da onda anterior:
+    // medido, `unidades: 1` do chefe contra `restam: 50` da onda comum, e o
+    // jogador tinha de derrubar o chefe cinquenta vezes.
+    this.refreshEncounter();
     bus.emit('provacao:iniciado', { piso });
     this.touch();
     return true;
@@ -923,7 +930,10 @@ export class Sim {
     };
 
     this.desafio = null;
-    this.encounterCache = null;
+    // Mesmo motivo da entrada, e o defeito aqui era espelhado: voltar ao
+    // jogo normal com `restam` do chefe (1) fecharia a onda seguinte no
+    // primeiro abate.
+    this.refreshEncounter();
 
     bus.emit('provacao:vencido', { piso, chefeId: chefe.id, camadas });
     if (camadas.includes('marco')) bus.emit('provacao:marco', { piso });
@@ -968,7 +978,7 @@ export class Sim {
       danoCausado: r.danoCausado, danoRecebido: r.danoRecebido,
     });
     this.desafio = null;
-    this.encounterCache = null;
+    this.refreshEncounter();
     bus.emit('provacao:falhou', { piso });
     this.touch();
   }
