@@ -10,6 +10,7 @@ import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
 import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
+import { Login } from '@ui/Login';
 
 /**
  * Ausência mínima (segundos) para creditar progresso offline.
@@ -108,6 +109,15 @@ export class Game {
     // um quadro sequer da nave errada já é uma piscada errada na primeira tela
     // que o jogador vê. Antes do relatório porque save sem piloto é save novo,
     // e save novo não tem ausência para relatar.
+    // A conta vem ANTES da escolha de piloto: se houver save na nuvem, ele
+    // troca o estado inteiro, e escolher piloto para um save que vai ser
+    // substituido seria fazer o jogador decidir duas vezes.
+    //
+    // Dá para pular. O jogo funciona inteiro sem conta — o save mora no
+    // navegador desde sempre —, e cobrar um e-mail antes de a pessoa saber se
+    // gosta do jogo trocaria jogadores por cadastros.
+    await new Login().mostrar(this.rootEl);
+
     if (!this.sim.state.piloto) {
       await new EscolhaDePiloto(this.sim, this.rootEl).mostrar();
       this.vertical.refreshPlayer(true);

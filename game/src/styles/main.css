@@ -6558,3 +6558,75 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   .camada[data-tela='laboratorio'] .lab,
   .camada[data-tela='matriz'] .tree-root { padding: 6px; }
 }
+
+/* ── tela de login ───────────────────────────────────────────────────────── */
+/*
+ * Mesma gramática da escolha de piloto: cobre tudo, fundo escuro, uma caixa no
+ * centro. As duas rodam antes do laço e uma depois da outra — desenhos
+ * diferentes fariam parecer que o jogo trocou de aplicativo no meio da abertura.
+ */
+.login-tela {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center;
+}
+.login-fundo {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 0%, #0b1826 0%, #04070d 70%);
+}
+.login-caixa {
+  position: relative;
+  width: min(92vw, 360px);
+  display: grid; gap: 10px;
+  padding: 26px 24px;
+  border: 1px solid var(--painel-linha); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(7, 13, 20, .92), rgba(4, 9, 15, .96));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .6);
+}
+.login-titulo {
+  margin: 0; text-align: center; letter-spacing: .12em;
+  font: 700 22px/1.2 'Chakra Petch', sans-serif; color: #9fe8ff;
+}
+.login-sub { margin: 0 0 6px; text-align: center; font-size: 12px; color: var(--muted); }
+
+.login-abas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.login-aba {
+  padding: 7px 0; cursor: pointer;
+  border: 1px solid var(--painel-linha); border-radius: 6px;
+  background: rgba(4, 10, 17, .8); color: var(--muted);
+  font: 600 12px/1 'Chakra Petch', sans-serif;
+}
+.login-aba.ativa { color: #9fe8ff; border-color: var(--line-strong); }
+.login-aba:disabled { opacity: .5; cursor: default; }
+
+.login-campo {
+  width: 100%; padding: 9px 10px;
+  border: 1px solid var(--painel-linha); border-radius: 6px;
+  background: rgba(4, 10, 17, .85); color: #dbe6ef;
+  font: 400 13px/1.2 'Chakra Petch', sans-serif;
+}
+.login-campo:focus { outline: none; border-color: var(--accent); }
+
+.login-enviar {
+  margin-top: 4px; padding: 10px 0; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: linear-gradient(180deg, rgba(30, 96, 140, .9), rgba(16, 54, 82, .9));
+  color: #eaf6ff; font: 700 13px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .06em;
+}
+.login-enviar:disabled { opacity: .55; cursor: default; }
+
+/* Uma cor só para o recado, e neutra: parte dele é sucesso ("confirme o
+ * e-mail") e parte é erro. Pintar tudo de vermelho mentiria na metade. */
+.login-recado {
+  margin: 2px 0 0; text-align: center; font-size: 12px; color: #ffc46b;
+  min-height: 1.2em;
+}
+.login-recado.hidden { display: none; }
+
+.login-pular {
+  margin-top: 2px; padding: 6px 0; cursor: pointer;
+  border: 0; background: none; color: var(--muted);
+  font: 600 11px/1 'Chakra Petch', sans-serif; text-decoration: underline;
+}
+.login-pular:disabled { opacity: .5; cursor: default; }
+.login-nota { margin: 0; text-align: center; }
