@@ -22,7 +22,7 @@ import { PASSOS_DO_ONBOARDING } from '@data/onboarding';
  */
 const ALVOS_DA_TELA_PRINCIPAL = new Set([
   '.stage-wrap', '.anatomia', '.panel-host', '.resources',
-  '.tabs', '.rail-left', '.perfil-botao', '.gear',
+  '.tabs', '.rail-left', '.rail-control', '.perfil-botao', '.gear',
 ]);
 
 describe('roteiro do onboarding', () => {
@@ -94,5 +94,39 @@ describe('partes recolhidas da interface', () => {
       if (!p.exige) continue;
       expect(RECOLHEM.has(p.alvo ?? ''), `${p.titulo} exige sem precisar`).toBe(true);
     }
+  });
+});
+
+describe('o guia não mente sobre os dois modos', () => {
+  /**
+   * O jogo TEM pilotagem manual — `settings.controlMode` alterna entre `idle` e
+   * `manual`, e há dois botões no trilho da esquerda.
+   *
+   * O roteiro dizia "Você não pilota", o que é falso e caro: quem acredita joga
+   * o jogo inteiro assistindo, sem descobrir metade dele. Estes testes existem
+   * porque a frase errada não quebra nada — ela só ensina a coisa errada.
+   */
+  it('nenhum passo nega a pilotagem', () => {
+    const negacoes = [/você não pilota/i, /não dá para pilotar/i, /100% idle/i, /totalmente idle/i];
+    for (const p of PASSOS_DO_ONBOARDING) {
+      for (const frase of negacoes) {
+        expect(frase.test(p.texto), `${p.titulo}: "${p.texto}"`).toBe(false);
+      }
+    }
+  });
+
+  it('existe um passo sobre os botões de modo', () => {
+    const passo = PASSOS_DO_ONBOARDING.find((p) => p.alvo === '.rail-control');
+    expect(passo, 'o passo dos modos sumiu do roteiro').toBeDefined();
+    // Os dois nomes que estão nos botões, para o jogador ligar texto e tela.
+    expect(passo?.texto).toMatch(/IDLE/);
+    expect(passo?.texto).toMatch(/PILOTAR/);
+  });
+
+  it('o trilho vem antes dos botões que moram dentro dele', () => {
+    // Explicar o botão antes do painel que o contém faz o jogador procurar
+    // depois onde aquilo ficava.
+    const ondeEsta = (alvo: string) => PASSOS_DO_ONBOARDING.findIndex((p) => p.alvo === alvo);
+    expect(ondeEsta('.rail-left')).toBeLessThan(ondeEsta('.rail-control'));
   });
 });

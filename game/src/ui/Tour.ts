@@ -186,6 +186,15 @@ export class Tour {
     const alvo = passo?.alvo ? document.querySelector<HTMLElement>(passo.alvo) : null;
     if (!alvo) return;
 
+    // Traz o alvo a vista antes de recortar. O trilho da esquerda ROLA, e numa
+    // janela baixa os botoes de modo ficam abaixo da dobra — o buraco sairia
+    // fora da tela e o passo destacaria o vazio.
+    //
+    // `block: nearest` e nao `center`: mexer o minimo evita empurrar o resto da
+    // interface so para centralizar algo que ja estava quase visivel. E sem
+    // `smooth`, que brigaria com o observador logo abaixo.
+    alvo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
     this.observador = new ResizeObserver(() => this.posicionar());
     this.observador.observe(alvo);
     // O alvo pode mudar de LUGAR sem mudar de tamanho — um painel vizinho que
