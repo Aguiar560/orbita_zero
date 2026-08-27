@@ -29,6 +29,13 @@ export type EstadoDoPiso = 'travado' | 'disponivel' | 'atual' | 'vencido' | 'mes
  */
 export function pisoLiberado(state: GameState, piso: number): boolean {
   if (piso < 1 || piso > PROVACAO_PISOS) return false;
+  // Modo de teste abre os cem pisos.
+  //
+  // Aqui e não escrevendo `pisoMax`: a regra do modo é ser REVERSÍVEL, e
+  // desligá-lo tem de devolver o save exatamente como estava. Um atalho que
+  // gravasse o progresso deixaria o jogador com cem pisos vencidos por ter
+  // ligado o modo para dar uma olhada — que é a mesma cicatriz do hangar.
+  if (state.settings.testMode) return true;
   // O piso seguinte ao maior vencido é sempre acessível; os anteriores também.
   if (piso > state.provacao.pisoMax + 1) return false;
   // E os requisitos declarados ainda valem por cima (§11).
@@ -73,6 +80,10 @@ export const TENTATIVA_INTERVALO = 30 * 60;
  */
 export function tentativasDisponiveis(state: GameState, agora = Date.now()): number {
   const p = state.provacao;
+  // A tela lê daqui. Sem esta linha ela mostraria "0 tentativas" enquanto o
+  // modo de teste deixa entrar — e o jogador acreditaria na tela, que é o
+  // certo a fazer quando ela e o comportamento discordam.
+  if (state.settings.testMode) return TENTATIVAS_MAX;
   if (p.tentativas >= TENTATIVAS_MAX) return TENTATIVAS_MAX;
   const decorrido = Math.max(0, (agora - p.tentativasEm) / 1000);
   const recuperadas = Math.floor(decorrido / TENTATIVA_INTERVALO);
@@ -94,6 +105,12 @@ export function segundosParaProximaTentativa(state: GameState, agora = Date.now(
  */
 export function gastarTentativa(state: GameState, agora = Date.now()): boolean {
   const p = state.provacao;
+  // No modo de teste a tentativa não é cobrada, e o motivo é o mesmo de
+  // sempre: esta função ESCREVE. Liberar os pisos sem isto daria cem portas
+  // abertas e cinco entradas — e cada entrada gastaria uma tentativa de
+  // verdade, que continuaria gasta depois de desligar o modo.
+  if (state.settings.testMode) return true;
+
   const tem = tentativasDisponiveis(state, agora);
   if (tem <= 0) return false;
 
