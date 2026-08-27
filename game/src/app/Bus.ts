@@ -43,6 +43,15 @@ export interface GameEvents {
   'panel:close': void;
   /** Pedido de reabrir o passeio guiado, vindo de Ajustes. */
   'guia:abrir': void;
+  /**
+   * Fecha o modal de Configurações de fora dele.
+   *
+   * Existe porque Ajustes é MODAL e não camada: `panel:close` fecha camadas e
+   * passava reto por ele. O conteúdo do painel não tem como alcançar o
+   * `close()` local do modal que o hospeda, e não deveria ter — ele não sabe
+   * quem o abriu.
+   */
+  'ajustes:fechar': void;
   'laboratorio:changed': void;
   /**
    * Uma peça começou ou terminou de ser arrastada.

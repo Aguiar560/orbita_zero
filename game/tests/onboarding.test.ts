@@ -130,3 +130,47 @@ describe('o guia não mente sobre os dois modos', () => {
     expect(ondeEsta('.rail-left')).toBeLessThan(ondeEsta('.rail-control'));
   });
 });
+
+describe('o caminho para rever o guia', () => {
+  /**
+   * O botão existe desde o começo, e mesmo assim veio a pergunta "como eu vejo
+   * o tutorial de novo?". Duas causas, e as duas são de projeto:
+   *
+   * 1. Ele estava na aba **Dados**, ao lado de exportar e apagar save. Ninguém
+   *    procura tutorial na gaveta do backup.
+   * 2. Ao clicar, Ajustes NÃO fechava — o guia abria atrás do modal e apontava
+   *    para coisas escondidas. O botão emitia `panel:close`, que fecha CAMADAS,
+   *    e Ajustes é MODAL: o evento passava reto, sem erro nenhum.
+   */
+  it('o botão vive na primeira aba de Ajustes', async () => {
+    const fonte = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/ui/panels/SettingsPanel.ts', 'utf8'));
+
+    const jogabilidade = fonte.indexOf('private jogabilidade(');
+    const video = fonte.indexOf('private video(');
+    const abrirGuia = fonte.indexOf("text: 'Abrir guia'");
+
+    expect(abrirGuia, 'o botão sumiu').toBeGreaterThan(0);
+    expect(abrirGuia > jogabilidade && abrirGuia < video,
+      'o botão saiu da aba Jogabilidade').toBe(true);
+  });
+
+  it('o botão fecha o MODAL, não a camada', async () => {
+    const fonte = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/ui/panels/SettingsPanel.ts', 'utf8'));
+    const trecho = fonte.slice(fonte.indexOf("bus.emit('ajustes:fechar')") - 400,
+      fonte.indexOf("text: 'Abrir guia'"));
+
+    expect(trecho).toContain("bus.emit('ajustes:fechar')");
+    expect(trecho).toContain("bus.emit('guia:abrir')");
+    // `panel:close` aqui é o defeito antigo voltando: ele não alcança um modal.
+    expect(trecho).not.toContain("bus.emit('panel:close')");
+  });
+
+  it('o modal de Ajustes escuta o pedido de fechar', async () => {
+    const fonte = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/ui/Shell.ts', 'utf8'));
+    expect(fonte, 'sem o ouvinte, o botão não fecha nada')
+      .toContain("bus.on('ajustes:fechar'");
+  });
+});

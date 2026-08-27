@@ -89,6 +89,33 @@ export class SettingsPanel implements Panel {
   private jogabilidade(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
     return [
+      // O guia abre a lista, e fica na PRIMEIRA aba de propósito.
+      //
+      // Estava em "Dados", ao lado de exportar e apagar save. Ninguém procura
+      // um tutorial na gaveta do backup — a pergunta "como eu vejo o tutorial
+      // de novo?" foi a prova de que o lugar estava errado. Jogabilidade é a
+      // aba que Ajustes já abre, então agora ele aparece sem nenhum clique
+      // extra.
+      h('h3.section', { text: 'Guia' }),
+      h('.setting', {},
+        h('.setting-text', {},
+          h('strong', { text: 'Rever o guia do jogo' }),
+          h('span', { text: 'O passeio que explica cada parte da tela.' }),
+        ),
+        h('button.btn', {
+          onclick: () => {
+            // Fecha Ajustes ANTES de abrir o guia: ele aponta para a tela de
+            // trás, e com o modal por cima o passeio destacava coisas
+            // escondidas — foi exatamente o que aconteceu.
+            //
+            // `ajustes:fechar` e não `panel:close`: Ajustes é MODAL, e aquele
+            // evento só fecha CAMADAS. Passava reto, sem erro nenhum.
+            bus.emit('ajustes:fechar');
+            bus.emit('guia:abrir');
+          },
+        }, h('span', { text: 'Abrir guia' })),
+      ),
+
       h('h3.section', { text: 'Controle de combate' }),
       h('p.muted.hint', { text: 'Vale na campanha e na Provação. O Laboratório mantém seu seletor próprio para comparar IAs. No manual a arma continua automática; use WASD ou as setas para pilotar.' }),
       h('.setting', {},
@@ -268,20 +295,6 @@ export class SettingsPanel implements Panel {
             location.reload();
           },
         }, h('span', { text: 'Importar save' })),
-      ),
-
-      h('h3.section', { text: 'Guia' }),
-      h('p.muted.hint', { text: 'O passeio que explica cada parte da tela. Dá para rever quando quiser.' }),
-      h('.setting', {},
-        h('.setting-text', {}, h('strong', { text: 'Rever o guia do jogo' })),
-        h('button.btn', {
-          onclick: () => {
-            // Fecha Ajustes antes: o guia aponta para a tela DE TRÁS, e com o
-            // painel aberto por cima metade dos alvos ficaria escondida.
-            bus.emit('panel:close');
-            bus.emit('guia:abrir');
-          },
-        }, h('span', { text: 'Abrir guia' })),
       ),
 
       h('h3.section.perigo', { text: 'Zona de perigo' }),

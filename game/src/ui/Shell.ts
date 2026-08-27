@@ -618,9 +618,13 @@ export class Shell {
 
     const close = (): void => {
       off();
+      offFechar();
       modal.remove();
       document.removeEventListener('keydown', onKey);
     };
+    // Um botão DENTRO de Ajustes pode precisar fechar Ajustes — o guia, que
+    // aponta para a tela de trás e não enxerga nada com o modal por cima.
+    const offFechar = bus.on('ajustes:fechar', () => close());
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') close();
     };

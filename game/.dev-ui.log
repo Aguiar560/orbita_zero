@@ -138,3 +138,7 @@
 18:24:12 [vite] (client) page reload src/ui/panels/RankingPanel.ts
 18:46:19 [vite] (client) page reload src/ui/Tour.ts
 18:46:51 [vite] (client) page reload src/data/onboarding.ts
+19:24:24 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+19:26:31 [vite] (client) page reload src/app/Bus.ts
+19:26:31 [vite] (client) page reload src/ui/Shell.ts
+19:26:31 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
