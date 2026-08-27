@@ -1,0 +1,15 @@
+name = "orbita-zero-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# `ORIGENS` e `SUPABASE_URL` não são segredos: o primeiro é uma lista de sites
+# e o segundo é o endereço público do JWKS. Segredo mesmo não existe neste
+# Worker, e essa é a vantagem de verificar o token com chave pública.
+[vars]
+SUPABASE_URL = "https://SEU-REF.supabase.co"
+ORIGENS = "http://localhost:5180"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orbita-zero"
+database_id = "PREENCHER-APOS-CRIAR"

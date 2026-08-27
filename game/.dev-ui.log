@@ -38,3 +38,5 @@
 11:00:10 [vite] (client) page reload src/sim/state.ts
 11:03:14 [vite] (client) page reload src/sim/index.ts
 11:03:38 [vite] (client) page reload src/sim/types.ts
+11:09:02 [vite] changed tsconfig file detected: D:/bbb/game/server/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+11:09:03 [vite] changed tsconfig file detected: D:/bbb/game/server/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.

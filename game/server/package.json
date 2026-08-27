@@ -1,0 +1,15 @@
+{
+  "name": "orbita-zero-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute orbita-zero --local --file=schema.sql",
+    "db:remoto": "wrangler d1 execute orbita-zero --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260827.1",
+    "wrangler": "^4.127.0"
+  }
+}

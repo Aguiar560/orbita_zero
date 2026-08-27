@@ -7,3 +7,8 @@ dist/
 
 # Gerado por `npm run assets` a partir dos packs de arte em ../
 public/assets/
+
+# Servidor (Cloudflare Worker)
+server/node_modules/
+server/.wrangler/
+server/.dev.vars
