@@ -1696,12 +1696,6 @@ export class Sim {
     return nave.equipped;
   }
 
-  /** Leva um casco da frota para o campo. */
-  trocarCasco(hullId: string): void {
-    if (!this.state.fleet.includes(hullId) || this.state.hull === hullId) return;
-    this.state.hull = hullId;
-    this.touch();
-  }
 
   /**
    * Monta a peça. Devolve `false` se a nave não a aceita.
@@ -2030,7 +2024,7 @@ export class Sim {
     if (secou) {
       const proxima = proximaComCombustivel(this.state);
       if (proxima) {
-        this.trocarCasco(proxima);
+        this.selectHull(proxima);
         // Evento e não FATO: fato alimenta missão, e "trocou de nave por falta
         // de combustível" não é conquista de ninguém. A tela usa para avisar.
         bus.emit('combustivel:seco', { trocouPara: proxima });
@@ -2198,6 +2192,23 @@ export class Sim {
     return true;
   }
 
+  /**
+   * Leva um casco para o campo. `false` = não está disponível.
+   *
+   * Era DUAS funções. `trocarCasco` validava contra `state.fleet` e
+   * `selectHull` contra `frotaDisponivel` — a mesma pergunta com respostas
+   * diferentes, e cada tela escolhia uma sem saber que existia outra.
+   *
+   * O custo apareceu quando a Anatomia passou a listar `frotaDisponivel`: ela
+   * oferecia as 53 naves do modo de teste e chamava `trocarCasco`, que recusa
+   * tudo fora de `state.fleet`. O botão de levar a campo não fazia nada, em
+   * silêncio, para 51 delas.
+   *
+   * O guarda certo é `frotaDisponivel`, que é o único que enxerga o modo de
+   * teste. Para a troca por falta de combustível não muda nada: a nave que
+   * `proximaComCombustivel` devolve vem da frota comprada, que está contida
+   * nele.
+   */
   selectHull(id: string): boolean {
     if (!this.frotaDisponivel.includes(id)) return false;
     this.state.hull = id;

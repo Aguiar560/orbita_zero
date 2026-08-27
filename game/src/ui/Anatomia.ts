@@ -76,9 +76,18 @@ export class Anatomia {
   /** Ficha do item sob o cursor. No `body` para não ser cortada pela coluna. */
   private ficha: HTMLElement | null = null;
 
-  /** Levar a nave a campo volta a coluna a seguir o casco ativo. */
+  /**
+   * Levar a nave a campo volta a coluna a seguir o casco ativo.
+   *
+   * A chamada era `this.sim.trocarCasco?.(id)`, com o `?.` engolindo o caso de
+   * o método não existir — e engoliria também um erro de nome. Aqui a resposta
+   * é um booleano e ela é LIDA: uma recusa vira mensagem, não silêncio.
+   */
   private irACampo(id: string): void {
-    this.sim.trocarCasco?.(id);
+    if (!this.sim.selectHull(id)) {
+      toast('Esta nave não está disponível', 'bad');
+      return;
+    }
     this.fixadoPeloJogador = false;
     this.sim.touch();
   }
