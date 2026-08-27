@@ -357,15 +357,40 @@ function especialDe(piso: number): string {
 }
 
 /**
- * Sprites emprestados dos chefes de campanha.
+ * A arte dos cem chefes, agrupada pelo ELEMENTO.
  *
- * Provisório e declarado como tal: o elenco próprio pede arte própria, e esta
- * constante é o lugar onde essa dívida fica visível em vez de espalhada.
+ * ## Por que por elemento e não uma lista só
+ *
+ * Antes eram seis sprites de cenário — torre de reator, anel, rocha — girando
+ * em ciclo. Dois problemas de uma vez: o piso 7 e o piso 13 eram a mesma torre,
+ * e a torre não tinha relação nenhuma com o elemento anunciado ao lado dela.
+ * Um chefe de gelo com arte de reator em chamas desmente a própria ficha.
+ *
+ * Agrupar por elemento faz a arte CONCORDAR com o ícone: quem entra num piso de
+ * químico vê uma nave verde. A escolha dentro do grupo continua sendo o resto
+ * do piso, então a distribuição é estável — o piso 34 mostra sempre a mesma
+ * nave, e não uma a cada partida.
+ *
+ * ## Por que a repetição não sumiu de todo
+ *
+ * São trinta artes para cem pisos, então cada uma volta três ou quatro vezes.
+ * Isso é bem melhor que uma a cada seis pisos, e a saída definitiva é mais arte
+ * — não mais código. Grupo vazio cai no neutro em vez de estourar.
  */
-const SPRITES: readonly string[] = [
-  'prop/reactor_tower', 'prop/ring_station', 'prop/spike_rock',
-  'prop/wreck_beam', 'prop/mine_spike', 'prop/pillar_broken',
-];
+const ARTE_POR_ELEMENTO: Readonly<Record<string, readonly string[]>> = {
+  padrao: ['tita_rochoso', 'almirante_argenteo', 'escaravelho_khepri'],
+  fogo: ['nucleo_ferrugem', 'mina_prima', 'heliarca_nove', 'fundidor_asterion', 'martelo_antares'],
+  gelo: ['destroco_vivo', 'arquiteto', 'marechal_nival', 'leviata_tetis', 'soberano_caelum'],
+  cosmico: ['anel_kessler', 'obelisco', 'vertebrador', 'regente_sem_rosto', 'refracao_eos', 'janus_bifronte', 'umbra_terminal'],
+  raio: ['sentinela_vazia', 'sereia_ions', 'terminal_zero', 'gume_negro'],
+  quimico: ['colmeia_verdante', 'devorador', 'catedral_corrosao', 'lazaro_refeito', 'tecela_nyx', 'icaro_coletivo'],
+};
+
+/** A arte daquele piso, sempre a mesma para o mesmo piso. */
+function arteDoChefe(elemento: string, piso: number): string {
+  const pool = ARTE_POR_ELEMENTO[elemento] ?? ARTE_POR_ELEMENTO.padrao!;
+  return `chefe/${pool[(piso - 1) % pool.length]!}`;
+}
 
 /** O elenco montado: cem chefes, um por piso. */
 export const CHEFES_DA_PROVACAO: readonly ChefeDaProvacao[] = ELENCO.flatMap((camada, ci) =>
@@ -388,7 +413,7 @@ export const CHEFES_DA_PROVACAO: readonly ChefeDaProvacao[] = ELENCO.flatMap((ca
       escudo: ajuste?.escudo ?? perfil.escudo,
       velocidade: ajuste?.velocidade ?? perfil.velocidade,
       especial: especial ?? especialDe(piso),
-      sprite: SPRITES[(piso - 1) % SPRITES.length]!,
+      sprite: arteDoChefe(elem, piso),
     };
   }),
 );

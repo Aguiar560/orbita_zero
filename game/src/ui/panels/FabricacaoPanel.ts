@@ -7,6 +7,7 @@ import type { Sim } from '@sim/index';
 import type { Item, Rarity } from '@sim/types';
 import { buildItemCard } from '../ItemCard';
 import { h, spriteIcon } from '../dom';
+import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
 
 /**
@@ -141,13 +142,20 @@ export class FabricacaoPanel implements Panel {
       .filter((i) => !noAnel.has(i.uid))
       .filter((i) => this.filtro < 0 || i.rarity === this.filtro)
       .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl);
+    const elegiveis = sim.state.inventory.filter((i) =>
+      i.rarity === receita.entrada && !i.favorite && !noAnel.has(i.uid),
+    ).length;
 
     return h('.fab-col.fab-inv', {},
       placa('INVENTÁRIO'),
+      h('.fab-inv-resumo', {},
+        h('span', { text: `${lista.length} ITENS VISÍVEIS` }),
+        h('strong', { text: `${elegiveis} ELEGÍVEIS`, style: { color: rarityInfo(receita.entrada).color } }),
+      ),
       h('.fab-bloco.fab-inventario-bloco', {},
         h('.fab-grade', {}, ...lista.slice(0, 24).map((it) => this.pecaDoInventario(sim, it, receita))),
       ),
-      h('.fab-bloco', {},
+      h('.fab-bloco.fab-filtros-bloco', {},
         subtitulo('FILTROS'),
         h('.fab-filtros', {},
           this.chip(sim, -1, 'Todos', '#9fb0c4'),
@@ -175,7 +183,10 @@ export class FabricacaoPanel implements Panel {
   private custo(sim: Sim, receita: ReceitaDeFusao): HTMLElement {
     const linhas: HTMLElement[] = [
       h('.fab-custo-linha', {},
-        h('span.tiny', { text: 'Núcleos' }),
+        h('.fab-custo-nome', {},
+          spriteIcon(RESOURCE_META.nucleo.icon, 26),
+          h('span.tiny', { text: 'Núcleos' }),
+        ),
         h('span.tiny', {
           text: `${fmt(sim.state.resources.nucleo)} / ${fmt(receita.nucleos)}`,
           // Verde quando bate a meta, vermelho quando falta. Branco não dizia
@@ -212,7 +223,7 @@ export class FabricacaoPanel implements Panel {
     const serve = item.rarity === receita.entrada && !item.favorite;
 
     return h(`button.fab-peca${serve ? '' : '.inerte'}`, {
-      style: { borderColor: info.color },
+      style: { borderColor: info.color, color: info.color },
       title: item.favorite
         ? 'Favorito — protegido da fabricação'
         : serve ? 'Clique para pôr no anel' : `Precisa ser ${rarityInfo(receita.entrada).name}`,
@@ -337,7 +348,7 @@ export class FabricacaoPanel implements Panel {
           onclick: () => { this.selecionada = r.entrada; this.slots = []; sim.touch(); },
         },
           h('.fab-tipo-topo', {},
-            h('span.fab-gema', { style: { background: info.color } }),
+            spriteIcon(info.gem, 22, 'fab-tipo-gema'),
             h('strong', { text: info.name.toUpperCase(), style: { color: info.color } }),
             h('span.tiny', {
               text: `${tem}/${r.quantidade}`,

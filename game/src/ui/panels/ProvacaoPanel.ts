@@ -10,6 +10,7 @@ import { TENTATIVAS_MAX, estadoDoPiso, type EstadoDoPiso } from '@sim/provacao';
 import { powerScore } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon, progressBar } from '../dom';
+import { iconeDeElemento } from '../elementos';
 import type { Panel } from './types';
 
 const PRV_ASSET = '/assets/ui/provacao';
@@ -45,6 +46,10 @@ export class ProvacaoPanel implements Panel {
 
   /** Piso em foco. `null` = o próximo a enfrentar. */
   private selecionado: number | null = null;
+/** O último foco que a torre CONSEGUIU centralizar. */
+  private focoCentralizado: number | null = null;
+  /** Onde a barra estava, para o redesenho não jogá-la ao topo. */
+  private rolagem = 0;
 
   badge(sim: Sim): number {
     // O selo mostra tentativas disponíveis: é a informação que decide se vale
@@ -162,19 +167,57 @@ export class ProvacaoPanel implements Panel {
   // ── centro: a coluna de pisos ─────────────────────────────────────────────
 
   private colunaDePisos(sim: Sim, foco: number): HTMLElement {
-    // Mostra uma janela em volta do foco, não os cem: cem cards renderizados a
-    // todo quadro custam caro e o jogador só olha meia dúzia (§72).
-    const inicio = Math.max(1, foco - 4);
-    const fim = Math.min(PROVACAO_PISOS, inicio + 8);
+    // Os cem pisos, e não uma janela de nove.
+    //
+    // A janela existia por custo — "cem cards a todo quadro custam caro" — mas
+    // a premissa estava errada: o painel não redesenha a todo quadro, e sim
+    // quando o estado muda, no ritmo de `PANEL_HZ`. Medido, os cem cards saem
+    // em ~4ms, contra ~1ms dos nove.
+    //
+    // E a janela cobrava caro de outro jeito: só dava para chegar ao piso 50
+    // CLICANDO de nove em nove, porque a janela seguia o foco. A barra de
+    // rolagem faz o mesmo trabalho num gesto, e é o que a tela já prometia —
+    // `.prv-torre` sempre teve `overflow-y: auto`, sem nada para rolar.
     const lista: number[] = [];
-    for (let n = fim; n >= inicio; n--) lista.push(n);
+    for (let n = PROVACAO_PISOS; n >= 1; n--) lista.push(n);
 
     const torre = h('.prv-torre', {}, ...lista.map((n) => this.cardDePiso(sim, n, n === foco)));
-    requestAnimationFrame(() => {
-      const focado = torre.querySelector<HTMLElement>('.prv-piso.focado');
-      if (!focado) return;
-      torre.scrollTop = focado.offsetTop - Math.max(0, (torre.clientHeight - focado.offsetHeight) / 2);
-    });
+
+    // Centraliza no foco só quando ele MUDA. O painel se redesenha a cada
+    // `PANEL_HZ`, e reposicionar em todo redesenho arrancaria a barra da mão do
+    // jogador no meio do gesto — o sintoma clássico de rolagem que "puxa".
+    //
+    // O "mudou" tem de valer só depois de a centralização ACONTECER, e não na
+    // hora de agendá-la: o painel chega a desenhar antes de a camada ter altura
+    // (medido `clientHeight: 3`), e nesse quadro `scrollTop` não vai a lugar
+    // nenhum. Marcar o foco como feito ali deixava a torre presa no topo, com o
+    // piso 1 lá embaixo, fora de vista.
+    const centralizar = this.focoCentralizado !== foco;
+    if (centralizar) {
+      // `setTimeout` e não `requestAnimationFrame`: o que garante a conta certa
+      // é o teste de `clientHeight` logo abaixo, não o relógio que a agenda — e
+      // o rAF fica SUSPENSO em aba oculta, o que deixaria a torre no topo para
+      // quem abrisse a Provação e trocasse de aba antes de ela assentar.
+      const tentar = (restam: number): void => {
+        const focado = torre.querySelector<HTMLElement>('.prv-piso.focado');
+        if (!focado || !torre.isConnected) return;
+        if (torre.clientHeight < 40) {
+          // Ainda sem altura útil — tenta de novo, com teto para não virar laço
+          // infinito se a torre nunca abrir.
+          if (restam > 0) setTimeout(() => tentar(restam - 1), 16);
+          return;
+        }
+        torre.scrollTop = focado.offsetTop - Math.max(0, (torre.clientHeight - focado.offsetHeight) / 2);
+        this.rolagem = torre.scrollTop;
+        this.focoCentralizado = foco;
+      };
+      setTimeout(() => tentar(30), 0);
+    } else {
+      // Sem isso a torre voltaria ao topo a cada redesenho.
+      const antes = this.rolagem;
+      setTimeout(() => { torre.scrollTop = antes; }, 0);
+    }
+    torre.addEventListener('scroll', () => { this.rolagem = torre.scrollTop; });
 
     return h('.prv-col.prv-centro', {},
       h('.prv-secao-tit', { text: 'CÂMARAS' }),
@@ -187,7 +230,6 @@ export class ProvacaoPanel implements Panel {
     const chefe = chefeDoPiso(piso);
     const cam = camadaDoPiso(piso);
     const marco = piso % 10 === 0;
-    const el = getElement(chefe.elemento);
 
     const classes = [
       'prv-piso',
@@ -214,7 +256,11 @@ export class ProvacaoPanel implements Panel {
         }),
       ),
       h('.prv-piso-sinais', {},
-        h('span.prv-elem', { text: el.sigla, style: { background: el.color }, title: el.name }),
+        // Ícone e não a sigla: numa coluna de cem pisos varrida de relance, `F`
+        // e `G` são duas letras parecidas, e uma chama e um floco não são. É a
+        // mesma razão que `ui/elementos.ts` já documenta — esta tela era o
+        // último lugar que ainda desenhava a letra à mão.
+        iconeDeElemento(chefe.elemento, 18, 'prv-elem-icone'),
         ...(estado === 'vencido' || estado === 'mestrado'
           ? [prvImage('icons/prv_icone_check.png', 'prv-check', 'Concluído')]
           : []),
@@ -266,13 +312,19 @@ export class ProvacaoPanel implements Panel {
           h('span.muted.tiny', { text: 'SEU ELEMENTO' }),
           h('span.tiny', { text: getElement(meuEl).name, style: { color: getElement(meuEl).color } }),
         ),
-        h(`span.prv-vs.v-${vantagem}`, {
-          text: vantagem === 'boa' ? '▲' : vantagem === 'ruim' ? '▼' : '=',
-          title: vantagem === 'boa' ? 'Vantagem elemental'
-            : vantagem === 'ruim' ? 'O chefe resiste ao seu elemento' : 'Sem vantagem',
-        }),
+        // O marcador só aparece quando tem o que dizer. O `=` do caso neutro
+        // ocupava a coluna do meio para informar que não há informação — e
+        // colado no rótulo lia-se como "= DO CHEFE", que não quer dizer nada.
+        vantagem === 'neutra'
+          ? h('span.prv-vs.v-neutra')
+          : h(`span.prv-vs.v-${vantagem}`, {
+            text: vantagem === 'boa' ? '▲' : '▼',
+            title: vantagem === 'boa'
+              ? 'Vantagem elemental'
+              : 'O chefe resiste ao seu elemento',
+          }),
         h('.prv-elem-lado', {},
-          h('span.muted.tiny', { text: 'DO CHEFE' }),
+          h('span.muted.tiny', { text: 'CHEFE' }),
           h('span.tiny', { text: el.name, style: { color: el.color } }),
         ),
       ),

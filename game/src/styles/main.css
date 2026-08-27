@@ -2618,6 +2618,16 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   position: relative; width: 34px; height: 34px;
   background-size: contain; background-position: center; background-repeat: no-repeat;
 }
+/* O ícone do material vai no CENTRO da moldura, não no canto.
+ *
+ * A moldura é imagem de fundo e já se centra sozinha; o sprite é filho e caía
+ * no fluxo, encostado no topo à esquerda. Centrar aqui, na regra da ficha,
+ * conserta todas as fichas de recurso de uma vez — Provação, missões e
+ * qualquer outra que use `.mis-premio.r-recurso`. */
+.mis-premio > .sprite {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
 .mis-premio-n {
   position: absolute; right: -2px; bottom: -3px;
   font-size: 9px; line-height: 1; padding: 1px 3px;
@@ -3140,10 +3150,8 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .prv-piso-txt strong { font-size: 13px; letter-spacing: 0.5px; }
 .prv-piso-txt span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prv-piso-sinais { display: flex; align-items: center; gap: 6px; }
-.prv-elem {
-  width: 20px; height: 20px; display: grid; place-items: center;
-  font-size: 9px; font-weight: 700; color: #04060e; border-radius: 4px;
-}
+/* A sigla saiu; o que sobra é o ícone, que já traz a própria cor e forma. */
+.prv-elem-icone { display: block; flex: none; }
 .prv-check { color: var(--good); font-size: 15px; }
 .prv-selo-marco { color: #FFB638; font-size: 14px; }
 
@@ -3376,8 +3384,25 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .prv-torre {
   gap: 4px;
   padding: 4px 7px 7px;
+  /* Cem pisos rolam de verdade, então a barra deixa de ser enfeite: fica
+   * sempre visível e larga o bastante para ser agarrada com o mouse. */
   scrollbar-color: rgba(74, 191, 232, .42) rgba(2, 7, 12, .7);
+  scrollbar-width: thin;
+  /* Sem `scroll-behavior: smooth`: ele transforma a atribuicao de `scrollTop`
+   * em animacao, e a leitura logo depois devolve o valor ANTIGO. A torre se
+   * reposiciona sozinha a cada redesenho, entao a posicao precisa valer no ato
+   * — com o suave, ela lia zero e a torre voltava ao topo. */
+  overscroll-behavior: contain;
 }
+.prv-torre::-webkit-scrollbar { width: 10px; }
+.prv-torre::-webkit-scrollbar-track {
+  background: rgba(2, 7, 12, .7); border-radius: 999px;
+}
+.prv-torre::-webkit-scrollbar-thumb {
+  background: rgba(74, 191, 232, .42); border-radius: 999px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+.prv-torre::-webkit-scrollbar-thumb:hover { background: rgba(74, 191, 232, .68); background-clip: padding-box; }
 .prv-piso {
   position: relative;
   isolation: isolate;
@@ -5180,7 +5205,12 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   grid-column: auto !important; align-self: stretch; border: 0 !important; border-image: none !important;
   background: none !important; padding: 2px 0 0 !important; margin: 0 !important;
 }
-.mis-confianca .mis-secao-tit { padding-left: 0; border-left: 0; }
+.mis-confianca .mis-secao-tit {
+  padding-left: 0;
+  border-left: 0;
+  border-bottom: 0;
+  box-shadow: none;
+}
 .mis-nos { justify-content: flex-start; gap: 7px; min-width: 0; }
 .mis-no-wrap { flex: none; }
 .mis-no {
@@ -6835,4 +6865,72 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
       #04070d;
   }
   .login-tela { padding-top: calc(19.2vw + 16px); }
+}
+
+/* Confiança já vive dentro da ficha do contato; não recebe a filete lateral
+   reservada aos cartões e colunas independentes. */
+.camada[data-tela='missoes'] .mis-confianca {
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* Fabricação: os três módulos seguem a mesma chapa técnica das telas de
+   campanha. O centro mantém o reator, enquanto inventário e receitas ganham
+   agrupamentos legíveis em vez de uma pilha de controles soltos. */
+.camada:has(.fab) .fab-inv {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+}
+.camada:has(.fab) .fab-tipos {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.camada:has(.fab) :is(.fab-inventario-bloco, .fab-filtros-bloco, .fab-materiais) {
+  padding: 8px !important;
+  border: 1px solid rgba(105,137,155,.17) !important;
+  border-radius: 5px !important;
+  background: linear-gradient(145deg, rgba(8,17,27,.76), rgba(4,9,15,.72)) !important;
+}
+.camada:has(.fab) .fab-inventario-bloco {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(89,199,232,.32) transparent;
+}
+.fab-inv-resumo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+  color: #718692;
+  font: 600 7.5px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .8px;
+}
+.fab-inv-resumo strong { font: 700 8px/1 'Chakra Petch', sans-serif; letter-spacing: .7px; }
+.camada:has(.fab) .fab-peca {
+  overflow: hidden;
+  border-left: 2px solid color-mix(in srgb, currentColor 48%, transparent) !important;
+  background: radial-gradient(circle at 50% 42%, rgba(89,199,232,.06), transparent 65%), rgba(6,13,21,.88) !important;
+}
+.camada:has(.fab) .fab-peca > .sprite {
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.72));
+}
+.camada:has(.fab) .fab-peca:not(.inerte):hover {
+  box-shadow: inset 2px 0 0 currentColor !important;
+}
+.camada:has(.fab) .fab-custo-linha {
+  min-height: 32px;
+  padding: 4px 6px;
+}
+.camada:has(.fab) .fab-tipo-gema {
+  flex: 0 0 22px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.62));
+}
+.camada:has(.fab) .fab-receitas-lista {
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(89,199,232,.32) transparent;
 }

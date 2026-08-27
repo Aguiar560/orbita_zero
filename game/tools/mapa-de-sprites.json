@@ -120,25 +120,25 @@
     "elemento": "quimico"
   },
   "nucleo_vektor": {
-    "sprite": "nave/frio_0",
+    "sprite": "jogador/nucleo_vektor",
     "papel": "jogador",
     "nome": "Núcleo Vektor",
     "elemento": "raio"
   },
   "lanca_rubra": {
-    "sprite": "nave/quente_0",
+    "sprite": "jogador/lanca_rubra",
     "papel": "jogador",
     "nome": "Lança Rubra",
     "elemento": "fogo"
   },
   "baluarte_glacial": {
-    "sprite": "sr/player/player_b_m",
+    "sprite": "jogador/baluarte_glacial",
     "papel": "jogador",
     "nome": "Baluarte Glacial",
     "elemento": "gelo"
   },
   "sopro_astral": {
-    "sprite": "nave/quente_1",
+    "sprite": "jogador/sopro_astral",
     "papel": "jogador",
     "nome": "Sopro Astral",
     "elemento": "cosmico"
@@ -726,19 +726,19 @@
     "elemento": "cosmico"
   },
   "nucleo_ferrugem": {
-    "sprite": "prop/reactor_tower",
+    "sprite": "chefe/nucleo_ferrugem",
     "papel": "chefe",
     "nome": "Núcleo Ferrugem",
     "elemento": "fogo"
   },
   "anel_kessler": {
-    "sprite": "prop/ring_station",
+    "sprite": "chefe/anel_kessler",
     "papel": "chefe",
     "nome": "Anel de Kessler",
     "elemento": "cosmico"
   },
   "tita_rochoso": {
-    "sprite": "prop/spike_rock",
+    "sprite": "chefe/tita_rochoso",
     "papel": "chefe",
     "nome": "Titã Rochoso",
     "elemento": "padrao"
@@ -756,7 +756,7 @@
     "elemento": "quimico"
   },
   "destroco_vivo": {
-    "sprite": "prop/wreck_beam",
+    "sprite": "chefe/destroco_vivo",
     "papel": "chefe",
     "nome": "Destroço Vivo",
     "elemento": "gelo"
@@ -768,139 +768,139 @@
     "elemento": "fogo"
   },
   "obelisco": {
-    "sprite": "prop/pillar_broken",
+    "sprite": "chefe/obelisco",
     "papel": "chefe",
     "nome": "Obelisco Partido",
     "elemento": "cosmico"
   },
   "devorador": {
-    "sprite": "hazard/comet_ice",
+    "sprite": "chefe/devorador",
     "papel": "chefe",
     "nome": "Cometa Devorador",
     "elemento": "quimico"
   },
   "arquiteto": {
-    "sprite": "ship/ignis_d",
+    "sprite": "chefe/arquiteto",
     "papel": "chefe",
     "nome": "O Arquiteto",
     "elemento": "gelo"
   },
   "marechal_nival": {
-    "sprite": "s2/boss/n_1",
+    "sprite": "chefe/marechal_nival",
     "papel": "chefe",
     "nome": "Marechal Nival",
     "elemento": "gelo"
   },
   "catedral_corrosao": {
-    "sprite": "s2/boss/n_2",
+    "sprite": "chefe/catedral_corrosao",
     "papel": "chefe",
     "nome": "Catedral da Corrosão",
     "elemento": "quimico"
   },
   "leviata_tetis": {
-    "sprite": "s2/boss/n_4",
+    "sprite": "chefe/leviata_tetis",
     "papel": "chefe",
     "nome": "Leviatã de Tétis",
     "elemento": "gelo"
   },
   "sereia_ions": {
-    "sprite": "s2/boss/n_6",
+    "sprite": "chefe/sereia_ions",
     "papel": "chefe",
     "nome": "Sereia de Íons",
     "elemento": "raio"
   },
   "vertebrador": {
-    "sprite": "s2/boss/n_7",
+    "sprite": "chefe/vertebrador",
     "papel": "chefe",
     "nome": "O Vertebrador",
     "elemento": "cosmico"
   },
   "heliarca_nove": {
-    "sprite": "s2/boss/d_base",
+    "sprite": "chefe/heliarca_nove",
     "papel": "chefe",
     "nome": "Heliarca Nove",
     "elemento": "fogo"
   },
   "lazaro_refeito": {
-    "sprite": "s2/boss/d_1",
+    "sprite": "chefe/lazaro_refeito",
     "papel": "chefe",
     "nome": "Lázaro Refeito",
     "elemento": "quimico"
   },
   "regente_sem_rosto": {
-    "sprite": "s2/boss/d_2",
+    "sprite": "chefe/regente_sem_rosto",
     "papel": "chefe",
     "nome": "Regente Sem Rosto",
     "elemento": "cosmico"
   },
   "almirante_argenteo": {
-    "sprite": "s2/boss/d_3",
+    "sprite": "chefe/almirante_argenteo",
     "papel": "chefe",
     "nome": "Almirante Argênteo",
     "elemento": "padrao"
   },
   "terminal_zero": {
-    "sprite": "s2/boss/d_4",
+    "sprite": "chefe/terminal_zero",
     "papel": "chefe",
     "nome": "Terminal Zero",
     "elemento": "raio"
   },
   "fundidor_asterion": {
-    "sprite": "s2/boss/d_7",
+    "sprite": "chefe/fundidor_asterion",
     "papel": "chefe",
     "nome": "Fundidor Asterion",
     "elemento": "fogo"
   },
   "escaravelho_khepri": {
-    "sprite": "s2/boss/d_8",
+    "sprite": "chefe/escaravelho_khepri",
     "papel": "chefe",
     "nome": "Escaravelho Khepri",
     "elemento": "padrao"
   },
   "tecela_nyx": {
-    "sprite": "s2/boss/d_9",
+    "sprite": "chefe/tecela_nyx",
     "papel": "chefe",
     "nome": "Tecelã de Nyx",
     "elemento": "quimico"
   },
   "gume_negro": {
-    "sprite": "s2/boss/d_10",
+    "sprite": "chefe/gume_negro",
     "papel": "chefe",
     "nome": "Gume Negro",
     "elemento": "raio"
   },
   "refracao_eos": {
-    "sprite": "s2/boss/d_11",
+    "sprite": "chefe/refracao_eos",
     "papel": "chefe",
     "nome": "Refração de Eos",
     "elemento": "cosmico"
   },
   "icaro_coletivo": {
-    "sprite": "s2/boss/d_13",
+    "sprite": "chefe/icaro_coletivo",
     "papel": "chefe",
     "nome": "Ícaro Coletivo",
     "elemento": "quimico"
   },
   "martelo_antares": {
-    "sprite": "s2/boss/d_24",
+    "sprite": "chefe/martelo_antares",
     "papel": "chefe",
     "nome": "Martelo de Antares",
     "elemento": "fogo"
   },
   "soberano_caelum": {
-    "sprite": "s2/boss/d_27",
+    "sprite": "chefe/soberano_caelum",
     "papel": "chefe",
     "nome": "Soberano Caelum",
     "elemento": "gelo"
   },
   "janus_bifronte": {
-    "sprite": "s2/boss/d_28",
+    "sprite": "chefe/janus_bifronte",
     "papel": "chefe",
     "nome": "Janus Bifronte",
     "elemento": "cosmico"
   },
   "umbra_terminal": {
-    "sprite": "s2/boss/d_29",
+    "sprite": "chefe/umbra_terminal",
     "papel": "chefe",
     "nome": "Umbra Terminal",
     "elemento": "cosmico"

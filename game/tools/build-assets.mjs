@@ -1013,11 +1013,12 @@ const spaceships2Slug = (file) => {
 function carregarSubstituicoes() {
   const mapaPath = path.join(PROJECT, 'tools', 'mapa-de-sprites.json');
   const dir = path.join(PROJECT, 'art-source', 'naves');
-  if (!existsSync(mapaPath) || !existsSync(dir)) return { porChave: new Map(), avisos: [] };
+  if (!existsSync(mapaPath) || !existsSync(dir)) return { porChave: new Map(), avisos: [], colisoes: [] };
 
   const mapa = JSON.parse(readFileSync(mapaPath, 'utf8'));
   const porChave = new Map();
   const avisos = [];
+  const colisoes = [];
 
   // Varre subpastas: o autor organiza como quiser (jogador/, inimigo/, chefe/,
   // ou por galáxia) sem que o pipeline precise saber da estrutura.
@@ -1043,7 +1044,27 @@ function carregarSubstituicoes() {
     }
     porChave.set(alvo.sprite, { arquivo: full, id, papel: alvo.papel });
   }
-  return { porChave, avisos };
+
+  // A arte autoral SOBRESCREVE a chave de atlas do alvo, então uma chave
+  // compartilhada por duas naves entrega a arte de uma para as duas.
+  //
+  // Aconteceu de verdade: `arquiteto.png` ia para `ship/ignis_d`, que o chefe
+  // pegava emprestado do casco Ignis Mk IV — e o casco do JOGADOR passou a voar
+  // com a cara do chefe. Mais quatro assim nas iniciais. Nada quebra, nada
+  // avisa: a nave só fica com a arte errada, e o único jeito de descobrir é
+  // reparar nela em jogo.
+  //
+  // O conserto é dar chave própria à nave que tem arte autoral, em `data/`.
+  for (const [chave, { id }] of porChave) {
+    const donos = Object.entries(mapa)
+      .filter(([outro, v]) => v.sprite === chave && outro !== id)
+      .map(([outro, v]) => `${outro} (${v.papel})`);
+    if (donos.length) {
+      colisoes.push(`${id}.png escreve em '${chave}', que também é de ${donos.join(', ')}`);
+    }
+  }
+
+  return { porChave, avisos, colisoes };
 }
 
 async function buildSpaceships2Atlas(manifest) {
@@ -1066,7 +1087,8 @@ async function buildSpaceships2Atlas(manifest) {
     sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
   };
 
-  const { porChave: substituicoes, avisos } = carregarSubstituicoes();
+  const { porChave: substituicoes, avisos, colisoes } = carregarSubstituicoes();
+  for (const c of colisoes) log(`⚠ colisão de arte: ${c}`);
   const substituidas = new Set(substituicoes.keys());
   for (const id of avisos) {
     log(`⚠ art-source/naves/${id}.png não corresponde a nave nenhuma — arte ignorada`);

@@ -88,6 +88,11 @@ export function textoDoRequisito(req: Requisito): string {
 
 /** A missão está visível para o jogador? */
 export function estaLiberada(state: GameState, def: MissaoDef, alcance: number): boolean {
+  // Uma missão não pode ficar pronta antes de o contato que a oferece existir.
+  // Sem essa trava, contratos de ex-chefes acumulavam progresso escondidos e o
+  // contador de entrega exibia recompensas que não apareciam na tela.
+  const giver = def.giverId ? PERSONAGEM_POR_ID.get(def.giverId) : undefined;
+  if (giver && !contatoDesbloqueado(state, giver)) return false;
   return (def.requisitos ?? []).every((r) => requisitoSatisfeito(state, r, alcance));
 }
 

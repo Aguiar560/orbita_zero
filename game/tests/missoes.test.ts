@@ -149,7 +149,13 @@ describe('o progresso', () => {
     for (let i = 0; i < 200; i++) aplicarFato(state, abate({ elemento: 'fogo' }), 1);
     expect(progressoDe(state, def).passos[0]).toBe(0);
 
-    // Com o alcance suficiente, passa a contar.
+    // Alcance sozinho não basta: o contato dono ainda está bloqueado.
+    aplicarFato(state, abate({ elemento: 'fogo' }), 10);
+    expect(progressoDe(state, def).passos[0]).toBe(0);
+
+    // Depois de derrotar o guardião, o contato existe e o contrato passa a
+    // receber progresso normalmente.
+    state.codex.push('nucleo_ferrugem');
     aplicarFato(state, abate({ elemento: 'fogo' }), 10);
     expect(progressoDe(state, def).passos[0]).toBe(1);
   });

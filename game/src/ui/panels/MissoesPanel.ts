@@ -205,12 +205,12 @@ export class MissoesPanel implements Panel {
         const aberto = conf >= n;
         const premio = RECOMPENSA_DE_CONFIANCA.find((r) => r.nivel === n);
         return h('.mis-no-wrap', {},
-          ...(i > 0 ? [h('.mis-fio', { style: { background: aberto ? p.cor : 'var(--line)' } })] : []),
           h(`.mis-no${aberto ? '.aberto' : ''}`, {
             style: { borderColor: aberto ? p.cor : 'var(--line)', color: aberto ? p.cor : 'var(--muted)' },
             title: `Nível ${ROMANOS[i]} — ${premio?.texto ?? ''}`,
           }),
           h('span.mis-no-rom', { text: ROMANOS[i]!, style: { color: aberto ? p.cor : 'var(--muted)' } }),
+          ...(i < CONFIANCA_MAX - 1 ? [h('.mis-fio', { style: { background: aberto ? p.cor : 'var(--line)' } })] : []),
         );
       })),
       h('p.muted.tiny', { text: 'Complete missões deste contato para aumentar a confiança e desbloquear recompensas exclusivas.' }),
