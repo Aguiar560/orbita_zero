@@ -6,7 +6,7 @@ compatibility_date = "2026-08-01"
 # e o segundo é o endereço público do JWKS. Segredo mesmo não existe neste
 # Worker, e essa é a vantagem de verificar o token com chave pública.
 [vars]
-SUPABASE_URL = "https://SEU-REF.supabase.co"
+SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
 ORIGENS = "http://localhost:5180"
 
 [[d1_databases]]

@@ -44,7 +44,13 @@ let chaves: Map<string, CryptoKey> | null = null;
 let buscando: Promise<Map<string, CryptoKey>> | null = null;
 
 async function carregarChaves(urlBase: string): Promise<Map<string, CryptoKey>> {
-  const resposta = await fetch(`${urlBase}/auth/v1/jwks`);
+  // `/auth/v1/.well-known/jwks.json`, e nao `/auth/v1/jwks`.
+  //
+  // O segundo existe e responde 401 pedindo cabecalho `apikey` — descoberto
+  // testando contra um projeto real, nao lendo documentacao. O caminho
+  // .well-known e publico por desenho, que e o que permite a este Worker nao
+  // guardar credencial nenhuma.
+  const resposta = await fetch(`${urlBase}/auth/v1/.well-known/jwks.json`);
   if (!resposta.ok) throw new Error(`jwks ${resposta.status}`);
   const { keys } = (await resposta.json()) as { keys: Jwk[] };
 

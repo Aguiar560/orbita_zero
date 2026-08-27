@@ -50,11 +50,14 @@ Nenhum destes passos é automatizável por aqui — todos exigem sua conta.
 ### 1. Supabase
 
 1. Criar projeto em supabase.com (plano gratuito).
-2. Anotar a **Project URL** (`https://<ref>.supabase.co`).
+2. Anotar a **Project URL**. O domínio é **`.supabase.co`**, não `.supabase.com`
+   — o segundo nem resolve, e o erro apareceria só como falha de verificação.
 3. Em **Authentication → Providers**, ligar e-mail (e o que mais quiser).
-4. Conferir em **Settings → API** que a assinatura de JWT é **assimétrica**
-   (ES256). Se o projeto ainda estiver em HS256, migrar antes — o Worker só
-   aceita ES256, de propósito.
+4. Migrar a assinatura de JWT para **assimétrica**, em Settings → JWT Keys:
+   **Migrate JWT secret** → **Rotate keys**. O projeto novo nasce em HS256
+   (segredo compartilhado) e o Worker só aceita ES256, de propósito.
+   Ninguém é deslogado: os tokens antigos continuam válidos até expirarem.
+5. Depois da janela de expiração, **revogar** a chave HS256 antiga.
 
 ### 2. Cloudflare
 
@@ -91,6 +94,25 @@ npm run dev
 Verificado nesta máquina: `/saude` responde 200, `/save` devolve 401 sem token
 e 401 com token inválido — a mesma resposta opaca nos dois casos, porque dizer
 qual foi ajuda quem testa um ataque mais do que ajuda um cliente correto.
+
+## Verificado contra o projeto real
+
+O JWKS mora em **`/auth/v1/.well-known/jwks.json`**, e não em `/auth/v1/jwks`.
+O segundo existe e responde **401 pedindo cabeçalho `apikey`** — o primeiro é
+público por desenho, e é ele que permite a este Worker não guardar credencial
+nenhuma.
+
+Isso foi descoberto testando, não lendo: o caminho errado estava escrito aqui e
+teria falhado só na primeira tentativa de login, como `jwks 401`.
+
+Medido em 27/08 contra `vzsiorkeykcbcpmismyy`:
+
+| | |
+|---|---|
+| JWKS | 200 |
+| chave | `e9172b00-…` · EC · ES256 · P-256 |
+| import no WebCrypto | OK |
+| emissor exigido | `https://vzsiorkeykcbcpmismyy.supabase.co/auth/v1` |
 
 ## O que ainda NÃO existe
 
