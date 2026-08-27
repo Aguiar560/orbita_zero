@@ -387,20 +387,15 @@ export class VerticalMode {
     // com 14–22 px/s, o primeiro corpo levava meio minuto para aparecer — o
     // jogador trocava de fase e via um céu vazio, que é justamente a queixa que
     // motivou trocar os planetas.
+    const heroSize = rng.range(160, 220);
     const props: typeof this.skyProps = [
-      // Herói: grande, próximo, mais opaco — e na MARGEM, cortado pela tela.
-      //
-      // O `fx` ia de 0,12 a 0,82: o centro do planeta caía dentro da pista de
-      // jogo em 72% dos setores, e ele cobria 75% dela. Inimigo passando por
-      // cima sumia. Agora o centro fica fora da pista, dos dois lados, e o que
-      // aparece é um pedaço de um corpo grande — que lê como MAIOR do que o
-      // disco inteiro no meio da tela, não menor.
+      // Herói: planeta inteiro, dentro da pista e recuado. A silhueta completa
+      // deixa o céu mais bonito e o tamanho contido preserva a leitura do
+      // combate quando uma nave passa à frente dele.
       {
         key: hero,
-        fx: rng.chance(0.5)
-          ? rng.range(-0.06, CORPO_CELESTE.margem)
-          : rng.range(1 - CORPO_CELESTE.margem, 1.06),
-        y: rng.range(-460, 520), size: rng.range(250, 420), speed: rng.range(14, 22), alpha: 0.78,
+        fx: rng.range(0.4, 0.6),
+        y: rng.range(-460, 520), size: heroSize, speed: rng.range(14, 22), alpha: 0.55,
       },
       // Distantes: pequenos, lentos e apagados, só para dar profundidade.
       { key: rng.pick(vizinhos[0]!), fx: rng.range(0.05, 0.95), y: rng.range(-1500, 780), size: rng.range(96, 168), speed: rng.range(5, 9), alpha: 0.42 },
