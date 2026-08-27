@@ -1,12 +1,13 @@
 import { Loop } from './Loop';
-import { bus } from './Bus';
 import { assets } from '@render/Assets';
 import { Surface } from '@render/Surface';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
 import { allowSaving, loadFromStorage } from '@sim/state';
-import { toast } from './Bus';
+import { bus, toast } from './Bus';
+import { Tour } from '@ui/Tour';
+import { PASSOS_DO_ONBOARDING } from '@data/onboarding';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
@@ -161,6 +162,13 @@ export class Game {
       this.vertical.refreshPlayer(true);
     }
 
+    // O guia vem DEPOIS da escolha de piloto e ANTES do relatório de ausência:
+    // depois porque ele aponta para a nave que o jogador acabou de escolher, e
+    // antes porque um relatório sobre um jogo que ele ainda não entende não diz
+    // nada. Quem já viu não vê de novo.
+    bus.on('guia:abrir', () => this.abrirGuia());
+    if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
+
     if (this.offlineSeconds > AWAY_THRESHOLD) {
       const report = this.sim.applyOffline(this.offlineSeconds);
       this.vertical.refreshPlayer(true);
@@ -225,6 +233,26 @@ export class Game {
     // O daqui é o mais adiantado. A versão já foi atualizada pela resposta do
     // conflito, então esta subida encontra a base certa.
     await subirSave(this.sim.state);
+  }
+
+  /**
+   * Abre o passeio guiado.
+   *
+   * Marca como visto ao FECHAR, completo ou pulado. Marcar ao abrir perderia o
+   * guia de quem recarregou a página no meio; marcar só ao completar faria o
+   * guia voltar toda vez para quem escolheu pular — que é justamente quem já
+   * disse que não quer.
+   */
+  abrirGuia(): void {
+    const tour = new Tour({
+      passos: PASSOS_DO_ONBOARDING,
+      aoAbrirPainel: (id) => bus.emit('panel:open', { id }),
+      aoFechar: () => {
+        this.sim.state.settings.guiaVisto = true;
+        this.sim.save();
+      },
+    });
+    tour.comecar(this.rootEl);
   }
 
   // ── laço ──────────────────────────────────────────────────────────────────

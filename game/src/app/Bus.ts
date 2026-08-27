@@ -41,6 +41,8 @@ export interface GameEvents {
   /** `galaxy` leva o contexto do mapa para o placar sem persistir uma escolha de UI. */
   'panel:open': { id: string; galaxy?: number };
   'panel:close': void;
+  /** Pedido de reabrir o passeio guiado, vindo de Ajustes. */
+  'guia:abrir': void;
   'laboratorio:changed': void;
   /**
    * Uma peça começou ou terminou de ser arrastada.

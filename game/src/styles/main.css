@@ -6957,3 +6957,75 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .ranking-apelido-erro { color: var(--bad); }
 
 .ranking-total { display: block; margin-top: 6px; text-align: right; }
+
+/* ── passeio guiado ─────────────────────────────────────────────────────────
+ *
+ * A camada cobre a tela inteira e tem um BURACO no alvo, recortado por
+ * `clip-path` com `evenodd` (ver `ui/Tour.ts`). Como não há camada em cima do
+ * alvo, ele aparece ao vivo e sem desfoque — sem clone, sem congelar animação,
+ * e o `<canvas>` do palco continua desenhando. */
+.tour-camada {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(2, 6, 14, .72);
+  /* O desfoque é do FUNDO, não da camada: é ele que apaga o resto da interface
+   * sem apagar a cor dela. Um `filter` comum borraria a própria tinta. */
+  backdrop-filter: blur(3.5px) saturate(.7);
+  -webkit-backdrop-filter: blur(3.5px) saturate(.7);
+  /* Pega o clique: durante o passeio a interface atrás não deve responder, ou
+   * o jogador abre um painel no meio da explicação de outro. */
+  pointer-events: auto;
+  transition: clip-path 260ms cubic-bezier(.4, 0, .2, 1);
+}
+
+/* O alvo cresce sem refluir. `transform` não empurra vizinho e não remonta a
+ * interface — mudar tamanho de verdade faria o painel dançar a cada passo. */
+.tour-alvo {
+  transform: scale(var(--tour-escala, 1));
+  transition: transform 260ms cubic-bezier(.4, 0, .2, 1);
+  /* Sem isto, um alvo dentro de um container rolável ficaria atrás dos irmãos
+   * ao crescer. */
+  position: relative; z-index: 901;
+}
+
+.tour-balao {
+  position: fixed; z-index: 902; width: 330px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--accent); border-radius: 12px;
+  background: linear-gradient(180deg, rgba(10, 18, 34, .98), rgba(5, 10, 20, .98));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .6), 0 0 30px rgba(79, 195, 255, .18);
+  transition: left 260ms cubic-bezier(.4, 0, .2, 1), top 260ms cubic-bezier(.4, 0, .2, 1);
+}
+.tour-passo-conta {
+  font-size: 10px; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 6px;
+}
+.tour-titulo {
+  margin: 0 0 6px; font-size: 15px; letter-spacing: .5px; color: var(--text);
+}
+.tour-texto {
+  margin: 0 0 14px; font-size: 12px; line-height: 1.5; color: var(--muted);
+}
+.tour-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-navegar { display: flex; gap: 8px; }
+.tour-btn {
+  padding: 7px 14px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: rgba(4, 10, 17, .8); color: var(--muted);
+  font: 600 11.5px/1 'Chakra Petch', sans-serif;
+}
+.tour-btn:hover { color: var(--text); border-color: var(--accent); }
+.tour-principal { border-color: var(--accent); color: var(--accent); }
+.tour-principal:hover { box-shadow: 0 0 14px rgba(79, 195, 255, .35); }
+/* "Pular" fica discreto de propósito: precisa existir para quem não quer o
+ * guia, e não competir com "Próximo" para quem quer. */
+.tour-pular {
+  padding: 4px 2px; cursor: pointer; border: 0; background: none;
+  color: var(--muted); opacity: .7; font: 500 11px/1 'Chakra Petch', sans-serif;
+  text-decoration: underline;
+}
+.tour-pular:hover { opacity: 1; }
+
+/* Quem pediu menos movimento não recebe movimento. O passeio continua
+ * funcionando: o que sai é a animação, não a informação. */
+@media (prefers-reduced-motion: reduce) {
+  .tour-camada, .tour-alvo, .tour-balao { transition: none; }
+}

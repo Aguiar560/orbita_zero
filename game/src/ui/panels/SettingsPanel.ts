@@ -2,6 +2,7 @@ import { duration } from '@core/format';
 import { RARITIES } from '@data/rarity';
 import { allowSaving, clearStorage, exportSave, importSave } from '@sim/state';
 import { ehAdmin } from '@app/admin';
+import { bus } from '@app/Bus';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
 import type { Rarity } from '@sim/types';
@@ -267,6 +268,20 @@ export class SettingsPanel implements Panel {
             location.reload();
           },
         }, h('span', { text: 'Importar save' })),
+      ),
+
+      h('h3.section', { text: 'Guia' }),
+      h('p.muted.hint', { text: 'O passeio que explica cada parte da tela. Dá para rever quando quiser.' }),
+      h('.setting', {},
+        h('.setting-text', {}, h('strong', { text: 'Rever o guia do jogo' })),
+        h('button.btn', {
+          onclick: () => {
+            // Fecha Ajustes antes: o guia aponta para a tela DE TRÁS, e com o
+            // painel aberto por cima metade dos alvos ficaria escondida.
+            bus.emit('panel:close');
+            bus.emit('guia:abrir');
+          },
+        }, h('span', { text: 'Abrir guia' })),
       ),
 
       h('h3.section.perigo', { text: 'Zona de perigo' }),

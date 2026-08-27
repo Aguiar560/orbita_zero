@@ -121,3 +121,11 @@
 17:35:47 [vite] (client) page reload src/app/Game.ts
 17:36:48 [vite] (client) page reload src/app/nuvem.ts
 17:36:48 [vite] (client) page reload src/app/Game.ts
+17:44:27 [vite] (client) hmr update /src/styles/main.css
+17:45:10 [vite] (client) page reload src/sim/types.ts
+17:45:10 [vite] (client) page reload src/sim/state.ts
+17:45:10 [vite] (client) page reload src/app/Game.ts
+17:45:10 [vite] (client) page reload src/ui/panels/SettingsPanel.ts
+17:45:10 [vite] (client) page reload src/app/Bus.ts
+17:45:28 [vite] (client) page reload src/app/Game.ts
+17:48:41 [vite] (client) page reload src/ui/Tour.ts

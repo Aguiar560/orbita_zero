@@ -333,6 +333,8 @@ export interface Settings {
    * sem esperar a curva de progressão.
    */
   testMode: boolean;
+  /** O passeio guiado já foi visto? Fica em ajustes porque é preferência. */
+  guiaVisto: boolean;
   /** Multiplicador de velocidade do jogo (1..8), só com o modo de teste. */
   speed: number;
   /**
