@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "description": "Órbita Zero — idle de naves espaciais com camada horizontal (farm fino) e camada vertical (combate pilotado por IA).",
   "scripts": {
     "assets": "npm run assets:mapa && node tools/build-assets.mjs",
