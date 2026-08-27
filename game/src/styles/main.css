@@ -5463,8 +5463,22 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   margin-top: calc((100vh - 52px) * 60 / 960);
   /* Por cima do canvas, que vem antes no DOM. */
   z-index: 5;
+  /*
+   * A largura é o que a animação move, e é ela que empurra a alça: a alça é
+   * `absolute; left: 0`, então a borda esquerda do cartão a leva junto sem
+   * precisar de uma segunda animação sincronizada com esta.
+   *
+   * 260ms com saída desacelerada. Instantâneo o painel PISCA — não se lê como
+   * abrir, se lê como trocar de tela; acima de ~350ms começa a atrasar quem já
+   * sabe o que quer. A curva chega rápido e assenta devagar, que é a forma de
+   * um painel deslizando e parando, e não de uma caixa aparecendo.
+   */
+  transition: width .26s cubic-bezier(.22, .61, .36, 1);
 }
 .layout > .anatomia.fechada { width: 0; }
+
+/* Recorta o corpo enquanto ele desliza. Fora daqui fica a alça, de propósito. */
+.anat-janela { width: 100%; height: 100%; overflow: hidden; }
 
 /*
  * O cartão tem a altura do que tem dentro, e só.
@@ -5500,7 +5514,33 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
    * atrás dela. O abre-e-fecha existia e não dava para usar. */
   overflow: hidden;
 }
-.anatomia.fechada .anat-corpo { display: none; }
+/*
+ * Largura FIXA, e não `100%`.
+ *
+ * Com largura relativa, encolher a janela reflui o conteúdo: os dez soquetes
+ * se reorganizariam quadro a quadro e o painel pareceria desmontar em vez de
+ * sair. Fixo, ele sai inteiro e a janela é que o come pela borda.
+ */
+.anat-corpo {
+  width: var(--anat-larg, 300px);
+  transition:
+    transform .26s cubic-bezier(.22, .61, .36, 1),
+    opacity .18s ease;
+}
+/*
+ * Era `display: none`, que não anima — e é por isso que o painel aparecia de
+ * um quadro para o outro. Sai deslizando para a direita e some no caminho; a
+ * opacidade termina antes do deslocamento para o cartão não ficar visível
+ * espremido contra a borda no fim do trajeto.
+ *
+ * `pointer-events: none` faz o papel que o `display: none` fazia de útil:
+ * painel fechado não recebe clique, mesmo durante a saída.
+ */
+.anatomia.fechada .anat-corpo {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
 
 /*
  * A alça mora no TOPO, colada na quina do cartão — não no meio da trilha.
@@ -5526,6 +5566,8 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   z-index: 6;
 }
 .anat-alca:hover { color: var(--accent); border-color: var(--line-strong); }
+/* A seta gira em vez de trocar de caractere: o giro DIZ que é a mesma alça. */
+.anat-alca { transition: color .18s ease, border-color .18s ease; }
 
 .anat-seletor {
   width: 100%; padding: 5px 7px;

@@ -45,6 +45,19 @@ export class Anatomia {
   readonly root = h('aside.anatomia');
 
   private readonly corpo = h('.anat-corpo');
+  /**
+   * A moldura que RECORTA o corpo enquanto ele desliza.
+   *
+   * Existe só por causa da animação, e existe aqui e não no `aside` por um
+   * motivo já pago: `overflow: hidden` no `aside` corta a ALÇA, que fica fora
+   * da caixa por definição. Isso já aconteceu uma vez — a alça caía em x=638
+   * com a coluna começando em 652, e quem respondia ao clique era o painel
+   * atrás dela. O abre-e-fecha existia e não dava para usar.
+   *
+   * Com a janela entre os dois, o corpo desliza recortado e a alça continua
+   * fora do recorte.
+   */
+  private readonly janela = h('.anat-janela');
   /** Casco em exibição; pode não ser o que está voando. */
   private vendo = '';
   /**
@@ -76,7 +89,8 @@ export class Anatomia {
   });
 
   constructor(private readonly sim: Sim) {
-    this.root.append(this.alca, this.corpo);
+    this.janela.append(this.corpo);
+    this.root.append(this.alca, this.janela);
     bus.on('state:changed', () => { this.dirty = true; });
     // Repinta AGORA, sem passar pelo amostrador: ver `arraste:mudou` no Bus.
     bus.on('arraste:mudou', () => { this.dirty = false; this.build(); });
