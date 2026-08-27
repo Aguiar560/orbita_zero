@@ -51,7 +51,9 @@ describe('equipamento por nave', () => {
     }
     const comConjunto = dps(resolveStats(sim.state));
 
-    sim.trocarCasco(outra!);
+    // `selectHull` e nao `trocarCasco`: as duas existiam e validavam a mesma
+    // pergunta contra listas diferentes. Ficou a que enxerga o modo de teste.
+    expect(sim.selectHull(outra!), 'a troca precisa ser aceita').toBe(true);
     const nua = dps(resolveStats(sim.state));
 
     expect(equipamentoDe(sim.state)).toEqual({});
