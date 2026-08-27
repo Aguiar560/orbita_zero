@@ -16,7 +16,7 @@ import { Particles } from '@render/Particles';
 import type { Surface } from '@render/Surface';
 import { frameAt, getClip } from '@render/Anim';
 import { PLANET_KEYS, describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector } from '@data/galaxies';
-import { SKY_COMETS, SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
+import { SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
 import { WAVES_PER_SECTOR } from '@sim/progression';
 import { rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
@@ -414,16 +414,6 @@ export class VerticalMode {
         key: rng.pick(SKY_NEBULAE),
         fx: rng.range(0.15, 0.85), y: rng.range(-2600, -600),
         size: rng.range(560, 900), speed: rng.range(2, 4), alpha: 0.22,
-      });
-    }
-
-    // Cometa: rápido, minúsculo, atravessa a tela e some. Dá vida ao fundo sem
-    // competir com os inimigos.
-    if (rng.chance(0.4)) {
-      props.push({
-        key: rng.pick(SKY_COMETS),
-        fx: rng.range(0.08, 0.92), y: rng.range(-2400, -700),
-        size: rng.range(90, 150), speed: rng.range(52, 88), alpha: 0.6,
       });
     }
 

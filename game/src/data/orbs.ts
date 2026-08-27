@@ -12,20 +12,16 @@ export const LUAS = ['cinza', 'ocre', 'palida', 'ferro', 'areia', 'musgo', 'amet
 export const ANOES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
 export const SATELITES = ['antena', 'painel', 'anel', 'sonda', 'esfera'] as const;
 export const BURACOS = ['azul', 'laranja', 'roxo'] as const;
-export const ANEIS = ['0', '1', '2'] as const;
 export const CINTUROES = ['0', '1', '2'] as const;
 export const NEBULOSAS = ['0', '1', '2', '3'] as const;
-export const COMETAS = ['0', '1', '2', '3'] as const;
 
 /** Famílias que podem compor a vizinhança de uma fase, com os ids já montados. */
 export const SKY_FAMILIES: readonly (readonly string[])[] = [
   LUAS.map((n) => `lua/${n}`),
   ANOES.map((n) => `anao/${n}`),
   SATELITES.map((n) => `satelite/${n}`),
-  ANEIS.map((n) => `anel/${n}`),
   BURACOS.map((n) => `buraco/${n}`),
   CINTUROES.map((n) => `cinturao/${n}`),
 ];
 
 export const SKY_NEBULAE: readonly string[] = NEBULOSAS.map((n) => `nebulosa/${n}`);
-export const SKY_COMETS: readonly string[] = COMETAS.map((n) => `cometa/${n}`);
