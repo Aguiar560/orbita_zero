@@ -5,8 +5,9 @@ dist/
 # Registro de proveniência gravado pelo pipeline (entrada da auditoria)
 .assets/
 
-# Gerado por `npm run assets` a partir dos packs de arte em ../
-public/assets/
+# Pacote processado de artes usado pelo deploy. Os packs crus continuam fora
+# do repositório; quando forem atualizados, gere novamente com `npm run assets`
+# e versione o resultado daqui.
 
 # Servidor (Cloudflare Worker)
 server/node_modules/

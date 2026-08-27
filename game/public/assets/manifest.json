@@ -1,0 +1,1112 @@
+{
+  "version": 1,
+  "generated": "2026-08-27T18:43:26.282Z",
+  "atlases": [
+    {
+      "name": "espaco",
+      "image": "atlas/espaco.webp",
+      "data": "atlas/espaco.json",
+      "w": 1024,
+      "h": 512,
+      "count": 74
+    },
+    {
+      "name": "itens",
+      "image": "atlas/itens.webp",
+      "data": "atlas/itens.json",
+      "w": 1024,
+      "h": 512,
+      "count": 120
+    },
+    {
+      "name": "arcade",
+      "image": "atlas/arcade.webp",
+      "data": "atlas/arcade.json",
+      "w": 1024,
+      "h": 512,
+      "count": 194
+    },
+    {
+      "name": "void",
+      "image": "atlas/void.webp",
+      "data": "atlas/void.json",
+      "w": 2048,
+      "h": 2048,
+      "count": 1354
+    },
+    {
+      "name": "retratos",
+      "image": "atlas/retratos.webp",
+      "data": "atlas/retratos.json",
+      "w": 2048,
+      "h": 1024,
+      "count": 210,
+      "lazy": true
+    },
+    {
+      "name": "galaxia",
+      "image": "atlas/galaxia.webp",
+      "data": "atlas/galaxia.json",
+      "w": 1024,
+      "h": 1024,
+      "count": 137
+    },
+    {
+      "name": "icones",
+      "image": "atlas/icones.webp",
+      "data": "atlas/icones.json",
+      "w": 512,
+      "h": 512,
+      "count": 59
+    },
+    {
+      "name": "orbe",
+      "image": "atlas/orbe.webp",
+      "data": "atlas/orbe.json",
+      "w": 2048,
+      "h": 1024,
+      "count": 52
+    },
+    {
+      "name": "combate",
+      "image": "atlas/combate.webp",
+      "data": "atlas/combate.json",
+      "w": 1024,
+      "h": 512,
+      "count": 80
+    },
+    {
+      "name": "elemental",
+      "image": "atlas/elemental.webp",
+      "data": "atlas/elemental.json",
+      "w": 1024,
+      "h": 1024,
+      "count": 117
+    },
+    {
+      "name": "itens-novos",
+      "image": "atlas/itens-novos.webp",
+      "data": "atlas/itens-novos.json",
+      "w": 1024,
+      "h": 512,
+      "count": 140
+    },
+    {
+      "name": "recursos",
+      "image": "atlas/recursos.webp",
+      "data": "atlas/recursos.json",
+      "w": 1024,
+      "h": 1024,
+      "count": 70
+    },
+    {
+      "name": "destrocos",
+      "image": "atlas/destrocos.webp",
+      "data": "atlas/destrocos.json",
+      "w": 256,
+      "h": 256,
+      "count": 30
+    },
+    {
+      "name": "fleet",
+      "image": "atlas/fleet.webp",
+      "data": "atlas/fleet.json",
+      "w": 512,
+      "h": 512,
+      "count": 121
+    },
+    {
+      "name": "hull",
+      "image": "atlas/hull.webp",
+      "data": "atlas/hull.json",
+      "w": 1024,
+      "h": 1024,
+      "count": 187
+    },
+    {
+      "name": "spaceships2",
+      "image": "atlas/spaceships2.webp",
+      "data": "atlas/spaceships2.json",
+      "w": 4096,
+      "h": 2048,
+      "count": 181
+    },
+    {
+      "name": "characters",
+      "image": "atlas/characters.webp",
+      "data": "atlas/characters.json",
+      "w": 2048,
+      "h": 1024,
+      "count": 34,
+      "lazy": true
+    },
+    {
+      "name": "detritos",
+      "image": "atlas/detritos.webp",
+      "data": "atlas/detritos.json",
+      "w": 512,
+      "h": 512,
+      "count": 66
+    },
+    {
+      "name": "drone",
+      "image": "atlas/drone.webp",
+      "data": "atlas/drone.json",
+      "w": 512,
+      "h": 512,
+      "count": 39
+    }
+  ],
+  "images": {
+    "bg/nebula_column": {
+      "src": "bg/nebula_column.png",
+      "w": 295,
+      "h": 1433
+    },
+    "bg/starfield": {
+      "src": "bg/starfield.png",
+      "w": 700,
+      "h": 800
+    }
+  },
+  "skies": [
+    {
+      "key": "full",
+      "src": "bg/sky_full.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "space",
+      "src": "bg/sky_space.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "nebula1",
+      "src": "bg/sky_nebula1.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "nebula2",
+      "src": "bg/sky_nebula2.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "stars",
+      "src": "bg/sky_stars.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "smallstars",
+      "src": "bg/sky_smallstars.png",
+      "w": 320,
+      "h": 320
+    }
+  ],
+  "backdrops": [
+    {
+      "key": "void",
+      "src": "bg/void_void.png",
+      "w": 360,
+      "h": 5760
+    },
+    {
+      "key": "stars",
+      "src": "bg/void_stars.png",
+      "w": 360,
+      "h": 5760
+    },
+    {
+      "key": "glow",
+      "src": "bg/void_glow.png",
+      "w": 360,
+      "h": 5760
+    }
+  ],
+  "galaxyArt": [
+    {
+      "key": "blue_nebula_01",
+      "src": "galaxia/blue_nebula_01.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_02",
+      "src": "galaxia/blue_nebula_02.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_03",
+      "src": "galaxia/blue_nebula_03.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_04",
+      "src": "galaxia/blue_nebula_04.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_05",
+      "src": "galaxia/blue_nebula_05.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_06",
+      "src": "galaxia/blue_nebula_06.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_07",
+      "src": "galaxia/blue_nebula_07.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "blue_nebula_08",
+      "src": "galaxia/blue_nebula_08.png",
+      "group": "blue_nebula"
+    },
+    {
+      "key": "green_nebula_01",
+      "src": "galaxia/green_nebula_01.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_02",
+      "src": "galaxia/green_nebula_02.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_03",
+      "src": "galaxia/green_nebula_03.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_04",
+      "src": "galaxia/green_nebula_04.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_05",
+      "src": "galaxia/green_nebula_05.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_06",
+      "src": "galaxia/green_nebula_06.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_07",
+      "src": "galaxia/green_nebula_07.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "green_nebula_08",
+      "src": "galaxia/green_nebula_08.png",
+      "group": "green_nebula"
+    },
+    {
+      "key": "purple_nebula_01",
+      "src": "galaxia/purple_nebula_01.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_02",
+      "src": "galaxia/purple_nebula_02.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_03",
+      "src": "galaxia/purple_nebula_03.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_04",
+      "src": "galaxia/purple_nebula_04.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_05",
+      "src": "galaxia/purple_nebula_05.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_06",
+      "src": "galaxia/purple_nebula_06.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_07",
+      "src": "galaxia/purple_nebula_07.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "purple_nebula_08",
+      "src": "galaxia/purple_nebula_08.png",
+      "group": "purple_nebula"
+    },
+    {
+      "key": "starfield_01",
+      "src": "galaxia/starfield_01.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_02",
+      "src": "galaxia/starfield_02.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_03",
+      "src": "galaxia/starfield_03.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_04",
+      "src": "galaxia/starfield_04.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_05",
+      "src": "galaxia/starfield_05.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_06",
+      "src": "galaxia/starfield_06.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_07",
+      "src": "galaxia/starfield_07.png",
+      "group": "starfields"
+    },
+    {
+      "key": "starfield_08",
+      "src": "galaxia/starfield_08.png",
+      "group": "starfields"
+    }
+  ],
+  "starfields": [
+    {
+      "key": "shmup1",
+      "src": "bg/campo_shmup1.png",
+      "w": 270,
+      "h": 480
+    },
+    {
+      "key": "shmup2",
+      "src": "bg/campo_shmup2.png",
+      "w": 270,
+      "h": 480
+    },
+    {
+      "key": "grandes",
+      "src": "bg/campo_grandes.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "miudas",
+      "src": "bg/campo_miudas.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "grandes_giro",
+      "src": "bg/campo_grandes_giro.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "miudas_espelho",
+      "src": "bg/campo_miudas_espelho.png",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "key": "azuis",
+      "src": "bg/campo_azuis.png",
+      "w": 272,
+      "h": 160
+    }
+  ],
+  "fundos": [
+    {
+      "id": "01_crimson",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/01_crimson_longe.webp",
+        "nebulosa": "fundo/01_crimson_nebulosa.webp",
+        "estrelas": "fundo/01_crimson_estrelas.webp"
+      }
+    },
+    {
+      "id": "02_abyss",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/02_abyss_longe.webp",
+        "nebulosa": "fundo/02_abyss_nebulosa.webp",
+        "estrelas": "fundo/02_abyss_estrelas.webp"
+      }
+    },
+    {
+      "id": "03_emerald",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/03_emerald_longe.webp",
+        "nebulosa": "fundo/03_emerald_nebulosa.webp",
+        "estrelas": "fundo/03_emerald_estrelas.webp"
+      }
+    },
+    {
+      "id": "04_violet",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/04_violet_longe.webp",
+        "nebulosa": "fundo/04_violet_nebulosa.webp",
+        "estrelas": "fundo/04_violet_estrelas.webp"
+      }
+    },
+    {
+      "id": "05_amber",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/05_amber_longe.webp",
+        "nebulosa": "fundo/05_amber_nebulosa.webp",
+        "estrelas": "fundo/05_amber_estrelas.webp"
+      }
+    },
+    {
+      "id": "06_cyan",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/06_cyan_longe.webp",
+        "nebulosa": "fundo/06_cyan_nebulosa.webp",
+        "estrelas": "fundo/06_cyan_estrelas.webp"
+      }
+    },
+    {
+      "id": "07_crimson",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/07_crimson_longe.webp",
+        "nebulosa": "fundo/07_crimson_nebulosa.webp",
+        "estrelas": "fundo/07_crimson_estrelas.webp"
+      }
+    },
+    {
+      "id": "08_abyss",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/08_abyss_longe.webp",
+        "nebulosa": "fundo/08_abyss_nebulosa.webp",
+        "estrelas": "fundo/08_abyss_estrelas.webp"
+      }
+    },
+    {
+      "id": "09_emerald",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/09_emerald_longe.webp",
+        "nebulosa": "fundo/09_emerald_nebulosa.webp",
+        "estrelas": "fundo/09_emerald_estrelas.webp"
+      }
+    },
+    {
+      "id": "10_violet",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/10_violet_longe.webp",
+        "nebulosa": "fundo/10_violet_nebulosa.webp",
+        "estrelas": "fundo/10_violet_estrelas.webp"
+      }
+    },
+    {
+      "id": "11_amber",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/11_amber_longe.webp",
+        "nebulosa": "fundo/11_amber_nebulosa.webp",
+        "estrelas": "fundo/11_amber_estrelas.webp"
+      }
+    },
+    {
+      "id": "12_cyan",
+      "tipo": "parallax",
+      "camadas": {
+        "longe": "fundo/12_cyan_longe.webp",
+        "nebulosa": "fundo/12_cyan_nebulosa.webp",
+        "estrelas": "fundo/12_cyan_estrelas.webp"
+      }
+    },
+    {
+      "id": "13_aqua",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/13_aqua_0.webp",
+        "fundo/13_aqua_1.webp",
+        "fundo/13_aqua_2.webp"
+      ]
+    },
+    {
+      "id": "14_blue",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/14_blue_0.webp",
+        "fundo/14_blue_1.webp"
+      ]
+    },
+    {
+      "id": "15_red",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/15_red_0.webp",
+        "fundo/15_red_1.webp"
+      ]
+    },
+    {
+      "id": "16_stellar",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/16_stellar_0.webp",
+        "fundo/16_stellar_1.webp",
+        "fundo/16_stellar_2.webp",
+        "fundo/16_stellar_3.webp",
+        "fundo/16_stellar_4.webp"
+      ]
+    },
+    {
+      "id": "17_toxic",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/17_toxic_0.webp",
+        "fundo/17_toxic_1.webp",
+        "fundo/17_toxic_2.webp",
+        "fundo/17_toxic_3.webp",
+        "fundo/17_toxic_4.webp"
+      ]
+    },
+    {
+      "id": "18_vapor",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/18_vapor_0.webp",
+        "fundo/18_vapor_1.webp",
+        "fundo/18_vapor_2.webp",
+        "fundo/18_vapor_3.webp",
+        "fundo/18_vapor_4.webp"
+      ]
+    },
+    {
+      "id": "19_void",
+      "tipo": "chapado",
+      "variacoes": [
+        "fundo/19_void_0.webp",
+        "fundo/19_void_1.webp",
+        "fundo/19_void_2.webp",
+        "fundo/19_void_3.webp",
+        "fundo/19_void_4.webp"
+      ]
+    }
+  ],
+  "interface": {
+    "placa_titulo": {
+      "src": "ui/placa_titulo.png",
+      "w": 746,
+      "h": 93,
+      "slice": 120
+    },
+    "anel_fundo": {
+      "src": "ui/anel_fundo.png",
+      "w": 541,
+      "h": 539
+    },
+    "encaixe_vazio": {
+      "src": "ui/encaixe_vazio.png",
+      "w": 223,
+      "h": 223
+    },
+    "encaixe_cheio": {
+      "src": "ui/encaixe_cheio.png",
+      "w": 223,
+      "h": 229
+    },
+    "nucleo_hex": {
+      "src": "ui/nucleo_hex.png",
+      "w": 323,
+      "h": 362
+    },
+    "painel_secao": {
+      "src": "ui/painel_secao.png",
+      "w": 325,
+      "h": 315,
+      "slice": 46
+    },
+    "botao": {
+      "src": "ui/botao.png",
+      "w": 398,
+      "h": 116,
+      "slice": 58
+    },
+    "celula_item": {
+      "src": "ui/celula_item.png",
+      "w": 231,
+      "h": 227,
+      "slice": 40
+    },
+    "botao_ativo": {
+      "src": "ui/botao_ativo.png",
+      "w": 399,
+      "h": 120,
+      "slice": 58
+    },
+    "mis_moldura": {
+      "src": "ui/mis_moldura.png",
+      "w": 862,
+      "h": 503,
+      "slice": 80
+    },
+    "mis_painel_col": {
+      "src": "ui/mis_painel_col.png",
+      "w": 181,
+      "h": 483,
+      "slice": 44
+    },
+    "mis_ficha": {
+      "src": "ui/mis_ficha.png",
+      "w": 437,
+      "h": 215,
+      "slice": 48
+    },
+    "mis_confianca": {
+      "src": "ui/mis_confianca.png",
+      "w": 428,
+      "h": 75,
+      "slice": 32
+    },
+    "mis_aba": {
+      "src": "ui/mis_aba.png",
+      "w": 274,
+      "h": 50,
+      "slice": 46
+    },
+    "mis_aba_ativa": {
+      "src": "ui/mis_aba_ativa.png",
+      "w": 276,
+      "h": 53,
+      "slice": 46
+    },
+    "mis_cont_cyan": {
+      "src": "ui/mis_cont_cyan.png",
+      "w": 109,
+      "h": 46,
+      "slice": 24
+    },
+    "mis_cont_verde": {
+      "src": "ui/mis_cont_verde.png",
+      "w": 109,
+      "h": 48,
+      "slice": 24
+    },
+    "mis_cont_ambar": {
+      "src": "ui/mis_cont_ambar.png",
+      "w": 109,
+      "h": 50,
+      "slice": 24
+    },
+    "mis_card_contato": {
+      "src": "ui/mis_card_contato.png",
+      "w": 395,
+      "h": 100,
+      "slice": 32
+    },
+    "mis_card_contato_sel": {
+      "src": "ui/mis_card_contato_sel.png",
+      "w": 394,
+      "h": 101,
+      "slice": 32
+    },
+    "mis_card": {
+      "src": "ui/mis_card.png",
+      "w": 592,
+      "h": 131,
+      "slice": 42
+    },
+    "mis_card_especial": {
+      "src": "ui/mis_card_especial.png",
+      "w": 610,
+      "h": 135,
+      "slice": 50
+    },
+    "mis_moldura_item": {
+      "src": "ui/mis_moldura_item.png",
+      "w": 152,
+      "h": 152,
+      "slice": 36
+    },
+    "mis_no": {
+      "src": "ui/mis_no.png",
+      "w": 95,
+      "h": 108
+    },
+    "mis_no_aberto": {
+      "src": "ui/mis_no_aberto.png",
+      "w": 94,
+      "h": 108
+    },
+    "mis_no_travado": {
+      "src": "ui/mis_no_travado.png",
+      "w": 94,
+      "h": 108
+    },
+    "mis_fio": {
+      "src": "ui/mis_fio.png",
+      "w": 192,
+      "h": 13,
+      "slice": 6
+    },
+    "mis_fio_aceso": {
+      "src": "ui/mis_fio_aceso.png",
+      "w": 190,
+      "h": 13,
+      "slice": 6
+    },
+    "mis_tipo_principal": {
+      "src": "ui/mis_tipo_principal.png",
+      "w": 96,
+      "h": 103
+    },
+    "mis_tipo_aliado": {
+      "src": "ui/mis_tipo_aliado.png",
+      "w": 97,
+      "h": 99
+    },
+    "mis_tipo_galaxia": {
+      "src": "ui/mis_tipo_galaxia.png",
+      "w": 98,
+      "h": 99
+    },
+    "mis_tipo_especial": {
+      "src": "ui/mis_tipo_especial.png",
+      "w": 97,
+      "h": 103
+    },
+    "mis_sinal_nova": {
+      "src": "ui/mis_sinal_nova.png",
+      "w": 78,
+      "h": 78
+    },
+    "mis_sinal_pronta": {
+      "src": "ui/mis_sinal_pronta.png",
+      "w": 69,
+      "h": 69
+    },
+    "mis_sinal_especial": {
+      "src": "ui/mis_sinal_especial.png",
+      "w": 69,
+      "h": 70
+    },
+    "mis_sinal_travado": {
+      "src": "ui/mis_sinal_travado.png",
+      "w": 58,
+      "h": 68
+    },
+    "rec_xp": {
+      "src": "ui/rec_xp.png",
+      "w": 92,
+      "h": 94
+    },
+    "rec_sucata": {
+      "src": "ui/rec_sucata.png",
+      "w": 92,
+      "h": 98
+    },
+    "rec_nucleo": {
+      "src": "ui/rec_nucleo.png",
+      "w": 93,
+      "h": 99
+    },
+    "rec_cristal": {
+      "src": "ui/rec_cristal.png",
+      "w": 92,
+      "h": 99
+    },
+    "rec_recurso": {
+      "src": "ui/rec_recurso.png",
+      "w": 92,
+      "h": 99
+    },
+    "rec_item": {
+      "src": "ui/rec_item.png",
+      "w": 94,
+      "h": 100
+    },
+    "rec_bau": {
+      "src": "ui/rec_bau.png",
+      "w": 92,
+      "h": 100
+    },
+    "rec_medalha": {
+      "src": "ui/rec_medalha.png",
+      "w": 93,
+      "h": 100
+    },
+    "rec_blueprint": {
+      "src": "ui/rec_blueprint.png",
+      "w": 93,
+      "h": 98
+    },
+    "rec_confianca": {
+      "src": "ui/rec_confianca.png",
+      "w": 95,
+      "h": 99
+    },
+    "rec_espaco": {
+      "src": "ui/rec_espaco.png",
+      "w": 94,
+      "h": 99
+    },
+    "rec_exclusivo": {
+      "src": "ui/rec_exclusivo.png",
+      "w": 94,
+      "h": 99
+    },
+    "rec_moldura": {
+      "src": "ui/rec_moldura.png",
+      "w": 110,
+      "h": 111,
+      "slice": 28
+    },
+    "moldura_modal": {
+      "src": "ui/moldura_modal.png",
+      "w": 1254,
+      "h": 1254,
+      "slice": 300
+    }
+  },
+  "parallax": {
+    "desert": [
+      {
+        "key": "desert_cloud",
+        "src": "parallax/desert/desert_cloud.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "desert_dunefrontt",
+        "src": "parallax/desert/desert_dunefrontt.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "desert_dunemid",
+        "src": "parallax/desert/desert_dunemid.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "desert_moon",
+        "src": "parallax/desert/desert_moon.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "desert_mountain",
+        "src": "parallax/desert/desert_mountain.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "desert_sky",
+        "src": "parallax/desert/desert_sky.png",
+        "w": 418,
+        "h": 220
+      }
+    ],
+    "forest": [
+      {
+        "key": "forest_back",
+        "src": "parallax/forest/forest_back.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "forest_long",
+        "src": "parallax/forest/forest_long.png",
+        "w": 697,
+        "h": 220
+      },
+      {
+        "key": "forest_mid",
+        "src": "parallax/forest/forest_mid.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "forest_moon",
+        "src": "parallax/forest/forest_moon.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "forest_mountain",
+        "src": "parallax/forest/forest_mountain.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "forest_short",
+        "src": "parallax/forest/forest_short.png",
+        "w": 348,
+        "h": 220
+      },
+      {
+        "key": "forest_sky",
+        "src": "parallax/forest/forest_sky.png",
+        "w": 348,
+        "h": 220
+      }
+    ],
+    "moon": [
+      {
+        "key": "moon_back",
+        "src": "parallax/moon/moon_back.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "moon_earth",
+        "src": "parallax/moon/moon_earth.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "moon_floor",
+        "src": "parallax/moon/moon_floor.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "moon_front",
+        "src": "parallax/moon/moon_front.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "moon_mid",
+        "src": "parallax/moon/moon_mid.png",
+        "w": 836,
+        "h": 220
+      },
+      {
+        "key": "moon_sky",
+        "src": "parallax/moon/moon_sky.png",
+        "w": 418,
+        "h": 220
+      }
+    ],
+    "skies": [
+      {
+        "key": "sky_back_mountain",
+        "src": "parallax/skies/sky_back_mountain.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_cloud_single",
+        "src": "parallax/skies/sky_cloud_single.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_front_cloud",
+        "src": "parallax/skies/sky_front_cloud.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_sky",
+        "src": "parallax/skies/sky_sky.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_cloud_floor",
+        "src": "parallax/skies/sky_cloud_floor.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_cloud_floor_2",
+        "src": "parallax/skies/sky_cloud_floor_2.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_clouds",
+        "src": "parallax/skies/sky_clouds.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_front_mountain",
+        "src": "parallax/skies/sky_front_mountain.png",
+        "w": 418,
+        "h": 220
+      },
+      {
+        "key": "sky_moon",
+        "src": "parallax/skies/sky_moon.png",
+        "w": 348,
+        "h": 220
+      }
+    ]
+  },
+  "deepspace": [
+    {
+      "key": "asteroid-1",
+      "src": "bg/deep_asteroid-1.png",
+      "w": 96,
+      "h": 81
+    },
+    {
+      "key": "asteroid-2",
+      "src": "bg/deep_asteroid-2.png",
+      "w": 63,
+      "h": 51
+    },
+    {
+      "key": "blue-back",
+      "src": "bg/deep_blue-back.png",
+      "w": 1088,
+      "h": 640
+    },
+    {
+      "key": "blue-stars",
+      "src": "bg/deep_blue-stars.png",
+      "w": 1088,
+      "h": 640
+    },
+    {
+      "key": "blue-with-stars",
+      "src": "bg/deep_blue-with-stars.png",
+      "w": 1088,
+      "h": 640
+    },
+    {
+      "key": "prop-planet-big",
+      "src": "bg/deep_prop-planet-big.png",
+      "w": 129,
+      "h": 129
+    },
+    {
+      "key": "prop-planet-small",
+      "src": "bg/deep_prop-planet-small.png",
+      "w": 48,
+      "h": 48
+    }
+  ]
+}
