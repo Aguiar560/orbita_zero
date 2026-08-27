@@ -244,11 +244,25 @@ export class Game {
    * disse que não quer.
    */
   abrirGuia(): void {
+    // O que o jogador tinha aberto antes do guia. O passeio pode precisar abrir
+    // a Anatomia para explica-la, e mexer numa preferencia salva sem devolver e
+    // a mesma cicatriz do modo de teste: o jogador so queria uma explicacao e
+    // ficou com a tela reconfigurada.
+    const anatomiaAntes = this.sim.state.settings.anatomiaAberta;
+
     const tour = new Tour({
       passos: PASSOS_DO_ONBOARDING,
       aoAbrirPainel: (id) => bus.emit('panel:open', { id }),
+      aoExigir: (oQue) => {
+        if (oQue === 'anatomia') {
+          this.sim.state.settings.anatomiaAberta = true;
+          this.sim.touch();
+        }
+      },
       aoFechar: () => {
+        this.sim.state.settings.anatomiaAberta = anatomiaAntes;
         this.sim.state.settings.guiaVisto = true;
+        this.sim.touch();
         this.sim.save();
       },
     });

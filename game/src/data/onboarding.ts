@@ -35,6 +35,9 @@ export const PASSOS_DO_ONBOARDING: readonly PassoDoTour[] = [
   },
   {
     alvo: '.anatomia',
+    // A coluna recolhe, e recolhida ela e um talo de poucos pixels — o recorte
+    // ficaria do tamanho de nada e o balao explicaria algo invisivel.
+    exige: 'anatomia',
     titulo: 'A Anatomia é onde a nave se monta',
     texto: 'Cada soquete aceita um tipo de peça. Arraste um item do inventário até o soquete certo, ou clique nele. Aqui embaixo também aparece o elemento da nave.',
     escala: 1.04,

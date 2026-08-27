@@ -38,6 +38,14 @@ export interface PassoDoTour {
   escala?: number;
   /** Painel a abrir antes do passo. */
   abrirPainel?: string;
+  /**
+   * Parte da interface que precisa estar ABERTA para o passo fazer sentido.
+   *
+   * A Anatomia recolhe, e recolhida ela e um talo de poucos pixels: o recorte
+   * fica do tamanho de nada e o balao explica algo que o jogador nao ve. Quem
+   * abre e o hospedeiro, que devolve ao estado anterior no fim do passeio.
+   */
+  exige?: 'anatomia';
   /** Margem extra em volta do buraco, em pixels. */
   folga?: number;
 }
@@ -51,6 +59,8 @@ export interface OpcoesDoTour {
   passos: readonly PassoDoTour[];
   /** Chamado ao abrir um painel que o passo pede. */
   aoAbrirPainel?: (id: string) => void;
+  /** Abre uma parte recolhida da interface. Devolve o estado anterior. */
+  aoExigir?: (o_que: 'anatomia') => void;
   /** Chamado ao terminar ou pular. `completo` diz qual dos dois. */
   aoFechar?: (completo: boolean) => void;
 }
@@ -61,6 +71,7 @@ export class Tour {
   private balao!: HTMLElement;
   private indice = 0;
   private alvoAtual: HTMLElement | null = null;
+  private observador: ResizeObserver | null = null;
   private readonly opcoes: OpcoesDoTour;
   private aoRedimensionar = (): void => { this.posicionar(); };
   private aoTeclar = (e: KeyboardEvent): void => {
@@ -120,6 +131,7 @@ export class Tour {
     if (!passo) { this.fechar(true); return; }
 
     if (passo.abrirPainel) this.opcoes.aoAbrirPainel?.(passo.abrirPainel);
+    if (passo.exige) this.opcoes.aoExigir?.(passo.exige);
 
     // O zoom do passo anterior sai antes de o próximo entrar: dois alvos
     // ampliados ao mesmo tempo é o defeito clássico deste tipo de tela.
@@ -153,11 +165,32 @@ export class Tour {
       ),
     );
 
-    // O painel pedido pelo passo pode levar um quadro para existir, e o alvo
-    // dentro dele só tem posição depois disso.
     this.posicionar();
+    this.observarAlvo();
+  }
+
+  /**
+   * Segue o alvo enquanto ele se mexe.
+   *
+   * Antes eram três chamadas cronometradas (agora, no próximo quadro, e 90ms
+   * depois) — um palpite sobre quanto a interface demora a assentar. E o palpite
+   * estava errado: a Anatomia ABRE DESLIZANDO em 260ms, então o recorte era
+   * calculado sobre uma coluna ainda fechada e ficava do tamanho de um talo.
+   *
+   * `ResizeObserver` não adivinha: ele avisa a cada mudança de caixa, e o
+   * recorte acompanha a coluna abrindo em vez de tentar prever o fim dela.
+   */
+  private observarAlvo(): void {
+    this.observador?.disconnect();
+    const passo = this.lista[this.indice];
+    const alvo = passo?.alvo ? document.querySelector<HTMLElement>(passo.alvo) : null;
+    if (!alvo) return;
+
+    this.observador = new ResizeObserver(() => this.posicionar());
+    this.observador.observe(alvo);
+    // O alvo pode mudar de LUGAR sem mudar de tamanho — um painel vizinho que
+    // abre, por exemplo —, e disso o observador não sabe.
     requestAnimationFrame(() => this.posicionar());
-    setTimeout(() => this.posicionar(), 90);
   }
 
   /**
@@ -249,6 +282,8 @@ export class Tour {
 
   private fechar(completo: boolean): void {
     if (!this.raiz) return;
+    this.observador?.disconnect();
+    this.observador = null;
     this.limparZoom();
     window.removeEventListener('resize', this.aoRedimensionar);
     window.removeEventListener('keydown', this.aoTeclar);

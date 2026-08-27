@@ -73,3 +73,26 @@ describe('roteiro do onboarding', () => {
     }
   });
 });
+
+describe('partes recolhidas da interface', () => {
+  it('o passo da Anatomia exige que ela esteja aberta', () => {
+    // A coluna recolhe, e recolhida ela é um talo: o recorte ficaria do tamanho
+    // de nada e o balão explicaria algo que o jogador não vê. Foi exatamente o
+    // que aconteceu — o passo 3 apareceu com o balão no centro e sem destaque
+    // nenhum para quem jogava com a Anatomia fechada.
+    const passo = PASSOS_DO_ONBOARDING.find((p) => p.alvo === '.anatomia');
+    expect(passo, 'o passo da Anatomia sumiu do roteiro').toBeDefined();
+    expect(passo?.exige).toBe('anatomia');
+  });
+
+  it('só quem recolhe declara exigência', () => {
+    // Uma exigência a mais não quebra nada, mas mente sobre a tela: quem lê o
+    // roteiro passa a achar que aquela parte também some, e escreve código para
+    // um caso que não existe.
+    const RECOLHEM = new Set(['.anatomia']);
+    for (const p of PASSOS_DO_ONBOARDING) {
+      if (!p.exige) continue;
+      expect(RECOLHEM.has(p.alvo ?? ''), `${p.titulo} exige sem precisar`).toBe(true);
+    }
+  });
+});
