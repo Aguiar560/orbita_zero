@@ -2,7 +2,6 @@
 import { LAB_CODE_WRITE_AVAILABLE, consumeCalibrationNotice, writeHitboxCalibration } from '@app/LabCalibrationAdmin';
 import { fmt, duration } from '@core/format';
 import { rarityInfo } from '@data/rarity';
-import { describeGalaxy, galaxyOfSector, phaseOfSector } from '@data/galaxies';
 import { itemName } from '@sim/loot';
 import type { OfflineReport, Sim } from '@sim/index';
 import { RESOURCE_IDS, type ResourceId } from '@sim/types';
@@ -127,17 +126,17 @@ export class Shell {
     this.labToolbar = h('.lab-toolbar');
 
     const topbar = h('header.topbar', {},
+      // Monograma, nome do jogo, e então o usuário — nessa ordem.
+      //
+      // O nome do usuário fica DENTRO do bloco da marca e não numa ilha
+      // própria: é assim que se lê como "você, aqui dentro deste jogo", e não
+      // como mais um controle solto competindo com os recursos à direita.
       h('.brand', {},
         h('span.brand-mark', { text: 'ØZ' }),
-        h('.brand-text', {},
-          h('strong', { text: 'ÓRBITA ZERO' }),
-          this.statusNode,
-        ),
+        h('strong.brand-nome', { text: 'ÓRBITA ZERO' }),
+        this.perfil.root,
+        this.statusNode,
       ),
-      // O perfil fica colado na marca, no canto que o olho já usa para
-      // "quem sou eu aqui" em qualquer aplicativo. À direita ele disputaria
-      // com os recursos, que mudam sozinhos e puxam a atenção o tempo todo.
-      this.perfil.root,
       // As abas moram na barra de cima, como num painel de nave: o eixo
       // horizontal é o que sobra numa tela larga, e libera a coluna direita
       // inteira para o inventário ficar SEMPRE à vista — que é o que se
@@ -534,19 +533,22 @@ export class Shell {
     }
   }
 
+  /**
+   * A barra só fala quando há algo EXCEPCIONAL a dizer.
+   *
+   * Ela mostrava galáxia, fase, setor, onda e patente o tempo todo. Setor e
+   * onda já estão no HUD, desenhados sobre o próprio combate; repetir ali era
+   * a mesma informação duas vezes na mesma tela, e a cópia piscando no canto
+   * competia com a que está onde a ação acontece.
+   *
+   * O aviso do Laboratório fica, e por um motivo diferente de tudo o que saiu:
+   * ele não descreve o jogo, avisa que o SAVE está suspenso. Informação que
+   * muda o que acontece se o jogador fechar a aba não é rotina.
+   */
   private updateStatus(): void {
-    if (this.sim.laboratorio.active) {
-      this.statusNode.textContent = 'Laboratório isolado · progresso e save suspensos';
-      return;
-    }
-    const st = this.sim.state;
-    const info = describeGalaxy(galaxyOfSector(st.run.sector));
-    this.statusNode.textContent = [
-      `${info.name} · fase ${phaseOfSector(st.run.sector)}`,
-      `Setor ${st.run.sector}`,
-      this.sim.encounterLabel,
-      `Patente ${st.command.nivel}`,
-    ].join('  ·  ');
+    this.statusNode.textContent = this.sim.laboratorio.active
+      ? 'Laboratório isolado · progresso e save suspensos'
+      : '';
   }
 
   /** Abre a tela de resultado da Provacao, se houver uma para mostrar. */

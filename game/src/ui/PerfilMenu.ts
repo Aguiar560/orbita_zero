@@ -45,12 +45,13 @@ export class PerfilMenu {
         'aria-expanded': String(this.aberto),
         onclick: () => { this.aberto = !this.aberto; this.render(); },
       },
-        // Inicial em vez de avatar: não há foto nenhuma para mostrar, e um
-        // ícone genérico de pessoa diria menos que a primeira letra do e-mail.
-        h(`span.perfil-inicial${sessao ? '' : '.sem-conta'}`, {
-          text: sessao ? (nome[0] ?? '?').toUpperCase() : '·',
-        }),
-        h('span.perfil-nome', { text: nome }),
+        // Só o nome, sem moldura e sem avatar.
+        //
+        // A primeira versão era uma pílula com inicial num círculo, e ela pesava
+        // como um botão de ação — na barra de cima, peso é o que separa o que se
+        // usa o tempo todo do que se abre de vez em quando. Conta é a segunda
+        // coisa.
+        h(`span.perfil-nome${sessao ? '' : '.sem-conta'}`, { text: nome }),
         h('span.perfil-seta', { text: this.aberto ? '▴' : '▾' }),
       ),
       ...(this.aberto ? [this.gaveta(sessao)] : []),

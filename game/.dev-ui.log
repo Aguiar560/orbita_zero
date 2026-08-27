@@ -55,3 +55,9 @@
 12:52:06 [vite] (client) hmr update /src/styles/main.css
 12:55:17 [vite] (client) hmr update /src/styles/main.css
 12:57:11 [vite] (client) hmr update /src/styles/main.css
+13:01:45 [vite] (client) page reload src/ui/Shell.ts
+13:01:45 [vite] (client) hmr update /src/styles/main.css
+13:02:07 [vite] (client) page reload src/ui/Shell.ts
+13:03:22 [vite] (client) page reload src/ui/Shell.ts
+13:03:22 [vite] (client) page reload src/ui/PerfilMenu.ts
+13:03:22 [vite] (client) hmr update /src/styles/main.css

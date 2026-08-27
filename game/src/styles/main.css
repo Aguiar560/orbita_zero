@@ -122,6 +122,12 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-nome {
+  font-family: 'Chakra Petch', sans-serif; font-size: 14px; letter-spacing: 2px;
+  white-space: nowrap;
+}
+/* Vazio quase sempre: some em vez de reservar espaço. Ver `updateStatus`. */
+.status:empty { display: none; }
 .brand-mark {
   font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 20px;
   color: var(--accent); border: 1px solid var(--line-strong); border-radius: 8px;
@@ -6739,26 +6745,26 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .perfil { position: relative; flex-shrink: 0; }
 
+/*
+ * Texto, não botão.
+ *
+ * A moldura saiu junto com o avatar: na barra de cima o peso visual é o que
+ * separa o que se usa o tempo todo — recursos, abas — do que se abre de vez em
+ * quando. A conta é a segunda coisa, e um controle emoldurado ao lado do nome
+ * do jogo pedia atenção que ela não merece.
+ */
 .perfil-botao {
-  display: flex; align-items: center; gap: 7px;
-  padding: 4px 8px 4px 5px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 999px;
-  background: rgba(12, 20, 36, .7); color: var(--muted);
-  font: 600 12px/1 'Chakra Petch', sans-serif;
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 4px; cursor: pointer;
+  border: 0; background: none; color: var(--accent);
+  font: 600 13px/1 'Chakra Petch', sans-serif;
 }
-.perfil-botao:hover { color: var(--text); border-color: var(--line-strong); }
+.perfil-botao:hover { color: #eaf6ff; }
 
-.perfil-inicial {
-  display: grid; place-items: center;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: linear-gradient(160deg, #2a6f9e, #17405f);
-  color: #eaf6ff; font-size: 11px; font-weight: 700;
-}
-/* Sem conta não ganha a cor da marca: ela significaria "identificado". */
-.perfil-inicial.sem-conta { background: rgba(40, 54, 78, .8); color: var(--muted); }
-
-.perfil-nome { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.perfil-seta { font-size: 9px; opacity: .7; }
+.perfil-nome { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Sem conta fica apagado: a cor da marca significaria "identificado". */
+.perfil-nome.sem-conta { color: var(--muted); font-weight: 400; }
+.perfil-seta { font-size: 9px; opacity: .6; }
 
 .perfil-gaveta {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 60;
