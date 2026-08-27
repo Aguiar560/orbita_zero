@@ -516,6 +516,32 @@ export interface GameState {
    * entra em fórmula de poder. É registro de feito, e pô-la junto das três
    * moedas obrigaria toda conta de economia a aprender a ignorá-la.
    */
+  /**
+   * O save veio de FORA?
+   *
+   * Ligada por `importSave` e nunca desligada. Não tira nada de ninguém: o save
+   * continua jogável e completo. Ela só registra que este progresso não foi
+   * todo feito aqui.
+   *
+   * ## Por que o MODO DE TESTE não marca
+   *
+   * Foi a primeira versão desta ideia, e um teste existente a derrubou — com
+   * razão. O modo de teste é REVERSÍVEL por decisão registrada: ligá-lo e
+   * desligá-lo tem de devolver o save exatamente como estava, e há cicatriz
+   * atrás disso. Uma versão antiga empurrava os cascos para `fleet` e nunca os
+   * tirava, então quem ligasse o modo para dar uma olhada ficava com o hangar
+   * inteiro no save de verdade, sem volta.
+   *
+   * Uma marca indelével quebra essa reversibilidade por um ganho pequeno: ela é
+   * do cliente e editável, então não trava trapaceiro nenhum. Importar é
+   * diferente — é um ato deliberado e de mão única, e marcar não desfaz nada.
+   *
+   * O que barra trapaça é a validação de plausibilidade no SERVIDOR. Nenhuma
+   * marca no cliente substitui isso, e tratá-la como se substituísse seria pior
+   * do que não tê-la.
+   */
+  contaminado?: boolean;
+
   medalhas: number;
 
   /**

@@ -1,6 +1,7 @@
 ﻿import { POSTO_POR_CASCO } from '@data/balance/cascos';
 import { HULLS } from '@data/hulls';
 import { PILOTO_PADRAO, PILOTO_POR_ID, pilotoDe } from '@data/pilotos';
+import { frotaSa, itemUtilizavel, numeroSao, recursosSaos } from './sanear';
 import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
@@ -66,6 +67,8 @@ export function createState(
     // casco no primeiro minuto para usar o que acabou de escolher seria um
     // passo administrativo entre a escolha e o jogo.
     hull: casco,
+    // `frotaSa` descarta id de casco que não existe no catálogo — save antigo
+    // com nave removida, ou save de fora inventando ids.
     fleet: [...new Set([casco, ...INITIAL_FLEET])],
     inventory: [],
     cargaLiberada: [],
@@ -156,8 +159,11 @@ export function migrate(raw: unknown): GameState | null {
     ...data,
     version: SAVE_VERSION,
     piloto,
-    resources: { ...fresh.resources, ...data.resources },
-    lifetime: { ...fresh.lifetime, ...data.lifetime },
+    // Recursos passam por `numeroSao`: `Infinity`, `NaN` e negativo entram
+    // por save editado e por save de fora, e qualquer um dos três contamina
+    // toda conta que os toque depois.
+    resources: recursosSaos({ ...fresh.resources, ...data.resources }),
+    lifetime: recursosSaos({ ...fresh.lifetime, ...data.lifetime }),
     run: { ...fresh.run, ...data.run },
     universe: { ...fresh.universe, ...data.universe },
     stats: { ...fresh.stats, ...data.stats },
@@ -166,12 +172,16 @@ export function migrate(raw: unknown): GameState | null {
     servicos: { ...data.servicos },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
-    inventory: Array.isArray(data.inventory) ? data.inventory : [],
+    // Cada peça é conferida, não só o array. Uma peça com slot inexistente
+    // derruba o painel de anatomia; uma com `ilvl` NaN faz o cálculo de
+    // atributos virar NaN e a barra de vida parar de desenhar. Ver
+    // `sim/sanear.ts` para o que é conferido e o que deliberadamente não é.
+    inventory: Array.isArray(data.inventory) ? data.inventory.filter(itemUtilizavel) : [],
     // O casco do piloto entra junto: save de antes da escolha não tem nenhum
     // dos quatro, e sem isto o jogador migrado ficaria com um `piloto` que não
     // corresponde a nave nenhuma na frota.
     fleet: [...new Set([
-      ...(Array.isArray(data.fleet) && data.fleet.length ? data.fleet : fresh.fleet),
+      ...(frotaSa(data.fleet).length ? frotaSa(data.fleet) : fresh.fleet),
       ...INITIAL_FLEET,
       // Só quando há escolha feita: sem isto, um save inacabado ganharia o
       // casco do padrão na frota e o jogador terminaria a escolha com a nave
@@ -184,7 +194,8 @@ export function migrate(raw: unknown): GameState | null {
     // impede jogar".
     missoes: (data.missoes && typeof data.missoes === 'object') ? data.missoes as GameState['missoes'] : {},
     eventos: (data.eventos && typeof data.eventos === 'object') ? data.eventos as GameState['eventos'] : {},
-    medalhas: Number.isFinite(data.medalhas) ? Number(data.medalhas) : 0,
+    medalhas: numeroSao(data.medalhas),
+    contaminado: data.contaminado === true,
     confianca: (data.confianca && typeof data.confianca === 'object') ? data.confianca as Record<string, number> : {},
     // Save anterior ao modo, ou de uma versão com menos campos: o espalhamento
     // preenche o que falta com o padrão seguro do §56, sem descartar o que há.
@@ -414,9 +425,22 @@ export function exportSave(state: GameState): string {
   return btoa(unescape(encodeURIComponent(JSON.stringify(state))));
 }
 
+/**
+ * Importa um save de texto.
+ *
+ * Passa pelo mesmo `migrate` do save local, então herda todo o saneamento —
+ * essa é a razão de não haver validação própria aqui: duas peneiras para a
+ * mesma coisa divergem, e a de fora seria a que envelhece.
+ *
+ * O que ele acrescenta é a MARCA. Um save que veio de fora não pode ser
+ * apresentado a um servidor como progresso jogado, e quem importa sabe disso
+ * — o que não dá para saber é depois, olhando o estado.
+ */
 export function importSave(text: string): GameState | null {
   try {
-    return migrate(JSON.parse(decodeURIComponent(escape(atob(text.trim())))));
+    const state = migrate(JSON.parse(decodeURIComponent(escape(atob(text.trim())))));
+    if (state) state.contaminado = true;
+    return state;
   } catch {
     return null;
   }

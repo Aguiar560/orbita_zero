@@ -29,3 +29,12 @@
 10:30:03 [vite] (client) page reload src/ui/panels/AffixCraftPanel.ts
 10:30:04 [vite] (client) hmr update /src/styles/main.css
 10:32:59 [vite] (client) hmr update /src/styles/main.css
+10:59:24 [vite] (client) page reload src/sim/types.ts
+10:59:24 [vite] (client) page reload src/sim/index.ts
+10:59:24 [vite] (client) page reload src/sim/state.ts
+10:59:24 [vite] (client) page reload src/ui/dom.ts
+10:59:50 [vite] (client) page reload src/sim/sanear.ts
+10:59:50 [vite] (client) page reload src/sim/sanear.ts
+11:00:10 [vite] (client) page reload src/sim/state.ts
+11:03:14 [vite] (client) page reload src/sim/index.ts
+11:03:38 [vite] (client) page reload src/sim/types.ts

@@ -40,9 +40,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
       case 'text':
         el.textContent = String(value);
         break;
-      case 'html':
-        el.innerHTML = String(value);
-        break;
+
       case 'style':
         if (typeof value === 'string') el.setAttribute('style', value);
         else if (value && typeof value === 'object') {
