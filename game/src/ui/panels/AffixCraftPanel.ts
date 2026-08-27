@@ -31,7 +31,7 @@ interface CraftResult {
  */
 export class AffixCraftPanel implements Panel {
   id = 'afixos';
-  title = 'Afixos';
+  title = 'Engenharia';
   icon = 'cat/reator';
   iconUrl = '/assets/ui/menu/afixos.webp';
   overlay = true;
@@ -209,10 +209,6 @@ export class AffixCraftPanel implements Panel {
             h('span', { text: entry.nome }),
           );
         })),
-        h('.afx-operation-art', {},
-          h('img', { src: WORKBENCH_ART, alt: '', 'aria-hidden': true, draggable: false }),
-          h('span', { text: operation.nome.toUpperCase() }),
-        ),
         h('.afx-target', {},
           h('small', { text: 'ALVO ATUAL' }),
           current

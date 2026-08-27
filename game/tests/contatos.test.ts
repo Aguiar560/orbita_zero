@@ -55,6 +55,14 @@ describe('o elenco', () => {
     expect(c!.status).toBe('ex_chefe');
   });
 
+  it('todo guardião de galáxia vira contato com retrato de inimigo', () => {
+    for (const boss of BOSSES) {
+      const contato = contatoDoChefe(boss.id);
+      expect(contato, boss.id).toBeDefined();
+      expect(contato!.retrato, boss.id).toMatch(/^character\/enemy\/enemy_\d+$/);
+    }
+  });
+
   /** Missão sem dono não apareceria em tela nenhuma — some do jogo. */
   it('toda missão tem um contato existente como dono', () => {
     for (const m of MISSOES) {

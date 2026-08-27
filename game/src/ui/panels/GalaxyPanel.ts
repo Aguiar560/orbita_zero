@@ -4,6 +4,8 @@ import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, PHASES_PER_GALAXY } from '@data/galaxies';
 import { getElement } from '@data/elements';
+import { HULLS } from '@data/hulls';
+import { retratoInimigoDaGalaxia } from '@data/personagens';
 import { iconeDeRecurso, recursoDaGalaxia } from '@data/recursos';
 import { buildEncounter, sectorBounty, sectorDamage, WAVES_PER_SECTOR } from '@sim/progression';
 import type { Sim } from '@sim/index';
@@ -42,7 +44,8 @@ export class GalaxyPanel implements Panel {
 
   render(sim: Sim): HTMLElement {
     if (!this.portraitsReady) {
-      void assets.loadAtlas('retratos').then(() => { this.portraitsReady = true; sim.touch(); });
+      void Promise.all([assets.loadAtlas('retratos'), assets.loadAtlas('characters')])
+        .then(() => { this.portraitsReady = true; sim.touch(); });
     }
 
     const here = galaxyOfSector(sim.state.run.sector);
@@ -65,6 +68,13 @@ export class GalaxyPanel implements Panel {
     const setorAtual = sim.state.run.sector === selected.sector;
     const setoresVencidos = clamp(best - info.firstSector + 1, 0, PHASES_PER_GALAXY);
     const ameaca = getElement(info.element);
+    const cascoDaRegiao = HULLS
+      .filter((casco) => !casco.prototype && !casco.piloto)
+      .filter((casco) => casco.requiresSector >= info.firstSector && casco.requiresSector <= info.lastSector)
+      .sort((a, b) => a.requiresSector - b.requiresSector)[0]
+      ?? HULLS
+        .filter((casco) => !casco.prototype && !casco.piloto && casco.requiresSector >= info.firstSector)
+        .sort((a, b) => a.requiresSector - b.requiresSector)[0];
 
     const olhar = (galaxy: number): void => {
       this.viewing = galaxy;
@@ -88,10 +98,18 @@ export class GalaxyPanel implements Panel {
         h('.galaxy-command-nav-name', {}, h('span', { text: `Galáxia ${this.viewing + 1}` }), h('strong', { text: info.name, style: { color: info.color } })),
         h('button.mini', { text: '›', disabled: this.viewing >= unlockedGalaxies + 1, onclick: () => olhar(this.viewing + 1) }),
       ),
-      h('.galaxy-command-hero', { style: { backgroundImage: `url(assets/${info.backdrop})`, '--gal-cor': info.color } as Partial<CSSStyleDeclaration> },
+      h('.galaxy-command-hero', { style: {
+        backgroundImage: `url(assets/${info.backdrop})`,
+        '--gal-cor': info.color,
+        '--galaxy-planet-hue': `${(info.index * 43) % 360}deg`,
+        '--galaxy-planet-x': `${48 + (info.index * 17) % 43}%`,
+        '--galaxy-planet-y': `${38 + (info.index * 13) % 25}%`,
+        '--galaxy-planet-size': `${108 + (info.index * 7) % 34}%`,
+      } as Partial<CSSStyleDeclaration> },
+        h('.galaxy-command-planet-art', { 'aria-hidden': 'true' }),
         h('.galaxy-command-hero-shade'),
         h('.galaxy-command-hero-body', {},
-          this.portraitsReady ? spriteIcon(info.portrait, 62, 'galaxy-command-face') : h('.galaxy-command-face'),
+          this.portraitsReady ? spriteIcon(retratoInimigoDaGalaxia(info.index), 62, 'galaxy-command-face') : h('.galaxy-command-face'),
           h('.galaxy-command-hero-copy', {},
             h('strong', { text: info.name }), h('span', { text: `Domínio ${info.fleet}` }), h('p', { text: info.identity }),
             h('small', { text: `Setores ${info.firstSector} – ${info.lastSector}` }),
@@ -128,7 +146,8 @@ export class GalaxyPanel implements Panel {
           }, reachable ? spriteIcon(phase.icon, phase.isBoss ? 60 : 54, 'galaxy-command-sector-art') : h('.galaxy-command-lock'), h('span', { text: String(phase.sector) }), phase.isBoss && reachable ? h('small', { text: phase.bossName ?? 'Chefe' }) : null);
         })),
       ),
-      h('.galaxy-command-sector-detail', { style: { backgroundImage: `url(assets/${info.backdrop})`, '--gal-cor': info.color } as Partial<CSSStyleDeclaration> },
+      h('.galaxy-command-sector-detail', { style: { '--gal-cor': info.color } as Partial<CSSStyleDeclaration> },
+        h('img.galaxy-command-sector-scenery', { src: '/assets/ui/galaxy/sector-hero-v1.png', alt: '', 'aria-hidden': 'true' }),
         h('.galaxy-command-detail-shade'),
         h('.galaxy-command-detail-content', {},
           h('.galaxy-command-detail-title', {}, h('strong', { text: selected.isBoss ? selected.bossName ?? `SETOR ${selected.sector}` : `SETOR ${selected.sector}` }), h('span', { text: selected.isBoss ? 'OPERAÇÃO DE CHEFE' : `FASE ${selected.phase} · INCURSÃO` })),
@@ -180,7 +199,12 @@ export class GalaxyPanel implements Panel {
       h('.galaxy-command-statistics', {}, this.sectionTitle('ESTATÍSTICAS'), ...[['Setor mais alto', String(best)], ['Inimigos destruídos', fmt(sim.state.stats.kills)], ['Chefes derrotados', fmt(sim.state.stats.bossKills)], ['Naves perdidas', fmt(sim.state.stats.deaths)], ['Créditos obtidos', fmt(sim.state.lifetime.sucata)]].map(([label, value]) => h('.galaxy-command-statistics-row', {}, h('span', { text: label }), h('b', { text: value })))),
       h('.galaxy-command-ranking', {}, this.sectionTitle('PLACAR DA GALÁXIA'), h('.galaxy-command-ranking-tabs', {}, h('b', { text: 'Global' }), h('span', { text: 'Amigos' })), ...['Kael’Thas', 'NovaStrike', 'Vektor-07', 'Órion', 'ShadowPulse'].map((name, index) => h('.galaxy-command-rank-row', {}, h('b', { text: String(index + 1) }), spriteIcon(RANK_PORTRAITS[index]!, 18, 'galaxy-command-rank-avatar'), h('span', { text: name }), h('strong', { text: fmt((5 - index) * 145000 + best * 880) }))), h('button.mini.galaxy-command-ranking-button', { text: 'Ver ranking completo', onclick: () => bus.emit('panel:open', { id: 'ranking', galaxy: this.viewing }) })),
       h('.galaxy-command-unlocks', {}, this.sectionTitle('DESBLOQUEIOS'),
-        ...[['Nave de patrulha', `Conclua os setores ${info.firstSector} a ${Math.min(info.firstSector + 4, info.lastSector)}`], ['Piloto da vanguarda', `Conclua os setores ${info.firstSector} a ${info.lastSector}`]].map(([name, condition], index) => h('.galaxy-command-unlock', {}, galaxyIcon(['unlock-ship', 'unlock-pilot'][index]!, 'galaxy-command-unlock-icon'), h('span', {}, h('b', { text: name }), h('small', { text: condition })))),
+        cascoDaRegiao
+          ? h('.galaxy-command-unlock', {},
+            spriteIcon(cascoDaRegiao.sprite, 42, 'galaxy-command-unlock-ship'),
+            h('span', {}, h('b', { text: cascoDaRegiao.name }), h('small', { text: `Disponível no Hangar ao alcançar o setor ${cascoDaRegiao.requiresSector}` })),
+          )
+          : h('p.muted.tiny', { text: 'Nenhum casco novo previsto nesta região.' }),
       ),
     );
 

@@ -118,15 +118,24 @@ const FIXOS: readonly PersonagemDef[] = [
  * Derivado de `BOSSES`, não copiado: o nome, o elemento e o id continuam com
  * uma dona só. Acrescentar um chefe ao jogo acrescenta um contato de graça.
  *
- * Nem todo chefe vira contato — só os que encerram uma galáxia. Converter todos
- * encheria a lista de nomes que o jogador mal viu.
+ * Todo chefe encerra uma galáxia. Quando ele cai, vira o contato daquela região
+ * e leva consigo o retrato de inimigo que o jogador acabou de enfrentar.
  */
-const CONVERTIDOS: readonly PersonagemDef[] = BOSSES.slice(0, 6).map((b, i) => ({
+const RETRATOS_DE_INIMIGO = Array.from({ length: 18 }, (_, index) => `character/enemy/enemy_${index + 1}`);
+
+/** Mesmo retrato no mapa da galáxia e no contato que ela libera nas Missões. */
+export const retratoInimigoDaGalaxia = (galaxia: number): string =>
+  RETRATOS_DE_INIMIGO[galaxia % RETRATOS_DE_INIMIGO.length]!;
+
+const CONVERTIDOS: readonly PersonagemDef[] = BOSSES.map((b, i) => ({
   id: `char_${b.id}`,
   nome: b.name.toUpperCase(),
   faccao: describeGalaxy(i).name.toUpperCase(),
   titulo: `ANTIGO GUARDIÃO DE ${describeGalaxy(i).name.toUpperCase()}`,
-  retrato: `character/enemy/enemy_${i + 1}`,
+  // O pack traz 18 retratos de inimigos. A campanha tem 30 galáxias: depois
+  // do primeiro ciclo, a identidade continua estável por galáxia enquanto as
+  // próximas artes autorais não chegam.
+  retrato: retratoInimigoDaGalaxia(i),
   galaxia: i,
   status: 'ex_chefe' as const,
   cor: describeGalaxy(i).color,

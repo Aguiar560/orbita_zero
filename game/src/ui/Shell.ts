@@ -13,6 +13,7 @@ import { LeftRail } from './LeftRail';
 import { Anatomia } from './Anatomia';
 import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
 import { ELEMENTS, getElement } from '@data/elements';
+import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
@@ -85,6 +86,8 @@ export class Shell {
   private faixaSelecao: HTMLElement | null = null;
   private resultadoHost: HTMLElement | null = null;
   private aoTeclar: ((e: KeyboardEvent) => void) | null = null;
+  /** Marcos já vistos no save atual: evita repetir o anúncio a cada re-render. */
+  private readonly unlocksAnunciados = new Set<string>();
 
   private readonly resourceNodes = new Map<ResourceId, HTMLElement>();
   private leftRail!: LeftRail;
@@ -163,6 +166,7 @@ export class Shell {
     );
 
     this.buildTabs();
+    this.registrarMarcosAtuais();
     this.updateMissionHud();
     this.wireEvents();
     this.renderPanel();
@@ -177,12 +181,16 @@ export class Shell {
     for (const panel of this.panels) {
       // O inventário não tem aba: ele nunca sai da tela.
       if (panel === this.painelFixo) continue;
+      const unlock = this.unlockDaTela(panel);
+      const locked = !!unlock && !this.temAcessoAoPainel(panel, unlock);
       const badge = panel.badge?.(this.sim) ?? 0;
-      const tab = h(`button.tab${panel === this.active ? '.active' : ''}`, {
-        title: panel.title,
+      const tab = h(`button.tab${panel === this.active ? '.active' : ''}${locked ? '.locked' : ''}`, {
+        title: locked ? `${panel.title} · libera na patente ${unlock!.level}` : panel.title,
         'aria-label': panel.title,
         'aria-current': panel === this.active ? 'page' : undefined,
+        'aria-disabled': locked ? 'true' : undefined,
         onclick: () => {
+          if (locked) { this.avisarPainelBloqueado(panel, unlock!); return; }
           this.active = panel;
           this.dirty = true;
           this.buildTabs();
@@ -193,7 +201,8 @@ export class Shell {
           ? h('img.tab-art', { src: panel.iconUrl, alt: '', 'aria-hidden': true, draggable: false })
           : spriteIcon(panel.icon, 22),
         h('span.tab-label', { text: panel.title }),
-        badge > 0 ? h('span.badge', { text: badge > 99 ? '99+' : String(badge) }) : null,
+        locked ? h('span.tab-lock', { text: `Nv ${unlock!.level}`, 'aria-hidden': true })
+          : badge > 0 ? h('span.badge', { text: badge > 99 ? '99+' : String(badge) }) : null,
       );
       this.tabBar.append(tab);
     }
@@ -209,8 +218,37 @@ export class Shell {
     };
   }
 
+  private unlockDaTela(panel: Panel): ScreenUnlock | undefined {
+    return screenUnlockFor(panel.id);
+  }
+
+  private temAcessoAoPainel(panel: Panel, unlock = this.unlockDaTela(panel)): boolean {
+    return !unlock || this.sim.nivelLiberado >= unlock.level;
+  }
+
+  private avisarPainelBloqueado(panel: Panel, unlock: ScreenUnlock): void {
+    const faltam = Math.max(0, unlock.level - this.sim.nivelLiberado);
+    bus.emit('toast', {
+      text: `${panel.title} libera na patente ${unlock.level} · faltam ${faltam} ${faltam === 1 ? 'nível' : 'níveis'}`,
+      kind: 'info',
+    });
+  }
+
+  private registrarMarcosAtuais(): void {
+    for (const panel of this.panels) if (this.temAcessoAoPainel(panel)) this.unlocksAnunciados.add(panel.id);
+  }
+
+  private anunciarNovosMarcos(): void {
+    for (const panel of this.panels) {
+      const unlock = this.unlockDaTela(panel);
+      if (!unlock || !this.temAcessoAoPainel(panel, unlock) || this.unlocksAnunciados.has(panel.id)) continue;
+      this.unlocksAnunciados.add(panel.id);
+      bus.emit('toast', { text: `${panel.title} liberada · Patente ${unlock.level}`, kind: 'epic', icon: panel.icon });
+    }
+  }
+
   private wireEvents(): void {
-    bus.on('state:changed', () => { this.dirty = true; });
+    bus.on('state:changed', () => { this.dirty = true; this.anunciarNovosMarcos(); });
     bus.on('resources:changed', () => this.updateResources());
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
@@ -218,6 +256,8 @@ export class Shell {
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
       if (!panel) return;
+      const unlock = this.unlockDaTela(panel);
+      if (unlock && !this.temAcessoAoPainel(panel, unlock)) { this.avisarPainelBloqueado(panel, unlock); return; }
       if (panel instanceof RankingPanel && galaxy !== undefined) panel.abrirPlacarDaGalaxia(galaxy);
       this.active = panel;
       this.dirty = true;

@@ -17,6 +17,7 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/PLANO.md`](docs/PLANO.md) | **Para onde vamos.** Passos ordenados, critérios de aceite, decisões pendentes |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Histórico do que foi feito, com a medição de cada etapa |
 | [`docs/ESPECIFICACAO-MESTRE.md`](docs/ESPECIFICACAO-MESTRE.md) | Fonte de verdade de design |
+| [`docs/SEGURANCA-E-CONTA.md`](docs/SEGURANCA-E-CONTA.md) | Auditoria de segurança e a arquitetura de login/servidor |
 
 Registros de momento, que valem como história e **não** como estado atual:
 [`FASE-0-AUDITORIA`](docs/FASE-0-AUDITORIA.md) ·
