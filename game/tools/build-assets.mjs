@@ -8,7 +8,7 @@
  *   npm run assets
  */
 import { readdir, mkdir, writeFile, rm, stat, cp } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -993,24 +993,58 @@ const spaceships2Slug = (file) => {
 };
 
 /**
- * Artes autorais que SUBSTITUEM uma do pack.
+ * Artes autorais que substituem as do pack, resolvidas pelo ID da nave.
  *
- * Os packs em `D:\bbb\*` são somente leitura — é regra do projeto, e existe
- * para o pipeline ser sempre re-executável a partir de uma fonte intocada. Mas
- * arte de pack envelhece, e trocar uma peça não pode exigir editar o pack.
+ * Largue um PNG em `art-source/naves/` (em qualquer subpasta) com o nome do ID
+ * — `vespa_ambar.png`, `aurora1.png`, `colmeia_verdante.png` — e ele toma o
+ * lugar da arte do pack. O nome do arquivo é a única coisa que precisa estar
+ * certa.
  *
- * A troca mora aqui: arquivo em `art-source/naves/inimigo/`, e a chave do
- * atlas que ele ocupa. O nome do arquivo é o do INIMIGO, não o da chave —
- * `vigia_rhodes.png` diz o que a arte é, `n_3.png` não diria nada.
+ * ## Por que não uma tabela escrita à mão
  *
- * A chave existe porque a ligação identidade↔arte mora em `data/spaceships2.ts`
- * (TypeScript) e este pipeline é `.mjs`: ele não importa aquele arquivo. Duas
- * linhas de tabela custam menos que um carregador de TS aqui dentro.
+ * Foi assim que começou: `'vespa_ambar.png': 's2/enemy/d_5'`. Funciona para
+ * duas trocas e desmorona em cem, porque exige DESCOBRIR a chave de atlas de
+ * cada nave — e `d_5` não é descobrível, é procurável, uma de cada vez.
+ *
+ * O mapa vem de `tools/mapa-de-sprites.json`, gerado a partir de `data/` por
+ * `npm run assets:mapa`. Nave nova entra em `data/` e o mapa a inclui sozinho;
+ * uma tabela mantida à mão envelheceria em silêncio.
  */
-const ARTE_SUBSTITUIDA = {
-  'vigia_rhodes.png': 's2/enemy/n_3',
-  'vespa_ambar.png': 's2/enemy/d_5',
-};
+function carregarSubstituicoes() {
+  const mapaPath = path.join(PROJECT, 'tools', 'mapa-de-sprites.json');
+  const dir = path.join(PROJECT, 'art-source', 'naves');
+  if (!existsSync(mapaPath) || !existsSync(dir)) return { porChave: new Map(), avisos: [] };
+
+  const mapa = JSON.parse(readFileSync(mapaPath, 'utf8'));
+  const porChave = new Map();
+  const avisos = [];
+
+  // Varre subpastas: o autor organiza como quiser (jogador/, inimigo/, chefe/,
+  // ou por galáxia) sem que o pipeline precise saber da estrutura.
+  const arquivos = [];
+  const andar = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) andar(full);
+      else if (e.name.toLowerCase().endsWith('.png')) arquivos.push(full);
+    }
+  };
+  andar(dir);
+
+  for (const full of arquivos) {
+    const id = path.basename(full, '.png');
+    const alvo = mapa[id];
+    if (!alvo) {
+      // Erro de nome é o modo de falha mais provável aqui, e o mais silencioso:
+      // a arte simplesmente não apareceria no jogo. Avisar em voz alta é o que
+      // transforma isso em dois segundos de conserto.
+      avisos.push(id);
+      continue;
+    }
+    porChave.set(alvo.sprite, { arquivo: full, id, papel: alvo.papel });
+  }
+  return { porChave, avisos };
+}
 
 async function buildSpaceships2Atlas(manifest) {
   const root = path.join(RAW, 'spaceships new', 'spaceships 2.0');
@@ -1032,7 +1066,11 @@ async function buildSpaceships2Atlas(manifest) {
     sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
   };
 
-  const substituidas = new Set(Object.values(ARTE_SUBSTITUIDA));
+  const { porChave: substituicoes, avisos } = carregarSubstituicoes();
+  const substituidas = new Set(substituicoes.keys());
+  for (const id of avisos) {
+    log(`⚠ art-source/naves/${id}.png não corresponde a nave nenhuma — arte ignorada`);
+  }
 
   const groups = [
     ['Jogador', 'player'],
@@ -1061,18 +1099,15 @@ async function buildSpaceships2Atlas(manifest) {
   }
 
   // As autorais entram depois, já sabendo que o lugar delas está vago.
-  const dirAutoral = path.join(PROJECT, 'art-source', 'naves', 'inimigo');
-  if (existsSync(dirAutoral)) {
-    for (const [arquivo, id] of Object.entries(ARTE_SUBSTITUIDA)) {
-      const full = path.join(dirAutoral, arquivo);
-      if (!existsSync(full)) continue;
-      const meta = await sharp(full).metadata();
-      // Mesma regra de orientação do pack: o hostil desce, e só a arte de 400
-      // quadrados já vem apontando para baixo.
-      const square400 = meta.width === 400 && meta.height === 400;
-      await pushNormalized(full, id, !square400);
-      log(`arte autoral: ${arquivo} -> ${id}`);
-    }
+  for (const [chave, { arquivo, id, papel }] of substituicoes) {
+    const meta = await sharp(arquivo).metadata();
+    // A orientação segue o PAPEL, não a pasta: nave do jogador aponta para
+    // cima e hostil para baixo. A arte vem apontando para cima em quase todo
+    // pack, então só o hostil e o chefe precisam girar.
+    const square400 = meta.width === 400 && meta.height === 400;
+    const girar = papel === 'jogador' ? square400 : !square400;
+    await pushNormalized(arquivo, chave, girar);
+    log(`arte autoral: ${id} -> ${chave}`);
   }
 
   // Preserva também o pequeno lote que já existia na raiz antes das pastas.

@@ -378,6 +378,76 @@ escura ocupa espaço vazio para separar instrumento de cena, e as marcas caíram
 68% em luminosidade. O chanfro dá a leitura de "instrumento" sem custar espaço —
 uma moldura completa em volta de tudo seria o painel gigante que não se quer.
 
+### Trocar a arte de uma nave
+
+Largue um PNG em `art-source/naves/` — em qualquer subpasta — com o nome do ID
+da nave, e rode `npm run assets`. É só isso.
+
+```
+art-source/naves/inimigo/vespa_ambar.png    → substitui a arte do vespa_ambar
+art-source/naves/jogador/aurora1.png        → substitui a do aurora1
+```
+
+O nome do arquivo é a única coisa que precisa estar certa. Errar o nome não
+falha em silêncio: o pipeline avisa qual arquivo não achou dono e segue.
+
+#### Por que existe um mapa gerado no meio
+
+A ligação identidade↔arte mora em `data/`, que é TypeScript; o pipeline é
+`.mjs` e roda antes de qualquer build. `npm run assets:mapa` escreve
+`tools/mapa-de-sprites.json` a partir de `data/`, e o pipeline consulta esse
+arquivo. O script `assets` já roda os dois na ordem certa.
+
+A primeira versão era uma tabela escrita à mão dentro do pipeline:
+
+```js
+'vespa_ambar.png': 's2/enemy/d_5',
+```
+
+Ela funciona para duas trocas e desmorona em cem, porque exige DESCOBRIR a
+chave de atlas de cada nave. E `d_5` não é descobrível — é procurável, uma de
+cada vez, abrindo `spaceships2.ts` e contando índices.
+
+Gerado e não escrito à mão porque nave nova entra em `data/` e o mapa a inclui
+sozinho. Um arquivo mantido à mão envelheceria em silêncio, e o sintoma seria
+uma arte que não substitui nada sem dizer por quê.
+
+#### O censo, em 2026-08-27
+
+| | entradas | sprites distintos |
+|---|---|---|
+| naves do jogador | 53 | 45 |
+| inimigos | 68 | 68 |
+| chefes | 30 | 30 |
+| **total** | **151** | **139** |
+
+Menos sprites que entradas significa **arte compartilhada**: `void_canhao` e
+`void_zapper` usam o mesmo casco, por exemplo. Trocar essa arte muda as duas —
+o que às vezes é o desejado e às vezes não, e o mapa é onde se descobre isso
+antes de trocar.
+
+Os 139 sprites vêm de **onze atlas diferentes**:
+
+| atlas | sprites |
+|---|---|
+| `s2` | 75 |
+| `void` | 25 |
+| `ship` · `nave` · `enemy` · `hostil` | 25 |
+| `prop` | 6 |
+| outros | 8 |
+
+A substituição por ID funciona para **todos**, porque ela age sobre a chave do
+atlas e não sobre a pasta de origem. Isso importa: `prop` são os seis sprites
+que os **trinta chefes** reaproveitam — torres e destroços, não naves.
+
+#### Orientação
+
+A rotação segue o PAPEL, não a pasta: nave do jogador aponta para cima, hostil
+e chefe para baixo. Quase todo pack entrega a arte apontando para cima, então
+só hostil e chefe giram 180°.
+
+---
+
 ### Detritos — asteroides e lixo espacial
 
 66 sprites em seis grupos, num atlas de 512×512 (274 KB). São **obstáculo de
