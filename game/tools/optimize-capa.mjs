@@ -57,7 +57,7 @@ const antes = (await stat(origem)).size;
  */
 const saida = path.join(destino, 'login.webp');
 await entrada
-  .extract({ left: 0, top: 50, width: 1536, height: 864 })
+  .extract({ left: 0, top: 25, width: 1536, height: 864 })
   .resize({ width: 1600, withoutEnlargement: true })
   .webp({ quality: 82 })
   .toFile(saida);

@@ -6566,16 +6566,21 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * diferentes fariam parecer que o jogo trocou de aplicativo no meio da abertura.
  */
 /*
- * A caixa fica no terço de baixo, não no centro.
+ * A caixa começa logo abaixo do logo, e o número que a posiciona é derivado.
  *
- * Centralizada, ela cairia em cima do logo da arte — e o logo é a razão de a
- * arte estar aqui. `end` com um respiro embaixo põe o formulário na parte da
- * imagem que é vazia e escura de propósito.
+ * Com `cover` e âncora no topo, a altura renderizada da arte é
+ * `864 × max(vw/1536, vh/864)`. A base do logo fica a 34% dessa altura — medido
+ * na arte —, o que em unidades de viewport vira `max(19.1vw, 34vh)`.
+ *
+ * É por isso que a fórmula tem um `max`: ele é o mesmo `max` que o `cover` usa
+ * para escolher por qual eixo escalar. Um valor fixo em pixels acertaria numa
+ * janela e erraria em todas as outras, porque o logo MUDA de lugar conforme a
+ * tela — é isso que faz esta posição acompanhar em vez de ser calibrada.
  */
 .login-tela {
   position: fixed; inset: 0; z-index: 200;
-  display: grid; justify-items: center; align-items: end;
-  padding-bottom: clamp(24px, 8vh, 84px);
+  display: grid; justify-items: center; align-items: start;
+  padding-top: calc(max(19.1vw, 34vh) + 14px);
 }
 /*
  * A arte de capa, e o véu que a torna fundo.
@@ -6610,39 +6615,31 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * pôr um véu chapado, e é o que deixa o logo respirar enquanto a metade de
  * baixo vira superfície de leitura.
  */
-.login-fundo { position: absolute; inset: 0; overflow: hidden; }
-
 /*
- * As faixas laterais, preenchidas com a própria arte desfocada.
+ * `cover` ancorado no TOPO, e a caixa desce para debaixo do logo.
  *
- * `contain` deixa 68px de cada lado numa janela de 1,92:1 — 7% da tela. Preto
- * chapado ali seria emenda visível, porque as bordas da arte não são pretas:
- * há uma estação à esquerda e uma nebulosa roxa à direita, e o corte apareceria
- * como duas linhas retas.
+ * Foram quatro tentativas antes desta, e todas tratavam o mesmo sintoma: a arte
+ * tem logo em cima e nave embaixo, a janela é mais larga que ela, e alguma coisa
+ * era cortada. Cortei a nave, depois dividi a perda, depois aparei a arte e
+ * cortei o logo, depois usei `contain` e apareceram faixas laterais.
  *
- * Esta camada é a MESMA imagem em `cover`, borrada e escurecida. Ela não
- * precisa estar em foco: existe só para a cor continuar do outro lado da
- * borda, e é isso que faz a faixa deixar de ser faixa.
+ * O que faltava não era o enquadramento — era a POSIÇÃO DA CAIXA. Com ela no
+ * rodapé, logo e formulário disputavam a altura pelos dois extremos e a arte
+ * pagava a conta no meio. Com ela logo abaixo do logo, a metade de baixo da tela
+ * fica livre e o corte cai onde não há nada que se perca.
  *
- * `scale(1.1)` porque `blur` puxa pixels de fora da caixa e deixaria a borda
- * transparente — a ampliação empurra esse defeito para fora da tela.
+ * `center top` porque o topo é o que não pode ser cortado: é onde está o logo.
+ * O que sai é o rodapé da arte, que é superfície de planeta.
  */
-.login-fundo::before {
-  content: ''; position: absolute; inset: 0;
-  background: url('/assets/ui/capa/login.webp') center center / cover no-repeat, #04070d;
-  filter: blur(26px) brightness(.45) saturate(.8);
-  transform: scale(1.1);
-}
-
-/* A arte legível, inteira, por cima do preenchimento. */
-.login-fundo::after {
-  content: ''; position: absolute; inset: 0;
+.login-fundo {
+  position: absolute; inset: 0;
   background:
     linear-gradient(180deg,
-      rgba(4, 7, 13, .15) 0%,
-      rgba(4, 7, 13, .55) 42%,
-      rgba(4, 7, 13, .88) 100%),
-    url('/assets/ui/capa/login.webp') center center / contain no-repeat;
+      rgba(4, 7, 13, .12) 0%,
+      rgba(4, 7, 13, .48) 38%,
+      rgba(4, 7, 13, .82) 100%),
+    url('/assets/ui/capa/login.webp') center top / cover no-repeat,
+    #04070d;
 }
 /*
  * A caixa tem porte de tela inicial, não de formulário embutido.
@@ -6726,7 +6723,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * a cortar quando o espaço aperta, e a última que faria falta.
  */
 @media (max-height: 720px) {
-  .login-tela { padding-bottom: 16px; }
+  .login-tela { padding-top: calc(max(19.1vw, 34vh) + 8px); }
   .login-caixa { padding: 16px 20px; gap: 7px; }
   .login-sub { margin-bottom: 0; font-size: 11.5px; }
   .login-nota { display: none; }
@@ -6802,4 +6799,34 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .perfil-acao.destaque {
   border-color: var(--line-strong); color: #eaf6ff;
   background: linear-gradient(180deg, rgba(30, 96, 140, .85), rgba(16, 54, 82, .85));
+}
+
+/*
+ * Janela mais ESTREITA que a arte: o enquadramento inverte.
+ *
+ * `cover` recorta o eixo que sobra. Numa tela larga sobra altura e o corte cai
+ * no rodapé, que é planeta — de graça. Num celular em pé sobra LARGURA, e o
+ * corte cai nas laterais: medido em 375×812, o logo ficava em x −83..462 numa
+ * tela de 375, ou seja, cortado dos dois lados.
+ *
+ * Abaixo de 16:9 a arte passa a `contain`, ancorada no topo: ela aparece
+ * inteira, pequena, como um cabeçalho, e o resto da tela fica para o
+ * formulário. É o mesmo raciocínio de sempre — o logo não pode ser cortado —
+ * aplicado ao eixo que dessa vez é o estreito.
+ *
+ * A conta da posição da caixa muda junto. Com `contain` ancorado no topo a
+ * altura da arte é `864 × vw/1536`, então a base do logo fica em `19.2vw` — sem
+ * o `max`, porque aqui só a largura manda.
+ */
+@media (max-aspect-ratio: 16 / 9) {
+  .login-fundo {
+    background:
+      linear-gradient(180deg,
+        rgba(4, 7, 13, .12) 0%,
+        rgba(4, 7, 13, .55) 30%,
+        rgba(4, 7, 13, .9) 100%),
+      url('/assets/ui/capa/login.webp') center top / contain no-repeat,
+      #04070d;
+  }
+  .login-tela { padding-top: calc(19.2vw + 16px); }
 }
