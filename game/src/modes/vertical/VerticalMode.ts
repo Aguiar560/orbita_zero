@@ -377,29 +377,27 @@ export class VerticalMode {
     const phase = galaxyPhases(galaxyOfSector(sector))[phaseOfSector(sector) - 1];
     const hero = phase?.icon ?? `planeta/${PLANET_KEYS[0]}`;
 
-    // Vizinhança: luas, anões, estações, anéis e anomalias. Sortear de famílias
-    // DIFERENTES é o que faz duas fases seguidas não se parecerem — com um só
-    // catálogo de planetas, o céu virava "outra esfera no mesmo lugar".
-    const vizinhos = [...SKY_FAMILIES];
-    rng.shuffle(vizinhos);
-
     // As alturas iniciais já ENTRAM na tela. Antes todas nasciam acima do topo e,
     // com 14–22 px/s, o primeiro corpo levava meio minuto para aparecer — o
     // jogador trocava de fase e via um céu vazio, que é justamente a queixa que
     // motivou trocar os planetas.
-    const heroSize = rng.range(160, 220);
+    const vizinhos = [...SKY_FAMILIES];
+    rng.shuffle(vizinhos);
+
+    const heroSize = rng.range(210, 230);
     const props: typeof this.skyProps = [
       // Herói: planeta inteiro, dentro da pista e recuado. A silhueta completa
       // deixa o céu mais bonito e o tamanho contido preserva a leitura do
       // combate quando uma nave passa à frente dele.
       {
         key: hero,
-        fx: rng.range(0.4, 0.6),
+        fx: 0.5,
         y: rng.range(-460, 520), size: heroSize, speed: rng.range(14, 22), alpha: 0.55,
       },
-      // Distantes: pequenos, lentos e apagados, só para dar profundidade.
-      { key: rng.pick(vizinhos[0]!), fx: rng.range(0.05, 0.95), y: rng.range(-1500, 780), size: rng.range(96, 168), speed: rng.range(5, 9), alpha: 0.42 },
-      { key: rng.pick(vizinhos[1]!), fx: rng.range(0.05, 0.95), y: rng.range(-2600, 900), size: rng.range(64, 116), speed: rng.range(3, 6), alpha: 0.3 },
+      // Corpos secundários vivem nas bordas e são pequenos: eles dão escala
+      // ao céu, mas nunca atravessam o planeta central nem a área de combate.
+      { key: rng.pick(vizinhos[0]!), fx: 0.08, y: rng.range(-1500, 780), size: rng.range(28, 36), speed: rng.range(5, 9), alpha: 0.42 },
+      { key: rng.pick(vizinhos[1]!), fx: 0.92, y: rng.range(-2600, 900), size: rng.range(24, 32), speed: rng.range(3, 6), alpha: 0.3 },
     ];
 
     // Uma nebulosa ao fundo em parte das fases: enorme, quase transparente e
