@@ -7,7 +7,7 @@ compatibility_date = "2026-08-01"
 # Worker, e essa é a vantagem de verificar o token com chave pública.
 [vars]
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
-ORIGENS = "http://localhost:5180"
+ORIGENS = "http://localhost:5180,https://orbita-zero.vercel.app"
 
 [[d1_databases]]
 binding = "DB"
