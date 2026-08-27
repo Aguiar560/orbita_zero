@@ -6580,9 +6580,16 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /*
  * A arte de capa, e o véu que a torna fundo.
  *
- * `cover` com foco no TOPO: o logo está lá em cima na arte, e centralizar o
- * enquadramento o cortaria em janela larga e baixa — que é a forma de
- * praticamente todo monitor.
+ * ## O enquadramento
+ *
+ * `center center` e nao mais um deslocamento calculado: a arte JA e aparada
+ * para 16:9 na origem (ver `tools/optimize-capa.mjs`), entao o que sobra para
+ * cortar em tela cheia e pequeno e simetrico.
+ *
+ * A versao anterior tentava resolver no CSS o que era problema da imagem — a
+ * arte vinha em 3:2 e a tela e 16:9, e nenhum `background-position` conserta
+ * isso: ele so escolhe se o corte come o logo ou a nave. Aparar na origem faz a
+ * pergunta desaparecer.
  *
  * O gradiente por cima existe porque a arte é clara e detalhada no meio,
  * exatamente onde a caixa de login fica. Sem ele o campo de e-mail cairia em
@@ -6599,14 +6606,25 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
       rgba(4, 7, 13, .15) 0%,
       rgba(4, 7, 13, .55) 42%,
       rgba(4, 7, 13, .88) 100%),
-    url('/assets/ui/capa/login.webp') center top / cover no-repeat,
+    url('/assets/ui/capa/login.webp') center center / cover no-repeat,
     #04070d;
 }
+/*
+ * A caixa tem porte de tela inicial, não de formulário embutido.
+ *
+ * A primeira versão usava 360px de largura e 26px de respiro, e numa tela de
+ * 1730 de largura aquilo lia como um aviso perdido no meio da arte — pequeno
+ * demais para ser o assunto da tela, que é o que ela é.
+ *
+ * O teto continua existindo: um formulário de dois campos esticado até 700px
+ * fica com linhas longas e vazias e piora. 430 é onde ele para de parecer
+ * apertado sem começar a parecer esticado.
+ */
 .login-caixa {
   position: relative;
-  width: min(92vw, 360px);
-  display: grid; gap: 10px;
-  padding: 26px 24px;
+  width: min(92vw, 430px);
+  display: grid; gap: 13px;
+  padding: 34px 32px;
   border: 1px solid var(--painel-linha); border-radius: 10px;
   /* Translúcida com desfoque: deixa a arte aparecer atrás sem que ela
    * atrapalhe a leitura do formulário. Chapa opaca por cima de uma pintura
@@ -6615,31 +6633,31 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 48px rgba(0, 0, 0, .7);
 }
-.login-sub { margin: 0 0 6px; text-align: center; font-size: 12px; color: var(--muted); }
+.login-sub { margin: 0 0 8px; text-align: center; font-size: 13.5px; color: var(--muted); }
 
-.login-abas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.login-abas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .login-aba {
-  padding: 7px 0; cursor: pointer;
+  padding: 10px 0; cursor: pointer;
   border: 1px solid var(--painel-linha); border-radius: 6px;
   background: rgba(4, 10, 17, .8); color: var(--muted);
-  font: 600 12px/1 'Chakra Petch', sans-serif;
+  font: 600 13px/1 'Chakra Petch', sans-serif;
 }
 .login-aba.ativa { color: #9fe8ff; border-color: var(--line-strong); }
 .login-aba:disabled { opacity: .5; cursor: default; }
 
 .login-campo {
-  width: 100%; padding: 9px 10px;
+  width: 100%; padding: 12px 13px;
   border: 1px solid var(--painel-linha); border-radius: 6px;
   background: rgba(4, 10, 17, .85); color: #dbe6ef;
-  font: 400 13px/1.2 'Chakra Petch', sans-serif;
+  font: 400 14.5px/1.2 'Chakra Petch', sans-serif;
 }
 .login-campo:focus { outline: none; border-color: var(--accent); }
 
 .login-enviar {
-  margin-top: 4px; padding: 10px 0; cursor: pointer;
+  margin-top: 6px; padding: 13px 0; cursor: pointer;
   border: 1px solid var(--line-strong); border-radius: 6px;
   background: linear-gradient(180deg, rgba(30, 96, 140, .9), rgba(16, 54, 82, .9));
-  color: #eaf6ff; font: 700 13px/1 'Chakra Petch', sans-serif;
+  color: #eaf6ff; font: 700 14px/1 'Chakra Petch', sans-serif;
   letter-spacing: .06em;
 }
 .login-enviar:disabled { opacity: .55; cursor: default; }
@@ -6647,15 +6665,15 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* Uma cor só para o recado, e neutra: parte dele é sucesso ("confirme o
  * e-mail") e parte é erro. Pintar tudo de vermelho mentiria na metade. */
 .login-recado {
-  margin: 2px 0 0; text-align: center; font-size: 12px; color: #ffc46b;
+  margin: 2px 0 0; text-align: center; font-size: 13px; color: #ffc46b;
   min-height: 1.2em;
 }
 .login-recado.hidden { display: none; }
 
 .login-pular {
-  margin-top: 2px; padding: 6px 0; cursor: pointer;
+  margin-top: 4px; padding: 8px 0; cursor: pointer;
   border: 0; background: none; color: var(--muted);
-  font: 600 11px/1 'Chakra Petch', sans-serif; text-decoration: underline;
+  font: 600 12px/1 'Chakra Petch', sans-serif; text-decoration: underline;
 }
 .login-pular:disabled { opacity: .5; cursor: default; }
 .login-nota { margin: 0; text-align: center; }

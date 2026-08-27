@@ -38,8 +38,26 @@ const entrada = sharp(origem);
 const meta = await entrada.metadata();
 const antes = (await stat(origem)).size;
 
+/**
+ * Recorte para 16:9, e por que ele não é opcional.
+ *
+ * A arte nasce em 3:2 e a tela do jogador é quase sempre 16:9 ou mais larga.
+ * Com `cover`, essa diferença tem de sair de algum lugar: medido numa janela de
+ * 1730×915, sobravam 238px de altura para cortar.
+ *
+ * E não havia corte bom. Cortar por baixo come a nave grande, que é o assunto
+ * do jogo; cortar por cima come o logo, que é a razão de a arte estar aqui.
+ * Nenhum ajuste de `background-position` resolve um conflito desse tamanho —
+ * ele só escolhe qual dos dois perder.
+ *
+ * Aparar na ORIGEM resolve: a faixa de 96px no topo é céu vazio acima do anel
+ * orbital, e as 64 de baixo são superfície de planeta. Tirando as duas, a arte
+ * vira 1536×864 — exatamente 16:9 — e o que sobra para cortar em tela cheia
+ * cai de 238px para menos de 60.
+ */
 const saida = path.join(destino, 'login.webp');
 await entrada
+  .extract({ left: 0, top: 96, width: 1536, height: 864 })
   .resize({ width: 1600, withoutEnlargement: true })
   .webp({ quality: 82 })
   .toFile(saida);
