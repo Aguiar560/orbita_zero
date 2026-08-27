@@ -11,6 +11,7 @@ import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
 import { Anatomia } from './Anatomia';
+import { PerfilMenu } from './PerfilMenu';
 import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
 import { ELEMENTS, getElement } from '@data/elements';
 import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
@@ -99,6 +100,7 @@ export class Shell {
   private labToolbar!: HTMLElement;
   /** HUD independente dos trilhos: continua visível no modo de combate amplo. */
   private missionHud!: HTMLElement;
+  private perfil!: PerfilMenu;
 
   constructor(
     private readonly root: HTMLElement,
@@ -116,6 +118,7 @@ export class Shell {
     const stageWrap = h('.stage-wrap', {}, stage, this.missionHud);
 
     this.leftRail = new LeftRail(this.sim);
+    this.perfil = new PerfilMenu(this.sim);
     this.anatomia = new Anatomia(this.sim);
     this.tabBar = h('nav.tabs', { 'aria-label': 'Navegação principal' });
     this.panelHost = h('.panel-host');
@@ -131,6 +134,10 @@ export class Shell {
           this.statusNode,
         ),
       ),
+      // O perfil fica colado na marca, no canto que o olho já usa para
+      // "quem sou eu aqui" em qualquer aplicativo. À direita ele disputaria
+      // com os recursos, que mudam sozinhos e puxam a atenção o tempo todo.
+      this.perfil.root,
       // As abas moram na barra de cima, como num painel de nave: o eixo
       // horizontal é o que sobra numa tela larga, e libera a coluna direita
       // inteira para o inventário ficar SEMPRE à vista — que é o que se
