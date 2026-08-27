@@ -5,12 +5,23 @@ import { Surface } from '@render/Surface';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
-import { loadFromStorage } from '@sim/state';
+import { allowSaving, loadFromStorage } from '@sim/state';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
 import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
 import { Login } from '@ui/Login';
+import { desligarModoDeTesteSeNaoForAdmin } from './admin';
+import { reconciliar, subirSave } from './nuvem';
+
+/**
+ * Segundos entre tentativas de subir o save.
+ *
+ * Acima do mínimo do servidor (120s) com folga. Num idle o custo de perder o
+ * intervalo é quase nada: o progresso é função do TEMPO, e o cliente recalcula
+ * o que passou desde o último save ao voltar.
+ */
+const INTERVALO_DE_SUBIDA = 150;
 
 /**
  * Ausência mínima (segundos) para creditar progresso offline.
@@ -66,6 +77,9 @@ export class Game {
 
   private readonly offlineSeconds: number;
 
+  /** Segundos desde a última tentativa de subir o save. */
+  private relogioDaNuvem = 0;
+
   async start(): Promise<void> {
     try {
       await assets.boot();
@@ -83,6 +97,14 @@ export class Game {
     this.stage = new Surface(stage);
     this.vertical = new VerticalMode(this.stage, this.sim);
     this.vertical.refreshPlayer(true);
+
+    // Ao esconder a aba, tenta subir na hora. É o momento em que o jogador
+    // some de verdade, e esperar o intervalo perderia a sessão toda dele.
+    // `visibilitychange` e não `beforeunload`: este último não roda no celular,
+    // que é onde fechar a aba sem avisar é a regra e não a exceção.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') void subirSave(this.sim.state);
+    });
 
     window.addEventListener('resize', this.layout);
     // O palco pode mudar de tamanho SEM a janela mudar — um trilho que some,
@@ -118,6 +140,20 @@ export class Game {
     // gosta do jogo trocaria jogadores por cadastros.
     await new Login().mostrar(this.rootEl);
 
+    // Com a conta resolvida dá para juntar o save local ao da nuvem. Antes da
+    // escolha de piloto porque um save que desce troca o estado inteiro, e
+    // escolher piloto para um save que vai ser substituído é decidir duas vezes.
+    await this.juntarComANuvem();
+
+    // O modo de teste é ferramenta de admin, e o interruptor some para quem não
+    // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
+    // nele — há saves por aí com `testMode: true` e, sem o interruptor, não
+    // haveria saída.
+    if (desligarModoDeTesteSeNaoForAdmin(this.sim.state.settings)) {
+      this.sim.touch();
+      this.sim.save();
+    }
+
     if (!this.sim.state.piloto) {
       await new EscolhaDePiloto(this.sim, this.rootEl).mostrar();
       this.vertical.refreshPlayer(true);
@@ -132,6 +168,30 @@ export class Game {
     this.loop.start();
   }
 
+  /**
+   * Junta o save local ao da nuvem e aplica a decisão.
+   *
+   * Falhar aqui não pode impedir o jogo de abrir: sem rede, sem conta ou com o
+   * servidor fora, o save local vale e a partida começa igual. É a razão de
+   * tudo estar dentro de um `try` que engole — a nuvem é cópia, não requisito.
+   */
+  private async juntarComANuvem(): Promise<void> {
+    try {
+      const r = await reconciliar(this.sim.state);
+      if (r.acao === 'desceu') {
+        // `allowSaving` porque o jogador pode ter apagado o save nesta mesma
+        // sessão: a trava de gravação ainda estaria de pé, e o save que acabou
+        // de descer nunca chegaria ao disco.
+        allowSaving();
+        this.sim.state = r.estado;
+        this.sim.touch();
+        this.sim.save();
+      }
+    } catch {
+      // Ver acima: a nuvem é cópia.
+    }
+  }
+
   // ── laço ──────────────────────────────────────────────────────────────────
 
   private readonly tick = (dt: number): void => {
@@ -142,7 +202,28 @@ export class Game {
       this.vertical.update(dt);
     }
     if (!this.sim.laboratorio.active) this.sim.tickSave(dt);
+    this.tickNuvem(dt);
   };
+
+  /**
+   * Sobe o save de tempos em tempos.
+   *
+   * `INTERVALO_DE_SUBIDA` é maior que o mínimo que o servidor aceita (120s) de
+   * propósito: bater na porta no segundo exato só produz 429 e gasta requisição
+   * da cota à toa. A folga faz a tentativa cair sempre do lado que passa.
+   *
+   * O relógio não conta durante o Laboratório: aquilo é bancada de medição, e o
+   * estado que ele produz não é progresso de jogador.
+   */
+  private tickNuvem(dt: number): void {
+    if (this.sim.laboratorio.active) return;
+    this.relogioDaNuvem += dt;
+    if (this.relogioDaNuvem < INTERVALO_DE_SUBIDA) return;
+    this.relogioDaNuvem = 0;
+    // Sem `await`: a subida é de fundo e não pode segurar um quadro. Falha fica
+    // registrada em `nuvem.ultimoErro` e a próxima tentativa vem sozinha.
+    void subirSave(this.sim.state);
+  }
 
   private readonly draw = (_alpha: number, dt: number): void => {
     this.vertical.draw();

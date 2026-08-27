@@ -6934,3 +6934,17 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   scrollbar-width: thin;
   scrollbar-color: rgba(89,199,232,.32) transparent;
 }
+
+/* O id da conta é clicável para copiar: é ele que entra na lista de `ADMINS`,
+ * e ler um UUID da tela para digitar à mão erra na terceira tentativa. */
+.perfil-id { cursor: pointer; }
+.perfil-id:hover .perfil-val { color: var(--accent); }
+
+/* Nota neutra, para o que é INFORMAÇÃO e não alerta.
+ *
+ * Separada de `.perfil-aviso` de propósito: o âmbar daquela classe diz "saiba
+ * disto"; dizer em âmbar que o backup está funcionando treinaria o jogador a
+ * ignorar a cor justamente quando ela passar a importar. */
+.perfil-nota {
+  margin: 2px 0 4px; font-size: 10.5px; line-height: 1.35; color: var(--muted);
+}

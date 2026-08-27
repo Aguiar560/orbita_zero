@@ -32,6 +32,7 @@ import { CodexPanel } from './panels/CodexPanel';
 import { RankingPanel } from './panels/RankingPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { LaboratorioPanel } from './panels/LaboratorioPanel';
+import { ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
 
 /** Frequência de re-render do painel ativo. */
@@ -65,7 +66,11 @@ export class Shell {
     new ShopPanel(),
     new CodexPanel(),
     new RankingPanel(),
-    ...(LAB_CODE_WRITE_AVAILABLE ? [new LaboratorioPanel()] : []),
+    // Por CONTA, e não mais por build de desenvolvimento. Com testers, o
+    // build da Vercel é o que todo mundo usa — inclusive quem administra — e
+    // `import.meta.env.DEV` deixaria a bancada de medição fora justamente do
+    // lugar onde ela precisa rodar.
+    ...(ehAdmin() ? [new LaboratorioPanel()] : []),
   ];
 
   private readonly settings = new SettingsPanel();

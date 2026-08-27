@@ -1,6 +1,7 @@
 import { duration } from '@core/format';
 import { RARITIES } from '@data/rarity';
 import { allowSaving, clearStorage, exportSave, importSave } from '@sim/state';
+import { ehAdmin } from '@app/admin';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
 import type { Rarity } from '@sim/types';
@@ -277,6 +278,17 @@ export class SettingsPanel implements Panel {
 
   private teste(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
+    // Some inteira para quem não é admin. Enquanto o jogo era de uma pessoa
+    // só, "modo de teste" ao lado de volume e contraste era conveniência; com
+    // testers vira armadilha, porque a seção não avisa que muda o jogo inteiro
+    // e o primeiro relato seria de alguém descrevendo recursos infinitos e nave
+    // indestrutível sem saber que foi ele quem ligou.
+    //
+    // Esconder não basta, e por isso não é a única medida: `settings.testMode`
+    // é campo do SAVE, e há saves com ele ligado. Quem tira do modo quem já
+    // entrou é `desligarModoDeTesteSeNaoForAdmin`, na entrada do jogo.
+    if (!ehAdmin()) return [];
+
     return [
       h('h3.section', { text: 'Modo de teste' }),
       h('p.muted.hint', { text: 'Recursos e pontos de matriz infinitos, hangar liberado, nave indestrutível e controle de velocidade. Serve para inspecionar conteúdo sem esperar a progressão — o save continua o mesmo.' }),

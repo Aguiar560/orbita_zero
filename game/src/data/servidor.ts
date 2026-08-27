@@ -23,3 +23,33 @@ export const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 
 /** A API do jogo, no Cloudflare Workers. */
 export const API_URL = 'https://orbita-zero-api.orbitazero.workers.dev';
+
+/**
+ * Contas com acesso administrativo: modo de teste e Laboratório.
+ *
+ * ## Isto é um portão de INTERFACE, não de segurança
+ *
+ * Vale dizer com todas as letras, porque a diferença importa quando houver
+ * testers de verdade. A lista está no pacote do cliente e a checagem roda no
+ * navegador do jogador — quem abrir o devtools contorna em trinta segundos.
+ *
+ * O que ela resolve é o caso real: o tester que abre Configurações, vê "modo de
+ * teste", liga por curiosidade e reporta um jogo que não é o jogo. Isso some.
+ * O que ela NÃO resolve é o tester que quer trapacear.
+ *
+ * Quem impede trapaça é o servidor não confiar no cliente — e a conferência de
+ * plausibilidade do save ainda não existe. Enquanto não existir, um save
+ * inventado é aceito, com ou sem esta lista. Por isso o placar continua fora.
+ *
+ * ## Por que os ids podem ficar no repositório
+ *
+ * Pelo mesmo motivo da chave `anon` acima: um id de usuário não autentica
+ * ninguém. Para se passar por um admin é preciso o token dele, que sai do login
+ * e nunca daqui.
+ *
+ * Para descobrir o seu: entre na conta e abra o menu de perfil — o id aparece
+ * embaixo do e-mail, pronto para copiar.
+ */
+export const ADMINS: readonly string[] = [
+  // Cole aqui o `usuarioId` da sua conta.
+];

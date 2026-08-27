@@ -1,4 +1,6 @@
 import { sair, sessaoGuardada } from '@app/conta';
+import { nuvem } from '@app/nuvem';
+import { toast } from '@app/Bus';
 import { fmt } from '@core/format';
 import type { Sim } from '@sim/index';
 import { clear, h } from './dom';
@@ -89,9 +91,21 @@ export class PerfilMenu {
     return h('.perfil-gaveta', {},
       h('.perfil-secao', { text: 'CONTA' }),
       linha('E-mail', sessao.email),
-      // O id inteiro é um UUID e não cabe. Os oito primeiros bastam para
-      // conferir com o painel do Supabase, que é o único uso real disto.
-      linha('Id', `${sessao.usuarioId.slice(0, 8)}…`),
+      // Truncado para caber, mas COPIÁVEL inteiro no clique: o id é o que
+      // entra na lista de `ADMINS`, e ler um UUID da tela para digitar à mão é
+      // um erro de digitação esperando acontecer.
+      h('.perfil-linha.perfil-id', {
+        title: `${sessao.usuarioId} — clique para copiar`,
+        onclick: () => {
+          void navigator.clipboard?.writeText(sessao.usuarioId).then(
+            () => toast('Id copiado.', 'good'),
+            () => toast('Não deu para copiar.', 'bad'),
+          );
+        },
+      },
+        h('span.perfil-rot', { text: 'Id' }),
+        h('span.perfil-val', { text: `${sessao.usuarioId.slice(0, 8)}…` }),
+      ),
       linha(
         'Sessão',
         restam > 0 ? `renova em ${Math.max(1, Math.round(restam / 60))} min` : 'renovando…',
@@ -100,11 +114,15 @@ export class PerfilMenu {
       ...this.progresso(st),
 
       h('.perfil-secao', { text: 'SINCRONIZAÇÃO' }),
-      // Dito com todas as letras enquanto for verdade. O servidor já aceita o
-      // save, mas o jogo ainda não o envia — e deixar isso implícito faria o
-      // jogador confiar num backup que não existe.
-      h('p.perfil-aviso', {
-        text: 'Ainda não implementada. O progresso continua só neste navegador.',
+      // O que o jogador precisa saber é se o backup dele EXISTE, e de quando é.
+      // "Ativa" sozinho não responde isso: uma sincronização ligada que falhou
+      // nas últimas duas horas parece igual a uma que funciona.
+      linha('Última subida', nuvem.ultimaSubida
+        ? `há ${Math.max(1, Math.round((Date.now() / 1000 - nuvem.ultimaSubida) / 60))} min`
+        : 'ainda nesta sessão'),
+      ...(nuvem.ultimoErro ? [h('p.perfil-aviso', { text: `Última falha: ${nuvem.ultimoErro}` })] : []),
+      h('p.perfil-nota', {
+        text: 'O save sobe sozinho a cada poucos minutos e ao sair da aba. O progresso continua guardado neste navegador também.',
       }),
 
       h('button.perfil-acao', {
