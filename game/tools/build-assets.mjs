@@ -1009,6 +1009,7 @@ const spaceships2Slug = (file) => {
  */
 const ARTE_SUBSTITUIDA = {
   'vigia_rhodes.png': 's2/enemy/n_3',
+  'vespa_ambar.png': 's2/enemy/d_5',
 };
 
 async function buildSpaceships2Atlas(manifest) {
