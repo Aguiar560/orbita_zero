@@ -95,6 +95,31 @@ Verificado nesta máquina: `/saude` responde 200, `/save` devolve 401 sem token
 e 401 com token inválido — a mesma resposta opaca nos dois casos, porque dizer
 qual foi ajuda quem testa um ataque mais do que ajuda um cliente correto.
 
+## No ar
+
+```
+https://orbita-zero-api.orbitazero.workers.dev
+```
+
+Medido em 27/08, contra o servico publicado:
+
+| | |
+|---|---|
+| `/saude` | 200 |
+| `/save` sem token | 401 |
+| `/save` com token falso | 401 |
+| `/nada` com token falso | 401 |
+| CORS de `localhost:5180` | libera |
+| CORS de origem estranha | nao devolve cabecalho |
+
+A rota inexistente tambem responde 401, e nao 404: a autenticacao vem ANTES do
+roteamento, entao um visitante sem token nao consegue mapear quais rotas
+existem. 404 so aparece para quem ja provou quem e.
+
+Depois do deploy o subdominio leva alguns minutos para o certificado sair — o
+sintoma e um `TLS alert 40` (handshake failure), que parece erro de
+configuracao e nao e. Saiu em 15s aqui.
+
 ## Verificado contra o projeto real
 
 O JWKS mora em **`/auth/v1/.well-known/jwks.json`**, e não em `/auth/v1/jwks`.
