@@ -166,6 +166,7 @@ export async function lerPlacar(
   env: Env,
   placar: string,
   usuario: string,
+  casco = '',
   limite = 50,
 ): Promise<{ linhas: LinhaDoPlacar[]; minhaPosicao: number | null; total: number; meuApelido: string | null }> {
   // O apelido do proprio jogador vem junto: a tela precisa saber se ele ja
@@ -177,13 +178,16 @@ export async function lerPlacar(
 
   if (!PLACARES.has(placar)) return { linhas: [], minhaPosicao: null, total: 0, meuApelido };
 
+  // O placar de naves compara CASCO com casco: o nível de um Núcleo Vektor não
+  // diz nada contra o de outra nave. Nos demais placares `casco` é vazio e o
+  // filtro casa com a coluna vazia, que é o que lá está gravado.
   const topo = await env.DB.prepare(`
     SELECT m.usuario, m.valor, m.casco, a.apelido
     FROM marcas m JOIN apelidos a ON a.usuario = m.usuario
-    WHERE m.placar = ?
+    WHERE m.placar = ? AND m.casco = ?
     ORDER BY m.valor DESC, m.desempate DESC, m.atualizado_em ASC
     LIMIT ?
-  `).bind(placar, limite).all<{ usuario: string; valor: number; casco: string; apelido: string }>();
+  `).bind(placar, casco, limite).all<{ usuario: string; valor: number; casco: string; apelido: string }>();
 
   const linhas: LinhaDoPlacar[] = (topo.results ?? []).map((r, i) => ({
     posicao: i + 1,
@@ -194,24 +198,28 @@ export async function lerPlacar(
   }));
 
   const total = await env.DB
-    .prepare('SELECT COUNT(*) AS n FROM marcas m JOIN apelidos a ON a.usuario = m.usuario WHERE m.placar = ?')
-    .bind(placar)
+    .prepare('SELECT COUNT(*) AS n FROM marcas m JOIN apelidos a ON a.usuario = m.usuario WHERE m.placar = ? AND m.casco = ?')
+    .bind(placar, casco)
     .first<{ n: number }>();
 
-  const minha = await env.DB.prepare(`
-    SELECT 1 + COUNT(*) AS pos FROM marcas m
-    JOIN apelidos a ON a.usuario = m.usuario
-    WHERE m.placar = ? AND (
-      m.valor > (SELECT valor FROM marcas WHERE usuario = ? AND placar = ? LIMIT 1)
-      OR (m.valor = (SELECT valor FROM marcas WHERE usuario = ? AND placar = ? LIMIT 1)
-          AND m.desempate > (SELECT desempate FROM marcas WHERE usuario = ? AND placar = ? LIMIT 1))
-    )
-  `).bind(placar, usuario, placar, usuario, placar, usuario, placar)
-    .first<{ pos: number }>();
+  // A minha marca, uma vez — as subconsultas repetidas de antes liam a mesma
+  // linha seis vezes e ignoravam o casco.
+  const minhaMarca = await env.DB
+    .prepare('SELECT valor, desempate FROM marcas WHERE usuario = ? AND placar = ? AND casco = ?')
+    .bind(usuario, placar, casco)
+    .first<{ valor: number; desempate: number }>();
 
-  const tenhoMarca = (topo.results ?? []).some((r) => r.usuario === usuario)
-    || await env.DB.prepare('SELECT 1 FROM marcas WHERE usuario = ? AND placar = ?')
-      .bind(usuario, placar).first();
+  const minha = minhaMarca
+    ? await env.DB.prepare(`
+        SELECT 1 + COUNT(*) AS pos FROM marcas m
+        JOIN apelidos a ON a.usuario = m.usuario
+        WHERE m.placar = ? AND m.casco = ?
+          AND (m.valor > ? OR (m.valor = ? AND m.desempate > ?))
+      `).bind(placar, casco, minhaMarca.valor, minhaMarca.valor, minhaMarca.desempate)
+        .first<{ pos: number }>()
+    : null;
+
+  const tenhoMarca = !!minhaMarca;
 
   return {
     linhas,

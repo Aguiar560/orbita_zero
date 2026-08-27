@@ -10,6 +10,15 @@ import {
   type EstadoDaBusca, type LinhaDoPlacar,
 } from '@app/placar';
 import { bus } from '@app/Bus';
+
+/**
+ * Quanto tempo uma busca do placar vale.
+ *
+ * Placar mundial não é dado de quadro: vinte segundos de atraso não mudam
+ * decisão nenhuma, e buscar mais que isso gasta a cota de todos para mostrar o
+ * mesmo número.
+ */
+const VALIDADE_DA_BUSCA = 20_000;
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
 import type { Panel } from './types';
@@ -52,29 +61,57 @@ export class RankingPanel implements Panel {
   private galaxy: number | null = null;
 
   /**
-   * O placar buscado, por seção.
+   * O placar buscado, por seção e casco.
    *
    * Em cache porque o painel se redesenha a cada `PANEL_HZ`: buscar a cada
    * desenho seriam dezenas de requisições por minuto, a cota da camada gratuita
    * acabaria numa tarde, e a lista piscaria a cada resposta fora de ordem.
+   *
+   * ## E o cache EXPIRA
+   *
+   * Era eterno, e isso quebrava o placar de um jeito difícil de desconfiar:
+   * quem abrisse o Ranking antes de a primeira marca subir — que é o caso de
+   * todo jogador novo, porque as marcas sobem alguns minutos depois de entrar —
+   * guardava "ninguém marcou ainda" e via essa frase para sempre, mesmo com a
+   * própria marca já gravada no servidor.
+   *
+   * Aconteceu de verdade: marca 14 no banco, tela dizendo que o placar estava
+   * vazio.
    */
-  private busca = new Map<string, EstadoDaBusca>();
+  private busca = new Map<string, { em: number; estado: EstadoDaBusca }>();
   /** O que o jogador digitou no campo de apelido, entre um desenho e outro. */
   private apelidoDigitado = '';
   private erroDeApelido = '';
 
-  /** Dispara a busca da seção, uma vez. */
-  private garantirBusca(id: PlacarId): EstadoDaBusca {
-    const atual = this.busca.get(id) ?? { fase: 'nunca' as const };
-    if (atual.fase !== 'nunca') return atual;
+  /**
+   * A busca da seção, refeita quando envelhece.
+   *
+   * `VALIDADE` é curta o bastante para a marca nova aparecer sem o jogador
+   * precisar fechar a tela, e longa o bastante para o painel — que se redesenha
+   * a ~5 Hz — não virar uma máquina de requisições.
+   */
+  private garantirBusca(id: PlacarId, casco: string): EstadoDaBusca {
+    const chave = `${id}:${casco}`;
+    const agora = Date.now();
+    const guardado = this.busca.get(chave);
 
-    this.busca.set(id, { fase: 'buscando' });
-    void buscarPlacar(id).then((r) => {
-      this.busca.set(id, r);
+    if (guardado) {
+      const velho = agora - guardado.em > VALIDADE_DA_BUSCA;
+      // Uma busca EM ANDAMENTO não é reiniciada por idade: seriam duas
+      // requisições correndo e a mais lenta venceria.
+      if (!velho || guardado.estado.fase === 'buscando') return guardado.estado;
+    }
+
+    this.busca.set(chave, { em: agora, estado: { fase: 'buscando' } });
+    void buscarPlacar(id, casco).then((r) => {
+      this.busca.set(chave, { em: Date.now(), estado: r });
       // O painel não sabe sozinho que a resposta chegou: ele desenha do cache.
       bus.emit('state:changed');
     });
-    return { fase: 'buscando' };
+
+    // Enquanto a nova não chega, mostra a anterior: trocar uma lista por
+    // "Buscando…" a cada atualização faria a tela piscar sozinha.
+    return guardado?.estado ?? { fase: 'buscando' };
   }
 
   abrirPlacarDaGalaxia(galaxy: number): void {
@@ -208,6 +245,13 @@ export class RankingPanel implements Panel {
    * anterior tinha um sexto — pilotos inventados no navegador — e ele saiu:
    * o jogador decidia o que jogar comparando-se com gente que não existe.
    */
+  /** O casco cujo placar está sendo mostrado. Vazio fora da seção de naves. */
+  private cascoDoPlacar(sim: Sim): string {
+    if (this.secao !== 'naves') return '';
+    // O mesmo padrão do seletor: sem escolha explícita, a melhor nave da frota.
+    return this.casco || navesClassificaveis(sim.state)[0]?.id || '';
+  }
+
   private lista(sim: Sim, nome: string): HTMLElement {
     const cabecalho = h('.ranking-cabecalho', {},
       h('span.tiny', { text: '#' }),
@@ -215,7 +259,9 @@ export class RankingPanel implements Panel {
       h('span.tiny', { text: nome.toUpperCase() }),
     );
 
-    const estado = this.garantirBusca(this.secao);
+    // O casco entra na chave: o placar de naves é por casco, e trocar de nave
+    // no seletor tem de trocar a lista.
+    const estado = this.garantirBusca(this.secao, this.secao === 'naves' ? this.cascoDoPlacar(sim) : '');
 
     if (estado.fase === 'sem-conta') {
       return h('.ranking-lista', {}, cabecalho, this.aviso(
@@ -309,7 +355,7 @@ export class RankingPanel implements Panel {
       if (r.ok) {
         this.erroDeApelido = '';
         // Força a busca de novo: agora há apelido, e a lista muda.
-        this.busca.delete(this.secao);
+        this.busca.clear();
         sim.touch();
         return;
       }

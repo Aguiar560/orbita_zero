@@ -152,7 +152,8 @@ export default {
 
     if (url.pathname === '/placar' && req.method === 'GET') {
       const qual = url.searchParams.get('id') ?? '';
-      const dados = await lerPlacar(env, qual, usuario.id);
+      const casco = (url.searchParams.get('casco') ?? '').slice(0, 40);
+      const dados = await lerPlacar(env, qual, usuario.id, casco);
       return json(dados, 200, origem);
     }
 

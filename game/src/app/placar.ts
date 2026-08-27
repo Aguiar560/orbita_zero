@@ -164,8 +164,12 @@ export async function enviarMarcas(state: GameState): Promise<boolean> {
 
 // ── leitura ────────────────────────────────────────────────────────────────
 
-export async function buscarPlacar(id: PlacarId): Promise<EstadoDaBusca> {
-  const r = await chamar(`/placar?id=${encodeURIComponent(id)}`, 'GET');
+export async function buscarPlacar(id: PlacarId, casco = ''): Promise<EstadoDaBusca> {
+  // O placar de naves é POR CASCO, e o seletor da tela escolhe qual. Sem passar
+  // o casco, o servidor devolvia as marcas de TODAS as naves misturadas e a
+  // coluna do meio ficava sem sentido.
+  const q = `/placar?id=${encodeURIComponent(id)}${casco ? `&casco=${encodeURIComponent(casco)}` : ''}`;
+  const r = await chamar(q, 'GET');
   if (!r) return { fase: 'sem-conta' };
   if (!r.ok) return { fase: 'erro', motivo: `servidor respondeu ${r.status}` };
 
