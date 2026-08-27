@@ -2517,6 +2517,7 @@ export class VerticalMode {
     rotulo: string,
     valor: string,
     secoes = 8,
+    tamanhoTexto = 7.5,
   ): void {
     const ctx = s.ctx;
     const cheio = Math.max(0, Math.min(w, w * clamp01(fracao)));
@@ -2548,8 +2549,8 @@ export class VerticalMode {
       ctx.fillRect(px, y + 1, 1, Math.max(0, h - 2));
     }
     ctx.restore();
-    s.text(rotulo, x, y - 4, { size: 7.5, color: '#8eb4c8', shadow: 'rgba(0,0,0,.9)' });
-    s.text(valor, x + w, y - 4, { size: 8, color: '#e8f7ff', align: 'right', shadow: 'rgba(0,0,0,.9)' });
+    s.text(rotulo, x, y - 5, { size: tamanhoTexto, color: '#8eb4c8', shadow: 'rgba(0,0,0,.9)' });
+    s.text(valor, x + w, y - 5, { size: tamanhoTexto + .6, color: '#e8f7ff', align: 'right', shadow: 'rgba(0,0,0,.9)' });
   }
 
   private drawHud(s: Surface): void {
@@ -2641,8 +2642,8 @@ export class VerticalMode {
     const xpPiloto = sim.state.command.nivel >= NIVEL_MAX ? 1 : clamp01(sim.state.command.xp / xpPilotoMax);
     const leituraNave = nave.nivel >= NIVEL_MAX ? 'NÍVEL MÁXIMO' : `${fmt(nave.xp, 0)} / ${fmt(xpNaveMax, 0)} XP`;
     const leituraPiloto = sim.state.command.nivel >= NIVEL_MAX ? 'NÍVEL MÁXIMO' : `${fmt(sim.state.command.xp, 0)} / ${fmt(xpPilotoMax, 0)} XP`;
-    this.medidorHud(s, pad, VIEW.h - 41, pw, 8, xpNave, '#39dfff', `NAVE ATIVA · NV. ${nave.nivel}`, leituraNave, 10);
-    this.medidorHud(s, pad, VIEW.h - 20, pw, 8, xpPiloto, '#ae70ff', `PILOTO · NV. ${sim.state.command.nivel}`, leituraPiloto, 10);
+    this.medidorHud(s, pad, VIEW.h - 43, pw, 10, xpNave, '#39dfff', `NAVE ATIVA · NV. ${nave.nivel}`, leituraNave, 10, 11);
+    this.medidorHud(s, pad, VIEW.h - 20, pw, 10, xpPiloto, '#ae70ff', `PILOTO · NV. ${sim.state.command.nivel}`, leituraPiloto, 10, 11);
 
     if (this.bannerTime > 0) {
       const a = clamp01(this.bannerTime / 0.6);

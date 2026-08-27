@@ -6273,18 +6273,6 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .rail-fuel { margin-top: 2px; }
 
-/* Dois medidores de XP que deixam claro que piloto e casco evoluem separados. */
-.rail-progression {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
-  margin-top: 2px; padding: 6px; border: 1px solid rgba(78, 159, 196, .2);
-  background: linear-gradient(135deg, rgba(30, 88, 118, .14), rgba(5, 14, 25, .48));
-}
-.rail-xp { display: grid; gap: 3px; min-width: 0; }
-.rail-xp-head { display: flex; justify-content: space-between; gap: 4px; color: #91aec0; font: 700 8px/1 'Chakra Petch', sans-serif; letter-spacing: .06em; }
-.rail-xp-head strong { color: #e6f4ff; font-size: 9px; white-space: nowrap; }
-.rail-xp-value { overflow: hidden; color: #7896aa; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.rail-xp.pilot .bar { --bar-line: rgba(190, 134, 255, .38); }
-.rail-xp.ship .bar { --bar-line: rgba(64, 215, 255, .38); }
 .rail-vital-hp { --bar-line: rgba(255, 97, 134, .52); }
 .rail-vital-shield { --bar-line: rgba(72, 184, 255, .5); }
 

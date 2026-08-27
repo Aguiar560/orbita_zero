@@ -5,13 +5,11 @@ import { fmt, duration, pct } from '@core/format';
 import { clamp01 } from '@core/math';
 import { ELEMENTOS_RESISTIVEIS, getElement, matchup } from '@data/elements';
 import { dps, effectiveHp } from '@sim/stats';
-import { especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
 import { WAVES_PER_SECTOR } from '@data/balance/curvas';
 import { RESOURCE_IDS } from '@sim/types';
 import { h, clear, spriteIcon, progressBar } from './dom';
 import { RESOURCE_META } from './recursos';
-import { curvaXpNave, curvaXpPersonagem, NIVEL_MAX } from '@data/balance/curvas';
 
 /**
  * Três posturas, sem meio-termo. A quarta (`EQU`) saiu porque não era uma
@@ -78,6 +76,7 @@ export class LeftRail {
     const sim = this.sim;
     const stats = sim.stats;
     const hull = sim.hull;
+    const nivelDaNave = sim.state.naves[sim.state.hull]?.nivel ?? 1;
 
     clear(this.body).append(
       // ── nave ──────────────────────────────────────────────────────────────
@@ -87,8 +86,8 @@ export class LeftRail {
           h('.rail-hull-name', {},
             h('strong', { text: hull.name }),
             h('span.ship-patente', {
-              text: `${shipProfile(hull).patente} ${shipProfile(hull).nota}`,
-              title: `${especialidadeLabel(shipProfile(hull))} · nota ${shipProfile(hull).nota}/100`,
+              text: `NV. ${nivelDaNave}`,
+              title: `Nível atual de ${hull.name}`,
             }),
           ),
           h('.rail-bars', {},
@@ -98,8 +97,6 @@ export class LeftRail {
           this.hpText,
         ),
       ),
-
-      this.progressionBoard(),
 
       // Equipamento e conjuntos moram na COLUNA DE ANATOMIA, e só lá. Tinham
       // cópia aqui: a grade de dez slots e a lista de conjuntos ativos. Com o
@@ -204,33 +201,6 @@ export class LeftRail {
           ? `Garante ao vencer mais ${faltam} ${faltam === 1 ? 'onda' : 'ondas'}.`
           : 'Última onda — vença para depositar.',
       }),
-    );
-  }
-
-  /** Patente e chassis têm progressos separados; ambos precisam ficar à vista. */
-  private progressionBoard(): HTMLElement {
-    const comando = this.sim.state.command;
-    const nave = this.sim.state.naves[this.sim.state.hull] ?? { nivel: 1, xp: 0 };
-    const faixa = (nivel: number, atual: number, curva: (n: number) => number) => {
-      if (nivel >= NIVEL_MAX) return { progresso: 1, texto: 'NÍVEL MÁXIMO' };
-      const alvo = curva(nivel);
-      return { progresso: clamp01(atual / alvo), texto: `${fmt(atual, 0)} / ${fmt(alvo, 0)} XP` };
-    };
-    const piloto = faixa(comando.nivel, comando.xp, curvaXpPersonagem);
-    const chassis = faixa(nave.nivel, nave.xp, curvaXpNave);
-    const medidor = (classe: string, rotulo: string, nivel: number, valor: ReturnType<typeof faixa>, cor: string) =>
-      h(`.rail-xp.${classe}`, {},
-        h('.rail-xp-head', {},
-          h('span.tiny', { text: rotulo }),
-          h('strong', { text: `NV. ${nivel}` }),
-        ),
-        progressBar(valor.progresso, cor, 5),
-        h('span.rail-xp-value.tiny', { text: valor.texto }),
-      );
-
-    return h('.rail-progression', {},
-      medidor('pilot', 'PILOTO', comando.nivel, piloto, '#b986ff'),
-      medidor('ship', 'NAVE ATIVA', nave.nivel, chassis, '#40d7ff'),
     );
   }
 
