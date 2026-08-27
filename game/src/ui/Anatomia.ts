@@ -5,7 +5,9 @@ import { rarityInfo } from '@data/rarity';
 import { equipamentoDe } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import type { SlotId } from '@sim/types';
+import { elementoDaNave } from '@sim/elemento-da-nave';
 import { buildItemCard } from './ItemCard';
+import { elementoComNome } from './elementos';
 import { clear, h, spriteIcon } from './dom';
 import { arrasteServeAo, definirMontagem, encerrarArraste, itemArrastado } from './montagem';
 
@@ -134,6 +136,20 @@ export class Anatomia {
         ),
         h('.anat-coluna', {}, ...DIREITA.map((s) => this.soquete(s, 'dir'))),
       ),
+      // O ELEMENTO da nave, embaixo do boneco.
+      //
+      // É a informação que decide o que cabe em cada soquete — uma nave só
+      // aceita peça neutra ou do próprio elemento —, e ela não aparecia em
+      // lugar nenhum desta coluna. O jogador descobria a regra por recusa: a
+      // peça não entrava e ele não sabia por quê.
+      //
+      // Fica abaixo do quadro e acima do botão porque é DESCRIÇÃO da nave, e o
+      // botão é ação sobre ela.
+      h('.anat-elemento', { title: 'Esta nave só aceita peças neutras ou deste elemento' },
+        h('span.tiny.muted', { text: 'ELEMENTO' }),
+        elementoComNome(elementoDaNave(sim.state, this.vendo), 15),
+      ),
+
       // Nave em campo não ganha rodapé: o quadro já acende com `.em-campo`, e um
       // rótulo dizendo o que a moldura diz custava uma linha do cartão para
       // repetir informação. Só a nave GUARDADA precisa de rodapé, porque aí há

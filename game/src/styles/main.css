@@ -5160,6 +5160,17 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .inv-cell[draggable="true"] { cursor: grab; }
 .inv-cell:active { cursor: grabbing; }
 
+/* Elemento da nave: rótulo à esquerda, valor à direita, numa linha só. */
+.anat-elemento {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 5px 8px;
+  border: 1px solid rgba(107, 155, 190, .22);
+  border-radius: 5px;
+  background: rgba(6, 12, 24, .5);
+}
+.anat-elemento .elem-linha { display: flex; align-items: center; gap: 5px; }
+.anat-elemento .elem-linha span { font-size: 12px; font-weight: 600; }
+
 .anat-ir { width: 100%; }
 
 /*
