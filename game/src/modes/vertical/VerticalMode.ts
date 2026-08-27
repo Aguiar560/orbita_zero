@@ -751,14 +751,6 @@ export class VerticalMode {
     const color = nativo ? style.color : info.color;
     const scale = nativo ? style.scale : 0.9;
 
-    // Fogacho na boca da arma, na arte do elemento (§22). É o que faz trocar de
-    // arma mudar a CARA do disparo e não só o número — o tiro em si passa rápido
-    // demais para ser lido, o clarão do cano fica.
-    this.particles.flash(
-      arteElemental('fogacho', element, this.sim.laboratorio.active ? 1 : this.sim.encounter.wave),
-      p.x, p.y - 22, 0.5, { vida: 0.12, crescimento: 0.9 },
-    );
-
     for (let i = 0; i < count; i++) {
       const b = this.bullets.spawn();
       if (!b) break;
