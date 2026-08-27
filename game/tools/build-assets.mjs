@@ -992,6 +992,25 @@ const spaceships2Slug = (file) => {
   return `n_${stem.replace(/[^a-z0-9]+/gi, '_').toLowerCase()}`;
 };
 
+/**
+ * Artes autorais que SUBSTITUEM uma do pack.
+ *
+ * Os packs em `D:\bbb\*` são somente leitura — é regra do projeto, e existe
+ * para o pipeline ser sempre re-executável a partir de uma fonte intocada. Mas
+ * arte de pack envelhece, e trocar uma peça não pode exigir editar o pack.
+ *
+ * A troca mora aqui: arquivo em `art-source/naves/inimigo/`, e a chave do
+ * atlas que ele ocupa. O nome do arquivo é o do INIMIGO, não o da chave —
+ * `vigia_rhodes.png` diz o que a arte é, `n_3.png` não diria nada.
+ *
+ * A chave existe porque a ligação identidade↔arte mora em `data/spaceships2.ts`
+ * (TypeScript) e este pipeline é `.mjs`: ele não importa aquele arquivo. Duas
+ * linhas de tabela custam menos que um carregador de TS aqui dentro.
+ */
+const ARTE_SUBSTITUIDA = {
+  'vigia_rhodes.png': 's2/enemy/n_3',
+};
+
 async function buildSpaceships2Atlas(manifest) {
   const root = path.join(RAW, 'spaceships new', 'spaceships 2.0');
   if (!existsSync(root)) return;
@@ -1012,6 +1031,8 @@ async function buildSpaceships2Atlas(manifest) {
     sprites.push({ id, raw: trimmed.raw, ox: trimmed.ox, oy: trimmed.oy, sw: raw.width, sh: raw.height });
   };
 
+  const substituidas = new Set(Object.values(ARTE_SUBSTITUIDA));
+
   const groups = [
     ['Jogador', 'player'],
     ['Inimigo', 'enemy'],
@@ -1028,7 +1049,28 @@ async function buildSpaceships2Atlas(manifest) {
       // O pack de 400 px já separa jogador (para baixo) de hostil (para baixo).
       // As artes menores vêm apontando para cima; o papel decide a correção.
       const rotate = role === 'player' ? square400 : !square400;
-      await pushNormalized(full, `s2/${role}/${spaceships2Slug(file)}`, rotate);
+      const id = `s2/${role}/${spaceships2Slug(file)}`;
+      // A arte do pack cede o lugar quando há uma autoral para a mesma chave.
+      // Pular aqui, e não sobrescrever depois, evita duas entradas com o mesmo
+      // id no atlas — o que resolveria por ordem de inserção, que é o tipo de
+      // regra que ninguém lembra ao mexer no laço.
+      if (substituidas.has(id)) continue;
+      await pushNormalized(full, id, rotate);
+    }
+  }
+
+  // As autorais entram depois, já sabendo que o lugar delas está vago.
+  const dirAutoral = path.join(PROJECT, 'art-source', 'naves', 'inimigo');
+  if (existsSync(dirAutoral)) {
+    for (const [arquivo, id] of Object.entries(ARTE_SUBSTITUIDA)) {
+      const full = path.join(dirAutoral, arquivo);
+      if (!existsSync(full)) continue;
+      const meta = await sharp(full).metadata();
+      // Mesma regra de orientação do pack: o hostil desce, e só a arte de 400
+      // quadrados já vem apontando para baixo.
+      const square400 = meta.width === 400 && meta.height === 400;
+      await pushNormalized(full, id, !square400);
+      log(`arte autoral: ${arquivo} -> ${id}`);
     }
   }
 
