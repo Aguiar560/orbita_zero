@@ -188,13 +188,18 @@ export function portraitIcon(id: string, width: number, height: number, extraCla
   return el;
 }
 
-/** Barra de progresso simples. `value` em 0..1. */
+/** Medidor de progresso compartilhado. `value` em 0..1. */
 export function progressBar(value: number, color: string, height = 6): HTMLElement {
+  const percentual = Math.max(0, Math.min(1, value));
   const fill = h('.bar-fill');
-  fill.style.width = `${Math.max(0, Math.min(1, value)) * 100}%`;
+  fill.style.width = `${percentual * 100}%`;
   fill.style.background = color;
   const bar = h('.bar', {}, fill);
   bar.style.height = `${height}px`;
+  bar.setAttribute('role', 'progressbar');
+  bar.setAttribute('aria-valuemin', '0');
+  bar.setAttribute('aria-valuemax', '100');
+  bar.setAttribute('aria-valuenow', String(Math.round(percentual * 100)));
   return bar;
 }
 

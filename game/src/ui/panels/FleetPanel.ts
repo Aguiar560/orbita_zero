@@ -11,6 +11,7 @@ import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
 import { nivelExigido } from '@data/balance/curvas';
+import { curvaXpNave, NIVEL_MAX } from '@data/balance/curvas';
 import type { Panel } from './types';
 
 export class FleetPanel implements Panel {
@@ -120,6 +121,7 @@ export class FleetPanel implements Panel {
     const revelado = sim.alcanceLiberado >= hull.requiresSector;
     const tanque = sim.combustivelDe(hull.id);
     const el = getElement(hull.element);
+    const progresso = sim.state.naves[hull.id] ?? { nivel: 1, xp: 0 };
 
     return h(`button.hangar-linha${ativo ? '.ativa' : ''}${tem ? '' : '.bloqueada'}`, {
       role: 'option',
@@ -130,7 +132,7 @@ export class FleetPanel implements Panel {
       h('.hangar-linha-txt', {},
         h('strong', { text: revelado || tem ? hull.name : `Registro do setor ${hull.requiresSector}` }),
         h('span.tiny', {
-          text: `T${hull.tier} · ${el.name}`,
+          text: `T${hull.tier} · ${el.name} · NV. ${progresso.nivel}`,
           style: { color: el.color } as Partial<CSSStyleDeclaration>,
         }),
       ),
@@ -154,6 +156,7 @@ export class FleetPanel implements Panel {
     const revelado = sim.alcanceLiberado >= hull.requiresSector;
     const tanque = sim.combustivelDe(hull.id);
     const custo = sim.custoParaEncher(hull.id);
+    const progresso = sim.state.naves[hull.id] ?? { nivel: 1, xp: 0 };
 
     return h('.hangar-ficha', {},
       // A ficha guarda o mesmo SEGREDO que a lista. Ela dizia o nome real de um
@@ -170,6 +173,8 @@ export class FleetPanel implements Panel {
       ...(revelado || tem
         ? [shipBadges(hull), h('p.muted.tiny', { text: hull.blurb })]
         : [h('p.muted.tiny', { text: `Os registros deste casco abrem ao alcançar o setor ${hull.requiresSector}.` })]),
+
+      ...(tem ? [shipXp(progresso.nivel, progresso.xp)] : []),
 
       shipBars(hull),
 
@@ -293,4 +298,19 @@ function shipBars(hull: Hull): HTMLElement {
       h('span.ship-axis-val', { text: String(v) }),
     );
   }));
+}
+
+/** XP próprio do casco: uma segunda nave progride somente quando é pilotada. */
+function shipXp(nivel: number, xp: number): HTMLElement {
+  const maximo = nivel >= NIVEL_MAX;
+  const alvo = maximo ? 1 : curvaXpNave(nivel);
+  const progresso = maximo ? 1 : Math.max(0, Math.min(1, xp / alvo));
+  return h('.hangar-xp', {},
+    h('.hangar-xp-head', {},
+      h('span', { text: 'EXPERIÊNCIA DO CASCO' }),
+      h('strong', { text: `NÍVEL ${nivel}` }),
+    ),
+    progressBar(progresso, '#40d7ff', 7),
+    h('small', { text: maximo ? 'NÍVEL MÁXIMO' : `${fmt(xp, 0)} / ${fmt(alvo, 0)} XP` }),
+  );
 }

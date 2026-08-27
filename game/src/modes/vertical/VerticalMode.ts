@@ -2504,6 +2504,53 @@ export class VerticalMode {
     ctx.restore();
   }
 
+  /** Medidor de combate: trilho técnico, marcadores e leitura exata na mesma peça. */
+  private medidorHud(
+    s: Surface,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    fracao: number,
+    cor: string,
+    rotulo: string,
+    valor: string,
+    secoes = 8,
+  ): void {
+    const ctx = s.ctx;
+    const cheio = Math.max(0, Math.min(w, w * clamp01(fracao)));
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 8, 16, .9)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(122, 197, 230, .38)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+    if (cheio > 0) {
+      const brilho = ctx.createLinearGradient(x, y, x, y + h);
+      brilho.addColorStop(0, '#ffffff');
+      brilho.addColorStop(.18, cor);
+      brilho.addColorStop(1, cor);
+      ctx.globalAlpha = .92;
+      ctx.fillStyle = brilho;
+      ctx.fillRect(x + 1, y + 1, Math.max(0, cheio - 2), Math.max(0, h - 2));
+      ctx.globalAlpha = .38;
+      ctx.fillStyle = cor;
+      ctx.shadowColor = cor;
+      ctx.shadowBlur = 8;
+      ctx.fillRect(x + 1, y + 1, Math.max(0, cheio - 2), Math.max(0, h - 2));
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = .22;
+    ctx.fillStyle = '#d9f5ff';
+    for (let i = 1; i < secoes; i++) {
+      const px = x + Math.round((w / secoes) * i);
+      ctx.fillRect(px, y + 1, 1, Math.max(0, h - 2));
+    }
+    ctx.restore();
+    s.text(rotulo, x, y - 4, { size: 7.5, color: '#8eb4c8', shadow: 'rgba(0,0,0,.9)' });
+    s.text(valor, x + w, y - 4, { size: 8, color: '#e8f7ff', align: 'right', shadow: 'rgba(0,0,0,.9)' });
+  }
+
   private drawHud(s: Surface): void {
     const p = this.player;
     const sim = this.sim;
@@ -2524,7 +2571,7 @@ export class VerticalMode {
     // Fica logo abaixo da barra de vida, que é onde o olho vai quando a
     // pergunta é "por que não estou morrendo".
     if (sim.testMode) {
-      s.text('MODO DE TESTE · NAVE INDESTRUTÍVEL', pad, pad + 54, {
+      s.text('MODO DE TESTE · NAVE INDESTRUTÍVEL', pad, pad + 68, {
         size: 10, color: '#ffb638', shadow: 'rgba(2,6,14,.9)',
       });
     }
@@ -2534,19 +2581,11 @@ export class VerticalMode {
     // separa o que é instrumento do que é cena, e as duas coisas disputam.
     const barW = 158;
     const moduloW = barW + 20;
-    this.moduloHud(s, pad, pad, moduloW, 40, false);
+    this.moduloHud(s, pad, pad, moduloW, 56, false);
 
     const bx = pad + 10;
-    const by = pad + 11;
-    s.rect(bx, by, barW, 7, 'rgba(4,10,20,.9)');
-    s.rect(bx, by, barW * clamp01(p.hp / Math.max(1, p.hpMax)), 7, '#ff5d7a');
-    s.rect(bx, by + 10, barW, 5, 'rgba(4,10,20,.9)');
-    s.rect(bx, by + 10, barW * clamp01(p.shield / Math.max(1, p.shieldMax)), 5, '#4db8ff');
-    // O número fica DENTRO do módulo, alinhado à direita: fora dele voltaria a
-    // ser texto solto sobre a cena, que é o problema que o módulo resolve.
-    s.text(`${fmt(p.hp, 0)} / ${fmt(p.hpMax, 0)}`, pad + moduloW - 10, pad + 33, {
-      size: 10.5, color: '#94aec4', align: 'right',
-    });
+    this.medidorHud(s, bx, pad + 17, barW, 8, p.hp / Math.max(1, p.hpMax), '#ff5d7a', 'CASCO', `${fmt(p.hp, 0)} / ${fmt(p.hpMax, 0)}`);
+    this.medidorHud(s, bx, pad + 38, barW, 6, p.shield / Math.max(1, p.shieldMax), '#4db8ff', 'ESCUDO', `${fmt(p.shield, 0)} / ${fmt(p.shieldMax, 0)}`);
 
     if (sim.laboratorio.active) {
       const m = sim.laboratorio.metrics;
@@ -2587,21 +2626,16 @@ export class VerticalMode {
     if (boss) {
       const w = VIEW.w - pad * 2;
       const frac = clamp01(boss.hp / boss.maxHp);
-      s.rect(pad, 62, w, 13, 'rgba(6,12,24,.85)');
-      s.rect(pad, 62, w * frac, 13, '#ff7a4d');
-      s.text(boss.boss!.name, VIEW.w / 2, 68.5, { size: 12, color: '#fff', align: 'center', shadow: 'rgba(0,0,0,.9)' });
+      this.medidorHud(s, pad, 76, w, 12, frac, '#ff7a4d', boss.boss!.name.toUpperCase(), `${Math.round(frac * 100)}%`, 12);
     }
 
     // Progresso do pool do encontro: é ele que decide quando a onda acaba.
     const pw = VIEW.w - pad * 2;
-    s.rect(pad, VIEW.h - 34, pw, 5, 'rgba(255,255,255,.10)');
-    s.rect(pad, VIEW.h - 34, pw * clamp01(sim.sectorProgress), 5, '#5ce08a');
+    this.medidorHud(s, pad, VIEW.h - 39, pw, 8, sim.sectorProgress, '#45e6c1', 'PROGRESSO DA INCURSÃO', `${Math.round(sim.sectorProgress * 100)}%`, 10);
 
     // Indicador de ameaça percebida pela IA — mostra que o piloto está "pensando".
-    const tw = 60;
-    s.rect(pad, VIEW.h - 22, tw, 4, 'rgba(255,255,255,.12)');
-    s.rect(pad, VIEW.h - 22, tw * clamp01(this.threat), 4, this.threat > 0.7 ? '#ff5d7a' : '#ffb638');
-    s.text('AMEAÇA', pad + tw + 8, VIEW.h - 20, { size: 9, color: '#6f83a0' });
+    const corAmeaca = this.threat > .7 ? '#ff5d7a' : this.threat > .38 ? '#ffb638' : '#75d8ff';
+    this.medidorHud(s, pad, VIEW.h - 21, pw, 6, this.threat, corAmeaca, 'AMEAÇA', `${Math.round(this.threat * 100)}%`, 10);
 
     // Aviso de parede: a onda já se repetiu e o pool mal andou.
     if (this.director.cycles >= 2 && sim.sectorProgress < 0.5) {

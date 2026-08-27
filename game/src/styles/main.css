@@ -908,8 +908,28 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .filters, .tabs-inline { display: flex; gap: 5px; flex-wrap: wrap; }
 
-.bar { width: 100%; border-radius: 999px; background: rgba(255, 255, 255, 0.09); overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 999px; transition: width 0.25s ease-out; }
+.bar {
+  --bar-line: rgba(132, 204, 235, .27);
+  position: relative; isolation: isolate; width: 100%; overflow: hidden;
+  border: 1px solid var(--bar-line); border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 1px), rgba(184, 230, 249, .12) calc(12.5% - 1px) 12.5%),
+    linear-gradient(180deg, rgba(2, 9, 18, .96), rgba(13, 31, 46, .82));
+  box-shadow: inset 0 1px rgba(214, 247, 255, .1), inset 0 -1px rgba(0, 0, 0, .65), 0 0 0 1px rgba(0, 0, 0, .3);
+}
+.bar::before {
+  content: ''; position: absolute; z-index: 2; inset: 1px; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .1), transparent 45%);
+}
+.bar-fill {
+  position: relative; z-index: 1; height: 100%; min-width: 1px; border-radius: inherit;
+  transition: width .25s ease-out;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .42), inset 0 -1px rgba(0, 0, 0, .22), 0 0 10px rgba(83, 210, 255, .32);
+}
+.bar-fill::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(105deg, rgba(255,255,255,.24), transparent 34%, rgba(255,255,255,.08));
+}
 
 /* ── painel: nave ────────────────────────────────────────────────────────── */
 .hull-header {
@@ -6253,7 +6273,23 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  */
 .rail-fuel { margin-top: 2px; }
 
+/* Dois medidores de XP que deixam claro que piloto e casco evoluem separados. */
+.rail-progression {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
+  margin-top: 2px; padding: 6px; border: 1px solid rgba(78, 159, 196, .2);
+  background: linear-gradient(135deg, rgba(30, 88, 118, .14), rgba(5, 14, 25, .48));
+}
+.rail-xp { display: grid; gap: 3px; min-width: 0; }
+.rail-xp-head { display: flex; justify-content: space-between; gap: 4px; color: #91aec0; font: 700 8px/1 'Chakra Petch', sans-serif; letter-spacing: .06em; }
+.rail-xp-head strong { color: #e6f4ff; font-size: 9px; white-space: nowrap; }
+.rail-xp-value { overflow: hidden; color: #7896aa; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.rail-xp.pilot .bar { --bar-line: rgba(190, 134, 255, .38); }
+.rail-xp.ship .bar { --bar-line: rgba(64, 215, 255, .38); }
+.rail-vital-hp { --bar-line: rgba(255, 97, 134, .52); }
+.rail-vital-shield { --bar-line: rgba(72, 184, 255, .5); }
+
 .fleet-fuel { display: grid; gap: 4px; margin: 6px 0 2px; }
+.fleet-fuel .bar, .rail-fuel .bar { --bar-line: rgba(110, 228, 154, .4); }
 .fleet-reabastecer { justify-self: stretch; margin-top: 3px; }
 .fleet-reabastecer:disabled { opacity: .45; cursor: not-allowed; }
 
@@ -6322,6 +6358,15 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .hangar-ficha-topo { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
 .hangar-ficha-id { display: grid; gap: 3px; min-width: 0; }
 .hangar-ficha-id strong { font: 700 17px/1.15 'Chakra Petch', sans-serif; color: #dbe9f5; }
+.hangar-xp {
+  display: grid; gap: 5px; padding: 8px 10px;
+  border: 1px solid rgba(64, 215, 255, .26);
+  background: linear-gradient(90deg, rgba(16, 101, 137, .16), rgba(5, 13, 23, .4));
+}
+.hangar-xp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #86b1c7; font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .08em; }
+.hangar-xp-head strong { color: #62dfff; font-size: 11px; }
+.hangar-xp .bar { --bar-line: rgba(64, 215, 255, .48); }
+.hangar-xp small { color: #8fa9b8; font-variant-numeric: tabular-nums; }
 
 /*
  * O corte é 900 e veio de MEDIÇÃO, não de palpite.
