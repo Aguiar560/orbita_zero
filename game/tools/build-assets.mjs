@@ -369,13 +369,34 @@ async function buildVoid(manifest) {
    * `MAX_FRAMES`: uma destruição de 30 quadros não fica melhor que uma de 12 e
    * triplicaria o atlas.
    */
+  /**
+   * Gira a tira inteira em 180°.
+   *
+   * A tira é uma fileira de células quadradas; girar o conjunto inverte a ORDEM
+   * dos quadros junto. Para as animações daqui isso não importa — chama de
+   * motor, brilho de escudo e clarão de arma são cíclicos e sem começo, e a
+   * destruição é uma nuvem que cresce. Se um dia entrar aqui uma animação com
+   * direção no tempo, ela vai precisar de giro por célula.
+   */
+  const girar180 = ({ data, width, height }) => {
+    const out = Buffer.alloc(data.length);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const a = (y * width + x) * 4;
+        const b = ((height - 1 - y) * width + (width - 1 - x)) * 4;
+        out[b] = data[a]; out[b + 1] = data[a + 1]; out[b + 2] = data[a + 2]; out[b + 3] = data[a + 3];
+      }
+    }
+    return { data: out, width, height };
+  };
+
   const strip = async (rel, id, opts = {}) => {
     const full = path.join(VOID, `${rel}.png`);
     if (!existsSync(full)) {
       missing.push(rel);
       return 0;
     }
-    const sheet = await toRaw(full);
+    const sheet = opts.girar ? girar180(await toRaw(full)) : await toRaw(full);
     const cell = sheet.height;
     const total = Math.max(1, Math.round(sheet.width / cell));
 
@@ -439,7 +460,24 @@ async function buildVoid(manifest) {
       const id = `void/${fleet.id}/${slug}`;
       for (const part of ['base', 'engine', 'destruction', 'shield', 'weapons']) {
         const suffix = { base: 'base', engine: 'motor', destruction: 'morte', shield: 'escudo', weapons: 'arma' }[part];
-        await strip(`${fleet.root}/${fleet.dirs[part]}/PNGs/${fleet.file(cls, part)}`, `${id}_${suffix}`);
+        /**
+         * As peças da frota nascem apontando para CIMA, como no pack — e o
+         * inimigo desce a tela.
+         *
+         * A base é substituída por arte autoral, que o pipeline já gira; os
+         * clipes vinham direto do pack, sem giro. O resultado era uma nave com
+         * o casco apontando para baixo e a CHAMA DO MOTOR saindo pela frente:
+         * "vindo de ré".
+         *
+         * Girar aqui, e não na cena, porque a cena desenha `base` e clipe na
+         * mesma posição sem saber que são de origens diferentes — corrigir lá
+         * exigiria ela saber de pipeline.
+         */
+        await strip(
+          `${fleet.root}/${fleet.dirs[part]}/PNGs/${fleet.file(cls, part)}`,
+          `${id}_${suffix}`,
+          { girar: true },
+        );
       }
     }
     for (let i = 0; i < fleet.projectiles.length; i++) {

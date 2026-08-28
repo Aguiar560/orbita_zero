@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-08-27T20:13:32.291Z",
+  "generated": "2026-08-28T01:22:09.999Z",
   "atlases": [
     {
       "name": "espaco",
@@ -32,7 +32,7 @@
       "data": "atlas/void.json",
       "w": 2048,
       "h": 2048,
-      "count": 1354
+      "count": 1352
     },
     {
       "name": "retratos",
