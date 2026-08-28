@@ -57,7 +57,10 @@ describe('prefixos e sufixos (§7)', () => {
         }
       }
     }
-  }, 10_000);
+    // Sem timeout próprio: o do projeto (30s, em `vite.config.ts`) é maior, e
+    // um número menor aqui VENCE o global — foi o último teste a continuar
+    // falhando por tempo depois de a folga geral entrar.
+  });
 
   it('a peça não encolhe: o total de linhas continua sendo o da raridade', () => {
     for (const slot of SLOTS) {

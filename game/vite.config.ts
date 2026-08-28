@@ -148,6 +148,28 @@ export default defineConfig({
       '@modes': r('./src/modes'),
     },
   },
+  /**
+   * Testes estatísticos precisam de mais que os 5s padrão.
+   *
+   * Vários testes daqui rolam 200 mil itens para medir distribuição — e o
+   * número grande é o ponto, porque com mil rolagens o ruído esconde o que se
+   * quer medir. Isolados eles levam 1 a 3 segundos; com a suíte inteira em
+   * paralelo, ou com um build rodando ao lado, passam de 5s e a suíte falha por
+   * TEMPO, nunca por asserção.
+   *
+   * Aconteceu quatro vezes seguidas, em arquivos diferentes a cada rodada — a
+   * assinatura de disputa por CPU, não de defeito. Uma suíte que falha ao acaso
+   * ensina a ignorar falha, que é o oposto do que ela serve.
+   *
+   * 30s é folgado de propósito: o timeout aqui existe para pegar laço infinito,
+   * não para medir desempenho. Quem quiser vigiar desempenho tem
+   * `npm run simular`.
+   */
+  test: {
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+  },
+
   build: {
     target: 'es2022',
     outDir: 'dist',
