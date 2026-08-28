@@ -114,7 +114,15 @@ export class LeftRail {
         row('Crítico', `${pct(stats.critChance)} / +${pct(stats.critDano, 0)}`, '#ffe08a'),
         row('Sorte', `+${pct(stats.sorte)}`, '#c060ff'),
       ),
-      ...(sim.isStalled ? [h('.rail-warn', { text: 'Progresso travado neste encontro.' })] : []),
+      // Nao ha aviso de "progresso travado" aqui, e a ausencia e deliberada.
+      //
+      // As linhas 'Limpar' e 'Sobrevive' logo acima ja dizem tudo em numeros: no
+      // setor 40 com um casco inicial sao 2399s contra 1,2s. O jogador le os
+      // dois e decide — lutar num setor acima do proprio poder e uma ESCOLHA
+      // legitima, e o jogo nao opina sobre ela.
+      //
+      // `sim.isStalled` continua existindo e ainda pinta 'Sobrevive' de vermelho:
+      // isso e marcar um fato, nao dar conselho.
 
       // ── carga da incursão ─────────────────────────────────────────────────
       // Precisa estar à vista: perder a carga só é RISCO se o jogador souber o
