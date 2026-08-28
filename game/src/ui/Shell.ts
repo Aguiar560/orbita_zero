@@ -274,6 +274,7 @@ export class Shell {
     bus.on('resources:changed', () => this.updateResources());
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
+    bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
 
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
@@ -445,6 +446,74 @@ export class Shell {
    * é o que se consulta enquanto se joga, a cada drop. As demais telas abrem em
    * camada por cima, disparadas pelas abas da barra de cima.
    */
+  /**
+   * A dica da bolha de escudo, com o interruptor dentro.
+   *
+   * ## Por que um cartão e não um `toast`
+   *
+   * O toast é uma linha que some sozinha em segundos — serve para AVISAR, não
+   * para o jogador decidir. Esta dica pede uma decisão ("quer ver a bolha ou
+   * não?"), e uma decisão que expira antes de ser lida é pior que nenhuma.
+   *
+   * ## Por que o interruptor vem junto
+   *
+   * Mandar o jogador a Ajustes no meio de um combate é pedir que ele saia da
+   * luta, procure a aba certa e volte. Aqui a troca é um clique, e o efeito
+   * aparece na nave ATRÁS do cartão — que é a única forma de ele julgar se
+   * prefere com ou sem.
+   *
+   * O caminho longo continua dito em uma linha, porque a dica aparece uma vez e
+   * a opção fica para sempre.
+   */
+  private mostrarDicaDeEscudo(): void {
+    // Já há uma na tela? Uma segunda peça de escudo pode cair antes de a
+    // primeira dica ser fechada, e dois cartões iguais empilhados é defeito.
+    if (this.root.querySelector('.dica-escudo')) return;
+
+    const s = this.sim.state.settings;
+    const cartao = h('.dica-escudo', { role: 'status' });
+
+    const desenhar = (): void => {
+      clear(cartao).append(
+        h('.dica-escudo-topo', {},
+          h('strong', { text: 'Primeira peça de escudo' }),
+          h('button.dica-escudo-x', {
+            text: '\u2715', 'aria-label': 'Fechar dica',
+            onclick: () => cartao.remove(),
+          }),
+        ),
+        h('p.dica-escudo-txt', {
+          text: 'A bolha mostra a carga do escudo, mas cobre o casco. Dá para desligar aqui, ou depois em Ajustes › Jogo.',
+        }),
+        h('.dica-escudo-acoes', {},
+          h(`button.dica-escudo-btn${s.mostrarEscudo ? '.ligado' : ''}`, {
+            'aria-pressed': String(s.mostrarEscudo),
+            onclick: () => {
+              s.mostrarEscudo = !s.mostrarEscudo;
+              this.sim.touch();
+              this.sim.save();
+              // Redesenha só o cartão: o rótulo tem de acompanhar o estado, e
+              // esperar o próximo quadro do painel deixaria o botão mentindo.
+              desenhar();
+            },
+          }, h('span', { text: s.mostrarEscudo ? 'Bolha LIGADA' : 'Bolha DESLIGADA' })),
+          h('button.dica-escudo-ok', {
+            text: 'Entendi',
+            onclick: () => cartao.remove(),
+          }),
+        ),
+      );
+    };
+
+    desenhar();
+    this.root.append(cartao);
+
+    // Some sozinho depois de um tempo generoso: o jogador pode estar no meio de
+    // uma onda e não poder decidir agora, e um cartão que fica para sempre vira
+    // parte da moldura da tela.
+    setTimeout(() => cartao.remove(), 45_000);
+  }
+
   private renderPanel(): void {
     const fixo = this.painelFixo;
     clear(this.panelHost).append(

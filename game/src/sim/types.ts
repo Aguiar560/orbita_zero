@@ -335,6 +335,13 @@ export interface Settings {
   testMode: boolean;
   /** O passeio guiado já foi visto? Fica em ajustes porque é preferência. */
   guiaVisto: boolean;
+  /**
+   * A dica sobre a bolha de escudo já apareceu?
+   *
+   * No save, e não em memória: um aviso que volta a cada recarga vira ruído, e
+   * o jogador aprende a fechar sem ler — inclusive os avisos seguintes.
+   */
+  dicaDeEscudoVista: boolean;
   /** Multiplicador de velocidade do jogo (1..8), só com o modo de teste. */
   speed: number;
   /**

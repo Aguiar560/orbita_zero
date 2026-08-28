@@ -107,6 +107,7 @@ export function createState(
       controlMode: 'idle',
       testMode: false,
       guiaVisto: false,
+      dicaDeEscudoVista: false,
       speed: 1,
       repetirSetor: false,
       autoEquip: true,
@@ -345,7 +346,7 @@ export function migrate(raw: unknown): GameState | null {
   // alguém que não está olhando. Perder progresso porque o jogo mudou por
   // baixo é pior do que voar conservador até ele reparar e escolher.
   if (!['agressivo', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'evasivo';
-  for (const key of ['testMode', 'guiaVisto', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
+  for (const key of ['testMode', 'guiaVisto', 'dicaDeEscudoVista', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
   }
   // Volume fora de 0..1 não é só feio: quando o áudio existir, um multiplicador

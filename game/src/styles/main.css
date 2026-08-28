@@ -7108,3 +7108,56 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   pointer-events: none;
 }
 .fps-contador.visible { display: block; }
+
+/* ── dica da bolha de escudo ────────────────────────────────────────────────
+ *
+ * Cartão e não `toast`: o toast some sozinho em segundos e serve para AVISAR,
+ * não para decidir. Esta dica pede uma decisão, e decisão que expira antes de
+ * ser lida é pior que nenhuma.
+ *
+ * Fica no canto INFERIOR ESQUERDO, sobre o trilho: o palco é o centro e não
+ * pode ser coberto — a nave atrás é justamente o que o jogador precisa ver para
+ * julgar se prefere com ou sem a bolha. */
+.dica-escudo {
+  position: fixed; left: 14px; bottom: 14px; z-index: 70; width: 300px;
+  padding: 12px 14px 11px;
+  border: 1px solid var(--accent); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(9, 17, 32, .97), rgba(4, 9, 18, .97));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .6), 0 0 22px rgba(79, 195, 255, .16);
+  animation: dica-entra 240ms cubic-bezier(.4, 0, .2, 1);
+}
+@keyframes dica-entra {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.dica-escudo-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 5px;
+}
+.dica-escudo-topo strong { font-size: 12.5px; letter-spacing: .4px; color: var(--accent); }
+.dica-escudo-x {
+  padding: 0 4px; cursor: pointer; border: 0; background: none;
+  color: var(--muted); font-size: 13px; line-height: 1;
+}
+.dica-escudo-x:hover { color: var(--text); }
+.dica-escudo-txt { margin: 0 0 10px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+.dica-escudo-acoes { display: flex; gap: 8px; align-items: center; }
+
+/* O estado do interruptor é dito por TEXTO e por cor.
+ *
+ * Só a cor não serve: o jogo tem alto contraste como opção de acessibilidade, e
+ * quem o usa perde a diferença entre um botão aceso e um apagado. */
+.dica-escudo-btn {
+  flex: 1; padding: 7px 10px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: rgba(4, 10, 17, .8); color: var(--muted);
+  font: 600 11px/1 'Chakra Petch', sans-serif; letter-spacing: .5px;
+}
+.dica-escudo-btn.ligado { border-color: var(--accent); color: var(--accent); }
+.dica-escudo-btn:hover { border-color: var(--accent); }
+.dica-escudo-ok {
+  padding: 7px 12px; cursor: pointer; border: 0; background: none;
+  color: var(--muted); font: 500 11px/1 'Chakra Petch', sans-serif;
+  text-decoration: underline;
+}
+.dica-escudo-ok:hover { color: var(--text); }

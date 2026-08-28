@@ -1650,6 +1650,22 @@ export class Sim {
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
     this.state.stats.itemsFound++;
+
+    /**
+     * A primeira peça de ESCUDO abre a dica sobre a bolha.
+     *
+     * Aqui e não em `stash`: o item pode ser auto-equipado ou auto-desmontado
+     * antes de chegar lá, e nos dois casos ele CAIU — a dica é sobre o jogador
+     * ter passado a se importar com escudo, não sobre a peça ter sobrado.
+     *
+     * O casco já vem com escudo de fábrica, então a bolha não é novidade na
+     * tela. O que é novidade é o jogador começar a ESCOLHER escudo — e é aí
+     * que saber desligar o visual passa a valer.
+     */
+    if (item.slot === 'escudo' && !this.state.settings.dicaDeEscudoVista) {
+      this.state.settings.dicaDeEscudoVista = true;
+      bus.emit('dica:escudo');
+    }
     // Antes de qualquer automacao: o item foi OBTIDO mesmo que o auto-desmanche
     // o desfaca no passo seguinte, e a missao de coleta conta o que caiu.
     this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
