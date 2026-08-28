@@ -37,6 +37,37 @@ function prvImage(file: string, className: string, alt = ''): HTMLElement {
  * O painel não decide regra: estado do piso, tentativas e liberação vêm de
  * `sim/provacao.ts`. Aqui só se decide o que desenhar.
  */
+/**
+ * Tudo que MUDA no card de um piso.
+ *
+ * ## Por que isto existe separado
+ *
+ * O card é guardado entre redesenhos e só refeito quando muda — e a assinatura
+ * do cache sai DAQUI, do mesmo objeto que o card desenha. Não são duas listas
+ * para manter em acordo: é uma.
+ *
+ * A alternativa era escrever a assinatura à mão (```${estado}|${focado}```). Ela
+ * funciona hoje e tem um modo de falhar feio: quem acrescentar um estado visual
+ * ao card e esquecer a assinatura ganha um card CONGELADO mostrando estado
+ * velho — pior que o custo que o cache economiza, e sem erro nenhum na tela.
+ *
+ * O que não está aqui é o que não muda: nome, arte, elemento e arquétipo do
+ * chefe saem de `chefeDoPiso(piso)`, que é tabela.
+ */
+interface VisualDoPiso {
+  piso: number;
+  estado: EstadoDoPiso;
+  focado: boolean;
+  marco: boolean;
+}
+
+const visualDoPiso = (sim: Sim, piso: number, focado: boolean): VisualDoPiso => ({
+  piso,
+  estado: estadoDoPiso(sim.state, piso),
+  focado,
+  marco: piso % 10 === 0,
+});
+
 export class ProvacaoPanel implements Panel {
   id = 'provacao';
   title = 'Provação';
@@ -181,7 +212,7 @@ export class ProvacaoPanel implements Panel {
     const lista: number[] = [];
     for (let n = PROVACAO_PISOS; n >= 1; n--) lista.push(n);
 
-    const torre = h('.prv-torre', {}, ...lista.map((n) => this.cardDePiso(sim, n, n === foco)));
+    const torre = h('.prv-torre', {}, ...lista.map((n) => this.cardCacheado(sim, n, n === foco)));
 
     // Centraliza no foco só quando ele MUDA. O painel se redesenha a cada
     // `PANEL_HZ`, e reposicionar em todo redesenho arrancaria a barra da mão do
@@ -225,11 +256,52 @@ export class ProvacaoPanel implements Panel {
     );
   }
 
-  private cardDePiso(sim: Sim, piso: number, focado: boolean): HTMLElement {
-    const estado = estadoDoPiso(sim.state, piso);
+  /**
+   * O card do piso, reaproveitado enquanto nada nele muda.
+   *
+   * ## Por que existe
+   *
+   * Medido: construir os cem cards custa ~10ms, e é praticamente o painel
+   * inteiro (as duas colunas laterais somam 0,46ms). O painel se redesenha a
+   * `PANEL_HZ` — cinco vezes por segundo —, então a torre gastava um quadro
+   * inteiro cinco vezes por segundo enquanto a tela estivesse aberta.
+   *
+   * A causa não era desenhar cem cards; era desenhá-los DE NOVO sem nada ter
+   * mudado. Entre dois redesenhos, no máximo dois cards mudam: o que perdeu o
+   * foco e o que ganhou.
+   *
+   * ## Por que cache de NÓ e não janela de rolagem
+   *
+   * A saída clássica é desenhar só os visíveis. Ela exige saber a altura de
+   * cada linha em JS — e as linhas têm duas alturas (o piso de marco é maior),
+   * o que obrigaria a repetir em código um número que vive no CSS. Repetir
+   * constante entre as duas linguagens é como divergência começa.
+   *
+   * O cache não precisa saber altura nenhuma, e leva o custo de estado estável
+   * a quase zero — que é o mesmo destino, por um caminho que não pode divergir.
+   *
+   * A assinatura carrega tudo que o card DESENHA. Um campo esquecido aqui vira
+   * card congelado mostrando estado velho, que é pior que o custo original.
+   */
+  private cardCacheado(sim: Sim, piso: number, focado: boolean): HTMLElement {
+    const visual = visualDoPiso(sim, piso, focado);
+    const assinatura = JSON.stringify(visual);
+
+    const guardado = this.cardsDaTorre.get(piso);
+    if (guardado && guardado.assinatura === assinatura) return guardado.el;
+
+    const el = this.cardDePiso(sim, visual);
+    this.cardsDaTorre.set(piso, { assinatura, el });
+    return el;
+  }
+
+  /** Um nó por piso, enquanto a assinatura dele não muda. */
+  private readonly cardsDaTorre = new Map<number, { assinatura: string; el: HTMLElement }>();
+
+  private cardDePiso(sim: Sim, v: VisualDoPiso): HTMLElement {
+    const { piso, estado, focado, marco } = v;
     const chefe = chefeDoPiso(piso);
     const cam = camadaDoPiso(piso);
-    const marco = piso % 10 === 0;
 
     const classes = [
       'prv-piso',
