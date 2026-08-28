@@ -2087,13 +2087,16 @@ export class VerticalMode {
     const w = img.width * escala;
     const h = img.height * escala;
     const x = (VIEW.w - w) / 2;
-    const y = ((this.elapsed * 3.8) % h + h) % h;
+    // A arte não é tileável nas bordas superior/inferior. Repeti-la em loop
+    // criava uma faixa de corte atravessando a arena; usamos a folga do próprio
+    // enquadramento para passear pela superfície sem jamais mostrar a costura.
+    const sobraVertical = Math.max(0, h - VIEW.h);
+    const y = -sobraVertical * (.5 + Math.sin(this.elapsed * .075) * .5);
 
     ctx.save();
     // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
     // projéteis e telegráficos — terreno não pode competir com alvo.
     ctx.filter = 'saturate(.72) brightness(.62) contrast(.86)';
-    ctx.drawImage(img, x, y - h, w, h);
     ctx.drawImage(img, x, y, w, h);
 
     // Camada atmosférica: faixas de luz difusa avançam mais rápido que o solo.
