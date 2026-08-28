@@ -1,6 +1,6 @@
 import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
-import { podeGravar } from './ritmo';
+import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
 
 /**
  * A API do Órbita Zero.
@@ -42,6 +42,46 @@ export interface Env {
 
 /** Teto do corpo do save, em bytes. */
 const SAVE_MAX_BYTES = 512 * 1024;
+
+/**
+ * Teto de corpo das rotas pequenas.
+ *
+ * 64 KB cabe oitenta marcas com folga larga e não cabe um corpo inflado de
+ * propósito. O `/save` tem teto próprio porque ele é grande por natureza.
+ */
+const CORPO_MAX_BYTES = 64 * 1024;
+
+/**
+ * Consome uma ficha do balde do jogador, ou diz quanto falta esperar.
+ *
+ * O balde vive em `limites`, uma linha por (usuário, assunto) — ver a migração
+ * 0003 para o motivo de não ser mais colunas em `saves`.
+ *
+ * Custa uma leitura e uma escrita por chamada. Vale a pena nas rotas que
+ * ESCREVEM (uma chamada de `/marcas` pode virar oitenta linhas); não valeria
+ * numa rota de leitura, e por isso `GET /placar` usa balde em memória.
+ */
+async function consumirFicha(
+  env: Env,
+  usuario: string,
+  balde: NomeDeBalde,
+  agora: number,
+): Promise<{ pode: true } | { pode: false; esperar: number }> {
+  const linha = await env.DB
+    .prepare('SELECT fichas, em FROM limites WHERE usuario = ? AND balde = ?')
+    .bind(usuario, balde)
+    .first<{ fichas: number; em: number }>();
+
+  const v = podeUsar(balde, linha ? { fichas: linha.fichas, em: linha.em } : null, agora);
+  if (!v.pode) return { pode: false, esperar: v.esperar };
+
+  await env.DB.prepare(`
+    INSERT INTO limites (usuario, balde, fichas, em) VALUES (?, ?, ?, ?)
+    ON CONFLICT(usuario, balde) DO UPDATE SET fichas = excluded.fichas, em = excluded.em
+  `).bind(usuario, balde, v.fichasRestantes, agora).run();
+
+  return { pode: true };
+}
 
 const json = (dados: unknown, status = 200, origem = ''): Response =>
   new Response(JSON.stringify(dados), {
@@ -151,6 +191,12 @@ export default {
     }
 
     if (url.pathname === '/placar' && req.method === 'GET') {
+      // Leitura barata, mas não de graça: são três consultas por chamada, e o
+      // painel pergunta a cada vinte segundos com a tela aberta. O balde em
+      // memória cabe isso e não cabe um laço.
+      if (!podeLer(usuario.id, Math.floor(Date.now() / 1000))) {
+        return json({ erro: 'rapido_demais' }, 429, origem);
+      }
       const qual = url.searchParams.get('id') ?? '';
       const casco = (url.searchParams.get('casco') ?? '').slice(0, 40);
       const dados = await lerPlacar(env, qual, usuario.id, casco);
@@ -266,15 +312,25 @@ async function subirSave(req: Request, env: Env, id: string, origem: string): Pr
  * que não tem janela.
  */
 async function definirApelido(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
   let corpo: { apelido?: unknown };
   try {
-    corpo = await req.json();
+    corpo = JSON.parse(bruto) as typeof corpo;
   } catch {
     return json({ erro: 'json_invalido' }, 400, origem);
   }
 
   const apelido = apelidoValido(corpo.apelido);
   if (!apelido) return json({ erro: 'apelido_invalido' }, 400, origem);
+
+  // A ficha é cobrada DEPOIS da validação de formato: recusar um nome mal
+  // digitado não pode gastar a cota de quem está tentando escolher um. Mas
+  // ANTES da escrita, que é o que precisa ser limitado — inclusive a tentativa
+  // de varrer nomes livres um por um.
+  const ritmo = await consumirFicha(env, id, 'apelido', Math.floor(Date.now() / 1000));
+  if (!ritmo.pode) return json({ erro: 'cedo_demais', esperar: ritmo.esperar }, 429, origem);
 
   try {
     await env.DB.prepare(`
@@ -300,9 +356,12 @@ async function definirApelido(req: Request, env: Env, id: string, origem: string
  * implausível deve ter o nível registrado — e a resposta diz o que foi recusado.
  */
 async function enviarMarcas(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
   let corpo: { marcas?: MarcaRecebida[] };
   try {
-    corpo = await req.json();
+    corpo = JSON.parse(bruto) as typeof corpo;
   } catch {
     return json({ erro: 'json_invalido' }, 400, origem);
   }
@@ -314,15 +373,33 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
   if (!temApelido) return json({ erro: 'sem_apelido' }, 409, origem);
 
   const agora = Math.floor(Date.now() / 1000);
+
+  // Esta é a rota mais cara do servidor: uma chamada podia virar oitenta
+  // leituras e oitenta escritas. Sem limite, um cliente em laço queimava a cota
+  // diária de escrita do D1 — que é COMPARTILHADA por todos os jogadores.
+  const ritmo = await consumirFicha(env, id, 'marcas', agora);
+  if (!ritmo.pode) return json({ erro: 'cedo_demais', esperar: ritmo.esperar }, 429, origem);
+
+  /**
+   * As marcas atuais do jogador, numa consulta só.
+   *
+   * Eram oitenta `SELECT`, um por marca, dentro do laço. O jogador tem no
+   * máximo algumas dezenas de linhas no total — trazer todas de uma vez custa
+   * uma consulta e evita as outras setenta e nove.
+   */
+  const atuais = new Map<string, { valor: number; desempate: number; atualizado_em: number }>();
+  const linhas = await env.DB
+    .prepare('SELECT placar, casco, valor, desempate, atualizado_em FROM marcas WHERE usuario = ?')
+    .bind(id)
+    .all<{ placar: string; casco: string; valor: number; desempate: number; atualizado_em: number }>();
+  for (const l of linhas.results ?? []) atuais.set(`${l.placar}:${l.casco}`, l);
+
   const aceitas: string[] = [];
   const recusadas: { placar: string; casco: string; motivo: string }[] = [];
 
   for (const m of corpo.marcas) {
     const casco = typeof m.casco === 'string' ? m.casco.slice(0, 40) : '';
-    const anterior = await env.DB
-      .prepare('SELECT valor, desempate, atualizado_em FROM marcas WHERE usuario = ? AND placar = ? AND casco = ?')
-      .bind(id, m.placar, casco)
-      .first<{ valor: number; desempate: number; atualizado_em: number }>();
+    const anterior = atuais.get(`${m.placar}:${casco}`) ?? null;
 
     const v = conferir(m, anterior, agora);
     if (!v.ok) {

@@ -63,3 +63,85 @@ export function podeGravar(balde: Balde | null, agora: number): Permissao {
   // batendo na porta — sem o número ele só sabe "não", e tenta de novo.
   return { pode: false, esperar: Math.ceil((1 - fichas) * INTERVALO_DE_REFIL) };
 }
+
+
+// ── baldes por assunto ──────────────────────────────────────────────────────
+
+/**
+ * Os ritmos de cada rota, e de onde cada número saiu.
+ *
+ * Todos generosos para o uso REAL e apertados para o laço. O cliente sobe
+ * marcas junto com o save (a cada 150s) e busca o placar a cada 20s enquanto a
+ * tela está aberta — os limites cabem isso com folga e não cabem um laço.
+ */
+export const BALDES = {
+  /**
+   * Marcas: uma chamada pode custar até 80 linhas.
+   *
+   * É a rota mais cara do servidor, e a única em que uma requisição vira
+   * dezenas de escritas. Ritmo do save, capacidade menor.
+   */
+  marcas: { refil: 120, capacidade: 3 },
+  /**
+   * Apelido: escolhido uma vez, trocado quase nunca.
+   *
+   * Cinco minutos entre trocas não incomoda ninguém que esteja escolhendo um
+   * nome de verdade, e fecha a porta de quem varre nomes livres um por um.
+   */
+  apelido: { refil: 300, capacidade: 2 },
+} as const;
+
+export type NomeDeBalde = keyof typeof BALDES;
+
+/** O mesmo cálculo de `podeGravar`, com os números do balde escolhido. */
+export function podeUsar(
+  nome: NomeDeBalde,
+  balde: Balde | null,
+  agora: number,
+): Permissao {
+  const { refil, capacidade } = BALDES[nome];
+  const fichas = balde
+    ? Math.min(capacidade, balde.fichas + Math.max(0, agora - balde.em) / refil)
+    : capacidade;
+
+  if (fichas >= 1) return { pode: true, fichasRestantes: fichas - 1 };
+  return { pode: false, esperar: Math.ceil((1 - fichas) * refil) };
+}
+
+// ── leitura: balde em memória ───────────────────────────────────────────────
+
+/**
+ * O limite do `GET /placar`, guardado no ISOLADO e não no banco.
+ *
+ * Um limitador que grava no banco a cada LEITURA custa mais que o que ele
+ * protege — trocaria uma consulta barata por uma escrita cara, e a escrita é
+ * justamente a cota que está em jogo.
+ *
+ * Em memória não é à prova de tudo: o Workers cria isolados por região e os
+ * recicla, então um cliente distribuído escapa. Mas o caso que isto existe para
+ * pegar — um laço de um cliente só — cai no mesmo isolado quase sempre, e essa
+ * é a diferença entre "gasta a cota de todos numa tarde" e "não gasta".
+ */
+const LEITURAS_POR_MINUTO = 30;
+const leituras = new Map<string, { fichas: number; em: number }>();
+
+export function podeLer(usuario: string, agora: number): boolean {
+  const b = leituras.get(usuario);
+  const fichas = b
+    ? Math.min(LEITURAS_POR_MINUTO, b.fichas + ((agora - b.em) / 60) * LEITURAS_POR_MINUTO)
+    : LEITURAS_POR_MINUTO;
+
+  if (fichas < 1) return false;
+
+  // O mapa não pode crescer para sempre: um isolado longevo com muitos
+  // jogadores viraria vazamento. Acima do teto, esquece os mais antigos.
+  if (leituras.size > 5000) {
+    for (const [k] of leituras) {
+      leituras.delete(k);
+      if (leituras.size <= 4000) break;
+    }
+  }
+
+  leituras.set(usuario, { fichas: fichas - 1, em: agora });
+  return true;
+}
