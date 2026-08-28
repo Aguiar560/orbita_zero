@@ -1010,6 +1010,29 @@ const spaceships2Slug = (file) => {
  * `npm run assets:mapa`. Nave nova entra em `data/` e o mapa a inclui sozinho;
  * uma tabela mantida à mão envelheceria em silêncio.
  */
+/**
+ * Frotas cuja arte autoral aponta ao contrário do que o pipeline supõe.
+ *
+ * ## Por que existe uma lista, e não uma regra
+ *
+ * A orientação é INFERIDA do tamanho da imagem: `girar = !square400`. Isso é um
+ * palpite — o pack de origem usava 400x400 para arte apontando para cima, e a
+ * regra pegou carona nisso. Arte autoral não tem essa garantia: as dezesseis
+ * naves Nairan e Nautolan vieram desenhadas para o outro lado e o jogo as punha
+ * "atacando de bunda", com o motor virado para o jogador.
+ *
+ * Tentei descobrir o lado medindo o perfil de largura do casco (traseira larga,
+ * nariz estreito). Não serve como regra automática: metade das artes dá razão
+ * entre 0,98 e 1,15, que é ruído — a medida acerta o caso óbvio e chuta o resto,
+ * e chutar aqui é como o defeito nasceu.
+ *
+ * Então: lista explícita, por PREFIXO de chave de atlas. Custa uma linha por
+ * frota, é visível para quem for mexer, e não finge saber o que não sabe.
+ */
+const FROTAS_INVERTIDAS = ['void/nairan/', 'void/nautolan/'];
+
+const arteInvertida = (chave) => FROTAS_INVERTIDAS.some((p) => chave.startsWith(p));
+
 function carregarSubstituicoes() {
   const mapaPath = path.join(PROJECT, 'tools', 'mapa-de-sprites.json');
   const dir = path.join(PROJECT, 'art-source', 'naves');
@@ -1128,7 +1151,8 @@ async function buildSpaceships2Atlas(manifest) {
     // pack, então só o hostil e o chefe precisam girar.
     const square400 = meta.width === 400 && meta.height === 400;
     const girar = papel === 'jogador' ? square400 : !square400;
-    await pushNormalized(arquivo, chave, girar);
+    // A lista tem a palavra final sobre o palpite do tamanho. Ver acima.
+    await pushNormalized(arquivo, chave, arteInvertida(chave) ? !girar : girar);
     log(`arte autoral: ${id} -> ${chave}`);
   }
 
