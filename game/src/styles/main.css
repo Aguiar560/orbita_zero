@@ -7161,3 +7161,19 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   text-decoration: underline;
 }
 .dica-escudo-ok:hover { color: var(--text); }
+
+/* Placar da galáxia: os estados em que não há lista.
+ *
+ * Antes o widget tinha cinco nomes escritos no código e nunca ficava vazio.
+ * Agora ele mostra dados reais, e "real" inclui não haver nada ainda — dizer
+ * isso é melhor que uma caixa vazia, que parece defeito. */
+.galaxy-command-rank-vazio {
+  margin: 6px 2px; font-size: 11px; line-height: 1.4; color: var(--muted);
+}
+/* A propria linha do jogador se destaca: e a que ele abriu a tela para achar.
+ *
+ * O `span` precisa ser alvejado direto: a regra base ja pinta ele com cor
+ * propria, e herdar da linha nao venceria. */
+.galaxy-command-rank-row.eu span,
+.galaxy-command-rank-row.eu strong,
+.galaxy-command-rank-row.eu > b { color: var(--accent); }

@@ -1,5 +1,6 @@
 import { assets } from '@render/Assets';
 import { bus } from '@app/Bus';
+import { buscarPlacar, type EstadoDaBusca } from '@app/placar';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, PHASES_PER_GALAXY } from '@data/galaxies';
@@ -197,7 +198,14 @@ export class GalaxyPanel implements Panel {
     const colunaDireita = h('.galaxy-command-col.galaxy-command-sidebar', {},
       h('.galaxy-command-progress-card', {}, this.sectionTitle('PROGRESSO DA GALÁXIA'), this.progressMetric('Setores concluídos', setoresVencidos, PHASES_PER_GALAXY, info.color), this.progressMetric('Incursões vencidas', setoresVencidos, PHASES_PER_GALAXY, '#27b8f2')),
       h('.galaxy-command-statistics', {}, this.sectionTitle('ESTATÍSTICAS'), ...[['Setor mais alto', String(best)], ['Inimigos destruídos', fmt(sim.state.stats.kills)], ['Chefes derrotados', fmt(sim.state.stats.bossKills)], ['Naves perdidas', fmt(sim.state.stats.deaths)], ['Créditos obtidos', fmt(sim.state.lifetime.sucata)]].map(([label, value]) => h('.galaxy-command-statistics-row', {}, h('span', { text: label }), h('b', { text: value })))),
-      h('.galaxy-command-ranking', {}, this.sectionTitle('PLACAR DA GALÁXIA'), h('.galaxy-command-ranking-tabs', {}, h('b', { text: 'Global' }), h('span', { text: 'Amigos' })), ...['Kael’Thas', 'NovaStrike', 'Vektor-07', 'Órion', 'ShadowPulse'].map((name, index) => h('.galaxy-command-rank-row', {}, h('b', { text: String(index + 1) }), spriteIcon(RANK_PORTRAITS[index]!, 18, 'galaxy-command-rank-avatar'), h('span', { text: name }), h('strong', { text: fmt((5 - index) * 145000 + best * 880) }))), h('button.mini.galaxy-command-ranking-button', { text: 'Ver ranking completo', onclick: () => bus.emit('panel:open', { id: 'ranking', galaxy: this.viewing }) })),
+      h('.galaxy-command-ranking', {},
+        this.sectionTitle('PLACAR DA GALÁXIA'),
+        ...this.placar(),
+        h('button.mini.galaxy-command-ranking-button', {
+          text: 'Ver ranking completo',
+          onclick: () => bus.emit('panel:open', { id: 'ranking', galaxy: this.viewing }),
+        }),
+      ),
       h('.galaxy-command-unlocks', {}, this.sectionTitle('DESBLOQUEIOS'),
         cascoDaRegiao
           ? h('.galaxy-command-unlock', {},
@@ -210,6 +218,76 @@ export class GalaxyPanel implements Panel {
 
     return h('.panel-body.galaxy-body.galaxy-command', {}, colunaRegiao, colunaCentral, colunaDireita);
   }
+
+  /**
+   * O topo do placar de galáxia, do SERVIDOR.
+   *
+   * ## O que estava aqui
+   *
+   * Cinco nomes escritos no código — Kael'Thas, NovaStrike, Vektor-07 — com a
+   * pontuação inventada por fórmula: `(5 - i) * 145000 + melhorSetor * 880`.
+   * Ela seguia o progresso do próprio jogador, então os "adversários" subiam
+   * junto com ele e ficavam sempre à frente. Era um placar que garantia a
+   * derrota de quem o olhasse.
+   *
+   * A aba "Amigos" também saiu: não existe sistema de amigos, e uma aba que não
+   * faz nada ensina a não clicar nas outras.
+   *
+   * ## Por que reusa a busca do painel de Ranking
+   *
+   * É o MESMO placar — `galaxia` mede `bestSectorEver`. Duas buscas dariam dois
+   * números para a mesma coisa, e o jogador acharia que uma das telas mente.
+   */
+  private placar(): HTMLElement[] {
+    const estado = this.buscaDoPlacar();
+
+    if (estado.fase === 'sem-conta') {
+      return [h('p.galaxy-command-rank-vazio', { text: 'Entre na sua conta para ver o placar.' })];
+    }
+    if (estado.fase !== 'pronto') {
+      return [h('p.galaxy-command-rank-vazio', { text: 'Buscando o placar…' })];
+    }
+    if (!estado.dados.meuApelido) {
+      return [h('p.galaxy-command-rank-vazio', { text: 'Escolha seu nome no Ranking para entrar no placar.' })];
+    }
+    if (!estado.dados.linhas.length) {
+      return [h('p.galaxy-command-rank-vazio', { text: 'Ninguém marcou ainda. Você pode ser o primeiro.' })];
+    }
+
+    return estado.dados.linhas.slice(0, 5).map((l, i) => h(
+      `.galaxy-command-rank-row${l.voce ? '.eu' : ''}`, {},
+      h('b', { text: String(l.posicao) }),
+      spriteIcon(RANK_PORTRAITS[i % RANK_PORTRAITS.length]!, 18, 'galaxy-command-rank-avatar'),
+      // `text:` e nunca marcação: é nome escrito por OUTRO jogador.
+      h('span', { text: l.voce ? `${l.apelido} (você)` : l.apelido }),
+      h('strong', { text: fmt(l.valor) }),
+    ));
+  }
+
+  /**
+   * A busca, guardada e reeemitida quando envelhece.
+   *
+   * Mesma validade do painel de Ranking, e pelo mesmo motivo: o painel se
+   * redesenha a ~5 Hz, e uma requisição por desenho acabaria com a cota da
+   * camada gratuita numa tarde.
+   */
+  private buscaDoPlacar(): EstadoDaBusca {
+    const agora = Date.now();
+    if (this.placarBuscado && agora - this.placarEm < 20_000) return this.placarBuscado;
+    if (this.placarBuscado?.fase === 'buscando') return this.placarBuscado;
+
+    this.placarBuscado = { fase: 'buscando' };
+    this.placarEm = agora;
+    void buscarPlacar('galaxia').then((r) => {
+      this.placarBuscado = r;
+      this.placarEm = Date.now();
+      bus.emit('state:changed');
+    });
+    return this.placarBuscado;
+  }
+
+  private placarBuscado: EstadoDaBusca | null = null;
+  private placarEm = 0;
 
   private sectionTitle(text: string): HTMLElement {
     return h('.galaxy-command-section-title', {}, h('i'), h('span', { text }));
