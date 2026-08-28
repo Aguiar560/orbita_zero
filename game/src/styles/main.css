@@ -7177,3 +7177,75 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .galaxy-command-rank-row.eu span,
 .galaxy-command-rank-row.eu strong,
 .galaxy-command-rank-row.eu > b { color: var(--accent); }
+
+/* ── Provação: realce, e uma moldura a menos ────────────────────────────────
+ *
+ * Três ajustes pedidos olhando a tela, e o motivo de cada um.
+ *
+ * 1. RECOMPENSA e PODER RECOMENDADO estavam apagados por filtro — a barra com
+ *    `grayscale(.25) brightness(.75)` e as fichas com `saturate(.72)
+ *    brightness(.86)`. São as duas informações que decidem se vale entrar no
+ *    piso: quanto poder falta e o que se ganha. Apagá-las é esconder a pergunta
+ *    e a resposta.
+ *
+ * 2. A moldura INTERNA do card de piso sai. Ela vinha de dois overlays de arte
+ *    (`::before` de estado e `::after` de seleção) desenhados logo dentro da
+ *    borda — duas linhas em volta da mesma caixa, e a de dentro não dizia nada
+ *    que a de fora já não dissesse.
+ *
+ * 3. Piso concluído passa a ser VERDE normal, em vez de um overlay dessaturado.
+ *    Verde é o que o resto do jogo usa para "feito"; a arte cinza fazia o piso
+ *    vencido parecer mais apagado que o bloqueado. */
+
+/* 1. Realce */
+.prv-poder {
+  border-color: rgba(88, 190, 224, .38);
+  background: rgba(8, 22, 33, .72);
+}
+.prv-poder-bar {
+  height: 14px; padding: 4px 8px;
+  /* Sem filtro: a barra É a leitura de "dá para vencer este piso". */
+  filter: none;
+}
+.prv-poder-fill {
+  background: linear-gradient(90deg, #5cd0ea, #8fe9ff);
+  box-shadow: 0 0 10px rgba(92, 208, 234, .55);
+}
+.prv-premios .mis-premio { filter: none; }
+.prv-premios .mis-premio:hover { filter: brightness(1.12); }
+.prv-premios .mis-premio-n {
+  color: #eaf6ff;
+  border-color: rgba(96, 190, 224, .5);
+  background: rgba(3, 10, 18, .92);
+}
+/* Os dois títulos ganham a cor de destaque, para o olho achar as seções. */
+.prv-dir .prv-secao-tit { color: #a9e6ff; }
+
+/* 2. Fora a moldura interna
+ *
+ * `.marco::before` precisa ser nomeado: ele tem especificidade maior (0,2,1) e
+ * sobreviveria a uma regra so em `.prv-piso::before`. Foi o que aconteceu — os
+ * pisos de dez em dez ficaram com a moldura enquanto os outros perderam. */
+.prv-piso::before,
+.prv-piso::after,
+.prv-piso.marco::before,
+.prv-piso.focado::after,
+.prv-piso.e-travado::before,
+.prv-piso.e-vencido::before,
+.prv-piso.e-mestrado::before { content: none; }
+
+/* 3. Concluído em verde normal */
+.prv-piso.e-vencido,
+.prv-piso.e-mestrado {
+  border-color: rgba(94, 214, 148, .38);
+  border-left: 3px solid var(--good);
+  background: linear-gradient(90deg, rgba(10, 30, 22, .9), rgba(6, 14, 20, .86));
+}
+.prv-piso.e-vencido .prv-piso-n,
+.prv-piso.e-mestrado .prv-piso-n { color: var(--good); }
+.prv-piso.e-vencido.focado,
+.prv-piso.e-mestrado.focado {
+  border-color: rgba(94, 214, 148, .7);
+  border-left: 3px solid var(--good);
+  background: linear-gradient(90deg, rgba(14, 46, 33, .95), rgba(6, 18, 24, .9));
+}
