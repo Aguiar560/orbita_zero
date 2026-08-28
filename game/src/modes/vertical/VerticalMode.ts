@@ -2089,9 +2089,11 @@ export class VerticalMode {
     const x = (VIEW.w - w) / 2;
     // A arte não é tileável nas bordas superior/inferior. Repeti-la em loop
     // criava uma faixa de corte atravessando a arena; usamos a folga do próprio
-    // enquadramento para passear pela superfície sem jamais mostrar a costura.
+    // enquadramento numa passagem lenta e SEMPRE ascendente. O retorno só vem
+    // depois de uma travessia inteira, não como vai-e-volta que faz o planeta
+    // parecer oscilar atrás da nave.
     const sobraVertical = Math.max(0, h - VIEW.h);
-    const y = -sobraVertical * (.5 + Math.sin(this.elapsed * .075) * .5);
+    const y = -((this.elapsed * 3.8) % Math.max(1, sobraVertical));
 
     ctx.save();
     // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
