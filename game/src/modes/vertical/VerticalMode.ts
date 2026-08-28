@@ -57,7 +57,9 @@ const VICTORY_HOLD = 5;
 const SHIELD_LOCK = 4;
 
 /** Cenário experimental do modo de teste: combate sobre a alta atmosfera. */
-const BIOMA_ATMOSFERA_SRC = 'fundo/bioma-atmosfera.webp';
+const BIOMA_ATMOSFERA_SRC = 'fundo/bioma-atmosfera-longo.webp';
+/** Superfície em órbita baixa: rápida o bastante para comunicar avanço. */
+const BIOMA_ATMOSFERA_VELOCIDADE = 24;
 
 /**
  * Camada vertical — o combate "de verdade".
@@ -2094,7 +2096,7 @@ export class VerticalMode {
     // em vez de ré. O retorno só vem depois de uma travessia inteira, não como
     // vai-e-volta que faz o planeta parecer oscilar atrás da nave.
     const sobraVertical = Math.max(0, h - VIEW.h);
-    const y = -sobraVertical + ((this.elapsed * 3.8) % Math.max(1, sobraVertical));
+    const y = -sobraVertical + ((this.elapsed * BIOMA_ATMOSFERA_VELOCIDADE) % Math.max(1, sobraVertical));
 
     ctx.save();
     // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
