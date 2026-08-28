@@ -52,6 +52,58 @@ const SAVE_MAX_BYTES = 512 * 1024;
 const CORPO_MAX_BYTES = 64 * 1024;
 
 /**
+ * Desde quando o servidor conhece esta conta, em epoch de segundos.
+ *
+ * ## Por que o valor nunca vem do cliente
+ *
+ * É o orçamento de progresso: uma conta de dez minutos não pode ter chegado ao
+ * topo da Provação. Se o cliente pudesse dizer sua própria idade, bastaria
+ * mentir aqui para liberar qualquer marca — o número perderia justamente a
+ * propriedade que o torna útil.
+ *
+ * ## O que acontece com quem já existia
+ *
+ * A tabela nasceu depois de haver jogadores. Para esses, a idade é semeada de
+ * `saves.atualizado_em`, que também é relógio do SERVIDOR e é um limite
+ * inferior honesto: quem já gravou um save há três dias existe há pelo menos
+ * três dias.
+ *
+ * Sem isso, todo jogador atual viraria "conta nova" no dia do deploy e teria a
+ * própria marca recusada — o modo de falhar mais fácil de causar aqui, e o mais
+ * difícil de entender pelo lado de quem joga.
+ */
+async function contaDesde(env: Env, usuario: string, agora: number): Promise<number> {
+  const existente = await env.DB
+    .prepare('SELECT primeiro_em FROM contas WHERE usuario = ?')
+    .bind(usuario)
+    .first<{ primeiro_em: number }>();
+  if (existente) return existente.primeiro_em;
+
+  // Conta nova nasce AGORA. Não há semente a buscar, e a primeira versão disto
+  // buscava: ela usava `saves.atualizado_em`, e estava errada de dois jeitos.
+  //
+  // Errada de fato, porque `atualizado_em` é a gravação MAIS RECENTE — medido
+  // contra o banco de produção antes de publicar, a conta existente tinha save
+  // de 94 segundos atrás e marca de galáxia 201; o orçamento dela teria sido
+  // ~61, e a próxima sincronização seria recusada em silêncio.
+  //
+  // E errada de princípio, porque qualquer semente derivada do estado atual do
+  // jogador vira brecha: bastaria gravar um save antes de mandar a primeira
+  // marca para comprar idade.
+  //
+  // Quem já existia antes desta tabela foi apadrinhado na migração 0004 — o
+  // único lugar onde isso pode acontecer sem virar porta, porque roda uma vez.
+  const primeiro = agora;
+
+  await env.DB
+    .prepare('INSERT INTO contas (usuario, primeiro_em) VALUES (?, ?) ON CONFLICT(usuario) DO NOTHING')
+    .bind(usuario, primeiro)
+    .run();
+
+  return primeiro;
+}
+
+/**
  * Consome uma ficha do balde do jogador, ou diz quanto falta esperar.
  *
  * O balde vive em `limites`, uma linha por (usuário, assunto) — ver a migração
@@ -373,6 +425,7 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
   if (!temApelido) return json({ erro: 'sem_apelido' }, 409, origem);
 
   const agora = Math.floor(Date.now() / 1000);
+  const desde = await contaDesde(env, id, agora);
 
   // Esta é a rota mais cara do servidor: uma chamada podia virar oitenta
   // leituras e oitenta escritas. Sem limite, um cliente em laço queimava a cota
@@ -401,7 +454,7 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
     const casco = typeof m.casco === 'string' ? m.casco.slice(0, 40) : '';
     const anterior = atuais.get(`${m.placar}:${casco}`) ?? null;
 
-    const v = conferir(m, anterior, agora);
+    const v = conferir(m, anterior, agora, desde);
     if (!v.ok) {
       recusadas.push({ placar: String(m.placar), casco, motivo: v.motivo });
       continue;

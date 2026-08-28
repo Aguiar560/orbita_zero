@@ -50,8 +50,36 @@ const GANHO_POR_HORA: Record<string, number> = {
   missoes: 60,
 };
 
-/** Folga fixa somada ao ganho permitido. Cobre a primeira marca e a sessão curta. */
+/** Folga fixa somada ao ganho permitido. Cobre a sessão curta. */
 const FOLGA = 5;
+
+/**
+ * O quanto uma conta RECÉM-CRIADA pode declarar de saída.
+ *
+ * ## Por que não é zero
+ *
+ * O jogo funciona sem conta — o save mora no navegador desde sempre. Alguém
+ * pode jogar uma semana e só então criar conta para sincronizar, e a primeira
+ * marca dessa pessoa é legítima e alta, com a conta recém-nascida.
+ *
+ * Recusar isso puniria exatamente quem jogou de verdade. Então há uma entrada
+ * franqueada, dimensionada para uma primeira semana forte e NÃO para o topo:
+ * quem chega declarando andar 20 passa, quem chega declarando andar 100 não.
+ *
+ * ## O que este número não resolve
+ *
+ * Um cliente adulterado que respeite o teto de entrada e depois suba no ritmo
+ * permitido continua passando. A defesa contra isso é recalcular o progresso
+ * contra as tabelas do jogo — o que faria toda mudança de balanceamento virar
+ * deploy de servidor, e não vale antes de o placar ter aposta de verdade.
+ */
+const ENTRADA_FRANQUEADA: Record<string, number> = {
+  provacao: 20,
+  galaxia: 60,
+  personagem: 60,
+  naves: 60,
+  missoes: 400,
+};
 
 const PLACARES = new Set(Object.keys(TETO));
 
@@ -108,6 +136,14 @@ export function conferir(
   m: MarcaRecebida,
   anterior: { valor: number; desempate: number; atualizado_em: number } | null,
   agora: number,
+  /**
+   * Epoch em segundos de quando o SERVIDOR viu esta conta pela primeira vez.
+   *
+   * Nunca vem do cliente. É o relógio do servidor, e é o que torna a conta
+   * jovem incapaz de declarar o topo — a única afirmação sobre plausibilidade
+   * que dá para fazer sem entender o save nem conhecer as curvas do jogo.
+   */
+  contaDesde: number,
 ): Veredito {
   if (!PLACARES.has(m.placar)) return { ok: false, motivo: 'placar_desconhecido' };
 
@@ -119,12 +155,27 @@ export function conferir(
   if (valor < 0 || desempate < 0) return { ok: false, motivo: 'valor_negativo' };
   if (valor > TETO[m.placar]!) return { ok: false, motivo: 'acima_do_teto' };
 
-  if (!anterior) {
-    // Primeira marca. Não há de onde medir ritmo, então só a faixa vale — e é
-    // por isso que uma conta nova consegue declarar qualquer coisa dentro do
-    // teto. Sem histórico não existe implausibilidade a detectar.
-    return { ok: true, valor, desempate };
-  }
+  /**
+   * O teto que a IDADE DA CONTA permite.
+   *
+   * Vale para toda marca, não só para a primeira. A checagem de ritmo abaixo
+   * mede o salto entre duas marcas; esta mede o total contra o tempo em que a
+   * conta existe, e por isso não dá para contornar subindo aos poucos.
+   *
+   * Este era o buraco: sem histórico anterior não havia o que comparar, e uma
+   * conta de dez minutos declarava o andar 100.
+   */
+  // Falha FECHADA: sem uma idade utilizavel, a conta e tratada como recem-nascida
+  // e so a entrada franqueada vale. Se isto caisse para `NaN`, toda comparacao
+  // com o teto daria falso e a checagem sumiria em silencio — que e o modo de
+  // falhar que nao se descobre, porque nada quebra.
+  const desde = Number.isFinite(contaDesde) ? contaDesde : agora;
+  const horasDeConta = Math.max(0, agora - desde) / 3600;
+  const tetoDaConta = GANHO_POR_HORA[m.placar]! * horasDeConta
+    + (ENTRADA_FRANQUEADA[m.placar] ?? 0);
+  if (valor > tetoDaConta) return { ok: false, motivo: 'conta_nova_demais' };
+
+  if (!anterior) return { ok: true, valor, desempate };
 
   if (valor < anterior.valor) {
     // Não é erro do jogador: o placar guarda o melhor de sempre, e a marca
