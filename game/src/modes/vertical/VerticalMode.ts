@@ -56,6 +56,9 @@ const VICTORY_HOLD = 5;
  */
 const SHIELD_LOCK = 4;
 
+/** Cenário experimental do modo de teste: combate sobre a alta atmosfera. */
+const BIOMA_ATMOSFERA_SRC = 'fundo/bioma-atmosfera.webp';
+
 /**
  * Camada vertical — o combate "de verdade".
  *
@@ -2064,7 +2067,54 @@ export class VerticalMode {
     this.drawHud(s);
   }
 
+  /**
+   * Superfície de planeta em órbita baixa.
+   *
+   * A textura do terreno rola devagar, como a massa do planeta bem abaixo da
+   * nave. A névoa luminosa tem outra velocidade: é a camada de atmosfera entre
+   * a cena e a superfície que dá o parallax sem duplicar continentes e criar
+   * uma imagem fantasma. É exclusiva do modo de teste até o bioma ser aprovado.
+   */
+  private drawBiomaAtmosfera(s: Surface): boolean {
+    const img = assets.peek(BIOMA_ATMOSFERA_SRC);
+    if (!img) {
+      assets.prefetch(BIOMA_ATMOSFERA_SRC);
+      return false;
+    }
+
+    const ctx = s.ctx;
+    const escala = Math.max(VIEW.w / img.width, VIEW.h / img.height) * 1.08;
+    const w = img.width * escala;
+    const h = img.height * escala;
+    const x = (VIEW.w - w) / 2;
+    const y = ((this.elapsed * 3.8) % h + h) % h;
+
+    ctx.save();
+    // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
+    // projéteis e telegráficos — terreno não pode competir com alvo.
+    ctx.filter = 'saturate(.72) brightness(.62) contrast(.86)';
+    ctx.drawImage(img, x, y - h, w, h);
+    ctx.drawImage(img, x, y, w, h);
+
+    // Camada atmosférica: faixas de luz difusa avançam mais rápido que o solo.
+    // O gradiente evita uma "nuvem-retângulo" e dá profundidade sem esconder a
+    // leitura do centro da arena.
+    const faixa = ((this.elapsed * 12) % (VIEW.h + 340)) - 170;
+    const nevoa = ctx.createLinearGradient(0, faixa, 0, faixa + 260);
+    nevoa.addColorStop(0, 'rgba(125, 239, 255, 0)');
+    nevoa.addColorStop(.42, 'rgba(125, 239, 255, .11)');
+    nevoa.addColorStop(.58, 'rgba(197, 255, 255, .16)');
+    nevoa.addColorStop(1, 'rgba(125, 239, 255, 0)');
+    ctx.filter = 'blur(13px)';
+    ctx.fillStyle = nevoa;
+    ctx.fillRect(-30, faixa, VIEW.w + 60, 260);
+    ctx.restore();
+    return true;
+  }
+
   private drawBackground(s: Surface): void {
+    if (this.sim.testMode && this.drawBiomaAtmosfera(s)) return;
+
     /**
      * O cenário da galáxia, em até três camadas com rolagens diferentes.
      *
