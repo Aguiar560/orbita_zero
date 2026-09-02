@@ -341,6 +341,11 @@ contraste interno**. Um planeta escuro mas texturado destrói leitura igual.
 - Sem vinheta. O gênero usa escurecimento de borda para empurrar o olho ao
   centro.
 
+**Cenários promovidos em 02/09/2026.** As seis superfícies atmosféricas longas
+saíram do modo de teste e foram distribuídas uma vez cada nas galáxias 1–6.
+Os 19 cenários anteriores também deixaram de reiniciar o rodízio; um teste fixa
+que as 30 galáxias da campanha usam 30 arquivos distintos.
+
 #### Ordem
 
 | # | frente | esforço | ganho |

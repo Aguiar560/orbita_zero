@@ -23,6 +23,7 @@ import { getElement } from '@data/elements';
 import { arteElemental } from '@data/arte-elemental';
 import { FRACAO_ELEMENTAL_INIMIGA } from '@data/balance/elemental';
 import { curvaXpNave, curvaXpPersonagem, NIVEL_MAX } from '@data/balance/curvas';
+import { biomaAtmosfericoDaGalaxia, CONFIG_BIOMA_ATMOSFERICO, type BiomaAtmosferico } from '@data/biomas-atmosfericos';
 import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
 import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
 import { HULLS, type Hull } from '@data/hulls';
@@ -55,11 +56,6 @@ const VICTORY_HOLD = 5;
  * maior que o intervalo típico entre acertos para o dano acumular.
  */
 const SHIELD_LOCK = 4;
-
-/** Cenário experimental do modo de teste: combate sobre a alta atmosfera. */
-const BIOMA_ATMOSFERA_SRC = 'fundo/bioma-atmosfera-longo.webp';
-/** Superfície em órbita baixa: rápida o bastante para comunicar avanço. */
-const BIOMA_ATMOSFERA_VELOCIDADE = 24;
 
 /**
  * Camada vertical — o combate "de verdade".
@@ -333,6 +329,8 @@ export class VerticalMode {
     // estrela: atravessar dez fases e ver o céu mudar é o que dá a sensação de
     // ter viajado. Antes as estrelas eram as mesmas do setor 1 ao 200.
     const galaxy = describeGalaxy(galaxyOfSector(e.sector));
+    const biomaAtmosferico = biomaAtmosfericoDaGalaxia(galaxy.index);
+    if (biomaAtmosferico) assets.prefetch(biomaAtmosferico.src);
     /**
      * Monta as camadas do cenário. Prefere o conjunto novo e cai no antigo.
      *
@@ -2075,12 +2073,13 @@ export class VerticalMode {
    * A textura do terreno rola devagar, como a massa do planeta bem abaixo da
    * nave. A névoa luminosa tem outra velocidade: é a camada de atmosfera entre
    * a cena e a superfície que dá o parallax sem duplicar continentes e criar
-   * uma imagem fantasma. É exclusiva do modo de teste até o bioma ser aprovado.
+   * uma imagem fantasma. Cada galáxia recebe uma superfície própria, mas todas
+   * obedecem à mesma régua de escala e velocidade registrada em `data/`.
    */
-  private drawBiomaAtmosfera(s: Surface): boolean {
-    const img = assets.peek(BIOMA_ATMOSFERA_SRC);
+  private drawBiomaAtmosfera(s: Surface, bioma: BiomaAtmosferico): boolean {
+    const img = assets.peek(bioma.src);
     if (!img) {
-      assets.prefetch(BIOMA_ATMOSFERA_SRC);
+      assets.prefetch(bioma.src);
       return false;
     }
 
@@ -2096,12 +2095,12 @@ export class VerticalMode {
     // em vez de ré. O retorno só vem depois de uma travessia inteira, não como
     // vai-e-volta que faz o planeta parecer oscilar atrás da nave.
     const sobraVertical = Math.max(0, h - VIEW.h);
-    const y = -sobraVertical + ((this.elapsed * BIOMA_ATMOSFERA_VELOCIDADE) % Math.max(1, sobraVertical));
+    const y = -sobraVertical + ((this.elapsed * CONFIG_BIOMA_ATMOSFERICO.velocidade) % Math.max(1, sobraVertical));
 
     ctx.save();
     // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
     // projéteis e telegráficos — terreno não pode competir com alvo.
-    ctx.filter = 'saturate(.72) brightness(.62) contrast(.86)';
+    ctx.filter = CONFIG_BIOMA_ATMOSFERICO.filtro;
     ctx.drawImage(img, x, y, w, h);
 
     // Camada atmosférica: faixas de luz difusa avançam mais rápido que o solo.
@@ -2121,7 +2120,8 @@ export class VerticalMode {
   }
 
   private drawBackground(s: Surface): void {
-    if (this.sim.testMode && this.drawBiomaAtmosfera(s)) return;
+    const bioma = biomaAtmosfericoDaGalaxia(galaxyOfSector(this.sim.state.run.sector));
+    if (bioma && this.drawBiomaAtmosfera(s, bioma)) return;
 
     /**
      * O cenário da galáxia, em até três camadas com rolagens diferentes.

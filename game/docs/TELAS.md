@@ -259,7 +259,7 @@ guardado como `0`, senão o save cresceria com o catálogo.
 
 ## Fabricação — `id: 'fabricacao'`
 
-`ui/panels/FabricacaoPanel.ts` · 417 linhas · camada
+`ui/panels/FabricacaoPanel.ts` · camada
 
 Três colunas próprias — foi este painel que motivou o modelo de camada. Cobre
 **fabricar** (gastar material por item) e **fundir** (§26): sacrificar peças para
@@ -267,17 +267,25 @@ subir raridade.
 
 Ao fabricar, abre um **segundo modal por cima** mostrando o item que saiu.
 
-**Padrão visual (24/08/2026).** A Fabricação usa o **kit compartilhado** de
-Provação, Baús e Bancada de Afixos: mesma moldura externa e barra superior,
-mesmas superfícies escuras, títulos de seção com linha cyan discreta e cards de
-lista com borda lateral semântica. Não há moldura exclusiva nem linguagem visual
-paralela. A cor de raridade existe nos itens e receitas; cyan continua reservado
-para foco/ação. O reator é conteúdo do painel central, não uma nova marca visual.
+**Padrão visual (02/09/2026).** A Fabricação mantém somente a moldura externa e
+a hierarquia das demais telas; as três colunas usam divisões técnicas discretas,
+sem carcaças internas. O centro possui um reator ilustrado próprio, com alfa real. A arte é
+só a máquina: os dez encaixes, os itens e a chance continuam em DOM para
+preservar nitidez, acessibilidade e interação. A cor de raridade existe nos
+itens e receitas; cyan continua reservado para foco/ação.
 
 As laterais organizam itens, filtros e materiais à esquerda e receitas à direita;
 o centro mostra componentes, alvo e ação de síntese dentro do mesmo painel de
 trabalho usado pelo craft. Assim a tela pertence ao mesmo sistema, mas preserva
-a decisão específica de fundir itens.
+a decisão específica de fundir itens. Os oito filtros de raridade ocupam uma
+grade 4×2, com nomes completos e área de clique consistente.
+
+Item elegível pode ser **clicado ou arrastado** para qualquer encaixe. Soltar
+sobre um encaixe ocupado substitui a peça e devolve a anterior ao inventário;
+o uid é removido da posição antiga antes de entrar, então o gesto nunca duplica
+equipamento. Favoritos e raridades incompatíveis não iniciam o arraste. Os
+anéis de chance são SVG transparente — a receita selecionada é marcada pela
+borda lateral, sem um retângulo atrás da porcentagem.
 
 > **A fusão anunciava probabilidade errada.** Ela usava a raridade arredondada
 > para baixo em vez da exata: 3% de Divino anunciado eram 10,4% reais, 3,47×

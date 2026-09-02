@@ -103,7 +103,9 @@ const FUNDOS: readonly string[] = [
 export function describeGalaxy(index: number): GalaxyInfo {
   const rng = new Rng(hashString(`galaxia:${index}`));
   const family = BACKDROP_FAMILIES[index % BACKDROP_FAMILIES.length]!;
-  const variant = String(rng.int(1, 8)).padStart(2, '0');
+  // As 32 combinações família×variação formam uma sequência sem colisão.
+  // Sorteio permitia que duas galáxias profundas recebessem o mesmo arquivo.
+  const variant = String(Math.floor(index / BACKDROP_FAMILIES.length) % 8 + 1).padStart(2, '0');
   const fleet = FLEET_INFO[Math.min(FLEET_INFO.length - 1, Math.floor(index / 2))]!;
   const profunda = index >= 20 && index < 30 ? PROFUNDAS[index - 20] : null;
 
@@ -123,7 +125,11 @@ export function describeGalaxy(index: number): GalaxyInfo {
     index,
     name: index < NAMES.length ? NAMES[index]! : `Setor Profundo ${index + 1}`,
     backdrop: `galaxia/${family}_${variant}.png`,
-    fundoId: FUNDOS[index % FUNDOS.length] ?? null,
+    // Cada cenário autoral entra no máximo uma vez. As galáxias 1–6 recebem as
+    // superfícies atmosféricas longas e, por isso, os seis primeiros ids desta
+    // lista ficam encobertos. As galáxias 7–19 usam os ids seguintes e as onze
+    // finais caem no backdrop determinístico, sem reiniciar a lista.
+    fundoId: FUNDOS[index] ?? null,
     // 210 retratos disponíveis; o índice determina qual, de forma estável.
     portrait: `retrato/${index % 21}_${rng.int(0, 9)}`,
     fleet: fleet.name,

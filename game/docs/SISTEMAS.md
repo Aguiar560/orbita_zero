@@ -326,6 +326,13 @@ cenário distante. Dentro dela o grão maior é mais rápido e mais opaco — a 
 relação do parallax, aplicada dentro de uma camada, que é o que impede a leitura
 de "folha de papel com pontos".
 
+**Catálogo sem repetição (02/09/2026).** Os 19 conjuntos de `fundos` atendem
+somente às galáxias 7–19. As seis superfícies atmosféricas longas, antes
+restritas ao teste, atendem às galáxias 1–6 uma vez cada. As onze finais usam
+seus backdrops determinísticos. A escolha não volta ao início da lista: nas 30
+galáxias da campanha nenhum arquivo de fundo se repete, contrato coberto por
+`tests/biomas-atmosfericos.test.ts`.
+
 Baixa intensidade de propósito: 46 grãos, alfa máximo 0,34. Partícula demais
 vira ruído e come a legibilidade que o véu acabou de comprar. Respeita
 "reduzir efeitos".

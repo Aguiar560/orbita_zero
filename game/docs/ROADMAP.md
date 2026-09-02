@@ -36,6 +36,20 @@ controles Idle/manual e migração de save **v5** estão implementados. Antes de
 novo conteúdo, manter uma rodada curta de QA visual nos retratos de Missões e
 na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PLANO.md).
 
+### Entrega de 02/09/2026 — cenários e síntese
+
+- As seis superfícies atmosféricas longas saíram do teste e entraram nas
+  galáxias 1–6. Junto do fim do rodízio dos cenários anteriores, a campanha
+  passou a usar **30 arquivos de fundo distintos em 30 galáxias**.
+- A Câmara de Fabricação mantém uma única moldura externa e recebeu um reator
+  de síntese com arte própria e transparência real. As colunas internas usam
+  apenas divisões discretas; os indicadores percentuais continuam SVG e não
+  desenham fundo retangular.
+- Os dez encaixes aceitam arrastar e soltar, inclusive substituição de uma peça
+  antes da fusão; clique continua disponível e favoritos permanecem protegidos.
+- Verificação: typecheck e 21 testes focados (fundos + fusão) passando; QA
+  visual em 1280×720.
+
 ### Consolidação de 25/08/2026
 
 Registro completo em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
@@ -935,9 +949,9 @@ irreversível, e escolher o que se perde é a decisão inteira. Automatizar isso
 automatizar a única coisa que o painel existe para o jogador fazer. O atalho
 "encher com as piores" continua existindo — o que saiu foi a obrigação.
 
-Clicar uma peça a põe no anel; clicar o encaixe a devolve. Peça que não serve à
-receita fica VISÍVEL e apagada, em vez de sumir: esconder faria o jogador achar
-que ela desapareceu, e ver o que não serve ensina a regra.
+Clicar ou arrastar uma peça a põe no anel; clicar o encaixe a devolve. Peça que
+não serve à receita fica VISÍVEL e apagada, em vez de sumir: esconder faria o
+jogador achar que ela desapareceu, e ver o que não serve ensina a regra.
 
 Os encaixes são posicionados em PORCENTAGEM, então o anel acompanha a largura da
 coluna sem medida em pixels nem recálculo no resize.

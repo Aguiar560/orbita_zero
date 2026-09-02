@@ -38,6 +38,14 @@ export class FabricacaoPanel implements Panel {
   /** Filtro do inventário. `-1` = tudo. */
   private filtro: Rarity | -1 = -1;
   /**
+   * Reserva local do uid durante o arraste.
+   *
+   * O `DataTransfer` continua sendo preenchido, mas alguns navegadores limpam
+   * tipos personalizados durante o `dragover`. Guardar o uid no painel mantém
+   * o gesto confiável sem transformar o DOM em fonte de estado.
+   */
+  private uidArrastado: string | null = null;
+  /**
    * Resultado da última fusão, enquanto o modal dele estiver aberto.
    *
    * Guarda o ITEM, e não o uid: o item pode ter sido desmanchado na hora pela
@@ -224,15 +232,32 @@ export class FabricacaoPanel implements Panel {
 
     return h(`button.fab-peca${serve ? '' : '.inerte'}`, {
       style: { borderColor: info.color, color: info.color },
+      // `draggable` é atributo enumerado, não booleano: `draggable=""` vale
+      // falso. O helper transforma booleano em atributo vazio, então o valor
+      // precisa ser a string literal para o navegador iniciar o gesto nativo.
+      draggable: serve ? 'true' : undefined,
+      'aria-label': `Item nível ${item.ilvl}. ${serve ? 'Arraste para um encaixe ou clique para adicionar.' : 'Incompatível com a receita selecionada.'}`,
       title: item.favorite
         ? 'Favorito — protegido da fabricação'
-        : serve ? 'Clique para pôr no anel' : `Precisa ser ${rarityInfo(receita.entrada).name}`,
+        : serve ? 'Arraste para um encaixe ou clique para adicionar' : `Precisa ser ${rarityInfo(receita.entrada).name}`,
+      ondragstart: (e: DragEvent) => {
+        if (!serve) {
+          e.preventDefault();
+          return;
+        }
+        this.uidArrastado = item.uid;
+        e.dataTransfer?.setData('application/x-orbita-item', item.uid);
+        e.dataTransfer?.setData('text/plain', item.uid);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        (e.currentTarget as HTMLElement).classList.add('arrastando');
+      },
+      ondragend: (e: DragEvent) => {
+        this.uidArrastado = null;
+        (e.currentTarget as HTMLElement).classList.remove('arrastando');
+      },
       onclick: () => {
         if (!serve) return;
-        const vaga = this.slots.indexOf(null);
-        if (vaga < 0) return;
-        this.slots[vaga] = item.uid;
-        sim.touch();
+        if (this.inserirNoEncaixe(sim, receita, item.uid)) sim.touch();
       },
     },
       spriteIcon(item.icon, 38),
@@ -256,7 +281,7 @@ export class FabricacaoPanel implements Panel {
     const cheios = this.slots.filter(Boolean) as string[];
     const faltas = cheios.length === receita.quantidade
       ? sim.faltaParaFundir(cheios)
-      : [`Adicione ${receita.quantidade} itens da mesma raridade para começar`];
+      : [`Arraste ou clique em ${receita.quantidade} itens da mesma raridade`];
     const pode = faltas.length === 0;
     const saida = rarityInfo(Math.max(...receita.resultados.map((x) => x.raridade)) as Rarity);
 
@@ -311,8 +336,32 @@ export class FabricacaoPanel implements Panel {
       const item = uid ? sim.state.inventory.find((x) => x.uid === uid) : null;
 
       const el = h(`button.fab-encaixe${item ? '.cheio' : ''}`, {
-        title: item ? 'Clique para devolver ao inventário' : `Encaixe ${i + 1}`,
-        onclick: () => { this.slots[i] = null; sim.touch(); },
+        title: item
+          ? 'Clique para devolver ao inventário ou arraste outra peça para substituir'
+          : `Encaixe ${i + 1} — solte uma peça aqui`,
+        'aria-label': item ? `Encaixe ${i + 1} ocupado. Clique para remover.` : `Encaixe ${i + 1} vazio.`,
+        ondragover: (e: DragEvent) => {
+          const uid = this.uidDoArraste(e);
+          if (!uid || !this.podeInserir(sim, receita, uid)) return;
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          el.classList.add('recebendo');
+        },
+        ondragleave: (e: DragEvent) => {
+          if (!el.contains(e.relatedTarget as Node | null)) el.classList.remove('recebendo');
+        },
+        ondrop: (e: DragEvent) => {
+          e.preventDefault();
+          el.classList.remove('recebendo');
+          const uid = this.uidDoArraste(e);
+          this.uidArrastado = null;
+          if (uid && this.inserirNoEncaixe(sim, receita, uid, i)) sim.touch();
+        },
+        onclick: () => {
+          if (!this.slots[i]) return;
+          this.slots[i] = null;
+          sim.touch();
+        },
       },
         item ? spriteIcon(item.icon, 34) : h('span.fab-mais', { text: '+' }),
       );
@@ -329,6 +378,37 @@ export class FabricacaoPanel implements Panel {
       h('span.fab-pct', { text: `${Math.round(chanceDeSubir(receita) * 100)}%` }),
     ));
     return out;
+  }
+
+  private uidDoArraste(e: DragEvent): string | null {
+    return this.uidArrastado
+      ?? e.dataTransfer?.getData('application/x-orbita-item')
+      ?? e.dataTransfer?.getData('text/plain')
+      ?? null;
+  }
+
+  private podeInserir(sim: Sim, receita: ReceitaDeFusao, uid: string): boolean {
+    const item = sim.state.inventory.find((candidato) => candidato.uid === uid);
+    return !!item && item.rarity === receita.entrada && !item.favorite;
+  }
+
+  /**
+   * Única porta de entrada dos encaixes para clique e arraste.
+   *
+   * Soltar sobre uma caixa ocupada substitui a peça; a anterior apenas volta
+   * ao inventário porque a fusão ainda não aconteceu. O mesmo uid é removido
+   * de outra posição antes de entrar, então nenhum gesto pode duplicar item.
+   */
+  private inserirNoEncaixe(sim: Sim, receita: ReceitaDeFusao, uid: string, destino?: number): boolean {
+    if (!this.podeInserir(sim, receita, uid)) return false;
+
+    const origem = this.slots.indexOf(uid);
+    if (origem >= 0) this.slots[origem] = null;
+
+    const indice = destino ?? this.slots.indexOf(null);
+    if (indice < 0 || indice >= this.slots.length) return false;
+    this.slots[indice] = uid;
+    return true;
   }
 
   // ── coluna direita: tipos de fabricação ───────────────────────────────────
@@ -405,7 +485,7 @@ function anelDeChance(fracao: number, cor: string): HTMLElement {
   const perimetro = 2 * Math.PI * R;
   const el = h('span.fab-anelinho');
   el.innerHTML = `
-    <svg viewBox="0 0 32 32">
+    <svg viewBox="0 0 32 32" aria-hidden="true" style="background:transparent;overflow:visible">
       <circle cx="16" cy="16" r="${R}" class="fab-anelinho-trilho"/>
       <circle cx="16" cy="16" r="${R}" class="fab-anelinho-arco" stroke="${cor}"
         stroke-dasharray="${(perimetro * fracao).toFixed(1)} ${perimetro.toFixed(1)}"

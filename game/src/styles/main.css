@@ -7248,3 +7248,150 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   border-left: 3px solid var(--good);
   background: linear-gradient(90deg, rgba(14, 46, 33, .95), rgba(6, 18, 24, .9));
 }
+
+/* ── Fabricação: câmara de síntese ilustrada e arraste ─────────────────────
+ *
+ * As colunas mantêm a chapa discreta da tela, sem uma segunda moldura interna.
+ * O reator usa uma peça com alfa
+ * real: encaixes e texto continuam DOM, portanto permanecem interativos,
+ * nítidos e acessíveis em qualquer escala.
+ */
+.camada:has(.fab) .fab-placa {
+  margin: 0 2px 2px;
+  padding: 4px 8px 7px 12px;
+  background: linear-gradient(90deg, rgba(19, 58, 78, .42), rgba(6, 18, 29, .12) 72%, transparent);
+  box-shadow: inset 2px 0 #59d8ff, inset 0 -1px rgba(89, 216, 255, .18);
+}
+
+.camada:has(.fab) .fab-reator {
+  position: relative;
+  border: 1px solid rgba(76, 158, 194, .22);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 49.8%, rgba(80, 190, 230, .045) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 49.8%, rgba(80, 190, 230, .045) 50%, transparent 50.2%),
+    radial-gradient(circle at 50% 46%, rgba(26, 103, 142, .18), transparent 50%),
+    linear-gradient(rgba(2, 7, 13, .9), rgba(2, 6, 12, .97)),
+    url('/assets/ui/provacao/backgrounds/prv_torre_fundo.webp') center / cover no-repeat;
+  box-shadow: inset 0 0 42px rgba(0, 0, 0, .52), 0 0 0 1px rgba(255,255,255,.015);
+}
+.camada:has(.fab) .fab-anel {
+  isolation: isolate;
+  overflow: visible;
+  width: min(100%, 430px);
+  max-width: 430px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.camada:has(.fab) .fab-anel::before {
+  content: '';
+  position: absolute;
+  inset: -5%;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/assets/ui/craft/sintese/reator-sintese.png') center / contain no-repeat;
+  filter: drop-shadow(0 0 14px rgba(35, 178, 231, .28));
+}
+.camada:has(.fab) .fab-anel::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(15, 55, 78, .5), rgba(2, 7, 13, .96) 68%);
+  box-shadow: inset 0 0 24px rgba(75, 205, 255, .12), 0 0 28px rgba(0, 0, 0, .65);
+}
+.camada:has(.fab) .fab-encaixe,
+.camada:has(.fab) .fab-encaixe.cheio {
+  z-index: 3;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(89, 199, 232, .52) !important;
+  border-radius: 8px !important;
+  background:
+    linear-gradient(145deg, rgba(13, 35, 50, .96), rgba(3, 10, 17, .97)) !important;
+  box-shadow: inset 0 0 0 2px rgba(4, 13, 22, .92), 0 4px 12px rgba(0,0,0,.6) !important;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.camada:has(.fab) .fab-encaixe::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  border: 1px solid rgba(82, 169, 202, .18);
+  border-radius: 5px;
+}
+.camada:has(.fab) .fab-encaixe:hover,
+.camada:has(.fab) .fab-encaixe.recebendo {
+  border-color: #78e6ff !important;
+  box-shadow: inset 0 0 16px rgba(55, 185, 230, .24), 0 0 16px rgba(55, 185, 230, .62) !important;
+}
+.camada:has(.fab) .fab-encaixe.recebendo {
+  transform: translate(-50%, -50%) scale(1.09);
+}
+.camada:has(.fab) .fab-encaixe.cheio {
+  border-color: rgba(255, 178, 48, .68) !important;
+  background: linear-gradient(145deg, rgba(27, 43, 52, .98), rgba(7, 17, 24, .98)) !important;
+}
+.camada:has(.fab) .fab-miolo {
+  z-index: 2;
+  width: 39%;
+  border: 1px solid rgba(80, 211, 255, .42) !important;
+  background: radial-gradient(circle at 50% 42%, rgba(22, 90, 120, .3), rgba(2, 7, 13, .96) 68%) !important;
+  box-shadow: inset 0 0 26px rgba(58, 184, 226, .12), 0 0 18px rgba(0,0,0,.72) !important;
+}
+.camada:has(.fab) .fab-pct { color: #e2f8ff; text-shadow: 0 0 12px rgba(86, 215, 255, .5); }
+
+.camada:has(.fab) .fab-peca[draggable='true'] { cursor: grab; }
+.camada:has(.fab) .fab-peca[draggable='true']:active { cursor: grabbing; }
+.camada:has(.fab) .fab-peca.arrastando {
+  opacity: .48;
+  transform: scale(.94);
+}
+.camada:has(.fab) .fab-dica { color: #8db2c4; letter-spacing: .15px; }
+
+/* O SVG da chance precisa ser só o anel. Qualquer regra genérica de painel ou
+ * filtro aplicada ao seu retângulo de 34 px voltava a desenhar exatamente o
+ * quadrado opaco apontado na referência. */
+.camada:has(.fab) .fab-anelinho,
+.camada:has(.fab) .fab-anelinho svg {
+  display: block;
+  overflow: visible;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+.camada:has(.fab) .fab-anelinho-trilho { fill: none; stroke: rgba(92, 129, 151, .28); }
+.camada:has(.fab) .fab-anelinho-arco { fill: none; }
+.camada:has(.fab) .fab-tipo.ativo {
+  /* A seleção já é dita pela borda e pelo filete lateral. Tingir o miolo com
+   * a cor da raridade criava, no Comum, o retângulo cinza que parecia fazer
+   * parte da imagem circular de porcentagem. */
+  background: rgba(6, 13, 21, .82) !important;
+}
+
+/* Oito filtros em duas linhas regulares: preserva o nome completo e oferece
+ * uma área de clique confortável mesmo na coluna estreita do inventário. */
+.camada:has(.fab) .fab-filtros {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.camada:has(.fab) .fab-chip {
+  width: 100%;
+  min-width: 0;
+  min-height: 25px;
+  padding: 4px 3px;
+  border-radius: 4px;
+  font: 600 8.5px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .15px;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camada:has(.fab) .fab-encaixe { transition: none; }
+}
