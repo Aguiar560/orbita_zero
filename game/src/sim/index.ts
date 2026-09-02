@@ -698,6 +698,10 @@ export class Sim {
     // próxima etapa da cadeia já estar ativa quando recebe o material que a
     // etapa anterior produz — sem retroatividade global e sem perder o fato.
     progressoDe(this.state, def).entregue = true;
+    // Entregue não ocupa mais uma das quatro vagas do HUD. Além de manter o
+    // estado atual correto, a leitura centralizada em `missoesRastreadas`
+    // também repara saves antigos que ainda tragam ids concluídos.
+    this.state.settings.pinnedMissions = this.state.settings.pinnedMissions.filter((id) => id !== def.id);
 
     const r = def.recompensa;
     for (const [moeda, n] of Object.entries(r.moedas ?? {})) this.grant(moeda as ResourceId, n);

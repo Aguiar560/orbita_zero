@@ -5,8 +5,7 @@ import { rarityInfo } from '@data/rarity';
 import { itemName } from '@sim/loot';
 import type { OfflineReport, Sim } from '@sim/index';
 import { RESOURCE_IDS, type ResourceId } from '@sim/types';
-import { MISSAO_POR_ID } from '@data/missoes';
-import { fracaoDe, progressoDe, situacaoDe } from '@sim/missoes';
+import { fracaoDe, missoesRastreadas, progressoDe, situacaoDe } from '@sim/missoes';
 import { h, clear, spriteIcon } from './dom';
 import { LeftRail } from './LeftRail';
 import { Anatomia } from './Anatomia';
@@ -406,13 +405,7 @@ export class Shell {
   private updateMissionHud(): void {
     if (!this.missionHud) return;
     const sim = this.sim;
-    const tracked = sim.state.settings.pinnedMissions
-      .map((id) => MISSAO_POR_ID.get(id))
-      .filter((def): def is NonNullable<typeof def> => !!def)
-      .filter((def) => {
-        const status = situacaoDe(sim.state, def, sim.alcanceLiberado);
-        return status === 'ativa' || status === 'pronta';
-      });
+    const tracked = missoesRastreadas(sim.state, sim.alcanceLiberado);
 
     this.missionHud.classList.toggle('visible', tracked.length > 0 && !sim.laboratorio.active);
     if (!tracked.length || sim.laboratorio.active) {

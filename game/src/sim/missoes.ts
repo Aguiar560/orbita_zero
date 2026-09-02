@@ -25,6 +25,8 @@ export type EstadoDeMissoes = Record<string, ProgressoDeMissao>;
 
 export type SituacaoDeMissao = 'oculta' | 'ativa' | 'pronta' | 'entregue';
 
+export const LIMITE_MISSOES_RASTREADAS = 4;
+
 /**
  * Progresso de uma missão, criado na primeira vez que alguém pergunta.
  *
@@ -165,6 +167,54 @@ export function situacaoDe(state: GameState, def: MissaoDef, alcance: number): S
   if (progressoDe(state, def).entregue) return 'entregue';
   if (!estaLiberada(state, def, alcance)) return 'oculta';
   return estaCompleta(state, def) ? 'pronta' : 'ativa';
+}
+
+/**
+ * Missões que realmente ocupam o rastreador.
+ *
+ * Saves antigos podiam conservar ids depois da entrega. O HUD escondia esses
+ * contratos concluídos, mas o botão contava os quatro ids brutos e parecia
+ * limitar o jogador a uma única missão visível. Esta leitura elimina inválidas,
+ * ocultas, entregues e duplicadas antes de aplicar o limite.
+ */
+export function missoesRastreadas(
+  state: GameState,
+  alcance: number,
+): MissaoDef[] {
+  const vistos = new Set<string>();
+  const rastreadas: MissaoDef[] = [];
+
+  for (const id of state.settings.pinnedMissions) {
+    if (vistos.has(id)) continue;
+    vistos.add(id);
+    const def = MISSAO_POR_ID.get(id);
+    if (!def) continue;
+    const situacao = situacaoDe(state, def, alcance);
+    if (situacao !== 'ativa' && situacao !== 'pronta') continue;
+    rastreadas.push(def);
+    if (rastreadas.length === LIMITE_MISSOES_RASTREADAS) break;
+  }
+
+  return rastreadas;
+}
+
+/** Alterna uma missão e devolve ao save somente as quatro vagas válidas. */
+export function alternarRastreioDeMissao(
+  state: GameState,
+  def: MissaoDef,
+  alcance: number,
+): void {
+  const ids = missoesRastreadas(state, alcance).map((missao) => missao.id);
+  const situacao = situacaoDe(state, def, alcance);
+  if (situacao !== 'ativa' && situacao !== 'pronta') {
+    state.settings.pinnedMissions = ids;
+    return;
+  }
+  state.settings.pinnedMissions = ids.includes(def.id)
+    ? ids.filter((id) => id !== def.id)
+    : ids.length < LIMITE_MISSOES_RASTREADAS
+      ? [...ids, def.id]
+      : ids;
 }
 
 /**

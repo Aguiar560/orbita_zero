@@ -6,7 +6,11 @@ import {
   type FatoDeJogo, type Objetivo,
 } from '@data/missoes';
 import { CONCESSAO_POR_ID } from '@data/balance/capacidade';
-import { aplicarFato, estaCompleta, progressoDe, situacaoDe } from '@sim/missoes';
+import { BOSSES } from '@data/bosses';
+import {
+  alternarRastreioDeMissao, aplicarFato, estaCompleta, LIMITE_MISSOES_RASTREADAS,
+  missoesRastreadas, progressoDe, situacaoDe,
+} from '@sim/missoes';
 
 /**
  * Missões (§27).
@@ -221,6 +225,43 @@ describe('o resgate', () => {
     expect(sim.state.medalhas).toBe(medalhasAntes);
     expect(sim.state.resources.cristal).toBe(cristalAntes);
     expect(progressoDe(sim.state, def).entregue).toBe(false);
+  });
+});
+
+describe('o rastreador', () => {
+  it('descarta vagas antigas e permite acompanhar até quatro missões válidas', () => {
+    const sim = new Sim(createState(14));
+    const primeira = MISSAO_POR_ID.get('elim_primeiros')!;
+    sim.setTestMode(true);
+    sim.state.codex.push(...BOSSES.map((boss) => boss.id));
+    progressoDe(sim.state, primeira).entregue = true;
+    sim.state.settings.pinnedMissions = [primeira.id];
+
+    const candidatas = MISSOES.filter((missao) => {
+      const situacao = situacaoDe(sim.state, missao, sim.alcanceLiberado);
+      return situacao === 'ativa' || situacao === 'pronta';
+    }).slice(0, LIMITE_MISSOES_RASTREADAS + 1);
+    expect(candidatas).toHaveLength(LIMITE_MISSOES_RASTREADAS + 1);
+
+    for (const missao of candidatas.slice(0, LIMITE_MISSOES_RASTREADAS)) {
+      alternarRastreioDeMissao(sim.state, missao, sim.alcanceLiberado);
+    }
+    expect(sim.state.settings.pinnedMissions).toEqual(candidatas.slice(0, 4).map((missao) => missao.id));
+
+    // A quinta não substitui nenhuma escolha existente.
+    alternarRastreioDeMissao(sim.state, candidatas[4]!, sim.alcanceLiberado);
+    expect(missoesRastreadas(sim.state, sim.alcanceLiberado)).toHaveLength(4);
+    expect(sim.state.settings.pinnedMissions).not.toContain(candidatas[4]!.id);
+  });
+
+  it('libera a vaga assim que a missão rastreada é entregue', () => {
+    const sim = new Sim(createState(15));
+    const def = MISSAO_POR_ID.get('coleta_ferrita')!;
+    sim.state.settings.pinnedMissions = [def.id];
+    sim.guardarMaterial('ferrita', 500);
+
+    expect(sim.resgatarMissao(def.id)).toBe(true);
+    expect(sim.state.settings.pinnedMissions).not.toContain(def.id);
   });
 });
 

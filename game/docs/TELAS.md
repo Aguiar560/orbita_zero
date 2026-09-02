@@ -329,7 +329,9 @@ tarefas: **9 contatos**, cada um com retrato, galáxia, afinidade e status.
   o grau que ajudou a construir.
 - **Quatro tipos de missão**, com os botões de tipo **abaixo** da confiança.
 - **Quatro rastreios simultâneos**. O HUD do combate mostra só nome, progresso e
-  estado: sem caixa, título, botão X ou hover que desvie atenção do jogo.
+  estado: sem caixa, título, botão X ou hover que desvie atenção do jogo. IDs de
+  missões já entregues são descartados antes de contar as vagas, inclusive em
+  saves antigos; o cabeçalho explicita `RASTREADAS n/4`.
 - Os 9 contatos usam o atlas lazy `characters`, gerado a partir de `Characters`.
   O frame 3×4 ancora o retrato no rodapé e isola a área interna exata do atlas;
   isso impede que a miniatura capture pixels do frame seguinte.
@@ -365,6 +367,8 @@ O Núcleo de Provação: **100 pisos**, um chefe único em cada. Torre de piso
 recuperadas pelo relógio e não por tique).
 
 - A cada 10 pisos o andar muda de cara — são os **marcos**, escritos à mão.
+- Retratos de chefe usam brilho, saturação e contraste próprios tanto na torre
+  quanto no detalhe; não herdam mais o tratamento apagado de estado inativo.
 - O piso é **recalculado por regra** a cada abertura. O save guarda **progresso,
   não conteúdo**: salvar os cem pisos gerados seria salvar o que o código refaz
   de graça e que ficaria velho no primeiro ajuste de balanceamento.

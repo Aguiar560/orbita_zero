@@ -13,7 +13,8 @@ import { RECURSO_POR_ID } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
 import { iconeDeItem } from '@data/items';
 import {
-  confiancaDe, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
+  alternarRastreioDeMissao, confiancaDe, LIMITE_MISSOES_RASTREADAS,
+  missoesRastreadas, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
   type SinalDeContato, type SituacaoDeMissao,
 } from '@sim/missoes';
 import type { Rarity, SlotId } from '@sim/types';
@@ -99,6 +100,7 @@ export class MissoesPanel implements Panel {
       ['concluidas', 'CONCLUÍDAS'],
     ];
     const ativas = sim.missoes.filter((m) => m.situacao === 'ativa').length;
+    const rastreadas = missoesRastreadas(sim.state, sim.alcanceLiberado).length;
 
     return h('.mis-topo', {},
       h('.mis-abas', {}, ...abas.map(([id, rotulo]) =>
@@ -110,6 +112,7 @@ export class MissoesPanel implements Panel {
       h('.mis-contadores', {},
         h('span.mis-cont', { title: 'Missões em andamento', text: `ATIVAS ${ativas}` }),
         h('span.mis-cont.pronta', { title: 'Prontas para entregar', text: `PRONTAS ${sim.missoesProntas}` }),
+        h('span.mis-cont.rastreada', { title: 'Missões visíveis no campo', text: `RASTREADAS ${rastreadas}/${LIMITE_MISSOES_RASTREADAS}` }),
         h('span.mis-cont.medalha', { title: 'Medalhas', text: `MEDALHAS ${fmt(sim.state.medalhas)}` }),
       ),
     );
@@ -354,17 +357,16 @@ export class MissoesPanel implements Panel {
 
   /** Escolha explícita do jogador: até quatro atalhos, salvos como preferência. */
   private botaoRastrear(sim: Sim, def: MissaoDef): HTMLElement {
-    const pinned = sim.state.settings.pinnedMissions.includes(def.id);
-    const limite = sim.state.settings.pinnedMissions.length >= 4;
+    const rastreadas = missoesRastreadas(sim.state, sim.alcanceLiberado);
+    const pinned = rastreadas.some((missao) => missao.id === def.id);
+    const limite = rastreadas.length >= LIMITE_MISSOES_RASTREADAS;
     return h(`button.mis-rastrear${pinned ? '.ativo' : ''}`, {
       text: pinned ? '★ RASTREANDO' : '☆ RASTREAR',
       title: pinned ? 'Remover da tela principal' : limite ? 'Você já rastreia quatro missões' : 'Mostrar na tela principal',
       'aria-pressed': String(pinned),
       disabled: !pinned && limite,
       onclick: () => {
-        sim.state.settings.pinnedMissions = pinned
-          ? sim.state.settings.pinnedMissions.filter((id) => id !== def.id)
-          : [...sim.state.settings.pinnedMissions, def.id];
+        alternarRastreioDeMissao(sim.state, def, sim.alcanceLiberado);
         sim.touch();
       },
     });

@@ -36,7 +36,7 @@ controles Idle/manual e migração de save **v5** estão implementados. Antes de
 novo conteúdo, manter uma rodada curta de QA visual nos retratos de Missões e
 na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PLANO.md).
 
-### Entrega de 02/09/2026 — cenários e síntese
+### Entrega de 02/09/2026 — cenários, síntese, Provação e Missões
 
 - As seis superfícies atmosféricas longas saíram do teste e entraram nas
   galáxias 1–6. Junto do fim do rodízio dos cenários anteriores, a campanha
@@ -47,6 +47,9 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
   desenham fundo retangular.
 - Os dez encaixes aceitam arrastar e soltar, inclusive substituição de uma peça
   antes da fusão; clique continua disponível e favoritos permanecem protegidos.
+- Os retratos dos chefes da Provação ganharam contraste e presença; o rastreador
+  de Missões passou a ignorar IDs já entregues e preserva quatro vagas reais,
+  inclusive ao carregar saves antigos.
 - Verificação: typecheck e 21 testes focados (fundos + fusão) passando; QA
   visual em 1280×720.
 

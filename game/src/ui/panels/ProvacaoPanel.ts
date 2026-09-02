@@ -319,7 +319,7 @@ export class ProvacaoPanel implements Panel {
       h('.prv-piso-arte', {},
         estado === 'travado'
           ? prvImage('icons/prv_icone_cadeado.png', 'prv-cadeado', 'Bloqueado')
-          : spriteIcon(chefe.sprite, marco ? 46 : 34),
+          : spriteIcon(chefe.sprite, marco ? 50 : 40, 'prv-chefe-sprite'),
       ),
       h('.prv-piso-txt', {},
         h('strong', { text: estado === 'travado' ? '???' : chefe.nome }),
@@ -366,7 +366,7 @@ export class ProvacaoPanel implements Panel {
       h('.prv-secao-tit', { text: `PISO ${piso}` }),
 
       h('.prv-chefe', { style: { borderColor: marco ? '#FFB638' : cam.cor } },
-        h('.prv-chefe-arte', {}, spriteIcon(chefe.sprite, 72)),
+        h('.prv-chefe-arte', {}, spriteIcon(chefe.sprite, 80, 'prv-chefe-sprite')),
         h('.prv-chefe-txt', {},
           ...(marco ? [h('span.prv-tag-marco', { text: 'GUARDIÃO DE MARCO' })] : []),
           h('strong', { text: chefe.nome.toUpperCase() }),

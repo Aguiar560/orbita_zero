@@ -29,7 +29,8 @@ ou de versão futura retorna `null` em vez de travar a inicialização.
 O estado persistido guarda apenas ids em `settings.pinnedMissions`; o painel
 resolve nome, requisito, progresso e estado a partir do catálogo e do `Sim`.
 Isso evita salvar texto ou porcentagem derivados e garante que entregar,
-bloquear ou remover uma missão também limpe o rastreio. O limite é quatro.
+bloquear ou remover uma missão também limpe o rastreio. IDs concluídos de saves
+antigos não ocupam vagas invisíveis. O limite efetivo é quatro.
 
 ### Calibração de colisão — `sim/laboratorio.ts`, `hitbox-calibrations.ts`
 

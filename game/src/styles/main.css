@@ -7249,6 +7249,43 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   background: linear-gradient(90deg, rgba(14, 46, 33, .95), rgba(6, 18, 24, .9));
 }
 
+/* Retrato do chefe: a arte não é estado desabilitado. O tratamento anterior
+ * somava opacidade baixa, grayscale e brilho reduzido sobre sprites já escuros. */
+.prv-piso-arte,
+.prv-piso.marco .prv-piso-arte {
+  width: 46px;
+  height: 46px;
+  opacity: 1;
+  filter: none;
+  border: 1px solid rgba(103, 181, 211, .34);
+  border-radius: 5px;
+  background: radial-gradient(circle, rgba(61, 137, 169, .18), rgba(2, 7, 12, .88) 72%);
+  box-shadow: inset 0 0 13px rgba(72, 174, 211, .12);
+}
+.prv-piso.marco .prv-piso-arte { width: 52px; height: 52px; }
+.prv-piso-arte > .prv-chefe-sprite,
+.prv-chefe-arte > .prv-chefe-sprite {
+  filter: saturate(1.2) brightness(1.32) contrast(1.08) drop-shadow(0 2px 5px rgba(55, 175, 220, .38));
+}
+.prv-piso.focado .prv-piso-arte {
+  opacity: 1;
+  filter: none;
+  border-color: rgba(91, 211, 245, .68);
+  box-shadow: inset 0 0 16px rgba(72, 188, 229, .18), 0 0 10px rgba(58, 180, 224, .18);
+}
+.prv-chefe-arte {
+  width: 88px;
+  height: 88px;
+  border-color: rgba(118, 197, 225, .5);
+  background: radial-gradient(circle, rgba(62, 146, 179, .24), rgba(2, 7, 12, .92) 72%);
+  box-shadow: inset 0 0 20px rgba(72, 185, 225, .16), 0 5px 16px rgba(0, 0, 0, .48);
+}
+.mis-cont.rastreada {
+  min-width: 96px;
+  color: #9bdfff;
+  border-color: rgba(89, 199, 232, .4) !important;
+}
+
 /* ── Fabricação: câmara de síntese ilustrada e arraste ─────────────────────
  *
  * As colunas mantêm a chapa discreta da tela, sem uma segunda moldura interna.
