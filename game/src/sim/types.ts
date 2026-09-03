@@ -491,6 +491,11 @@ export interface GameState {
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;
 
+  /** Passe de conveniência. Timestamp permite expirar mesmo com o jogo fechado. */
+  vip: {
+    expiresAt: number;
+  };
+
   /**
    * Cargas de serviço compradas e ainda não usadas. id → quantidade.
    *

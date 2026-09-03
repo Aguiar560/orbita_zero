@@ -77,6 +77,8 @@ export class LeftRail {
     const stats = sim.stats;
     const hull = sim.hull;
     const nivelDaNave = sim.state.naves[sim.state.hull]?.nivel ?? 1;
+    const manualDisponivel = sim.controleManualDisponivel;
+    const manualAtivo = manualDisponivel && sim.state.settings.controlMode === 'manual';
 
     clear(this.body).append(
       // ── nave ──────────────────────────────────────────────────────────────
@@ -108,12 +110,12 @@ export class LeftRail {
       h('.rail-section', { text: 'Combate' }),
       h('.rail-module.rail-module-stats', {},
         h('.rail-stats', {},
-          row('DPS', fmt(dps(stats)), '#ff9a4d'),
-          row('Vida efetiva', fmt(effectiveHp(stats)), '#38a9ff'),
-          row('Limpar', duration(sim.clearTime), '#7ed957'),
-          row('Sobrevive', duration(sim.survivalWindow), sim.isStalled ? '#ff5d7a' : '#9fe8ff'),
-          row('Crítico', `${pct(stats.critChance)} / +${pct(stats.critDano, 0)}`, '#ffe08a'),
-          row('Sorte', `+${pct(stats.sorte)}`, '#c060ff'),
+          row('DPS', fmt(dps(stats)), '#ff9a4d', 'Dano médio que a nave causa por segundo.'),
+          row('Vida efetiva', fmt(effectiveHp(stats)), '#38a9ff', 'Casco, escudo e regeneração estimada durante um combate.'),
+          row('Limpar', duration(sim.clearTime), '#7ed957', 'Tempo estimado para derrotar todo o encontro atual.'),
+          row('Sobrevive', duration(sim.survivalWindow), sim.isStalled ? '#ff5d7a' : '#9fe8ff', 'Tempo estimado até a nave cair sob o dano inimigo atual.'),
+          row('Crítico', `${pct(stats.critChance)} / +${pct(stats.critDano, 0)}`, '#ffe08a', 'Chance de acerto crítico e dano extra causado quando ele acontece.'),
+          row('Sorte', `+${pct(stats.sorte)}`, '#c060ff', 'Melhora a raridade dos equipamentos derrubados em combate.'),
         ),
       ),
       // Nao ha aviso de "progresso travado" aqui, e a ausencia e deliberada.
@@ -140,16 +142,22 @@ export class LeftRail {
       h('.rail-section', { text: 'Piloto' }),
       h('.rail-module.rail-module-pilot', {},
         h('.rail-control', { role: 'group', 'aria-label': 'Modo de pilotagem' },
-          h(`button.rail-control-mode${sim.state.settings.controlMode === 'idle' ? '.active' : ''}`, {
+          h(`button.rail-control-mode${!manualAtivo ? '.active' : ''}`, {
             text: 'IDLE', title: 'A IA pilota a nave', 'aria-pressed': String(sim.state.settings.controlMode === 'idle'),
             onclick: () => { sim.state.settings.controlMode = 'idle'; sim.touch(); },
           }),
-          h(`button.rail-control-mode.manual${sim.state.settings.controlMode === 'manual' ? '.active' : ''}`, {
-            text: 'PILOTAR', title: 'Controlar com WASD ou setas', 'aria-pressed': String(sim.state.settings.controlMode === 'manual'),
-            onclick: () => { sim.state.settings.controlMode = 'manual'; sim.touch(); },
+          h(`button.rail-control-mode.manual${manualAtivo ? '.active' : ''}`, {
+            text: 'PILOTAR',
+            title: manualDisponivel ? 'Controlar com WASD ou setas' : 'Disponível com VIP após o nível 15',
+            'aria-pressed': String(manualAtivo),
+            disabled: !manualDisponivel,
+            onclick: () => { if (manualDisponivel) sim.state.settings.controlMode = 'manual'; sim.touch(); },
           }),
         ),
-        h('span.tiny.muted.rail-control-help', { text: sim.state.settings.controlMode === 'manual' ? 'WASD / setas · disparo automático' : 'IA no comando' }),
+        h('span.tiny.muted.rail-control-help', {
+          text: manualAtivo ? 'WASD / setas · disparo automático'
+            : manualDisponivel ? 'IA no comando' : 'Manual requer VIP no nível 15+',
+        }),
         h('.rail-pilots', {}, ...PILOTS.map((p) =>
           h(`button.rail-pilot${sim.state.settings.pilot === p.id ? '.active' : ''}`, {
             text: p.label,
@@ -300,8 +308,11 @@ export class LeftRail {
 
 }
 
-function row(label: string, value: string, color: string): HTMLElement {
-  return h('.rail-row', {},
+function row(label: string, value: string, color: string, descricao: string): HTMLElement {
+  return h('.rail-row', {
+    title: descricao,
+    'aria-label': `${label}: ${value}. ${descricao}`,
+  },
     h('span.muted.tiny', { text: label }),
     h('strong.tiny', { text: value, style: { color } }),
   );

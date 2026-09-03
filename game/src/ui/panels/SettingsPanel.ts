@@ -99,6 +99,8 @@ export class SettingsPanel implements Panel {
 
   private jogo(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
+    const vip = sim.vipAtivo;
+    const manualDisponivel = sim.controleManualDisponivel;
     return [
       // O guia abre a PRIMEIRA aba de proposito. Ja esteve em "Dados", ao lado de
       // exportar e apagar save, e a pergunta "como eu vejo o tutorial de novo?"
@@ -123,8 +125,14 @@ export class SettingsPanel implements Panel {
       escolha('Quem pilota', [
         ['idle', 'IA'],
         ['manual', 'Você'],
-      ], s.controlMode, (v) => { s.controlMode = v as typeof s.controlMode; sim.touch(); },
-      s.controlMode === 'manual' ? 'WASD ou setas · tiro automático' : ''),
+      ], manualDisponivel ? s.controlMode : 'idle', (v) => {
+        if (v === 'manual' && !manualDisponivel) return;
+        s.controlMode = v as typeof s.controlMode;
+        sim.touch();
+      }, manualDisponivel
+        ? (s.controlMode === 'manual' ? 'WASD ou setas · tiro automático' : '')
+        : 'A partir do nível 15, o controle manual requer VIP',
+      manualDisponivel ? [] : ['manual']),
       escolha('Postura da IA', [
         ['agressivo', 'Agressiva'],
         ['evasivo', 'Evasiva'],
@@ -137,7 +145,8 @@ export class SettingsPanel implements Panel {
       toggle('Números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); }),
 
       h('h3.section', { text: 'Automação' }),
-      toggle('Equipar o melhor', s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); }),
+      toggle('Equipar o melhor', vip && s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); },
+        vip ? 'Compara cada novo item com o equipamento atual' : 'Benefício VIP', !vip),
       h('.setting', {},
         h('.setting-text', {}, h('strong', { text: 'Descartar abaixo de' })),
         h('select.select', {
@@ -150,7 +159,11 @@ export class SettingsPanel implements Panel {
       escolha('Destino do descarte', [
         ['desmontar', 'Desmontar'],
         ['vender', 'Vender'],
-      ], s.autoDispose, (v) => { s.autoDispose = v as typeof s.autoDispose; sim.touch(); }),
+      ], vip ? s.autoDispose : 'desmontar', (v) => {
+        if (v === 'vender' && !vip) return;
+        s.autoDispose = v as typeof s.autoDispose;
+        sim.touch();
+      }, vip ? '' : 'Venda automática por raridade é um benefício VIP', vip ? [] : ['vender']),
 
       h('h3.section', { text: 'Offline' }),
       linha('Teto de progresso', duration(sim.offlineCap)),
@@ -404,6 +417,7 @@ function toggle(
   value: boolean,
   onChange: (v: boolean) => void,
   dica?: string,
+  disabled = false,
 ): HTMLElement {
   return h('.setting', {},
     h('.setting-text', {},
@@ -413,6 +427,7 @@ function toggle(
     h(`button.switch${value ? '.on' : ''}`, {
       'aria-label': label,
       'aria-pressed': String(value),
+      disabled,
       onclick: (e: Event) => {
         onChange(!value);
         const control = e.currentTarget as HTMLElement;
@@ -437,6 +452,7 @@ function escolha<T extends string>(
   atual: T,
   aoTrocar: (v: T) => void,
   nota = '',
+  desabilitadas: readonly T[] = [],
 ): HTMLElement {
   return h('.setting', {},
     h('.setting-text', {},
@@ -447,6 +463,7 @@ function escolha<T extends string>(
       ...opcoes.map(([valor, nome]) => h(`button.chip${valor === atual ? '.active' : ''}`, {
         text: nome,
         'aria-pressed': String(valor === atual),
+        disabled: desabilitadas.includes(valor),
         onclick: () => aoTrocar(valor),
       })),
     ),

@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 02/09/2026 · 782 testes passando · registro consolidado
+**Última atualização:** 03/09/2026 · 788 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -35,6 +35,26 @@ Provação agora tem os cinco modificadores mecânicos; acessibilidade base,
 controles Idle/manual e migração de save **v5** estão implementados. Antes de
 novo conteúdo, manter uma rodada curta de QA visual nos retratos de Missões e
 na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PLANO.md).
+
+### Entrega de 03/09/2026 — Loja e Passe VIP
+
+- A Loja passou a ter quatro áreas: Serviços, Baús, Cristais e VIP. O Refino de
+  Cristal foi removido; cristais não podem mais ser fabricados a partir de
+  núcleos.
+- A compra de cápsulas saiu da tela de abertura e foi centralizada na Loja, com
+  escolha explícita entre Prata, Ouro e Singularidade. O baú comprado entra no
+  estoque e continua sendo aberto na Câmara de Aquisição.
+- Cinco pacotes de cristais foram preparados entre R$ 4,90 e R$ 99,90. Os
+  botões permanecem bloqueados e dizem “Em breve” até a integração do provedor
+  de pagamento; nenhum crédito fictício é concedido pelo cliente.
+- O Passe VIP custa **500 cristais**, equivalente ao pacote de R$ 24,90, dura
+  30 dias e acumula renovações. Ele libera seis tentativas na Provação, cinco
+  missões rastreadas, auto-equipar, venda automática por raridade e pilotagem
+  manual depois do nível 15. Até o nível 14, manual continua livre para todos.
+- O save subiu para v11 e guarda apenas a expiração do passe. Limites e acesso
+  são derivados desse timestamp, inclusive depois de fechar o jogo.
+- Verificação: typecheck, build de produção e 788 testes passando; QA visual em
+  desktop e fluxo móvel de uma coluna.
 
 ### Entrega de 02/09/2026 — cenários, síntese, Provação e Missões
 

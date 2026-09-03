@@ -4,6 +4,10 @@ import {
   type ShopCategory, type ShopItem,
 } from '@data/shop';
 import { nivelExigido } from '@data/balance/curvas';
+import { CHESTS, type ChestDef } from '@data/chests';
+import {
+  CRYSTAL_PACKAGES, VIP_COST_CRYSTALS, VIP_DURATION_DAYS, cristaisDoPacote,
+} from '@sim/vip';
 import type { ResourceId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
@@ -18,6 +22,8 @@ const CATEGORY: Record<ShopCategory, { label: string; cor: string }> = {
 
 const CATEGORIES: readonly ShopCategory[] = ['logistica', 'sistemas', 'cambio'];
 const SERVICE_ART_ROOT = '/assets/ui/loja/services';
+const CHEST_ART_ROOT = '/assets/ui/baus/chests';
+type ShopSection = 'servicos' | 'baus' | 'cristais' | 'vip';
 
 function serviceArt(file: string, className: string): HTMLElement {
   return h(`img.${className}`, {
@@ -44,6 +50,7 @@ export class ShopPanel implements Panel {
   overlay = true;
 
   private selected = 'carga';
+  private section: ShopSection = 'servicos';
   private feedback = 'SELECIONE UM SERVIÇO';
 
   badge(sim: Sim): number {
@@ -57,13 +64,18 @@ export class ShopPanel implements Panel {
 
     return h(`.panel-body.loj${sim.state.settings.reduceEffects ? '.efeitos-reduzidos' : ''}`, {},
       this.header(sim),
-      h('.loj-corpo', {},
-        this.catalog(sim, visible),
-        this.serviceTerminal(sim, selected),
-        this.serviceContext(sim, selected),
-      ),
+      this.tabs(sim),
+      this.section === 'servicos'
+        ? h('.loj-corpo', {},
+            this.catalog(sim, visible),
+            this.serviceTerminal(sim, selected),
+            this.serviceContext(sim, selected),
+          )
+        : this.section === 'baus' ? this.chestStore(sim)
+          : this.section === 'cristais' ? this.crystalStore()
+            : this.vipArea(sim),
       h('.loj-rodape', {},
-        h('span', { text: 'A CENTRAL COMPRA TEMPO E FLEXIBILIDADE — NUNCA PODER EXCLUSIVO.' }),
+        h('span', { text: 'CONVENIÊNCIA, ESCOLHA E TRANSAÇÕES TRANSPARENTES.' }),
         h('span', { text: this.feedback }),
       ),
     );
@@ -74,8 +86,8 @@ export class ShopPanel implements Panel {
       h('.loj-titulo', {},
         spriteIcon('aba/loja', 42),
         h('.loj-titulo-copy', {},
-          h('h1', { text: 'CENTRAL DE SERVIÇOS' }),
-          h('span', { text: 'Logística, reconfiguração e câmbio auditável' }),
+          h('h1', { text: 'ÓRBITA MARKET' }),
+          h('span', { text: 'Serviços, cápsulas, cristais e acesso VIP' }),
         ),
       ),
       h('.loj-saldos', {}, ...(['sucata', 'nucleo', 'cristal'] as ResourceId[]).map((id) => {
@@ -85,6 +97,111 @@ export class ShopPanel implements Panel {
           h('span', {}, h('small', { text: meta.label.toUpperCase() }), h('strong', { text: fmt(sim.state.resources[id]) })),
         );
       })),
+    );
+  }
+
+  private tabs(sim: Sim): HTMLElement {
+    const tabs: readonly [ShopSection, string, string][] = [
+      ['servicos', 'SERVIÇOS', 'Logística e sistemas'],
+      ['baus', 'BAÚS', 'Escolha sua cápsula'],
+      ['cristais', 'CRISTAIS', 'Pacotes de crédito'],
+      ['vip', 'VIP', sim.vipAtivo ? `${sim.vipDiasRestantes} dias restantes` : 'Passe de 30 dias'],
+    ];
+    return h('nav.loj-abas', { role: 'tablist', 'aria-label': 'Áreas da loja' },
+      ...tabs.map(([id, label, hint]) => h(`button.loj-aba${this.section === id ? '.ativa' : ''}${id === 'vip' ? '.vip' : ''}`, {
+        role: 'tab',
+        'aria-selected': String(this.section === id),
+        onclick: () => { this.section = id; this.feedback = `${label} EM FOCO`; sim.touch(); },
+      }, h('strong', { text: label }), h('span', { text: hint }))),
+    );
+  }
+
+  private chestStore(sim: Sim): HTMLElement {
+    const vendaveis = CHESTS.filter((chest) => chest.buy > 0);
+    return h('.loj-vitrine.loj-vitrine-baus', {},
+      h('.loj-vitrine-topo', {},
+        h('span', { text: 'CÂMARA DE AQUISIÇÃO' }),
+        h('h2', { text: 'ESCOLHA O BAÚ QUE DESEJA COMPRAR' }),
+        h('p', { text: 'A cápsula entra no estoque de Baús. Abra quando quiser e consulte ali as probabilidades completas.' }),
+      ),
+      h('.loj-cards.loj-bau-cards', {}, ...vendaveis.map((chest) => this.chestCard(sim, chest))),
+    );
+  }
+
+  private chestCard(sim: Sim, chest: ChestDef): HTMLElement {
+    const stock = sim.state.chests[chest.id] ?? 0;
+    return h('.loj-card.loj-bau-card', { style: { '--loj-cor': chest.color } as Partial<CSSStyleDeclaration> },
+      h('.loj-card-selo', { text: `${chest.items[0]}–${chest.items[1]} ITENS` }),
+      h('img.loj-bau-art', { src: `${CHEST_ART_ROOT}/${chest.art}`, alt: chest.name, decoding: 'async', draggable: false }),
+      h('h3', { text: chest.name.toUpperCase() }),
+      h('p', { text: `Bônus de nível +${chest.ilvlBonus} · ${stock} no estoque` }),
+      h('button.btn.loj-card-acao', {
+        disabled: !sim.can('cristal', chest.buy),
+        onclick: () => {
+          if (!sim.buyChest(chest.id)) return;
+          this.feedback = `${chest.name.toUpperCase()} ADICIONADA AO ESTOQUE`;
+          sim.touch();
+        },
+      }, h('span', { text: 'COMPRAR' }), h('.loj-preco', {}, spriteIcon('moeda_2', 20), h('strong', { text: fmt(chest.buy) }))),
+    );
+  }
+
+  private crystalStore(): HTMLElement {
+    const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    return h('.loj-vitrine.loj-vitrine-cristais', {},
+      h('.loj-vitrine-topo', {},
+        h('span', { text: 'RESERVA DE CRISTAIS' }),
+        h('h2', { text: 'PACOTES PARA PAGAMENTO EM DINHEIRO REAL' }),
+        h('p', { text: 'Valores e bônus já definidos. A cobrança permanece bloqueada até a integração segura do provedor de pagamento.' }),
+      ),
+      h('.loj-cards.loj-cristal-cards', {}, ...CRYSTAL_PACKAGES.map((pack) => h('.loj-card.loj-cristal-card', {},
+        pack.badge ? h('.loj-card-selo', { text: pack.badge }) : null,
+        h('.loj-cristal-gema', {}, spriteIcon('moeda_2', 52)),
+        h('h3', { text: pack.name.toUpperCase() }),
+        h('strong.loj-cristal-total', { text: `${fmt(cristaisDoPacote(pack))} CRISTAIS` }),
+        h('p', { text: pack.bonus > 0 ? `${fmt(pack.base)} + ${fmt(pack.bonus)} de bônus` : 'Pacote direto, sem bônus' }),
+        h('button.btn.loj-card-acao', { disabled: true, title: 'Pagamento será implementado em uma próxima etapa' },
+          h('span', { text: 'EM BREVE' }), h('strong', { text: brl.format(pack.priceCents / 100) })),
+      ))),
+    );
+  }
+
+  private vipArea(sim: Sim): HTMLElement {
+    const benefits = [
+      ['6', 'tentativas na Provação'],
+      ['AUTO', 'venda por raridade'],
+      ['AUTO', 'equipar o melhor item'],
+      ['5', 'missões rastreadas'],
+      ['DUAL', 'Idle e pilotagem manual'],
+    ] as const;
+    return h('.loj-vitrine.loj-vitrine-vip', {},
+      h('.loj-vip-hero', {},
+        h('.loj-vip-emblema', { text: 'VIP' }),
+        h('.loj-vip-copy', {},
+          h('span', { text: sim.vipAtivo ? 'PROTOCOLO VIP ATIVO' : 'PROTOCOLO DE COMANDO' }),
+          h('h2', { text: `PASSE VIP · ${VIP_DURATION_DAYS} DIAS` }),
+          h('p', { text: sim.vipAtivo
+            ? `Acesso ativo por mais ${sim.vipDiasRestantes} dias. Renovar agora acumula mais 30 dias.`
+            : 'Mais automação e liberdade de pilotagem, sem adicionar dano, defesa ou atributos exclusivos.' }),
+        ),
+        h('button.btn.loj-vip-comprar', {
+          disabled: !sim.can('cristal', VIP_COST_CRYSTALS),
+          onclick: () => {
+            if (!sim.buyVip()) return;
+            this.feedback = `PASSE VIP ATIVO · ${sim.vipDiasRestantes} DIAS`;
+          },
+        },
+          h('span', { text: sim.vipAtivo ? 'RENOVAR PASSE' : 'ATIVAR PASSE' }),
+          h('.loj-preco', {}, spriteIcon('moeda_2', 22), h('strong', { text: fmt(VIP_COST_CRYSTALS) })),
+        ),
+      ),
+      h('.loj-vip-beneficios', {}, ...benefits.map(([signal, label]) => h('.loj-vip-beneficio', {},
+        h('strong', { text: signal }), h('span', { text: label }),
+      ))),
+      h('.loj-vip-nota', {},
+        h('strong', { text: 'CONVERSÃO TRANSPARENTE' }),
+        h('span', { text: '500 cristais correspondem ao pacote Comando de R$ 24,90. O passe não concede poder de combate exclusivo.' }),
+      ),
     );
   }
 
@@ -127,7 +244,8 @@ export class ShopPanel implements Panel {
     const cost = shopCost(item, owned);
     const meta = RESOURCE_META[item.currency];
     const ready = sim.canBuyShopItem(item.id);
-    const fullAttempt = item.effect === 'tentativa_provacao' && sim.provacaoTentativas.tem >= 5;
+    const fullAttempt = item.effect === 'tentativa_provacao'
+      && sim.provacaoTentativas.tem >= sim.provacaoTentativas.max;
     const emptyMatrix = item.effect === 'refaz_matriz' && sim.matrixSpent === 0;
     const exhausted = limit > 0 && owned >= limit;
     const buttonText = exhausted ? 'ESTOQUE ESGOTADO'
@@ -209,7 +327,7 @@ export class ShopPanel implements Panel {
     ];
     if (limit > 0) rows.push(['Disponíveis agora', String(Math.max(0, limit - owned))]);
     if (item.effect === 'carga') rows.push(['Capacidade atual', `${sim.cargoSlots} itens`]);
-    if (item.effect === 'tentativa_provacao') rows.push(['Tentativas', `${sim.provacaoTentativas.tem} / 5`]);
+    if (item.effect === 'tentativa_provacao') rows.push(['Tentativas', `${sim.provacaoTentativas.tem} / ${sim.provacaoTentativas.max}`]);
     if (item.effect === 'refaz_matriz') rows.push(['Pontos alocados', String(sim.matrixSpent)]);
     return h('.loj-estado', {}, ...rows.map(([label, value]) => h('.loj-estado-row', {}, h('span', { text: label }), h('strong', { text: value }))));
   }

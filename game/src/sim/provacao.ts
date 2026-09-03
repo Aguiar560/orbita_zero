@@ -1,6 +1,7 @@
 import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import { requisitoSatisfeito } from './missoes';
 import type { GameState } from './types';
+import { limiteTentativasDaProvacao } from './vip';
 
 /**
  * Progressão do Núcleo de Provação (§32–§35 e o prompt mestre do modo).
@@ -80,19 +81,20 @@ export const TENTATIVA_INTERVALO = 30 * 60;
  */
 export function tentativasDisponiveis(state: GameState, agora = Date.now()): number {
   const p = state.provacao;
+  const limite = limiteTentativasDaProvacao(state, agora);
   // A tela lê daqui. Sem esta linha ela mostraria "0 tentativas" enquanto o
   // modo de teste deixa entrar — e o jogador acreditaria na tela, que é o
   // certo a fazer quando ela e o comportamento discordam.
-  if (state.settings.testMode) return TENTATIVAS_MAX;
-  if (p.tentativas >= TENTATIVAS_MAX) return TENTATIVAS_MAX;
+  if (state.settings.testMode) return limite;
+  if (p.tentativas >= limite) return limite;
   const decorrido = Math.max(0, (agora - p.tentativasEm) / 1000);
   const recuperadas = Math.floor(decorrido / TENTATIVA_INTERVALO);
-  return Math.min(TENTATIVAS_MAX, p.tentativas + recuperadas);
+  return Math.min(limite, p.tentativas + recuperadas);
 }
 
 /** Segundos até a próxima tentativa voltar. Zero quando está no teto. */
 export function segundosParaProximaTentativa(state: GameState, agora = Date.now()): number {
-  if (tentativasDisponiveis(state, agora) >= TENTATIVAS_MAX) return 0;
+  if (tentativasDisponiveis(state, agora) >= limiteTentativasDaProvacao(state, agora)) return 0;
   const decorrido = Math.max(0, (agora - state.provacao.tentativasEm) / 1000);
   return Math.max(0, TENTATIVA_INTERVALO - (decorrido % TENTATIVA_INTERVALO));
 }
@@ -116,7 +118,7 @@ export function gastarTentativa(state: GameState, agora = Date.now()): boolean {
 
   // Quem estava no teto começa a contar a recuperação AGORA; quem já estava
   // recuperando mantém o relógio, senão gastar reiniciaria o progresso parcial.
-  if (p.tentativas >= TENTATIVAS_MAX) p.tentativasEm = agora;
+  if (p.tentativas >= limiteTentativasDaProvacao(state, agora)) p.tentativasEm = agora;
   else p.tentativasEm += Math.floor((agora - p.tentativasEm) / TENTATIVA_INTERVALO) * TENTATIVA_INTERVALO * 1000;
 
   p.tentativas = tem - 1;

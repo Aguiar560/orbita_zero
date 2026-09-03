@@ -13,10 +13,11 @@ import { RECURSO_POR_ID } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
 import { iconeDeItem } from '@data/items';
 import {
-  alternarRastreioDeMissao, confiancaDe, LIMITE_MISSOES_RASTREADAS,
+  alternarRastreioDeMissao, confiancaDe,
   missoesRastreadas, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
   type SinalDeContato, type SituacaoDeMissao,
 } from '@sim/missoes';
+import { limiteDeMissoes } from '@sim/vip';
 import type { Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, portraitIcon, spriteIcon, progressBar } from '../dom';
@@ -101,6 +102,7 @@ export class MissoesPanel implements Panel {
     ];
     const ativas = sim.missoes.filter((m) => m.situacao === 'ativa').length;
     const rastreadas = missoesRastreadas(sim.state, sim.alcanceLiberado).length;
+    const limiteRastreadas = limiteDeMissoes(sim.state);
 
     return h('.mis-topo', {},
       h('.mis-abas', {}, ...abas.map(([id, rotulo]) =>
@@ -112,7 +114,7 @@ export class MissoesPanel implements Panel {
       h('.mis-contadores', {},
         h('span.mis-cont', { title: 'Missões em andamento', text: `ATIVAS ${ativas}` }),
         h('span.mis-cont.pronta', { title: 'Prontas para entregar', text: `PRONTAS ${sim.missoesProntas}` }),
-        h('span.mis-cont.rastreada', { title: 'Missões visíveis no campo', text: `RASTREADAS ${rastreadas}/${LIMITE_MISSOES_RASTREADAS}` }),
+        h('span.mis-cont.rastreada', { title: 'Missões visíveis no campo', text: `RASTREADAS ${rastreadas}/${limiteRastreadas}` }),
         h('span.mis-cont.medalha', { title: 'Medalhas', text: `MEDALHAS ${fmt(sim.state.medalhas)}` }),
       ),
     );
@@ -355,14 +357,15 @@ export class MissoesPanel implements Panel {
     );
   }
 
-  /** Escolha explícita do jogador: até quatro atalhos, salvos como preferência. */
+  /** Escolha explícita: quatro atalhos, ou cinco enquanto o VIP estiver ativo. */
   private botaoRastrear(sim: Sim, def: MissaoDef): HTMLElement {
     const rastreadas = missoesRastreadas(sim.state, sim.alcanceLiberado);
     const pinned = rastreadas.some((missao) => missao.id === def.id);
-    const limite = rastreadas.length >= LIMITE_MISSOES_RASTREADAS;
+    const maximo = limiteDeMissoes(sim.state);
+    const limite = rastreadas.length >= maximo;
     return h(`button.mis-rastrear${pinned ? '.ativo' : ''}`, {
       text: pinned ? '★ RASTREANDO' : '☆ RASTREAR',
-      title: pinned ? 'Remover da tela principal' : limite ? 'Você já rastreia quatro missões' : 'Mostrar na tela principal',
+      title: pinned ? 'Remover da tela principal' : limite ? `Você já rastreia ${maximo} missões` : 'Mostrar na tela principal',
       'aria-pressed': String(pinned),
       disabled: !pinned && limite,
       onclick: () => {

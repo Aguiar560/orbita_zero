@@ -197,19 +197,48 @@ function resourceEntry(resource: RecursoDef): HTMLElement {
 function elementos(): HTMLElement {
   return h('section', {},
     h('h3.section', { text: 'Relações elementais' }),
-    h('p.muted.hint', { text: 'Fogo → Gelo → Cósmico → Raio → Químico → Fogo. Padrão permanece neutro.' }),
+    elementalCycle(),
     h('.codex-element-grid', {}, ...ELEMENTS.map((element) => {
       const target = element.bate ? getElement(element.bate) : null;
       const counter = counterOf(element.id);
       const counterInfo = counter ? getElement(counter) : null;
       return h('article.codex-element', { style: `--codex-accent:${element.color}` },
-        h('.codex-element-icon', {}, spriteIcon(element.bullet[1], 54), h('b', { text: element.sigla })),
+        h('.codex-element-icon', {}, elementIcon(element.id, element.name), h('b', { text: element.sigla })),
         h('strong', { text: element.name }), h('p.tiny', { text: element.blurb }),
         h('.codex-element-relations', {},
           h('span', { text: target ? `Vantagem contra ${target.name}` : 'Sem vantagem elemental' }),
           h('span', { text: counterInfo ? `Resistido por ${counterInfo.name}` : 'Nunca é resistido' })));
     })),
   );
+}
+
+/**
+ * Mapa do confronto. Os nós continuam em HTML para o texto se manter nítido e
+ * acessível; o SVG desenha apenas a malha elástica de setas ao fundo.
+ */
+function elementalCycle(): HTMLElement {
+  const cycle = ELEMENTS.filter((element) => element.bate !== null);
+  const neutral = getElement('padrao');
+  return h('.codex-element-cycle', {
+    role: 'img',
+    'aria-label': 'Ciclo de vantagem: Fogo vence Gelo, Gelo vence Cósmico, Cósmico vence Raio, Raio vence Químico e Químico vence Fogo. Padrão é neutro.',
+  },
+    h('img.codex-cycle-track', { src: '/assets/ui/elements/relations.svg', alt: '', 'aria-hidden': true }),
+    ...cycle.map((element) => h(`.codex-cycle-node.${element.id}`, {
+      style: `--codex-accent:${element.color}`,
+      title: `${element.name} causa vantagem contra ${getElement(element.bate!).name}`,
+    }, elementIcon(element.id, ''), h('strong', { text: element.name }),
+      h('small', { text: `vence ${getElement(element.bate!).name}` }))),
+    h('.codex-cycle-core', { style: `--codex-accent:${neutral.color}` },
+      elementIcon(neutral.id, ''), h('span', {}, h('strong', { text: 'PADRÃO' }), h('small', { text: 'NEUTRO · ×1,0' }))),
+    h('.codex-cycle-legend', {}, h('b', { text: '→' }), h('span', { text: 'vantagem · ×1,5 de dano' })),
+  );
+}
+
+function elementIcon(id: string, alt: string): HTMLElement {
+  return h('img.codex-element-symbol', {
+    src: `/assets/ui/elements/${id}.svg`, alt, draggable: false,
+  });
 }
 
 const MOVE_LABEL: Record<string, string> = {

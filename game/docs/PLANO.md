@@ -112,7 +112,7 @@ e Matriz.
 **Decisão do Rafael:** opção A, Central de Serviços. A decisão partiu destas
 duas linhas de conveniência, implementadas sem poder exclusivo:
 - conveniência (espaço de carga, refazes da Matriz, tentativas de Provação)
-- conversão entre moedas, com perda
+- conversão de sucata em núcleos, com perda
 
 **Critério de aceite**
 - Nenhum item da loja concede atributo que o jogo não conceda por item, craft ou
@@ -129,11 +129,14 @@ O catálogo aprovado na opção A ficou assim:
 
 - quatro módulos permanentes de carga;
 - reconfiguração da Matriz e recuperação de tentativa da Provação;
-- sucata → núcleos e núcleos → cristais, com perda e cotas que crescem por nível.
+- sucata → núcleos, com perda e cota que cresce por nível;
+- compra escolhida de cápsulas, pacotes futuros de cristais e Passe VIP de
+  conveniência por 30 dias.
 
-Cápsulas continuam exclusivamente na Câmara de Aquisição. Testes dedicados
-guardam os contratos, incluindo o invariante de que nenhuma operação da Loja
-altera os atributos resolvidos da nave.
+A compra das cápsulas foi centralizada na Loja; a abertura e as probabilidades
+continuam exclusivamente na Câmara de Aquisição. Testes dedicados guardam os
+contratos, incluindo o invariante de que nenhuma operação da Loja altera os
+atributos resolvidos da nave.
 
 ### Passo 2.1 — Separar o craft de afixos ✅
 

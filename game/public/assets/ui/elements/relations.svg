@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" fill="none" preserveAspectRatio="none">
+  <defs>
+    <filter id="glow" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10 2.5 5Z" fill="#a8ecff"/></marker>
+  </defs>
+  <g stroke="#61cfff" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" filter="url(#glow)" opacity=".84">
+    <path d="M565 73C650 80 725 103 775 135"/>
+    <path d="M828 196C818 255 776 306 723 335"/>
+    <path d="M630 365C545 386 455 386 370 365"/>
+    <path d="M277 335C224 306 182 255 172 196"/>
+    <path d="M225 135C275 103 350 80 435 73"/>
+  </g>
+  <g fill="#dffaff" opacity=".75"><circle cx="674" cy="93" r="4"/><circle cx="805" cy="262" r="4"/><circle cx="500" cy="381" r="4"/><circle cx="195" cy="262" r="4"/><circle cx="326" cy="93" r="4"/></g>
+</svg>

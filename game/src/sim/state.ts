@@ -7,6 +7,7 @@ import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
+import { limiteDeMissoes } from './vip';
 
 export const SAVE_KEY = 'orbita-zero:save';
 /**
@@ -17,10 +18,11 @@ export const SAVE_KEY = 'orbita-zero:save';
   * v6 — escada de aquisição dos cascos: os 29 Spaceships 2.0 deixam de ser
  *      grátis, e a frota devolve os que o jogador ainda não podia ter.
  * v7 — equipamento POR NAVE: `equipped` sai do topo e vira `naves[id].equipped`.
+ * v11 — passe VIP temporizado e renovável, sem invalidar preferências antigas.
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -75,6 +77,7 @@ export function createState(
     armazem: {},
 
     shop: {},
+    vip: { expiresAt: 0 },
     servicos: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
     naves: {},
@@ -110,7 +113,7 @@ export function createState(
       dicaDeEscudoVista: false,
       speed: 1,
       repetirSetor: false,
-      autoEquip: true,
+      autoEquip: false,
       autoSalvage: 0,
       autoDispose: 'desmontar',
       showDamageNumbers: true,
@@ -174,6 +177,7 @@ export function migrate(raw: unknown): GameState | null {
     stats: { ...fresh.stats, ...data.stats },
     settings: { ...fresh.settings, ...data.settings },
     shop: { ...data.shop },
+    vip: { ...fresh.vip, ...(data.vip ?? {}) },
     servicos: { ...data.servicos },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
@@ -323,6 +327,7 @@ export function migrate(raw: unknown): GameState | null {
   for (const id of INITIAL_FLEET) if (!state.fleet.includes(id)) state.fleet.push(id);
   if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
   state.command.nivel = Math.max(1, Math.floor(state.command.nivel));
+  state.vip.expiresAt = Math.max(0, Number.isFinite(state.vip.expiresAt) ? state.vip.expiresAt : 0);
   state.command.allocated = state.command.allocated.filter((id) => typeof id === 'string');
   state.run.sector = Math.max(1, Math.floor(state.run.sector));
   state.run.wave = Math.min(WAVES_PER_SECTOR + 1, Math.max(1, Math.floor(state.run.wave)));
@@ -335,7 +340,7 @@ export function migrate(raw: unknown): GameState | null {
   state.settings.pinnedMissions = [...new Set(
     (Array.isArray(state.settings.pinnedMissions) ? state.settings.pinnedMissions : [])
       .filter((id): id is string => typeof id === 'string' && MISSAO_POR_ID.has(id)),
-  )].slice(0, 4);
+  )].slice(0, limiteDeMissoes(state));
   // Save com a postura removida cai no EVASIVO, e não no padrão de save novo.
   //
   // São decisões diferentes de propósito. Save novo nasce agressivo porque é

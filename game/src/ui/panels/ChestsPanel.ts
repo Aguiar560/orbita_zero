@@ -201,10 +201,7 @@ export class ChestsPanel implements Panel {
           },
         }, h('span', { text: stock > 0 ? 'ABRIR CÁPSULA' : 'SEM ESTOQUE' })),
         def.buy > 0
-          ? h('button.btn.bau-comprar', {
-              disabled: !sim.can('cristal', def.buy),
-              onclick: () => { sim.buyChest(def.id); sim.touch(); },
-            }, h('span', { text: `ADQUIRIR · ${fmt(def.buy)} ◆` }))
+          ? h('span.bau-loja-nota', { text: 'Aquisição disponível na Loja' })
           : null,
       ),
     );

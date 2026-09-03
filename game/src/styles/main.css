@@ -143,10 +143,20 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 /* Engrenagem de configurações: fora das abas, porque não é onde se joga. */
 .gear {
   display: grid; place-items: center; width: 34px; height: 34px;
+  padding: 0;
   background: rgba(8, 14, 28, 0.8); border: 1px solid var(--line); border-radius: 8px;
-  transition: transform 0.25s, border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 }
-.gear:hover { transform: rotate(60deg); border-color: var(--line-strong); background: rgba(30, 48, 80, 0.7); }
+.gear:hover {
+  border-color: var(--line-strong); background: rgba(30, 48, 80, 0.7);
+  box-shadow: inset 0 0 12px rgba(75, 200, 255, .08);
+}
+.gear-icon {
+  display: block; margin: 0; color: #dbe8ee;
+  font: 400 19px/1 'Segoe UI Symbol', sans-serif;
+  transform: none; text-shadow: 0 0 7px rgba(119, 218, 255, .28);
+}
+.gear:hover .gear-icon { color: #f1fbff; }
 .res {
   display: flex; align-items: center; gap: 6px;
   padding: 4px 10px; border-radius: 999px;
@@ -745,7 +755,8 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .rail-set span { color: var(--muted); }
 
 .rail-stats { display: grid; gap: 2px; }
-.rail-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; border-bottom: 1px dotted rgba(120, 160, 220, 0.1); }
+.rail-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; border-bottom: 1px dotted rgba(120, 160, 220, 0.1); cursor: help; }
+.rail-row:hover { background: linear-gradient(90deg, rgba(79, 195, 255, .055), transparent); }
 .rail-row strong { font-variant-numeric: tabular-nums; }
 
 /*
@@ -903,6 +914,14 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   padding: 6px 10px; border-radius: 7px; font-size: 12.5px;
   background: var(--panel-solid); border: 1px solid var(--line); color: var(--text);
 }
+
+/* O menu aberto é uma superfície nativa do navegador e não herda o gradiente
+ * do campo fechado no Windows. Definir as opções evita texto claro sobre o
+ * fundo branco padrão do sistema. */
+select { color-scheme: dark; }
+select option { background-color: #0b1120; color: #dfe8f6; }
+select option:checked { background-color: #173b58; color: #f3fbff; }
+select option:disabled { color: #667991; }
 
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .filters, .tabs-inline { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -1382,10 +1401,68 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .codex-element-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .codex-element { display: flex; flex-direction: column; gap: 5px; padding: 10px; background: rgba(6,13,21,.82); border: 1px solid rgba(105,137,155,.16); border-top: 2px solid var(--codex-accent); border-radius: 4px; clip-path: polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px); }
 .codex-element-icon { display: flex; align-items: center; justify-content: space-between; min-height: 56px; }
+.codex-element-symbol { width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--codex-accent) 52%, transparent)); }
 .codex-element-icon b { color: var(--codex-accent); font-size: 18px; letter-spacing: 1px; }
 .codex-element > strong { color: var(--codex-accent); }
 .codex-element > p { min-height: 2.7em; margin: 0; color: var(--muted); }
 .codex-element-relations { display: flex; flex-direction: column; gap: 2px; padding-top: 5px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+.codex-element-cycle {
+  position: relative; isolation: isolate; width: min(100%, 900px); min-height: 330px;
+  margin: 4px auto 12px; overflow: hidden; border: 1px solid rgba(83,207,255,.24); border-radius: 12px;
+  background: radial-gradient(circle at 50% 50%, rgba(43,133,184,.13), transparent 27%), linear-gradient(160deg, rgba(8,23,39,.96), rgba(3,9,18,.98));
+  box-shadow: inset 0 0 35px rgba(55,183,236,.06), 0 10px 25px rgba(0,0,0,.2);
+}
+.codex-element-cycle::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; opacity: .23; pointer-events: none;
+  background-image: linear-gradient(rgba(88,203,245,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(88,203,245,.12) 1px, transparent 1px);
+  background-size: 24px 24px; mask-image: radial-gradient(circle, #000, transparent 76%);
+}
+.codex-cycle-track { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+.codex-cycle-node {
+  position: absolute; z-index: 2; left: var(--cycle-x); top: var(--cycle-y); display: grid; grid-template-columns: 42px auto;
+  grid-template-rows: auto auto; align-items: center; column-gap: 7px; min-width: 126px; padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--codex-accent) 68%, transparent); border-radius: 9px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--codex-accent) 14%, #06101c), rgba(3,9,17,.96));
+  box-shadow: inset 0 0 13px color-mix(in srgb, var(--codex-accent) 9%, transparent), 0 0 13px rgba(0,0,0,.46);
+  transform: translate(-50%, -50%);
+}
+.codex-cycle-node .codex-element-symbol { grid-row: 1 / 3; width: 42px; height: 42px; }
+.codex-cycle-node strong { align-self: end; color: var(--codex-accent); font: 700 11px/1 'Chakra Petch', sans-serif; letter-spacing: .07em; text-transform: uppercase; }
+.codex-cycle-node small { align-self: start; color: #8fa9ba; font-size: 8px; white-space: nowrap; }
+.codex-cycle-node.fogo { --cycle-x: 50%; --cycle-y: 13%; }
+.codex-cycle-node.gelo { --cycle-x: 83%; --cycle-y: 39%; }
+.codex-cycle-node.cosmico { --cycle-x: 70%; --cycle-y: 84%; }
+.codex-cycle-node.raio { --cycle-x: 30%; --cycle-y: 84%; }
+.codex-cycle-node.quimico { --cycle-x: 17%; --cycle-y: 39%; }
+.codex-cycle-core {
+  position: absolute; z-index: 2; left: 50%; top: 51%; display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border: 1px dashed rgba(209,224,241,.38); border-radius: 50px; background: rgba(6,14,24,.88); transform: translate(-50%, -50%);
+}
+.codex-cycle-core .codex-element-symbol { width: 34px; height: 34px; }
+.codex-cycle-core span { display: grid; gap: 3px; }
+.codex-cycle-core strong { color: #dfe7f5; font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .12em; }
+.codex-cycle-core small { color: #8197aa; font-size: 8px; white-space: nowrap; }
+.codex-cycle-legend {
+  position: absolute; z-index: 2; left: 50%; bottom: 31px; display: flex; align-items: center; gap: 7px; padding: 4px 9px;
+  border: 1px solid rgba(97,207,255,.25); border-radius: 20px; background: rgba(3,10,18,.88); color: #91abba;
+  font: 600 8px/1 'Chakra Petch', sans-serif; letter-spacing: .06em; transform: translateX(-50%); white-space: nowrap;
+}
+.codex-cycle-legend b { color: #7be2ff; font-size: 14px; }
+@media (max-width: 640px) {
+  .codex-element-cycle { min-height: 300px; }
+  .codex-cycle-node { grid-template-columns: 30px auto; column-gap: 4px; min-width: 76px; padding: 5px 6px; }
+  .codex-cycle-node .codex-element-symbol { width: 30px; height: 30px; }
+  .codex-cycle-node strong { font-size: 8px; }
+  .codex-cycle-node small { display: none; }
+  .codex-cycle-node.fogo { --cycle-y: 12%; }
+  .codex-cycle-node.gelo { --cycle-x: 80%; --cycle-y: 38%; }
+  .codex-cycle-node.cosmico { --cycle-x: 68%; --cycle-y: 81%; }
+  .codex-cycle-node.raio { --cycle-x: 32%; --cycle-y: 81%; }
+  .codex-cycle-node.quimico { --cycle-x: 20%; --cycle-y: 38%; }
+  .codex-cycle-core { padding: 6px 8px; }
+  .codex-cycle-core .codex-element-symbol { width: 26px; height: 26px; }
+  .codex-cycle-legend { bottom: 3px; }
+}
 .codex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .codex-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
@@ -3927,7 +4004,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   --loj-muted: #8fa1b0;
   --loj-line: rgba(107, 139, 159, .24);
   height: 100%; min-height: 0;
-  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 9px;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 9px;
   color: var(--loj-text); font-family: 'Segoe UI', Inter, system-ui, sans-serif;
   overflow: hidden;
 }
@@ -3949,6 +4026,68 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .loj-saldo > span { display: grid; gap: 1px; }
 .loj-saldo small { color: #718693; font-size: 8px; letter-spacing: .8px; }
 .loj-saldo strong { color: var(--loj-cor); font: 600 13px/1 'Chakra Petch', sans-serif; }
+
+.loj-abas {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px;
+  padding: 0 4px;
+}
+.loj-aba {
+  min-height: 46px; display: grid; align-content: center; gap: 3px; padding: 6px 12px;
+  border: 1px solid rgba(105,137,155,.2); border-radius: 5px;
+  background: linear-gradient(180deg, rgba(10,19,29,.9), rgba(5,11,18,.92)); color: #7f929f;
+  text-align: left;
+}
+.loj-aba strong { font: 600 10px/1 'Chakra Petch', sans-serif; letter-spacing: 1.3px; }
+.loj-aba span { font-size: 8.5px; }
+.loj-aba:hover, .loj-aba.ativa { border-color: rgba(83,201,235,.56); color: #bdeeff; background: linear-gradient(180deg, rgba(17,44,58,.92), rgba(6,18,28,.95)); }
+.loj-aba.ativa { box-shadow: inset 0 -2px 0 #42c6ed, inset 0 0 22px rgba(45,178,218,.09); }
+.loj-aba.vip { color: #d9bdff; }
+.loj-aba.vip:hover, .loj-aba.vip.ativa { border-color: rgba(192,125,255,.62); box-shadow: inset 0 -2px 0 #c07dff, inset 0 0 22px rgba(192,125,255,.1); }
+
+.loj-vitrine {
+  min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 14px; padding: 18px;
+  border: 1px solid var(--loj-line); border-radius: 7px;
+  background: radial-gradient(circle at 50% 10%, rgba(42,129,160,.12), transparent 46%), linear-gradient(180deg, rgba(6,14,23,.96), rgba(3,8,14,.98));
+  overflow-y: auto; scrollbar-width: thin;
+}
+.loj-vitrine-topo { display: grid; justify-items: center; gap: 5px; text-align: center; }
+.loj-vitrine-topo > span { color: #58c8ea; font: 600 8px/1 'Chakra Petch', sans-serif; letter-spacing: 2px; }
+.loj-vitrine-topo h2 { margin: 0; color: #d2e7f0; font: 600 17px/1.15 'Chakra Petch', sans-serif; letter-spacing: 1.3px; }
+.loj-vitrine-topo p { max-width: 720px; margin: 0; color: #879ba9; font-size: 10px; line-height: 1.4; }
+.loj-cards { min-height: 0; display: grid; align-items: stretch; justify-content: center; gap: 12px; }
+.loj-bau-cards { grid-template-columns: repeat(3, minmax(210px, 290px)); }
+.loj-cristal-cards { grid-template-columns: repeat(5, minmax(150px, 1fr)); }
+.loj-card {
+  --loj-cor: #65cbe9; position: relative; min-width: 0; display: grid; align-content: center; justify-items: center; gap: 8px;
+  padding: 17px 14px 14px; border: 1px solid color-mix(in srgb, var(--loj-cor) 34%, rgba(107,139,159,.2)); border-radius: 7px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--loj-cor) 7%, rgba(10,20,30,.94)), rgba(4,10,17,.96)); text-align: center;
+  box-shadow: inset 0 0 32px color-mix(in srgb, var(--loj-cor) 4%, transparent);
+}
+.loj-card:hover { border-color: color-mix(in srgb, var(--loj-cor) 66%, transparent); }
+.loj-card h3 { margin: 0; color: color-mix(in srgb, var(--loj-cor) 72%, #e3eef3); font: 600 12px/1.15 'Chakra Petch', sans-serif; letter-spacing: .9px; }
+.loj-card p { min-height: 28px; margin: 0; color: #8598a6; font-size: 9px; line-height: 1.35; }
+.loj-card-selo { position: absolute; top: 8px; right: 8px; padding: 4px 6px; border: 1px solid color-mix(in srgb, var(--loj-cor) 44%, transparent); border-radius: 3px; color: var(--loj-cor); font: 600 7px/1 'Chakra Petch', sans-serif; letter-spacing: .8px; }
+.loj-bau-art { width: min(78%, 178px); height: 170px; object-fit: contain; filter: drop-shadow(0 18px 20px rgba(0,0,0,.72)); }
+.loj-card-acao { width: 100%; min-height: 41px; display: flex !important; align-items: center; justify-content: space-between !important; padding: 0 11px !important; }
+.loj-cristal-card { --loj-cor: #c07dff; min-height: 270px; }
+.loj-cristal-gema { width: 82px; height: 82px; display: grid; place-items: center; border: 1px solid rgba(192,125,255,.35); border-radius: 50%; background: radial-gradient(circle, rgba(192,125,255,.2), rgba(19,8,31,.25) 65%, transparent 67%); box-shadow: 0 0 28px rgba(173,80,255,.14); }
+.loj-cristal-total { color: #d7afff; font: 600 14px/1 'Chakra Petch', sans-serif; }
+
+.loj-vitrine-vip { --loj-cor: #c07dff; grid-template-rows: auto auto auto; background: radial-gradient(circle at 22% 14%, rgba(167,74,255,.2), transparent 42%), linear-gradient(135deg, rgba(12,8,25,.98), rgba(4,10,18,.98)); }
+.loj-vip-hero { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(190px, 240px); align-items: center; gap: 20px; padding: 22px; border: 1px solid rgba(192,125,255,.3); border-radius: 8px; background: linear-gradient(90deg, rgba(58,19,91,.28), rgba(9,18,29,.7)); }
+.loj-vip-emblema { width: 128px; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid rgba(213,161,255,.68); clip-path: polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%); background: radial-gradient(circle, rgba(182,87,255,.35), rgba(15,8,29,.95) 68%); color: #ead2ff; font: 700 28px/1 'Chakra Petch', sans-serif; letter-spacing: 4px; text-shadow: 0 0 18px #ad54ff; box-shadow: inset 0 0 35px rgba(197,112,255,.22); }
+.loj-vip-copy { display: grid; gap: 6px; }
+.loj-vip-copy > span { color: #b178e4; font: 600 8px/1 'Chakra Petch', sans-serif; letter-spacing: 1.8px; }
+.loj-vip-copy h2 { margin: 0; color: #eadcff; font: 600 21px/1.1 'Chakra Petch', sans-serif; }
+.loj-vip-copy p { margin: 0; color: #a999b6; font-size: 10.5px; line-height: 1.45; }
+.loj-vip-comprar { min-height: 48px; display: flex !important; justify-content: space-between !important; border-color: rgba(192,125,255,.5) !important; background: linear-gradient(90deg, rgba(100,38,146,.42), rgba(30,18,52,.72)) !important; }
+.loj-vip-beneficios { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+.loj-vip-beneficio { min-height: 94px; display: grid; place-content: center; gap: 7px; padding: 12px; border: 1px solid rgba(192,125,255,.22); border-radius: 6px; background: rgba(16,11,29,.7); text-align: center; }
+.loj-vip-beneficio strong { color: #d8a9ff; font: 700 17px/1 'Chakra Petch', sans-serif; }
+.loj-vip-beneficio span { color: #a99ab5; font-size: 9.5px; }
+.loj-vip-nota { display: flex; justify-content: space-between; gap: 20px; padding: 12px 15px; border-left: 2px solid #c07dff; background: rgba(43,20,65,.28); }
+.loj-vip-nota strong { color: #d2a1ff; font: 600 9px/1 'Chakra Petch', sans-serif; letter-spacing: 1px; }
+.loj-vip-nota span { color: #a99ab5; font-size: 9px; text-align: right; }
 
 .loj-corpo { min-height: 0; display: grid; grid-template-columns: minmax(260px, 23%) minmax(430px, 1fr) minmax(290px, 27%); gap: 10px; }
 .loj-col {
@@ -4023,7 +4162,7 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .loj-executar:not(:disabled) { background: linear-gradient(90deg, color-mix(in srgb, var(--loj-cor) 16%, #0b1723), #101d2d) !important; box-shadow: inset 0 0 22px color-mix(in srgb, var(--loj-cor) 8%, transparent); }
 .loj-preco { display: flex; align-items: center; gap: 6px; color: var(--loj-cor); }
 
-.loj-contexto { grid-template-rows: auto auto auto auto 1fr; overflow-y: auto; scrollbar-width: thin; }
+.loj-contexto { grid-template-rows: repeat(6, auto); align-content: start; overflow-y: auto; scrollbar-width: thin; }
 .loj-diagnostico { display: grid; gap: 6px; padding: 4px; }
 .loj-diagnostico > span { color: #718591; font-size: 8px; letter-spacing: 1px; }
 .loj-recurso-linha { --loj-cor: #55bddc; display: flex; align-items: center; gap: 9px; padding: 8px; border: 1px solid color-mix(in srgb, var(--loj-cor) 26%, transparent); border-radius: 4px; background: color-mix(in srgb, var(--loj-cor) 5%, rgba(7,14,22,.86)); }
@@ -4035,19 +4174,23 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .loj-estado-row { min-height: 29px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 8px; border-bottom: 1px solid rgba(105,137,155,.12); }
 .loj-estado-row span { color: #8496a3; font-size: 9.5px; }
 .loj-estado-row strong { color: #c5d1d9; font: 600 10px/1 'Chakra Petch', sans-serif; }
-.loj-protocolo { align-self: end; padding: 9px; border: 1px solid rgba(105,137,155,.17); border-radius: 4px; background: rgba(7,14,22,.65); }
+.loj-protocolo { padding: 9px; border: 1px solid rgba(105,137,155,.17); border-radius: 4px; background: rgba(7,14,22,.65); }
 .loj-protocolo strong { color: #70bfd8; font: 600 8.5px/1 'Chakra Petch', sans-serif; letter-spacing: 1px; }
 .loj-protocolo p { margin: 5px 0 0; color: #8799a6; font-size: 9.5px; line-height: 1.35; }
 
 .loj-rodape { min-height: 29px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 1px solid rgba(105,137,155,.16); border-radius: 4px; background: rgba(8,14,20,.58); color: #657783; font-size: 8.5px; letter-spacing: .7px; }
 @keyframes loj-orbita { to { transform: rotate(360deg); } }
 .loj.efeitos-reduzidos .loj-orbita { animation: none; }
+.bau-loja-nota { align-self: center; color: #7e93a2; font: 600 8px/1 'Chakra Petch', sans-serif; letter-spacing: .8px; text-align: center; }
 
 @media (max-width: 1100px) {
   .loj-corpo { grid-template-columns: 230px minmax(360px, 1fr) 260px; }
   .loj-saldo { min-width: 96px; }
   .loj-servico { grid-template-columns: 34px minmax(0,1fr) auto; }
   .loj-servico-img { width: 34px; height: 34px; }
+  .loj-cristal-cards { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+  .loj-vip-hero { grid-template-columns: 120px minmax(0, 1fr) 190px; }
+  .loj-vip-emblema { width: 104px; }
 }
 
 /* ── Craft de afixos: Bancada de Modulação ──────────────────────────────── */
@@ -7670,12 +7813,28 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   .camada:has(.afx) .afx-balance { min-width: 0; }
   .camada:has(.loj) .loj-saldos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .camada:has(.loj) .loj-saldo { min-width: 0; }
+  .camada:has(.loj) .loj-abas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .camada:has(.loj) .loj-vitrine { overflow: visible; padding: 12px; }
+  .camada:has(.loj) :is(.loj-bau-cards, .loj-cristal-cards) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .camada:has(.loj) .loj-vip-hero { grid-template-columns: 90px minmax(0, 1fr); padding: 14px; }
+  .camada:has(.loj) .loj-vip-emblema { width: 78px; }
+  .camada:has(.loj) .loj-vip-comprar { grid-column: 1 / -1; }
+  .camada:has(.loj) .loj-vip-beneficios { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .camada:has(.prv) :is(.prv-rodape, .prv-cont),
   .camada:has(.afx) .afx-footer,
   .camada:has(.loj) .loj-rodape { display: none; }
 
   .modal { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 18px; }
   .modal-wide { padding: 0; }
+}
+
+@media (max-width: 540px) {
+  .camada:has(.loj) :is(.loj-bau-cards, .loj-cristal-cards) { grid-template-columns: minmax(0, 1fr); }
+  .camada:has(.loj) .loj-saldos { grid-template-columns: minmax(0, 1fr); }
+  .camada:has(.loj) .loj-vip-hero { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .camada:has(.loj) .loj-vip-beneficios { grid-template-columns: minmax(0, 1fr); }
+  .camada:has(.loj) .loj-vip-nota { flex-direction: column; }
+  .camada:has(.loj) .loj-vip-nota span { text-align: left; }
 }
 
 @media (max-width: 430px) {

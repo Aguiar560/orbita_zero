@@ -6,6 +6,7 @@ import { BOSS_BY_ID } from '@data/bosses';
 import { PHASES_PER_GALAXY } from '@data/galaxies';
 import { CONFIANCA_MAX, PERSONAGEM_POR_ID, ROMANOS, type PersonagemDef } from '@data/personagens';
 import type { GameState } from './types';
+import { limiteDeMissoes } from './vip';
 
 /**
  * Rastreamento de missões (§27).
@@ -183,6 +184,7 @@ export function missoesRastreadas(
 ): MissaoDef[] {
   const vistos = new Set<string>();
   const rastreadas: MissaoDef[] = [];
+  const limite = limiteDeMissoes(state);
 
   for (const id of state.settings.pinnedMissions) {
     if (vistos.has(id)) continue;
@@ -192,7 +194,7 @@ export function missoesRastreadas(
     const situacao = situacaoDe(state, def, alcance);
     if (situacao !== 'ativa' && situacao !== 'pronta') continue;
     rastreadas.push(def);
-    if (rastreadas.length === LIMITE_MISSOES_RASTREADAS) break;
+    if (rastreadas.length === limite) break;
   }
 
   return rastreadas;
@@ -205,6 +207,7 @@ export function alternarRastreioDeMissao(
   alcance: number,
 ): void {
   const ids = missoesRastreadas(state, alcance).map((missao) => missao.id);
+  const limite = limiteDeMissoes(state);
   const situacao = situacaoDe(state, def, alcance);
   if (situacao !== 'ativa' && situacao !== 'pronta') {
     state.settings.pinnedMissions = ids;
@@ -212,7 +215,7 @@ export function alternarRastreioDeMissao(
   }
   state.settings.pinnedMissions = ids.includes(def.id)
     ? ids.filter((id) => id !== def.id)
-    : ids.length < LIMITE_MISSOES_RASTREADAS
+    : ids.length < limite
       ? [...ids, def.id]
       : ids;
 }

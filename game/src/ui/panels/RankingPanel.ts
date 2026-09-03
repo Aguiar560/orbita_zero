@@ -51,6 +51,7 @@ export class RankingPanel implements Panel {
   id = 'ranking';
   title = 'Ranking';
   icon = 'geral/b_4';
+  iconUrl = '/assets/ui/menu/ranking-trofeu.webp';
   overlay = true;
 
   /** Seção visível. Mora na instância: é onde o jogador estava, não preferência. */

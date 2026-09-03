@@ -18,6 +18,7 @@ describe('Central de Serviços', () => {
     const forbidden = new Set(['ima', 'reparo', 'contrato_sucata', 'contrato_nucleo', 'contrato_xp', 'licenca_sorte']);
     expect(SHOP.some((item) => forbidden.has(item.id))).toBe(false);
     expect(SHOP.some((item) => 'stat' in item)).toBe(false);
+    expect(SHOP.some((item) => item.id === 'refinar_nucleo')).toBe(false);
   });
 
   it('nenhuma operação da loja altera os atributos resolvidos', () => {

@@ -29,6 +29,7 @@ import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
 import { HULLS, type Hull } from '@data/hulls';
 import { DANO_STAT, type ElementId, type Item, type Stats } from '@sim/types';
 import type { Sim } from '@sim/index';
+import { controleManualAtivo } from '@sim/vip';
 import { labEnemyHitbox, labHitbox, labScenario, type LaboratorioMetrics, type LabScenarioId } from '@sim/laboratorio';
 import { PilotAI, type PilotOutput } from './PilotAI';
 import { WaveDirector } from './WaveDirector';
@@ -212,7 +213,7 @@ export class VerticalMode {
     this.keys.add(e.code);
     const manual = this.sim.laboratorio.active
       ? this.sim.laboratorio.config.control === 'manual'
-      : this.sim.state.settings.controlMode === 'manual';
+      : controleManualAtivo(this.sim.state);
     if (manual && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();
   };
 
@@ -659,7 +660,7 @@ export class VerticalMode {
     }
 
     const lab = this.sim.laboratorio;
-    const manual = lab.active ? lab.config.control === 'manual' : this.sim.state.settings.controlMode === 'manual';
+    const manual = lab.active ? lab.config.control === 'manual' : controleManualAtivo(this.sim.state);
     const cmd: PilotOutput = manual
       ? this.manualCommand()
       : this.ai.update(

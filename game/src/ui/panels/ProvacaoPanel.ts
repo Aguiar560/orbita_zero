@@ -6,7 +6,7 @@ import { CAMADAS, camadaDoPiso, chefeDoPiso, ARQUETIPOS } from '@data/provacao-c
 import { ESPECIAL_POR_ID } from '@data/provacao-especiais';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
-import { TENTATIVAS_MAX, estadoDoPiso, type EstadoDoPiso } from '@sim/provacao';
+import { estadoDoPiso, type EstadoDoPiso } from '@sim/provacao';
 import { powerScore } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon, progressBar } from '../dom';
@@ -133,7 +133,7 @@ export class ProvacaoPanel implements Panel {
             : 'Estoque cheio',
         },
           h('span.tiny.muted', { text: 'TENTATIVAS' }),
-          h('.prv-pips', {}, ...Array.from({ length: TENTATIVAS_MAX }, (_, i) =>
+          h('.prv-pips', {}, ...Array.from({ length: t.max }, (_, i) =>
             prvImage(
               `icons/prv_tentativa_${i < t.tem ? 'cheia' : 'vazia'}.png`,
               `prv-pip${i < t.tem ? ' cheio' : ''}`,

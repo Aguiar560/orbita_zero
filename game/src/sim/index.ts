@@ -41,10 +41,14 @@ export interface ResultadoDaProvacao {
 }
 import { chefeDoPiso } from '@data/provacao-chefes';
 import {
-  FRACAO_REPETICAO, TENTATIVAS_MAX, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
+  FRACAO_REPETICAO, camadasAPagar, estadoDoPiso, gastarTentativa, pisoLiberado,
   registrar as registrarTentativa, segundosParaProximaTentativa, tentativasDisponiveis,
   type CamadaDeRecompensa, type EstadoDoPiso,
 } from './provacao';
+import {
+  VIP_COST_CRYSTALS, VIP_DURATION_MS, controleManualDisponivel,
+  limiteTentativasDaProvacao, vipAtivo,
+} from './vip';
 import {
   aplicarFato, confiancaDe, contatoDesbloqueado, fracaoDe, progressoDe, situacaoDe,
   sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
@@ -326,6 +330,19 @@ export class Sim {
 
   get testMode(): boolean {
     return this.state.settings.testMode;
+  }
+
+  get vipAtivo(): boolean {
+    return vipAtivo(this.state);
+  }
+
+  get vipDiasRestantes(): number {
+    if (!this.vipAtivo) return 0;
+    return Math.max(1, Math.ceil((this.state.vip.expiresAt - Date.now()) / 86_400_000));
+  }
+
+  get controleManualDisponivel(): boolean {
+    return controleManualDisponivel(this.state);
   }
 
   /** Quantos passos fixos o laço deve rodar por quadro. */
@@ -806,9 +823,10 @@ export class Sim {
   // ── Núcleo de Provação (§32–35) ───────────────────────────────────────────
 
   /** Tentativas em estoque agora, e quanto falta para a próxima. */
-  get provacaoTentativas(): { tem: number; segundosParaProxima: number } {
+  get provacaoTentativas(): { tem: number; max: number; segundosParaProxima: number } {
     return {
       tem: tentativasDisponiveis(this.state),
+      max: limiteTentativasDaProvacao(this.state),
       segundosParaProxima: segundosParaProximaTentativa(this.state),
     };
   }
@@ -1677,7 +1695,7 @@ export class Sim {
     // O auto-equipar passa pela MESMA regra. Sem isto, a automação montaria
     // o que a mão não consegue montar — e o jogador descobriria a restrição
     // pela contradição entre as duas.
-    if (this.state.settings.autoEquip && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) {
+    if (this.vipAtivo && this.state.settings.autoEquip && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) {
       // Auto-equipar mira a nave EM CAMPO: o item acabou de cair na incursão
       // dela, e mandá-lo para uma nave guardada seria decidir pelo jogador.
       const previous = this.equipamentoDe()[item.slot];
@@ -1707,7 +1725,7 @@ export class Sim {
         this.descartarAutomaticamente(item);
         return;
       }
-      if (this.state.settings.autoDispose === 'vender') this.sell(worst.uid);
+      if (this.vipAtivo && this.state.settings.autoDispose === 'vender') this.sell(worst.uid);
       else if (!this.salvage(worst.uid)) this.sell(worst.uid);
     }
     this.state.inventory.push(item);
@@ -1828,7 +1846,7 @@ export class Sim {
 
   /** Item ainda fora do inventário: se o Armazém lotou, vende em vez de perder. */
   private descartarAutomaticamente(item: Item): void {
-    if (this.state.settings.autoDispose === 'vender') {
+    if (this.vipAtivo && this.state.settings.autoDispose === 'vender') {
       this.grant('sucata', valorDeVenda(item));
       return;
     }
@@ -1883,6 +1901,14 @@ export class Sim {
 
   // ── loja ──────────────────────────────────────────────────────────────────
 
+  /** Compra ou renova o passe. O checkout de cristais é uma integração separada. */
+  buyVip(agora = Date.now()): boolean {
+    if (!this.spend('cristal', VIP_COST_CRYSTALS)) return false;
+    this.state.vip.expiresAt = Math.max(agora, this.state.vip.expiresAt) + VIP_DURATION_MS;
+    this.touch();
+    return true;
+  }
+
   shopOwned(id: string): number {
     return this.state.shop[id] ?? 0;
   }
@@ -1925,7 +1951,8 @@ export class Sim {
     if (limit > 0 && owned >= limit) return false;
     if (this.alcanceLiberado < (def.requiresSector ?? 0)) return false;
     if (this.nivelLiberado < nivelExigido(def.requiresSector ?? 0)) return false;
-    if (def.effect === 'tentativa_provacao' && tentativasDisponiveis(this.state) >= TENTATIVAS_MAX) return false;
+    if (def.effect === 'tentativa_provacao'
+      && tentativasDisponiveis(this.state) >= limiteTentativasDaProvacao(this.state)) return false;
     if (def.effect === 'refaz_matriz' && this.matrixSpent <= 0) return false;
     return this.can(def.currency, shopCost(def, owned));
   }
@@ -1961,8 +1988,9 @@ export class Sim {
       case 'refaz_matriz': respec(this.state); break;
       case 'tentativa_provacao': {
         const p = this.state.provacao;
-        p.tentativas = Math.min(TENTATIVAS_MAX, tentativasDisponiveis(this.state) + 1);
-        if (p.tentativas >= TENTATIVAS_MAX) p.tentativasEm = Date.now();
+        const limite = limiteTentativasDaProvacao(this.state);
+        p.tentativas = Math.min(limite, tentativasDisponiveis(this.state) + 1);
+        if (p.tentativas >= limite) p.tentativasEm = Date.now();
         break;
       }
       default: break;

@@ -168,7 +168,7 @@ export class Shell {
           title: 'Configurações',
           'aria-label': 'Abrir configurações',
           onclick: () => this.openSettings(),
-        }, spriteIcon('geral/b_1', 24)),
+        }, h('span.gear-icon', { text: '⚙︎', 'aria-hidden': true })),
       ),
     );
 

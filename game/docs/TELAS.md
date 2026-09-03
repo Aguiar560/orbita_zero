@@ -520,18 +520,23 @@ cortaria na borda. Vira para a esquerda quando não cabe à direita.
 
 ## Loja — `id: 'loja'`
 
-`ui/panels/ShopPanel.ts` · camada em três colunas
+`ui/panels/ShopPanel.ts` · quatro áreas em uma camada
 
-Virou **Central de Serviços**. Catálogo à esquerda, operação em foco no centro e
-leitura da transação à direita — a mesma gramática da Provação e dos Baús.
+Virou **Órbita Market**. A navegação separa Serviços, Baús, Cristais e VIP para
+que moedas do jogo, compra futura em dinheiro real e assinatura não pareçam a
+mesma transação.
 
 - **Logística:** quatro módulos de carga, com concessões idempotentes reais.
 - **Sistemas:** reconfiguração da Matriz e uma tentativa da Provação.
-- **Câmbio controlado:** sucata → núcleos e núcleos → cristais, com perda e cota
-  crescente por nível.
+- **Câmbio controlado:** apenas sucata → núcleos, com perda e cota crescente.
+- **Baús:** escolha e compra de Prata, Ouro ou Singularidade; a abertura e as
+  probabilidades continuam na Câmara de Aquisição.
+- **Cristais:** cinco pacotes com preço em reais, visíveis e desabilitados até o
+  checkout existir.
+- **VIP:** passe de 30 dias por 500 cristais, estado e cinco benefícios legíveis.
 
-Sorte, XP, cura, renda e cápsulas não são vendidos aqui. A tela reserva cor para
-moeda/serviço e mantém fundos escuros, seguindo a decisão de neon na borda.
+Sorte, XP, cura e renda não são vendidos aqui. A tela reserva cor para moeda,
+serviço e VIP, mantendo fundos escuros e neon nas bordas.
 
 ---
 

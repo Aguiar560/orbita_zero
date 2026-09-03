@@ -8,7 +8,6 @@ export type ShopEffect =
   | 'refaz_matriz'
   | 'tentativa_provacao'
   | 'sucata_para_nucleo'
-  | 'nucleo_para_cristal'
   | 'elemento_item'
   | 'elemento_nave';
 
@@ -101,7 +100,7 @@ export const SHOP: readonly ShopItem[] = [
   {
     id: 'tentativa_provacao', name: 'Carga de Provação', category: 'sistemas', kind: 'servico',
     desc: 'Recupera imediatamente 1 tentativa, sem ultrapassar o teto.',
-    detail: 'Compra tempo de recarga. O limite continua sendo cinco tentativas e nenhuma vitória é concedida pela loja.',
+    detail: 'Compra tempo de recarga. Respeita o teto atual da conta e não concede nenhuma vitória.',
     art: 'loja_servico_tentativa.webp', currency: 'cristal', cost: 12, growth: 1, max: 0,
     effect: 'tentativa_provacao',
   },
@@ -112,14 +111,6 @@ export const SHOP: readonly ShopItem[] = [
     art: 'loja_servico_compactacao.webp', currency: 'sucata', cost: 6000, growth: 1, max: 0,
     output: { nucleo: 200 }, effect: 'sucata_para_nucleo', requiresSector: 3,
     quota: { base: 4, everyLevels: 5, cap: 50 },
-  },
-  {
-    id: 'refinar_nucleo', name: 'Refino de Cristal', category: 'cambio', kind: 'cambio',
-    desc: 'Converte 1.200 núcleos em 5 cristais.',
-    detail: 'Uma conversão rara e limitada. Ela reduz excesso de núcleo sem transformar a moagem numa fábrica infinita de cristais.',
-    art: 'loja_servico_refino.webp', currency: 'nucleo', cost: 1200, growth: 1, max: 0,
-    output: { cristal: 5 }, effect: 'nucleo_para_cristal', requiresSector: 10,
-    quota: { base: 1, everyLevels: 15, cap: 20 },
   },
 ];
 

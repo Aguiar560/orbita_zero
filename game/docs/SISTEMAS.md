@@ -21,7 +21,7 @@ regras técnicas que atravessam mais de uma tela.
 `SAVE_VERSION = 5`. A migração aceita versões antigas conhecidas, cria campos
 ausentes e normaliza o resultado antes do jogo usá-lo. Preferências inválidas
 voltam para Idle, recursos zerados não inflam o save, ids repetidos são
-removidos e `pinnedMissions` é limitado a quatro missões válidas. Save malformado
+removidos e `pinnedMissions` é limitado a quatro missões válidas (cinco com VIP). Save malformado
 ou de versão futura retorna `null` em vez de travar a inicialização.
 
 ### Rastreador de missões — `sim/missoes.ts`, `ui/Shell.ts`
@@ -891,13 +891,21 @@ nave continua vindo apenas de item, craft e Matriz.
 |---|---|
 | Carga | quatro concessões idempotentes de +5 espaços de item e recurso |
 | Matriz | devolve os pontos já conquistados; não concede nenhum |
-| Provação | soma uma tentativa sem ultrapassar `TENTATIVAS_MAX` |
-| Câmbio | pacotes com perda e cota derivada do nível de comando |
+| Provação | soma uma tentativa sem ultrapassar o teto atual (5 ou 6 com VIP) |
+| Câmbio | sucata → núcleos, com perda e cota derivada do nível de comando |
 | Recalibração | troca identidade/qualidade, preservando o tier da linha |
+| Baús | debita cristais e credita a cápsula escolhida no estoque |
+| VIP | 500 cristais por 30 dias; renovações acumulam duração |
 
 `shopLimit` deriva a cota, em vez de salvar um relógio ou estoque. As compras
 realizadas ficam em `state.shop`; subir de nível libera operações novas até o
 teto da linha.
+
+`state.vip.expiresAt` é a única persistência da assinatura. `sim/vip.ts` deriva
+do relógio o teto de tentativas (5/6), o rastreador de missões (4/5), o acesso
+ao controle manual no nível 15+ e as duas automações exclusivas. O cliente não
+concede pacotes de cristais: os preços são catálogo até existir checkout
+validado pelo servidor.
 
 `recalibrateAffix` reutiliza as regras do drop: slot, elemento, raridade mínima,
 prefixo/sufixo e grupos de exclusão. Recalibrar nunca produz uma combinação que

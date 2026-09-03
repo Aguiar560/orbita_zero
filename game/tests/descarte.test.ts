@@ -145,6 +145,7 @@ describe('descarte em lote e automático', () => {
 
   it('automação respeita venda ou desmontagem', () => {
     const vender = new Sim(createState(106));
+    vender.state.vip.expiresAt = Date.now() + 60_000;
     vender.state.settings.autoEquip = false;
     vender.state.settings.autoSalvage = 2;
     vender.state.settings.autoDispose = 'vender';
