@@ -62,14 +62,22 @@ export class Atlas {
 /** Registro de todos os atlas carregados, com resolução de id global. */
 export class AtlasSet {
   private readonly byName = new Map<string, Atlas>();
-  private readonly index = new Map<string, { atlas: Atlas; frame: Frame }>();
+  private readonly index = new Map<string, { atlas: Atlas; frame: Frame; priority: number }>();
 
-  add(atlas: Atlas): void {
+  /**
+   * Registra um atlas com precedência estável.
+   *
+   * Alguns packs históricos ainda compartilham ids. Como os downloads podem
+   * terminar em qualquer ordem, a prioridade precisa vir do manifesto — usar
+   * a ordem de conclusão faria o sprite escolhido variar com rede e cache.
+   */
+  add(atlas: Atlas, priority = Number.MAX_SAFE_INTEGER): void {
     this.byName.set(atlas.name, atlas);
     for (const frame of atlas.frames.values()) {
-      // Primeiro atlas a registrar o id vence; ids são prefixados no pipeline
-      // (`ship/…`, `sr/…`, `hull/…`) então colisões não devem acontecer.
-      if (!this.index.has(frame.id)) this.index.set(frame.id, { atlas, frame });
+      const current = this.index.get(frame.id);
+      if (!current || priority < current.priority) {
+        this.index.set(frame.id, { atlas, frame, priority });
+      }
     }
   }
 
@@ -78,7 +86,8 @@ export class AtlasSet {
   }
 
   lookup(id: string): { atlas: Atlas; frame: Frame } | undefined {
-    return this.index.get(id);
+    const found = this.index.get(id);
+    return found ? { atlas: found.atlas, frame: found.frame } : undefined;
   }
 
   /** Ids ordenados naturalmente com um prefixo — base para montar clipes. */

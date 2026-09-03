@@ -104,7 +104,9 @@ export class Assets {
       this.image(entry.image),
       fetch(BASE + entry.data).then((r) => r.json() as Promise<AtlasData>),
     ]).then(([img, data]) => {
-      this.atlases.add(new Atlas(entry.name, img, data));
+      // A posição no manifesto define a precedência de ids duplicados. Isso
+      // mantém o resultado do carregamento serial mesmo baixando em paralelo.
+      this.atlases.add(new Atlas(entry.name, img, data), this.manifest.atlases.indexOf(entry));
     });
     this.atlasJobs.set(name, job);
     return job;

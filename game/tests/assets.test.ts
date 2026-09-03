@@ -35,10 +35,14 @@ describe('carregamento inicial de assets', () => {
       ok: true,
       json: async () => url.endsWith('manifest.json')
         ? manifest
-        : { image: '', w: 16, h: 16, frames: {} },
+        : {
+            image: '', w: 16, h: 16,
+            frames: { compartilhado: [0, 0, 8, 8, 0, 0, 8, 8] },
+          },
     })));
 
-    const boot = new Assets().boot();
+    const assets = new Assets();
+    const boot = assets.boot();
 
     // A implementação serial deixava apenas o primeiro pedido pendente aqui.
     await vi.waitFor(() => {
@@ -48,7 +52,12 @@ describe('carregamento inicial de assets', () => {
       ]);
     });
 
-    for (const imagem of imagens) imagem.onload?.();
+    // O segundo termina primeiro para reproduzir rede/cache não deterministas.
+    imagens[1]?.onload?.();
+    imagens[0]?.onload?.();
     await boot;
+
+    // Mesmo terminando por último, o primeiro do manifesto conserva precedência.
+    expect(assets.atlases.lookup('compartilhado')?.atlas.name).toBe('primeiro');
   });
 });
