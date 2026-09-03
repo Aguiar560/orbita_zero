@@ -32,6 +32,7 @@ import type { Sim } from '@sim/index';
 import { labEnemyHitbox, labHitbox, labScenario, type LaboratorioMetrics, type LabScenarioId } from '@sim/laboratorio';
 import { PilotAI, type PilotOutput } from './PilotAI';
 import { WaveDirector } from './WaveDirector';
+import { bossMovementTarget } from './boss-movement';
 import { VIEW,
   createBulletPool, createDetritoPool, createEnemyPool, createPickupPool,
   type Bullet, type Detrito, type Enemy, type Player,
@@ -1096,9 +1097,33 @@ export class VerticalMode {
       return;
     }
 
-    e.x = e.anchorX + Math.sin(e.time * 0.6) * (phase.strafe * 1.4);
+    const beforeX = e.x;
+    const beforeY = e.y;
+    const target = bossMovementTarget({
+      movement: boss.movement,
+      movementSpeed: boss.movementSpeed,
+      time: e.time,
+      wobble: e.wobble,
+      anchorX: e.anchorX,
+      anchorY: e.anchorY,
+      strafe: phase.strafe,
+      playerX: this.player.x,
+      playerY: this.player.y,
+      viewW: VIEW.w,
+      viewH: VIEW.h,
+    });
+    if (target.smoothing) {
+      e.x = damp(e.x, target.x, target.smoothing, dt);
+      e.y = damp(e.y, target.y, target.smoothing, dt);
+    } else {
+      e.x = target.x;
+      e.y = target.y;
+    }
     e.x = clamp(e.x, 90, VIEW.w - 90);
-    e.y = e.anchorY + Math.sin(e.time * 0.9) * 22;
+    e.y = clamp(e.y, 70, VIEW.h * 0.68);
+    e.vx = (e.x - beforeX) / Math.max(dt, 1 / 240);
+    e.vy = (e.y - beforeY) / Math.max(dt, 1 / 240);
+    e.facing = damp(e.facing, clamp(e.vx / 240, -1, 1), 0.12, dt);
 
     e.fireTimer -= dt;
     if (e.fireTimer <= 0) {

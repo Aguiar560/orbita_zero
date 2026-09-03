@@ -143,6 +143,8 @@ export function bossDoPiso(
     element: efeitos.espelhaElemento && elementoDoJogador ? elementoDoJogador : chefe.elemento,
     hp: molde.hp * chefe.vida * efeitos.vida,
     dano: molde.dano * chefe.dano * efeitos.dano,
+    movement: chefe.arquetipo,
+    movementSpeed: chefe.velocidade * efeitos.velocidade,
     // As fases herdam a cadência e a velocidade do modificador. Multiplicar
     // aqui, e não no laço, mantém `VerticalMode` sem saber que a Provação
     // existe.

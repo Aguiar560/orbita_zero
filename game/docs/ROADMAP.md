@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 02/09/2026 · 778 testes passando · registro consolidado
+**Última atualização:** 02/09/2026 · 782 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -50,6 +50,9 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
 - Os retratos dos chefes da Provação ganharam contraste e presença; o rastreador
   de Missões passou a ignorar IDs já entregues e preserva quatro vagas reais,
   inclusive ao carregar saves antigos.
+- Os oito arquétipos de chefe da Provação agora comandam trajetórias próprias:
+  fortaleza, artilheiro, investida, invocador, orbital, caçador, dispersor e
+  espectro deixaram de compartilhar a mesma oscilação da campanha.
 - A interface móvel deixou de comprimir as três colunas de desktop. Nave,
   combate e carga agora são superfícies alternáveis por uma barra inferior;
   as telas de trabalho usam fluxo vertical e rolagem própria em 390×844.
@@ -62,7 +65,7 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
   reduzindo em 4,9 MB o primeiro carregamento. A precedência dos atlas segue o
   manifesto, impedindo IDs históricos duplicados de trocar sprites conforme a
   ordem da rede.
-- Verificação: typecheck, build de produção e 778 testes passando; QA visual em
+- Verificação: typecheck, build de produção e 782 testes passando; QA visual em
   390×844 e 1280×720.
 
 ### Consolidação de 25/08/2026

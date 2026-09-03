@@ -2,6 +2,17 @@ import type { ElementId } from '@sim/types';
 import { getElement } from './elements';
 import type { AttackPattern } from './enemies';
 
+/** Assinatura de deslocamento usada por chefes especiais, sobretudo na Provação. */
+export type BossMovement =
+  | 'fortaleza'
+  | 'artilheiro'
+  | 'investida'
+  | 'invocador'
+  | 'orbital'
+  | 'cacador'
+  | 'dispersor'
+  | 'espectro';
+
 export interface BossPhase {
   /** Fração de vida em que a fase começa (1 = início). */
   at: number;
@@ -33,6 +44,10 @@ export interface BossDef {
   reward: number;
   bulletSprite: string;
   blast: string;
+  /** Ausente mantém a trajetória clássica dos chefes da campanha. */
+  movement?: BossMovement;
+  /** Multiplicador da velocidade temporal da trajetória. */
+  movementSpeed?: number;
   phases: readonly BossPhase[];
   /** Baús garantidos na primeira derrota. */
   firstKill: { tier: string; count: number }[];
