@@ -22,7 +22,10 @@ testes. O registro da sessão de 24/08 está em
 [`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md).
 
 **O que falta:** conteúdo em volume (sobretudo as artes dedicadas dos chefes da
-Provação) e o trabalho que separa "funciona" de "é um jogo" — som e onboarding.
+Provação), som e onboarding — e, acima de tudo, o **Passo 9: mover o jogo para o
+servidor**. Ele deixou de ser opcional quando o ranking passou a valer prêmio:
+hoje o save é escrito pelo cliente, então recurso, cristal, VIP, item e nave são
+editáveis pelo console, e um pódio premiado em cima disso não se sustenta.
 
 ---
 
@@ -427,6 +430,172 @@ que ainda não conhece.
 
 ---
 
+### Passo 9 — Autoridade do servidor 🔴
+
+O jogo passa a ser **do servidor**. Recurso, cristal, VIP, item, nave e
+progresso saem do save do navegador e viram estado que o cliente lê, mas não
+escreve. O gatilho é o ranking premiado: no instante em que o primeiro colocado
+ganha alguma coisa, a pergunta deixa de ser "o jogador se engana?" e passa a ser
+"o jogador consegue provar que mereceu?".
+
+#### As duas coisas diferentes que "não pode modificar" significa
+
+Vale separar, porque o custo de cada uma é muito diferente e é fácil pagar pela
+primeira achando que comprou a segunda.
+
+| | o que impede | custo |
+|---|---|---|
+| **A — o jogador não EDITA o estado** | abrir o console e escrever `cristal = 999999` | médio |
+| **B — o jogador não MENTE sobre o que aconteceu** | mandar "matei 400 inimigos" sem ter matado | grande |
+
+Mover o save para o servidor resolve **A** e não encosta em **B**. Se o combate
+continua rodando no cliente e ele reporta o resultado, o relatório é forjável —
+só que agora com o carimbo do servidor, que é pior do que não ter carimbo
+nenhum. **Prêmio exige B.**
+
+#### Por que B é barato NESTE jogo
+
+Órbita Zero é idle, e é isso que torna a coisa viável. Num jogo de ação o
+servidor precisaria simular 60 quadros por segundo por jogador — inviável em
+Worker. Aqui **o progresso é função de atributos × tempo**, e já existe a função
+que faz essa conta: `applyOffline`, usada hoje para creditar ausência.
+
+A virada, então, é conceitual antes de ser técnica:
+
+> O servidor não simula o combate. Ele calcula o RESULTADO a partir dos
+> atributos e do tempo decorrido — que é o que `applyOffline` já faz — e o
+> combate no cliente vira **cosmético**: mostra bonito o que o servidor já
+> decidiu.
+
+Nada do que está na tela precisa mudar de aparência. O que muda é quem tem
+razão quando os dois discordam.
+
+#### A exceção: o modo manual
+
+Quando o jogador pilota, a perícia dele afeta o resultado, e o servidor não tem
+como verificar perícia. Só há duas saídas honestas, e é decisão do Rafael
+(entrou nas decisões pendentes):
+
+- manual **não conta** para o ranking; ou
+- manual conta, mas com o rendimento **limitado ao que o idle produziria** —
+  vira escolha estética, não vantagem.
+
+Não existe terceira: qualquer ganho de manual acima do idle é ganho que o
+servidor não consegue distinguir de mentira.
+
+---
+
+#### A ordem, e por que é esta
+
+Cada fase é entregável sozinha e deixa o jogo funcionando. A ordem sobe da
+menor superfície com o maior valor (dinheiro) para a maior superfície com o
+maior custo (combate).
+
+**Fase 1 — Fundação.** Nada abaixo funciona sem isto.
+
+1. **Conta obrigatória.** Hoje existe "Jogar sem conta", e estado de servidor
+   precisa de dono. O botão sai, ou vira conta anônima de verdade (com id no
+   servidor) que depois se vincula a um e-mail.
+2. **Sair do plano gratuito do Cloudflare.** Não é opcional: com sincronização a
+   cada 150 s, o teto de 100 mil escritas de linha por dia do D1 dá cerca de
+   **170 jogadores com a aba aberta o dia inteiro** — e aba aberta o dia inteiro
+   é exatamente o que um idle provoca. São US$ 5/mês de Workers e US$ 5/mês de
+   D1. Descobrir esse teto com jogadores dentro é pior do que pagar antes.
+3. **Livro-caixa.** Tabela append-only de transações: quem, quanto, de quê, por
+   qual motivo, com id de origem único. O saldo é **derivado**, nunca gravado
+   como número solto. Parece exagero até o primeiro estorno.
+
+**Fase 2 — Economia.** Menor superfície, maior valor: é o que vira dinheiro.
+
+- `cristal`, `sucata` e `núcleo` saem de `state.resources` e viram saldo do
+  servidor.
+- Toda concessão de recurso vira **transação** no livro-caixa.
+- Loja e VIP passam a ser comandos: `POST /loja/comprar`, `POST /vip`. O
+  servidor debita, e só ele.
+- `state.vip.expiresAt` sai do save.
+
+*Aceite:* editar `resources` ou `vip` no console e sincronizar **não muda nada**
+— o servidor devolve os valores dele e o cliente adota.
+
+**Fase 3 — Inventário.** Item e nave param de nascer no cliente.
+
+- **`rollItem` roda no servidor.** É o ponto mais importante da fase inteira: se
+  o cliente rola o dado do loot, ele rola até sair Divino, e nenhuma proteção
+  posterior recupera isso. A semente é do servidor e não sai de lá.
+- `state.inventory`, `state.naves` e `state.fleet` viram tabelas.
+- Equipar, desmontar, vender e sintetizar viram comandos validados, não
+  mutações locais.
+
+*Aceite:* não existe caminho no cliente que crie, apague ou altere um item. Uma
+peça Divina só aparece se o servidor a tiver gerado e registrado.
+
+**Fase 4 — Progressão.** XP, nível, setor alcançado e Matriz.
+
+- O servidor guarda e concede. `grantXp` vira efeito do tick, não chamada local.
+- A Matriz (nós alocados) vira estado com validação de custo — hoje um cliente
+  pode se dar todos os nós.
+
+*Aceite:* nível e setor no ranking vêm da mesma fonte que o jogo usa para
+calcular atributos. Não existe segunda verdade.
+
+**Fase 5 — O tick de autoridade.** Aqui o cliente vira renderizador.
+
+- O servidor calcula, por intervalo, o que aconteceu: abates, perdas, itens,
+  recursos, XP — a partir dos atributos guardados e do tempo decorrido.
+- O cliente **prevê** o resultado para desenhar sem esperar a rede (é o que
+  torna o jogo jogável), e **corrige** quando o servidor responde. Previsão
+  otimista com reconciliação é o padrão; o cliente estar errado por um segundo
+  é normal e invisível.
+- O progresso offline passa a ser calculado pelo servidor, que já tem os
+  carimbos de tempo. Some junto o problema atual de o cliente decidir quanto
+  ganhou enquanto esteve fora.
+
+*Aceite:* um cliente adulterado que reporta mil abates recebe exatamente o mesmo
+que um cliente honesto no mesmo intervalo, porque ninguém pergunta a ele.
+
+**Fase 6 — Ranking premiado.** Só aqui o prêmio pode ser anunciado.
+
+- **Temporadas** com início, fim e congelamento — prêmio precisa de um instante
+  em que a tabela para de mexer.
+- **Anti-multiconta**: um prêmio por pessoa, não por conta. Sem isso, o pódio
+  inteiro é a mesma pessoa.
+- **Auditoria**: para os primeiros colocados, o livro-caixa e o histórico de
+  ticks precisam reconstruir o progresso deles do zero. Se não reconstrói, não
+  premia.
+- **Detecção de anomalia** sobre o que sobrar — o `conferir()` de `placar.ts` já
+  é a semente disso.
+
+*Aceite:* dado o histórico do servidor, dá para responder "como o primeiro
+colocado chegou lá" sem depender de nada que o cliente disse.
+
+---
+
+#### O que decide sozinho quanto trabalho isto dá
+
+**Zerar os saves no corte, ou migrar?** Migrar significa escrever a conversão de
+cada campo e defender cada um contra o valor inflado — e há a armadilha que já
+nos mordeu na idade da conta: um snapshot tirado do que o cliente manda deixa
+qualquer um se preparar antes. Se for para migrar, o snapshot sai do que **já
+está gravado** no D1, num instante fixo, decidido pelo servidor.
+
+A regra deste repositório já autoriza o caminho curto: *"durante o
+desenvolvimento, compatibilidade entre versões NÃO é restrição — o esquema muda
+muito e o save é zerado junto, de propósito"*. Com testadores e sem prêmio ainda
+valendo, **zerar no corte economiza semanas** e elimina uma classe inteira de
+brecha. Entra nas decisões pendentes.
+
+#### O que NÃO muda
+
+Vale dizer para dimensionar o susto: `sim/` e `data/` são TypeScript puro sem
+DOM — é a regra de camada nº 1 deste projeto, e ela foi escrita justamente para
+isto. **O mesmo código de atributos, loot, dano e progressão roda no Worker sem
+alteração.** Não há fórmula para reescrever nem risco de o servidor e o cliente
+discordarem de regra: é o mesmo arquivo.
+
+O que muda é onde ele roda e quem acredita no resultado.
+
+---
+
 ## Decisões pendentes do Rafael
 
 Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
@@ -438,6 +607,9 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | 3 | ✅ **O que a Loja vende** | Resolvido pela opção A: Central de Serviços |
 | 4 | **Item só do elemento da nave** | Pedido em 25/08 e MEDIDO antes de implementar. Se a nave só aceitar item neutro ou do próprio elemento, o Divino fica inutilizável **78%** das vezes — e trocar o elemento invalida **88%** de um conjunto lendário, o que torna o serviço de loja um botão que ninguém aperta. A alternativa medida é restringir só **principal + escudo**, os dois slots onde o elemento já significa algo: aí o Divino fica usável em 84% e a troca custa no máximo 2 peças de 10. Falta escolher entre as duas |
 | 5 | **Setor 5 depois do adensamento** | Onda mais longa é mais tempo sob fogo, e `incomingDps` é taxa fixa. A vida mínima do setor 3 caiu de 90% para 52%, e o setor 5 passou de 36% e nenhuma morte para 0% e três mortes. Compensar mexeria em `curvaDano`, que é outro sistema calibrado — decisão de quanto o começo deve doer |
+| 7 | **Zerar os saves no corte para o servidor, ou migrar?** Migrar custa a conversão de cada campo mais a defesa contra valor inflado; o snapshot teria de sair do que já está no D1, nunca do que o cliente manda. A regra do repositório já autoriza zerar durante o desenvolvimento, e com testadores e sem prêmio valendo isso economiza semanas — ver Passo 9 |
+| 8 | **Modo manual conta para o ranking?** O servidor não verifica perícia. Ou manual não pontua, ou pontua limitado ao rendimento do idle. Não há terceira saída: ganho de manual acima do idle é indistinguível de mentira — ver Passo 9 |
+| 9 | **Quando anunciar o prêmio.** Anunciar antes da Fase 6 do Passo 9 convida exatamente quem sabe quebrar o que ainda não está protegido. A recomendação é anunciar depois, e não antes |
 | 6 | **Offline rende mais item que jogar** | Setor 10 contra 8, e **368 itens contra 44**. O caminho abstrato já modela morte e já não banca recurso; o que resta é o item. Precisa de uma corrida AO VIVO nova para comparar — os 44 são de antes das Fases 2 e 3 |
 
 ---
