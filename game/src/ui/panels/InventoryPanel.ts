@@ -93,48 +93,58 @@ export class InventoryPanel implements Panel {
     while (cells.length < capacidade) cells.push(h('.inv-cell.vazio'));
 
     return h('.panel-body.inv-body', {},
-      h('.toolbar', {},
-        h('.filters', {},
-          this.chip(sim, -1, 'Tudo', '#9fb0c4'),
-          ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
+      h('.inv-console', {},
+        h('.inv-console-head', {},
+          h('span.inv-signal', { 'aria-hidden': 'true' }),
+          h('span', { text: 'TRIAGEM DE CARGA' }),
+          h('strong', { text: `${items.length} VISÍVEIS` }),
         ),
-      ),
-      h('.toolbar', {},
-        h('select.select', {
-          onchange: (e: Event) => { this.sort = (e.target as HTMLSelectElement).value as typeof this.sort; sim.touch(); },
-        },
-          h('option', { value: 'poder', text: 'Ganho de poder', selected: this.sort === 'poder' }),
-          h('option', { value: 'raridade', text: 'Raridade', selected: this.sort === 'raridade' }),
-          h('option', { value: 'slot', text: 'Slot', selected: this.sort === 'slot' }),
-          h('option', { value: 'nivel', text: 'Nível de item', selected: this.sort === 'nivel' }),
-          h('option', { value: 'tier', text: 'Melhor tier', selected: this.sort === 'tier' }),
+        h('.toolbar.inv-rarity-toolbar', {},
+          h('.filters', {},
+            this.chip(sim, -1, 'Tudo', '#9fb0c4'),
+            ...RARITIES.map((r) => this.chip(sim, r.id, r.name, r.color)),
+          ),
         ),
-
-        // Filtro por elemento, ao lado da ordenação e não junto das raridades:
-        // são dois eixos independentes, e empilhar tudo numa fileira de chips
-        // faria vinte botões numa barra de 378px.
-        h('select.select', {
-          onchange: (e: Event) => {
-            this.elemento = (e.target as HTMLSelectElement).value as ElementId | 'todos';
-            sim.touch();
+        h('.toolbar.inv-control-toolbar', {},
+          h('select.select', {
+            onchange: (e: Event) => { this.sort = (e.target as HTMLSelectElement).value as typeof this.sort; sim.touch(); },
           },
-        },
-          h('option', { value: 'todos', text: 'Todos os elementos', selected: this.elemento === 'todos' }),
-          ...ELEMENTS.map((el) => h('option', {
-            value: el.id, text: el.name, selected: this.elemento === el.id,
-          })),
-        ),
+            h('option', { value: 'poder', text: 'Ganho de poder', selected: this.sort === 'poder' }),
+            h('option', { value: 'raridade', text: 'Raridade', selected: this.sort === 'raridade' }),
+            h('option', { value: 'slot', text: 'Slot', selected: this.sort === 'slot' }),
+            h('option', { value: 'nivel', text: 'Nível de item', selected: this.sort === 'nivel' }),
+            h('option', { value: 'tier', text: 'Melhor tier', selected: this.sort === 'tier' }),
+          ),
 
-        h(`button.mini${this.soFavoritos ? '.ativa' : ''}`, {
-          text: this.soFavoritos ? '★ Favoritos' : '☆ Favoritos',
-          title: 'Mostra só o que está marcado. Com 15 espaços no começo, marcar é o que protege uma peça do desmanche automático.',
-          onclick: () => { this.soFavoritos = !this.soFavoritos; sim.touch(); },
-        }),
-        h('span.muted.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
-        // Os botões de VENDER e DESMONTAR em lote saíram: vão voltar como
-        // funcionalidade premium. A venda e o desmonte peça a peça continuam,
-        // por Alt+clique e Shift+clique — o que saiu é fazer os dois de uma vez
-        // na barra inteira, não a ação.
+          // Filtro por elemento, ao lado da ordenação e não junto das raridades:
+          // são dois eixos independentes, e empilhar tudo numa fileira de chips
+          // faria vinte botões numa barra de 378px.
+          h('select.select', {
+            onchange: (e: Event) => {
+              this.elemento = (e.target as HTMLSelectElement).value as ElementId | 'todos';
+              sim.touch();
+            },
+          },
+            h('option', { value: 'todos', text: 'Todos os elementos', selected: this.elemento === 'todos' }),
+            ...ELEMENTS.map((el) => h('option', {
+              value: el.id, text: el.name, selected: this.elemento === el.id,
+            })),
+          ),
+
+          h(`button.mini${this.soFavoritos ? '.ativa' : ''}`, {
+            text: this.soFavoritos ? '★ Favoritos' : '☆ Favoritos',
+            title: 'Mostra só o que está marcado. Com 15 espaços no começo, marcar é o que protege uma peça do desmanche automático.',
+            onclick: () => { this.soFavoritos = !this.soFavoritos; sim.touch(); },
+          }),
+          h('span.inv-capacity', {},
+            h('span.muted.tiny', { text: 'OCUPAÇÃO' }),
+            h('strong.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
+          ),
+          // Os botões de VENDER e DESMONTAR em lote saíram: vão voltar como
+          // funcionalidade premium. A venda e o desmonte peça a peça continuam,
+          // por Alt+clique e Shift+clique — o que saiu é fazer os dois de uma vez
+          // na barra inteira, não a ação.
+        ),
       ),
 
       h('p.muted.tiny.hint', { text: 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),

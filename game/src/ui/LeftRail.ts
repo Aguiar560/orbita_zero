@@ -106,13 +106,15 @@ export class LeftRail {
 
       // ── leitura de combate ────────────────────────────────────────────────
       h('.rail-section', { text: 'Combate' }),
-      h('.rail-stats', {},
-        row('DPS', fmt(dps(stats)), '#ff9a4d'),
-        row('Vida efetiva', fmt(effectiveHp(stats)), '#38a9ff'),
-        row('Limpar', duration(sim.clearTime), '#7ed957'),
-        row('Sobrevive', duration(sim.survivalWindow), sim.isStalled ? '#ff5d7a' : '#9fe8ff'),
-        row('Crítico', `${pct(stats.critChance)} / +${pct(stats.critDano, 0)}`, '#ffe08a'),
-        row('Sorte', `+${pct(stats.sorte)}`, '#c060ff'),
+      h('.rail-module.rail-module-stats', {},
+        h('.rail-stats', {},
+          row('DPS', fmt(dps(stats)), '#ff9a4d'),
+          row('Vida efetiva', fmt(effectiveHp(stats)), '#38a9ff'),
+          row('Limpar', duration(sim.clearTime), '#7ed957'),
+          row('Sobrevive', duration(sim.survivalWindow), sim.isStalled ? '#ff5d7a' : '#9fe8ff'),
+          row('Crítico', `${pct(stats.critChance)} / +${pct(stats.critDano, 0)}`, '#ffe08a'),
+          row('Sorte', `+${pct(stats.sorte)}`, '#c060ff'),
+        ),
       ),
       // Nao ha aviso de "progresso travado" aqui, e a ausencia e deliberada.
       //
@@ -136,43 +138,45 @@ export class LeftRail {
 
       // ── piloto / comando manual ──────────────────────────────────────────
       h('.rail-section', { text: 'Piloto' }),
-      h('.rail-control', { role: 'group', 'aria-label': 'Modo de pilotagem' },
-        h(`button.rail-control-mode${sim.state.settings.controlMode === 'idle' ? '.active' : ''}`, {
-          text: 'IDLE', title: 'A IA pilota a nave', 'aria-pressed': String(sim.state.settings.controlMode === 'idle'),
-          onclick: () => { sim.state.settings.controlMode = 'idle'; sim.touch(); },
-        }),
-        h(`button.rail-control-mode.manual${sim.state.settings.controlMode === 'manual' ? '.active' : ''}`, {
-          text: 'PILOTAR', title: 'Controlar com WASD ou setas', 'aria-pressed': String(sim.state.settings.controlMode === 'manual'),
-          onclick: () => { sim.state.settings.controlMode = 'manual'; sim.touch(); },
-        }),
-      ),
-      h('span.tiny.muted.rail-control-help', { text: sim.state.settings.controlMode === 'manual' ? 'WASD / setas · disparo automático' : 'IA no comando' }),
-      h('.rail-pilots', {}, ...PILOTS.map((p) =>
-        h(`button.rail-pilot${sim.state.settings.pilot === p.id ? '.active' : ''}`, {
-          text: p.label,
-          title: p.id,
-          onclick: () => { sim.state.settings.pilot = p.id; sim.touch(); },
-        }),
-      )),
-      h('.rail-sync', {},
-        h('span.tiny.muted', { text: `Sincronia ${pct(stats.iaSkill)}` }),
-        progressBar(stats.iaSkill, '#7fe4ff', 4),
-      ),
+      h('.rail-module.rail-module-pilot', {},
+        h('.rail-control', { role: 'group', 'aria-label': 'Modo de pilotagem' },
+          h(`button.rail-control-mode${sim.state.settings.controlMode === 'idle' ? '.active' : ''}`, {
+            text: 'IDLE', title: 'A IA pilota a nave', 'aria-pressed': String(sim.state.settings.controlMode === 'idle'),
+            onclick: () => { sim.state.settings.controlMode = 'idle'; sim.touch(); },
+          }),
+          h(`button.rail-control-mode.manual${sim.state.settings.controlMode === 'manual' ? '.active' : ''}`, {
+            text: 'PILOTAR', title: 'Controlar com WASD ou setas', 'aria-pressed': String(sim.state.settings.controlMode === 'manual'),
+            onclick: () => { sim.state.settings.controlMode = 'manual'; sim.touch(); },
+          }),
+        ),
+        h('span.tiny.muted.rail-control-help', { text: sim.state.settings.controlMode === 'manual' ? 'WASD / setas · disparo automático' : 'IA no comando' }),
+        h('.rail-pilots', {}, ...PILOTS.map((p) =>
+          h(`button.rail-pilot${sim.state.settings.pilot === p.id ? '.active' : ''}`, {
+            text: p.label,
+            title: p.id,
+            onclick: () => { sim.state.settings.pilot = p.id; sim.touch(); },
+          }),
+        )),
+        h('.rail-sync', {},
+          h('span.tiny.muted', { text: `Sincronia ${pct(stats.iaSkill)}` }),
+          progressBar(stats.iaSkill, '#7fe4ff', 4),
+        ),
 
-      // Combustível fica no trilho, e não só no Hangar, porque é a única
-      // informação do jogo que expira SOZINHA — o jogador precisa ver a nave
-      // secando antes de ela secar, não descobrir depois que já trocou.
-      ...(() => {
-        const tanque = sim.combustivelDe();
-        const restam = tanque * autonomiaDoCasco(sim.state.hull);
-        // Vermelho abaixo de 15%: é aproximadamente o ponto em que uma sessão
-        // comum não termina antes de o tanque acabar.
-        const cor = tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a';
-        return [h('.rail-sync.rail-fuel', {},
-          h('span.tiny.muted', { text: `Combustível ${pct(tanque)} · ${duration(restam)}` }),
-          progressBar(tanque, cor, 4),
-        )];
-      })(),
+        // Combustível fica no trilho, e não só no Hangar, porque é a única
+        // informação do jogo que expira SOZINHA — o jogador precisa ver a nave
+        // secando antes de ela secar, não descobrir depois que já trocou.
+        ...(() => {
+          const tanque = sim.combustivelDe();
+          const restam = tanque * autonomiaDoCasco(sim.state.hull);
+          // Vermelho abaixo de 15%: é aproximadamente o ponto em que uma sessão
+          // comum não termina antes de o tanque acabar.
+          const cor = tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a';
+          return [h('.rail-sync.rail-fuel', {},
+            h('span.tiny.muted', { text: `Combustível ${pct(tanque)} · ${duration(restam)}` }),
+            progressBar(tanque, cor, 4),
+          )];
+        })(),
+      ),
 
       // As missões rastreadas moram SOBRE o campo de combate (`.mission-hud`,
       // em `Shell`), e só lá. Tinham cópia aqui também, e duas listas do mesmo

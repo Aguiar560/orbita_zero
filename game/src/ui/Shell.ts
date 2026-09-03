@@ -546,7 +546,10 @@ export class Shell {
   private renderPanel(): void {
     const fixo = this.painelFixo;
     clear(this.panelHost).append(
-      h('.panel-head', {}, h('h1', { text: fixo.title })),
+      h('.panel-head.inv-panel-head', {},
+        h('span.panel-kicker', { text: 'MÓDULO DE CARGA // ONLINE' }),
+        h('h1', { text: fixo.title }),
+      ),
       fixo.render(this.sim),
     );
 

@@ -53,9 +53,15 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
 - A interface móvel deixou de comprimir as três colunas de desktop. Nave,
   combate e carga agora são superfícies alternáveis por uma barra inferior;
   as telas de trabalho usam fluxo vertical e rolagem própria em 390×844.
+- Os dois trilhos permanentes receberam acabamento de cabine: o cockpit passou
+  a agrupar telemetria e piloto em módulos chanfrados; o inventário virou uma
+  baia de carga com console de triagem, ocupação visível e células mecânicas.
+  A ornamentação fica nas bordas para preservar contraste e área útil.
 - O boot passou a buscar os atlas obrigatórios em paralelo. O maior atlas foi
   otimizado de 8,35 MB para 3,43 MB sem alterar suas dimensões ou transparência,
-  reduzindo em 4,9 MB o primeiro carregamento.
+  reduzindo em 4,9 MB o primeiro carregamento. A precedência dos atlas segue o
+  manifesto, impedindo IDs históricos duplicados de trocar sprites conforme a
+  ordem da rede.
 - Verificação: typecheck, build de produção e 778 testes passando; QA visual em
   390×844 e 1280×720.
 
