@@ -1,6 +1,10 @@
 import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
+import {
+  MOEDAS, conferirLancamento, podeDebitar, saldosDoLivro,
+  type Lancamento, type Moeda, type Recusa,
+} from './carteira';
 
 /**
  * A API do Órbita Zero.
@@ -255,9 +259,110 @@ export default {
       return json(dados, 200, origem);
     }
 
+    if (url.pathname === '/carteira' && req.method === 'GET') {
+      // Mesma defesa do placar: leitura barata, mas perguntada com frequência
+      // pela tela da Loja. Balde em memória, não linha no banco.
+      if (!podeLer(usuario.id, Math.floor(Date.now() / 1000))) {
+        return json({ erro: 'rapido_demais' }, 429, origem);
+      }
+      return json({ saldos: await saldosDe(env, usuario.id) }, 200, origem);
+    }
+
     return json({ erro: 'nao_encontrado' }, 404, origem);
   },
 } satisfies ExportedHandler<Env>;
+
+// ── carteira ────────────────────────────────────────────────────────────────
+
+/**
+ * Os saldos do jogador, do cache.
+ *
+ * Lê `saldos` e não soma `transacoes`: somar a história inteira a cada
+ * requisição funciona no primeiro mês e fica caro no primeiro ano. O livro
+ * continua sendo a verdade — `saldosDoLivroDe` reconstrói quando é preciso
+ * conferir, e é o que a auditoria do pódio vai usar.
+ */
+async function saldosDe(env: Env, usuario: string): Promise<Record<Moeda, number>> {
+  const { results } = await env.DB
+    .prepare('SELECT moeda, quantia FROM saldos WHERE usuario = ?')
+    .bind(usuario)
+    .all<{ moeda: string; quantia: number }>();
+
+  const r = {} as Record<Moeda, number>;
+  for (const m of MOEDAS) r[m] = 0;
+  for (const linha of results) {
+    if ((MOEDAS as readonly string[]).includes(linha.moeda)) r[linha.moeda as Moeda] = linha.quantia;
+  }
+  return r;
+}
+
+/** Reconstrói os saldos a partir do livro. A verdade, para conferir o cache. */
+export async function saldosDoLivroDe(env: Env, usuario: string): Promise<Record<Moeda, number>> {
+  const { results } = await env.DB
+    .prepare('SELECT usuario, moeda, quantia, motivo, origem, em FROM transacoes WHERE usuario = ?')
+    .bind(usuario)
+    .all<Lancamento>();
+  return saldosDoLivro(results);
+}
+
+/**
+ * Grava um lançamento e move o saldo, atomicamente.
+ *
+ * ## Por que `batch` e não duas chamadas
+ *
+ * `batch` do D1 é uma transação: ou as duas linhas entram, ou nenhuma. Sem
+ * isso existiria o intervalo em que o saldo já mudou e o livro ainda não sabe
+ * — e é exatamente o estado que torna a auditoria impossível, porque não há
+ * como distinguir "faltou gravar" de "alguém mexeu".
+ *
+ * ## Por que o débito é condicional
+ *
+ * O `WHERE quantia >= ?` recusa no próprio banco em vez de ler o saldo antes e
+ * decidir aqui. Ler-decidir-escrever tem uma janela entre a leitura e a
+ * escrita, e dois pedidos ao mesmo tempo passariam os dois pela mesma leitura.
+ * Com a condição no UPDATE, o segundo encontra o saldo já baixado e não muda
+ * linha nenhuma.
+ */
+export async function lancar(env: Env, l: Lancamento): Promise<{ ok: true } | { ok: false; erro: Recusa | 'repetido' }> {
+  const recusa = conferirLancamento(l);
+  if (recusa) return { ok: false, erro: recusa };
+
+  if (l.quantia < 0) {
+    const saldo = (await saldosDe(env, l.usuario))[l.moeda];
+    if (!podeDebitar(saldo, -l.quantia)) return { ok: false, erro: 'saldo_insuficiente' };
+  }
+
+  const inserir = env.DB.prepare(
+    'INSERT INTO transacoes (usuario, moeda, quantia, motivo, origem, em) VALUES (?, ?, ?, ?, ?, ?)',
+  ).bind(l.usuario, l.moeda, l.quantia, l.motivo, l.origem ?? null, l.em);
+
+  // O crédito cria a linha se não existir; o débito exige que ela exista COM
+  // saldo suficiente, e por isso não pode usar `ON CONFLICT`.
+  const mover = l.quantia > 0
+    ? env.DB.prepare(`
+        INSERT INTO saldos (usuario, moeda, quantia, atualizado_em) VALUES (?, ?, ?, ?)
+        ON CONFLICT(usuario, moeda) DO UPDATE SET
+          quantia = quantia + excluded.quantia, atualizado_em = excluded.atualizado_em
+      `).bind(l.usuario, l.moeda, l.quantia, l.em)
+    : env.DB.prepare(`
+        UPDATE saldos SET quantia = quantia - ?, atualizado_em = ?
+         WHERE usuario = ? AND moeda = ? AND quantia >= ?
+      `).bind(-l.quantia, l.em, l.usuario, l.moeda, -l.quantia);
+
+  try {
+    const [, r] = await env.DB.batch([inserir, mover]);
+    // Débito que não moveu linha perdeu a corrida: o saldo caiu entre a
+    // conferência acima e este UPDATE. A transação inteira é revertida pelo
+    // `batch`, então não sobra lançamento órfão.
+    if (l.quantia < 0 && r.meta.changes === 0) return { ok: false, erro: 'saldo_insuficiente' };
+    return { ok: true };
+  } catch {
+    // O índice único em (motivo, origem) barrou: este evento externo já foi
+    // processado. É o caminho normal quando o provedor de pagamento reenvia o
+    // webhook, e não um erro.
+    return { ok: false, erro: 'repetido' };
+  }
+}
 
 async function baixarSave(env: Env, id: string, origem: string): Promise<Response> {
   const linha = await env.DB

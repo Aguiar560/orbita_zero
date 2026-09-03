@@ -45,6 +45,14 @@ export interface Sessao {
   expiraEm: number;
   email: string;
   usuarioId: string;
+  /**
+   * Conta sem e-mail, criada para o jogador entrar sem cadastro.
+   *
+   * Existe porque estado no servidor precisa de DONO, e "jogar sem conta"
+   * deixava o progresso sem um. Continua sendo entrar sem dar e-mail — o que
+   * muda é que agora existe um id de verdade do outro lado.
+   */
+  anonima: boolean;
 }
 
 export type ResultadoDeConta =
@@ -55,7 +63,7 @@ interface RespostaDeToken {
   access_token?: string;
   refresh_token?: string;
   expires_in?: number;
-  user?: { id?: string; email?: string };
+  user?: { id?: string; email?: string; is_anonymous?: boolean };
   error_description?: string;
   msg?: string;
   error_code?: string;
@@ -111,6 +119,9 @@ async function chamar(rota: string, corpo: unknown): Promise<ResultadoDeConta> {
     expiraEm: Math.floor(Date.now() / 1000) + (dados.expires_in ?? 3600),
     email: dados.user.email ?? '',
     usuarioId: dados.user.id,
+    // O Supabase carimba `is_anonymous`; a ausência de e-mail é a defesa para
+    // o caso de uma versão não mandar o campo.
+    anonima: dados.user.is_anonymous ?? !dados.user.email,
   };
   guardar(sessao);
   return { ok: true, sessao };
@@ -121,6 +132,34 @@ export const cadastrar = (email: string, senha: string): Promise<ResultadoDeCont
 
 export const entrar = (email: string, senha: string): Promise<ResultadoDeConta> =>
   chamar('token?grant_type=password', { email, password: senha });
+
+/**
+ * Entra sem e-mail nem senha.
+ *
+ * ## Por que isto substituiu "jogar sem conta"
+ *
+ * O botão antigo devolvia `null` e o jogo seguia só com o save do navegador.
+ * Isso deixava de funcionar no momento em que recurso, item e nave passam a
+ * morar no servidor: estado precisa de dono, e não havia dono.
+ *
+ * Obrigar a cadastrar resolveria — e cobraria um e-mail antes de a pessoa saber
+ * se gosta do jogo, que é exatamente o que o botão de pular existia para
+ * evitar. A conta anônima fica com as duas coisas: um id real do lado do
+ * servidor, e nada pedido ao jogador.
+ *
+ * ## O que ela ainda não faz
+ *
+ * Vincular a um e-mail depois. O Supabase permite (é atualizar o usuário), mas
+ * enquanto isso não existir, limpar o navegador perde a conta anônima — o
+ * `refresh_token` mora no `localStorage` e não há outro caminho de volta.
+ * Está registrado no PLANO como parte da Fase 2.
+ *
+ * ## Depende de uma chave no painel do Supabase
+ *
+ * "Allow anonymous sign-ins" precisa estar ligado. Desligado, esta chamada
+ * responde erro — e quem chama trata como recusa, sem derrubar o jogo.
+ */
+export const entrarAnonimo = (): Promise<ResultadoDeConta> => chamar('signup', {});
 
 function guardar(sessao: Sessao): void {
   try {

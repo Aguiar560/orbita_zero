@@ -491,19 +491,44 @@ Cada fase é entregável sozinha e deixa o jogo funcionando. A ordem sobe da
 menor superfície com o maior valor (dinheiro) para a maior superfície com o
 maior custo (combate).
 
-**Fase 1 — Fundação.** Nada abaixo funciona sem isto.
+**Fase 1 — Fundação.** 🟡 Em andamento. Nada abaixo funciona sem isto.
 
-1. **Conta obrigatória.** Hoje existe "Jogar sem conta", e estado de servidor
-   precisa de dono. O botão sai, ou vira conta anônima de verdade (com id no
-   servidor) que depois se vincula a um e-mail.
-2. **Sair do plano gratuito do Cloudflare.** Não é opcional: com sincronização a
+1. ✅ **Conta anônima** (03/09). "Jogar sem conta" virou "Jogar agora" e cria
+   uma conta de verdade no Supabase, sem pedir nada ao jogador. Resolve a
+   tensão entre "estado precisa de dono" e o motivo pelo qual pular existia:
+   cobrar e-mail antes de a pessoa saber se gosta do jogo troca jogadores por
+   cadastros.
+   - ⚠️ **Depende de uma chave no painel do Supabase:** *Authentication →
+     Sign In / Providers → Allow anonymous sign-ins*. Medido em 03/09 com ela
+     desligada: a rota responde `422 anonymous_provider_disabled`.
+   - Com a chave desligada o jogo **não trava** — volta ao save só local — mas
+     emite `console.warn` nomeando a chave. O recuo é silencioso para o
+     jogador e barulhento para quem publica, porque a falha que parece sucesso
+     é a mais cara que existe aqui.
+   - **Falta:** vincular a conta anônima a um e-mail depois. Enquanto não
+     existir, limpar o navegador perde a conta — o `refresh_token` mora no
+     `localStorage` e não há outro caminho de volta.
+2. 🔴 **Sair do plano gratuito do Cloudflare** — *ação do Rafael, não é código.* Não é opcional: com sincronização a
    cada 150 s, o teto de 100 mil escritas de linha por dia do D1 dá cerca de
    **170 jogadores com a aba aberta o dia inteiro** — e aba aberta o dia inteiro
    é exatamente o que um idle provoca. São US$ 5/mês de Workers e US$ 5/mês de
    D1. Descobrir esse teto com jogadores dentro é pior do que pagar antes.
-3. **Livro-caixa.** Tabela append-only de transações: quem, quanto, de quê, por
-   qual motivo, com id de origem único. O saldo é **derivado**, nunca gravado
-   como número solto. Parece exagero até o primeiro estorno.
+3. ✅ **Livro-caixa** (03/09). `server/migrations/0005-carteira.sql` e
+   `server/src/carteira.ts`. `transacoes` é append-only e é a verdade;
+   `saldos` é cache reconstruível. `GET /carteira` já lê, com o mesmo balde
+   em memória do placar.
+   - **Idempotência:** índice único parcial em `(motivo, origem)`. Provedor de
+     pagamento reenvia webhook — é o comportamento normal deles, não falha —, e
+     sem isso o jogador paga uma vez e recebe três.
+   - **Saldo nunca negativo:** o débito é condicional no próprio `UPDATE`
+     (`WHERE quantia >= ?`) e o Worker confere `changes`. Ler-decidir-escrever
+     teria uma janela entre a leitura e a escrita.
+   - **Atomicidade:** lançamento e saldo entram no mesmo `batch`, que no D1 é
+     transação. Sem isso existiria o instante em que o saldo mudou e o livro
+     ainda não sabe — o estado que torna auditoria impossível.
+   - 21 testes em `tests/carteira.test.ts`.
+   - **Ainda não há rota que ESCREVE.** É de propósito: quem credita e debita é
+     a Fase 2, junto com as moedas saindo do save.
 
 **Fase 2 — Economia.** Menor superfície, maior valor: é o que vira dinheiro.
 
@@ -607,9 +632,9 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | 3 | ✅ **O que a Loja vende** | Resolvido pela opção A: Central de Serviços |
 | 4 | **Item só do elemento da nave** | Pedido em 25/08 e MEDIDO antes de implementar. Se a nave só aceitar item neutro ou do próprio elemento, o Divino fica inutilizável **78%** das vezes — e trocar o elemento invalida **88%** de um conjunto lendário, o que torna o serviço de loja um botão que ninguém aperta. A alternativa medida é restringir só **principal + escudo**, os dois slots onde o elemento já significa algo: aí o Divino fica usável em 84% e a troca custa no máximo 2 peças de 10. Falta escolher entre as duas |
 | 5 | **Setor 5 depois do adensamento** | Onda mais longa é mais tempo sob fogo, e `incomingDps` é taxa fixa. A vida mínima do setor 3 caiu de 90% para 52%, e o setor 5 passou de 36% e nenhuma morte para 0% e três mortes. Compensar mexeria em `curvaDano`, que é outro sistema calibrado — decisão de quanto o começo deve doer |
-| 7 | **Zerar os saves no corte para o servidor, ou migrar?** Migrar custa a conversão de cada campo mais a defesa contra valor inflado; o snapshot teria de sair do que já está no D1, nunca do que o cliente manda. A regra do repositório já autoriza zerar durante o desenvolvimento, e com testadores e sem prêmio valendo isso economiza semanas — ver Passo 9 |
-| 8 | **Modo manual conta para o ranking?** O servidor não verifica perícia. Ou manual não pontua, ou pontua limitado ao rendimento do idle. Não há terceira saída: ganho de manual acima do idle é indistinguível de mentira — ver Passo 9 |
-| 9 | **Quando anunciar o prêmio.** Anunciar antes da Fase 6 do Passo 9 convida exatamente quem sabe quebrar o que ainda não está protegido. A recomendação é anunciar depois, e não antes |
+| 7 | ✅ **Zerar os saves no corte** — decidido em 03/09. Elimina a conversão campo a campo, a defesa contra valor inflado e uma classe inteira de brecha. A regra do repositório já autoriza zerar durante o desenvolvimento |
+| 8 | ✅ **Manual pontua igual** — decidido em 03/09: o modo de controle não entra na conta. É mais simples que as duas opções oferecidas e coerente com a Fase 5: se o servidor calcula o resultado a partir de atributos × tempo, o modo deixa de ser variável. **A consequência a aceitar:** pilotar bem não rende mais que deixar a IA — manual vira preferência, não vantagem |
+| 9 | ✅ **Anunciar o prêmio só depois da Fase 6** — decidido em 03/09. Anunciar antes convida exatamente quem sabe quebrar o que ainda não está protegido |
 | 6 | **Offline rende mais item que jogar** | Setor 10 contra 8, e **368 itens contra 44**. O caminho abstrato já modela morte e já não banca recurso; o que resta é o item. Precisa de uma corrida AO VIVO nova para comparar — os 44 são de antes das Fases 2 e 3 |
 
 ---

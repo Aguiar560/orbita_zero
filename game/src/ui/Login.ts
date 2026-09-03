@@ -1,17 +1,23 @@
-import { cadastrar, entrar, sair, sessaoGuardada, tokenValido, type Sessao } from '@app/conta';
+import { cadastrar, entrar, entrarAnonimo, sair, sessaoGuardada, tokenValido, type Sessao } from '@app/conta';
 import { clear, h } from './dom';
 
 /**
  * A porta de entrada: entrar ou criar conta.
  *
- * ## Por que dá para pular
- *
- * O jogo funciona inteiro sem conta — o save mora no navegador desde sempre. A
- * conta acrescenta sincronizar entre dispositivos e sobreviver a limpar o
- * navegador, e nada disso é pré-requisito para jogar.
+ * ## Por que dá para entrar sem cadastro — e por que não é mais "sem conta"
  *
  * Obrigar a criar conta na primeira tela cobra um e-mail antes de a pessoa saber
- * se gosta do jogo. Quem pulou pode entrar depois, e o save local sobe junto.
+ * se gosta do jogo. Esse motivo continua de pé, e o botão continua ali.
+ *
+ * O que mudou é o que ele faz. Ele devolvia `null`: o jogo rodava só com o save
+ * do navegador, sem dono do outro lado. Isso deixa de funcionar quando recurso,
+ * item e nave passam a morar no servidor — estado precisa de dono. Agora ele
+ * cria uma **conta anônima** de verdade, com id no servidor e nada pedido ao
+ * jogador.
+ *
+ * Se o Supabase estiver com o cadastro anônimo desligado, ele volta ao
+ * comportamento antigo (`null`, save só local) em vez de trancar a porta: um
+ * ajuste de painel esquecido não pode impedir alguém de jogar.
  *
  * ## Por que uma tela e não um painel
  *
@@ -81,6 +87,43 @@ export class Login {
       this.render(pronto);
     };
 
+    /**
+     * Entrar sem dar e-mail.
+     *
+     * Cria uma conta anônima de verdade. Se o Supabase estiver com o cadastro
+     * anônimo desligado, cai no comportamento antigo — save só neste navegador
+     * — em vez de trancar a porta: um ajuste de painel esquecido não pode
+     * impedir alguém de jogar.
+     */
+    const semCadastro = async (): Promise<void> => {
+      if (this.ocupado) return;
+      this.ocupado = true;
+      this.recado = 'Preparando…';
+      this.render(pronto);
+
+      const r = await entrarAnonimo();
+      this.ocupado = false;
+      if (r.ok) return pronto(r.sessao);
+
+      // O recuo é silencioso PARA O JOGADOR e barulhento para quem publica.
+      //
+      // Sem esta linha, esquecer "Allow anonymous sign-ins" no painel do
+      // Supabase derruba a conta anônima inteira sem nenhum sintoma: todo mundo
+      // continua jogando, o save volta a ser só do navegador, e o servidor
+      // nunca vira dono de nada. É a falha mais cara possível — a que parece
+      // sucesso.
+      //
+      // O jogador não vê nada porque não há nada que ele possa fazer a
+      // respeito, e assustá-lo com um erro de configuração alheia só o faria
+      // desistir de uma tela que funciona.
+      console.warn(
+        '[conta] Cadastro anônimo indisponível — jogando só com save local.',
+        'Ligue "Allow anonymous sign-ins" no painel do Supabase.',
+        r.erro,
+      );
+      pronto(null);
+    };
+
     const aoTeclar = (ev: KeyboardEvent): void => {
       if (ev.key === 'Enter') void enviar();
     };
@@ -124,12 +167,12 @@ export class Login {
         h(`p.login-recado${this.recado ? '' : '.hidden'}`, { text: this.recado }),
 
         h('button.login-pular', {
-          text: 'Jogar sem conta',
+          text: this.ocupado ? '…' : 'Jogar agora',
           disabled: this.ocupado,
-          onclick: () => pronto(null),
+          onclick: () => { void semCadastro(); },
         }),
         h('p.login-nota.tiny.muted', {
-          text: 'Sem conta o progresso fica só neste navegador. Dá para entrar depois.',
+          text: 'Sem e-mail o progresso fica preso a este navegador. Dá para vincular uma conta depois.',
         }),
       ),
     );

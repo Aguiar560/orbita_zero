@@ -3,6 +3,15 @@
 Auditoria feita em 2026-08-27, medindo o código, não por lista genérica. A
 segunda metade é a arquitetura proposta para login e servidor.
 
+> **Este documento é anterior ao servidor existir.** Ele foi escrito quando a
+> pergunta era "como seria", e hoje o Worker, o D1 e o login estão de pé. A
+> auditoria continua valendo como registro do que foi consertado; o que ela
+> chama de "proposta" já é realidade em boa parte.
+>
+> **Para onde as coisas vão agora, leia o Passo 9 do [`PLANO.md`](PLANO.md)**:
+> o jogo inteiro migra para o servidor, porque o ranking vai valer prêmio e um
+> save escrito pelo cliente não sustenta um pódio premiado.
+
 ## O que está bom, e é bom de verdade
 
 Estes não são elogios de praxe — são medições, e cada um remove uma classe
@@ -115,10 +124,20 @@ O save vira `{ versao, atualizadoEm, estado }`. Conflito entre dispositivos é
 uma decisão de produto pendente — "o mais recente vence" perde progresso de
 quem jogou offline nos dois.
 
-## Hospedagem gratuita
+## Hospedagem
 
 ⚠️ **Os limites de camada gratuita mudam.** Confira antes de decidir; os
 números abaixo são referência, não garantia.
+
+> **A camada gratuita não atravessa o Passo 9.** Medido em 03/09: com
+> sincronização a cada 150 s, o teto de 100 mil escritas de linha por dia do D1
+> dá cerca de **170 jogadores com a aba aberta o dia inteiro** — e aba aberta o
+> dia inteiro é exatamente o que um idle provoca. Com o estado do jogo no
+> servidor, a escrita por jogador só sobe.
+>
+> São US$ 5/mês de Workers e US$ 5/mês de D1. Descobrir esse teto com jogadores
+> dentro é bem pior do que pagar antes, e por isso sair do plano gratuito é
+> item da **Fase 1** do Passo 9, não uma otimização para depois.
 
 **Primária — Cloudflare.** Pages para o jogo estático, Workers para a API, D1
 (SQLite) para os dados. Uma plataforma só, sem partida a frio, e o Worker roda
