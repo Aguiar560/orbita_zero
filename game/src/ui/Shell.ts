@@ -172,16 +172,52 @@ export class Shell {
       ),
     );
 
+    const layout = h('main.layout', { dataset: { mobileView: 'combate' } },
+      this.leftRail.root,
+      h('.center', {}, stageWrap),
+      // A coluna de anatomia fica ENTRE o palco e o inventário: equipar é
+      // arrastar de um para o outro, e distância entre eles é atrito puro.
+      this.anatomia.root,
+      h('aside.rail-right', {}, this.panelHost),
+    );
+
+    // Em uma tela estreita não há largura honesta para cockpit, combate e
+    // inventário ao mesmo tempo. A barra troca entre três superfícies de tela
+    // inteira; no desktop ela não ocupa espaço e a grade continua idêntica.
+    const mobileButtons: HTMLButtonElement[] = [];
+    const setMobileView = (view: 'piloto' | 'combate' | 'inventario'): void => {
+      layout.dataset.mobileView = view;
+      for (const button of mobileButtons) {
+        const active = button.dataset.view === view;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      }
+      // A área do canvas muda de altura quando a barra móvel entra. Resize é
+      // o contrato já usado por Game para recalcular o campo lógico.
+      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    };
+    const mobileDock = h('nav.mobile-dock', { 'aria-label': 'Áreas do jogo' },
+      ...([
+        ['piloto', 'NAVE', 'Dados da nave e pilotagem'],
+        ['combate', 'COMBATE', 'Campo de combate'],
+        ['inventario', 'CARGA', 'Inventário'],
+      ] as const).map(([view, label, title]) => {
+        const button = h(`button.mobile-dock-btn${view === 'combate' ? '.active' : ''}`, {
+          text: label,
+          title,
+          dataset: { view },
+          'aria-pressed': String(view === 'combate'),
+          onclick: () => setMobileView(view),
+        }) as HTMLButtonElement;
+        mobileButtons.push(button);
+        return button;
+      }),
+    );
+
     clear(this.root).append(
       topbar,
-      h('main.layout', {},
-        this.leftRail.root,
-        h('.center', {}, stageWrap),
-        // A coluna de anatomia fica ENTRE o palco e o inventário: equipar é
-        // arrastar de um para o outro, e distância entre eles é atrito puro.
-        this.anatomia.root,
-        h('aside.rail-right', {}, this.panelHost),
-      ),
+      layout,
+      mobileDock,
       this.toastHost,
       this.labToolbar,
     );

@@ -66,10 +66,16 @@ export class Assets {
     let done = 0;
     const step = (label: string) => onProgress?.(++done, total, label);
 
-    for (const entry of eager) {
+    // Os atlas não dependem uns dos outros. Carregá-los em série somava uma
+    // ida completa à rede para cada arquivo e deixava o placeholder
+    // "Iniciando sistemas" parado mesmo em conexões rápidas. Mantemos o mesmo
+    // conjunto obrigatório (portanto nenhum sprite passa a chegar atrasado),
+    // mas abrimos os downloads em paralelo e avançamos o progresso conforme
+    // cada um termina.
+    await Promise.all(eager.map(async (entry) => {
       await this.loadAtlas(entry.name);
       step(`atlas ${entry.name}`);
-    }
+    }));
 
     // Fundos da camada vertical: pequenos e sempre visíveis, valem o custo no boot.
     await Promise.all([

@@ -1185,7 +1185,11 @@ async function buildSpaceships2Atlas(manifest) {
   }
 
   log(`Spaceships 2.0: ${sprites.length} artes normalizadas`);
-  await writeAtlas('spaceships2', sprites, manifest, 4096);
+  // Este pacote é arte pintada em alta resolução, não pixel art. A versão sem
+  // perda passava de 8 MB e sozinha respondia por metade do boot; qualidade 90
+  // preserva os detalhes na escala em que as naves aparecem e reduz mais de
+  // 4 MB do download inicial.
+  await writeAtlas('spaceships2', sprites, manifest, 4096, { painted: true });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1403,21 +1407,23 @@ async function writeAtlas(name, sprites, manifest, maxSize = 4096, opts = {}) {
     frames[p.id] = [p.x, p.y, p.w, p.h, s.ox, s.oy, s.sw, s.sh];
   }
 
-  // WebP SEM PERDA, não PNG.
+  // WebP, não PNG.
   //
   // Os 18 atlas somavam 22,3 MB e só dois eram preguiçosos, então ~20 MB
   // entravam no primeiro carregamento. É o maior custo de partida do jogo, e
   // 74 arquivos do projeto já eram WebP — os atlas ficaram para trás.
   //
-  // `lossless` não é conservadorismo: com perda, o WebP borra as bordas duras
-  // do pixel art e mistura cor entre sprites vizinhos, que é o oposto do que
-  // este pipeline passou meses acertando. Sem perda ele ainda ganha bem do PNG
-  // porque o atlas é quase todo transparente.
+  // Nos atlas de pixel art, `lossless` não é conservadorismo: com perda, o
+  // WebP borra as bordas duras e mistura cor entre sprites vizinhos. A exceção
+  // explícita é arte pintada em alta resolução (`painted`), onde WebP com alta
+  // qualidade é visualmente estável e corta megabytes inteiros do boot.
   //
   // `effort: 6` é o máximo. O pipeline roda em minutos e uma vez por sessão;
   // o custo é de quem compila, e o ganho é de todo mundo que abre o jogo.
   await rawToSharp(canvas)
-    .webp({ lossless: true, effort: 6 })
+    .webp(opts.painted
+      ? { quality: 90, alphaQuality: 100, effort: 6 }
+      : { lossless: true, effort: 6 })
     .toFile(await ensureFile(`atlas/${name}.webp`));
   await writeFile(path.join(OUT, 'atlas', `${name}.json`), JSON.stringify({ image: `${name}.webp`, w: width, h: height, frames }));
 

@@ -8,8 +8,8 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 25/08/2026 · 570 testes passando + 1 `todo` · registro
-consolidado em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+**Última atualização:** 02/09/2026 · 778 testes passando · registro consolidado
+de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
@@ -50,8 +50,14 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
 - Os retratos dos chefes da Provação ganharam contraste e presença; o rastreador
   de Missões passou a ignorar IDs já entregues e preserva quatro vagas reais,
   inclusive ao carregar saves antigos.
-- Verificação: typecheck e 21 testes focados (fundos + fusão) passando; QA
-  visual em 1280×720.
+- A interface móvel deixou de comprimir as três colunas de desktop. Nave,
+  combate e carga agora são superfícies alternáveis por uma barra inferior;
+  as telas de trabalho usam fluxo vertical e rolagem própria em 390×844.
+- O boot passou a buscar os atlas obrigatórios em paralelo. O maior atlas foi
+  otimizado de 8,35 MB para 3,43 MB sem alterar suas dimensões ou transparência,
+  reduzindo em 4,9 MB o primeiro carregamento.
+- Verificação: typecheck, build de produção e 778 testes passando; QA visual em
+  390×844 e 1280×720.
 
 ### Consolidação de 25/08/2026
 
