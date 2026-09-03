@@ -9,7 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { PASSOS_DO_ONBOARDING } from '@data/onboarding';
+import { passosDoOnboarding } from '@data/onboarding';
+import type { PassoDoTour } from '@ui/Tour';
 
 /**
  * Os seletores que a interface principal expõe.
@@ -25,7 +26,21 @@ const ALVOS_DA_TELA_PRINCIPAL = new Set([
   '.tabs', '.rail-left', '.rail-control', '.perfil-botao', '.gear',
 ]);
 
-describe('roteiro do onboarding', () => {
+/**
+ * O roteiro deixou de ser constante.
+ *
+ * A partir do nível 15 o controle manual virou benefício VIP, e o guia é
+ * reabrível por Ajustes — ou seja, ele NÃO é lido só no nível 1. O passo dos
+ * modos passou a ter duas redações, e as regras de estrutura precisam valer
+ * para as duas: é fácil corrigir uma variante e esquecer a outra, e a esquecida
+ * é justamente a que ninguém abre durante o desenvolvimento.
+ */
+const VARIANTES: [string, readonly PassoDoTour[]][] = [
+  ['manual liberado', passosDoOnboarding(true)],
+  ['manual só com VIP', passosDoOnboarding(false)],
+];
+
+describe.each(VARIANTES)('roteiro do onboarding (%s)', (_nome, PASSOS_DO_ONBOARDING) => {
   it('todo alvo existe na tela principal', () => {
     // Um passo apontando para dentro de um painel de camada nunca funcionaria:
     // o guia roda sobre a tela principal, e o overlay estaria fechado.
@@ -74,7 +89,7 @@ describe('roteiro do onboarding', () => {
   });
 });
 
-describe('partes recolhidas da interface', () => {
+describe.each(VARIANTES)('partes recolhidas da interface (%s)', (_nome, PASSOS_DO_ONBOARDING) => {
   it('o passo da Anatomia exige que ela esteja aberta', () => {
     // A coluna recolhe, e recolhida ela é um talo: o recorte ficaria do tamanho
     // de nada e o balão explicaria algo que o jogador não vê. Foi exatamente o
@@ -97,7 +112,7 @@ describe('partes recolhidas da interface', () => {
   });
 });
 
-describe('o guia não mente sobre os dois modos', () => {
+describe.each(VARIANTES)('o guia não mente sobre os dois modos (%s)', (_nome, PASSOS_DO_ONBOARDING) => {
   /**
    * O jogo TEM pilotagem manual — `settings.controlMode` alterna entre `idle` e
    * `manual`, e há dois botões no trilho da esquerda.
@@ -128,6 +143,36 @@ describe('o guia não mente sobre os dois modos', () => {
     // depois onde aquilo ficava.
     const ondeEsta = (alvo: string) => PASSOS_DO_ONBOARDING.findIndex((p) => p.alvo === alvo);
     expect(ondeEsta('.rail-left')).toBeLessThan(ondeEsta('.rail-control'));
+  });
+});
+
+describe('o passo dos modos acompanha o que a tela permite', () => {
+  /**
+   * O texto fixo prometia "PILOTAR passa a nave para você" a todo mundo. Depois
+   * do passe VIP isso passou a ser mentira para uma parte real dos jogadores:
+   * no nível 15 sem VIP o botão existe, aparece e está DESLIGADO. Prometer o
+   * que a tela nega é pior do que não explicar — o jogador clica, não acontece
+   * nada, e conclui que o jogo está quebrado.
+   */
+  const dosModos = (manual: boolean) =>
+    passosDoOnboarding(manual).find((p) => p.alvo === '.rail-control')!;
+
+  it('bloqueado, o guia diz por que o botão não responde', () => {
+    expect(dosModos(false).texto).toMatch(/VIP/);
+    expect(dosModos(false).texto).toMatch(/15/);
+  });
+
+  it('liberado, o guia não vende nada', () => {
+    // Quem chega no nível 1 tem o modo manual em mãos. Enfiar o passe VIP no
+    // primeiro minuto de jogo troca uma explicação por um anúncio.
+    expect(dosModos(true).texto).not.toMatch(/VIP/);
+  });
+
+  it('as duas redações nomeiam os dois botões', () => {
+    for (const manual of [true, false]) {
+      expect(dosModos(manual).texto).toMatch(/IDLE/);
+      expect(dosModos(manual).texto).toMatch(/PILOTAR/);
+    }
   });
 });
 

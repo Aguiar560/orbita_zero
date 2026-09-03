@@ -56,6 +56,23 @@ na escada de confiança em resoluções reais. Tudo detalhado em [`PLANO.md`](PL
 - Verificação: typecheck, build de produção e 788 testes passando; QA visual em
   desktop e fluxo móvel de uma coluna.
 
+**Revisão de 03/09/2026.** Auditoria das seis entregas acumuladas: typecheck,
+build (`486 kB` JS / `266 kB` CSS), `npm audit --omit=dev` sem
+vulnerabilidades, e boot real em `localhost:5180` sem erro de console. Medido
+no jogo: save `v11`, migração de um save `v10` sem `vip` preenche o campo
+sem perder `autoEquip`/`autoDispose`; os nove alvos do onboarding continuam
+resolvendo depois da reestruturação do trilho em `.rail-module`; e as
+fronteiras do passe conferem nos dois sentidos (nível 14 livre, 15 bloqueado,
+VIP expirado bloqueia de novo).
+
+Um defeito encontrado e corrigido: o passo do guia sobre os modos de pilotagem
+era texto fixo e prometia "PILOTAR passa a nave para você" a todo mundo. Como o
+guia é reabrível por Ajustes, um jogador de nível 15+ sem VIP o relia apontando
+para um botão desligado. `PASSOS_DO_ONBOARDING` virou
+`passosDoOnboarding(manualDisponivel)`, com `Tour` seguindo sem conhecer o
+`Sim`. 802 testes passando — os 14 do onboarding passaram a rodar nas duas
+redações, mais três sobre a redação em si.
+
 ### Entrega de 02/09/2026 — cenários, síntese, Provação e Missões
 
 - As seis superfícies atmosféricas longas saíram do teste e entraram nas

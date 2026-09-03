@@ -27,71 +27,81 @@ import type { PassoDoTour } from '@ui/Tour';
  * dentro dele. Explicar o botão antes do painel que o contém faz o jogador
  * procurar depois onde aquilo ficava.
  */
-export const PASSOS_DO_ONBOARDING: readonly PassoDoTour[] = [
-  {
-    titulo: 'Bem-vindo ao Órbita Zero',
-    texto: 'Um minuto para você saber onde tudo fica. Dá para pular a qualquer momento — e reabrir depois em Ajustes.',
-  },
-  {
-    alvo: '.stage-wrap',
-    titulo: 'O combate acontece aqui',
-    texto: 'A nave avança pelos setores, enfrenta ondas e derruba chefes. Por padrão ela luta sozinha: mira, desvia e atira sem você — mas isso é uma escolha, não uma regra.',
-    escala: 1.02,
-    folga: 6,
-  },
-  {
-    alvo: '.rail-left',
-    titulo: 'O painel da esquerda acompanha a luta',
-    texto: 'Vida, escudo, elementos e o setor atual. É aqui que você vê se a nave está aguentando o que enfrenta ou se é hora de melhorar o equipamento.',
-    escala: 1.01,
-    folga: 6,
-  },
-  {
-    alvo: '.rail-control',
-    titulo: 'Você escolhe quem pilota',
-    texto: 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. PILOTAR passa a nave para você, com WASD ou as setas; o disparo continua automático. Dá para trocar no meio da luta.',
-    escala: 1.14,
-    folga: 10,
-  },
-  {
-    alvo: '.anatomia',
-    // A coluna recolhe, e recolhida ela é um talo de poucos pixels — o recorte
-    // ficaria do tamanho de nada e o balão explicaria algo invisível.
-    exige: 'anatomia',
-    titulo: 'A Anatomia é onde a nave se monta',
-    texto: 'Cada soquete aceita um tipo de peça. Arraste um item do inventário até o soquete certo, ou clique nele. Aqui embaixo também aparece o elemento da nave.',
-    escala: 1.04,
-  },
-  {
-    alvo: '.panel-host',
-    titulo: 'O inventário fica sempre à mão',
-    texto: 'Esta coluna não fecha: é de onde saem as peças que você arrasta para a nave. O que cai em combate chega aqui.',
-    escala: 1.01,
-    folga: 6,
-  },
-  {
-    alvo: '.resources',
-    titulo: 'Seus recursos',
-    texto: 'Sucata, núcleos e cristais. Saem de combate e de desmontar o que não presta — e é com eles que se fabrica, melhora e recalibra.',
-    escala: 1.06,
-  },
-  {
-    alvo: '.tabs',
-    titulo: 'Cada aba é um sistema',
-    texto: 'Galáxia leva a nave a campo. Fabricação e Afixos constroem peças. Matriz é a árvore de talentos. Elas abrem conforme você avança — não precisa entender todas hoje.',
-    escala: 1.02,
-    folga: 4,
-  },
-  {
-    alvo: '.perfil-botao',
-    titulo: 'Sua conta, e o progresso na nuvem',
-    texto: 'Com conta, o save sobe para o servidor e você continua de qualquer computador. Sem conta, o jogo funciona igual — mas o progresso fica só neste navegador.',
-    escala: 1.12,
-  },
-  {
-    alvo: '.gear',
-    titulo: 'Ajustes, e este guia de novo',
-    texto: 'Volume, vídeo, dados da conta — e o botão para rever este passeio quando quiser. Bom jogo.',
-    escala: 1.15,
-  },
-];
+export function passosDoOnboarding(manualDisponivel: boolean): readonly PassoDoTour[] {
+  return [
+    {
+      titulo: 'Bem-vindo ao Órbita Zero',
+      texto: 'Um minuto para você saber onde tudo fica. Dá para pular a qualquer momento — e reabrir depois em Ajustes.',
+    },
+    {
+      alvo: '.stage-wrap',
+      titulo: 'O combate acontece aqui',
+      texto: 'A nave avança pelos setores, enfrenta ondas e derruba chefes. Por padrão ela luta sozinha: mira, desvia e atira sem você — mas isso é uma escolha, não uma regra.',
+      escala: 1.02,
+      folga: 6,
+    },
+    {
+      alvo: '.rail-left',
+      titulo: 'O painel da esquerda acompanha a luta',
+      texto: 'Vida, escudo, elementos e o setor atual. É aqui que você vê se a nave está aguentando o que enfrenta ou se é hora de melhorar o equipamento.',
+      escala: 1.01,
+      folga: 6,
+    },
+    {
+      alvo: '.rail-control',
+      titulo: 'Você escolhe quem pilota',
+      // O texto pergunta ao jogo, e não ao roteiro, se PILOTAR está ao alcance.
+      //
+      // O guia é reabrível por Ajustes, então ele não é lido só no nível 1. A
+      // partir do nível 15 o controle manual passa a ser benefício VIP, e a frase
+      // fixa acabava descrevendo um botão que, para esse jogador, está desligado
+      // na frente dele. Prometer o que a tela nega é pior do que não explicar.
+      texto: manualDisponivel
+        ? 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. PILOTAR passa a nave para você, com WASD ou as setas; o disparo continua automático. Dá para trocar no meio da luta.'
+        : 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. PILOTAR passa a nave para você, com WASD ou as setas. A partir do nível 15 esse modo faz parte do passe VIP, por isso ele aparece desligado aqui.',
+      escala: 1.14,
+      folga: 10,
+    },
+    {
+      alvo: '.anatomia',
+      // A coluna recolhe, e recolhida ela é um talo de poucos pixels — o recorte
+      // ficaria do tamanho de nada e o balão explicaria algo invisível.
+      exige: 'anatomia',
+      titulo: 'A Anatomia é onde a nave se monta',
+      texto: 'Cada soquete aceita um tipo de peça. Arraste um item do inventário até o soquete certo, ou clique nele. Aqui embaixo também aparece o elemento da nave.',
+      escala: 1.04,
+    },
+    {
+      alvo: '.panel-host',
+      titulo: 'O inventário fica sempre à mão',
+      texto: 'Esta coluna não fecha: é de onde saem as peças que você arrasta para a nave. O que cai em combate chega aqui.',
+      escala: 1.01,
+      folga: 6,
+    },
+    {
+      alvo: '.resources',
+      titulo: 'Seus recursos',
+      texto: 'Sucata, núcleos e cristais. Saem de combate e de desmontar o que não presta — e é com eles que se fabrica, melhora e recalibra.',
+      escala: 1.06,
+    },
+    {
+      alvo: '.tabs',
+      titulo: 'Cada aba é um sistema',
+      texto: 'Galáxia leva a nave a campo. Fabricação e Afixos constroem peças. Matriz é a árvore de talentos. Elas abrem conforme você avança — não precisa entender todas hoje.',
+      escala: 1.02,
+      folga: 4,
+    },
+    {
+      alvo: '.perfil-botao',
+      titulo: 'Sua conta, e o progresso na nuvem',
+      texto: 'Com conta, o save sobe para o servidor e você continua de qualquer computador. Sem conta, o jogo funciona igual — mas o progresso fica só neste navegador.',
+      escala: 1.12,
+    },
+    {
+      alvo: '.gear',
+      titulo: 'Ajustes, e este guia de novo',
+      texto: 'Volume, vídeo, dados da conta — e o botão para rever este passeio quando quiser. Bom jogo.',
+      escala: 1.15,
+    },
+  ];
+}

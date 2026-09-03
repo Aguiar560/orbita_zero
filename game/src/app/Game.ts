@@ -8,7 +8,7 @@ import { Sim } from '@sim/index';
 import { allowSaving, loadFromStorage } from '@sim/state';
 import { bus, toast } from './Bus';
 import { Tour } from '@ui/Tour';
-import { PASSOS_DO_ONBOARDING } from '@data/onboarding';
+import { passosDoOnboarding } from '@data/onboarding';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
@@ -256,7 +256,7 @@ export class Game {
     const anatomiaAntes = this.sim.state.settings.anatomiaAberta;
 
     const tour = new Tour({
-      passos: PASSOS_DO_ONBOARDING,
+      passos: passosDoOnboarding(this.sim.controleManualDisponivel),
       aoAbrirPainel: (id) => bus.emit('panel:open', { id }),
       aoExigir: (oQue) => {
         if (oQue === 'anatomia') {

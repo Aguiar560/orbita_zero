@@ -907,6 +907,20 @@ ao controle manual no nível 15+ e as duas automações exclusivas. O cliente n�
 concede pacotes de cristais: os preços são catálogo até existir checkout
 validado pelo servidor.
 
+O gate aparece em três lugares e nos três ele é **visível, não silencioso**: o
+botão PILOTAR fica desabilitado com o motivo no `title`, Ajustes desenha a
+opção apagada com a nota do benefício, e o guia troca a redação do passo dos
+modos. Automação é diferente: `autoEquip` e `autoDispose` continuam GRAVADOS
+como o jogador os deixou, e só param de surtir efeito — assim o passe expirado
+não apaga a preferência, e renová-lo devolve o comportamento anterior sem
+reconfiguração.
+
+O roteiro do onboarding é, por isso, `passosDoOnboarding(manualDisponivel)` e
+não mais uma constante: o guia é reabrível por Ajustes, logo ele também é lido
+por quem já passou do nível 15. `tests/onboarding.test.ts` roda as regras de
+estrutura nas duas redações — a variante que ninguém abre durante o
+desenvolvimento é justamente a que apodrece.
+
 `recalibrateAffix` reutiliza as regras do drop: slot, elemento, raridade mínima,
 prefixo/sufixo e grupos de exclusão. Recalibrar nunca produz uma combinação que
 o gerador natural recusaria.
