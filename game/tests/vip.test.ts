@@ -24,16 +24,18 @@ describe('Passe VIP', () => {
     expect(cristaisDoPacote(pacote)).toBe(VIP_COST_CRYSTALS);
   });
 
-  it('debita 500 cristais, dura 30 dias e acumula renovação', () => {
+  it('o passe reconhecido pelo cliente vem do espelho do servidor', () => {
+    // A COMPRA saiu daqui na Fase 2 do Passo 9: quem debita os 500 cristais e
+    // carimba a validade é o servidor, e as regras de renovação são medidas em
+    // `carteira-fila.test.ts`, contra o código do Worker.
+    //
+    // O que continua sendo do cliente, e é o que este teste cobre, é LER esse
+    // carimbo e derivar dele os benefícios.
     const sim = new Sim(createState(201));
     const agora = 2_000_000_000_000;
-    sim.state.resources.cristal = 1_000;
-    expect(sim.buyVip(agora)).toBe(true);
-    expect(sim.state.resources.cristal).toBe(500);
-    expect(sim.state.vip.expiresAt).toBe(agora + VIP_DURATION_MS);
+    expect(vipAtivo(sim.state, agora)).toBe(false);
+    sim.state.vip.expiresAt = agora + VIP_DURATION_MS;
     expect(vipAtivo(sim.state, agora)).toBe(true);
-    expect(sim.buyVip(agora)).toBe(true);
-    expect(sim.state.vip.expiresAt).toBe(agora + VIP_DURATION_MS * 2);
   });
 
   it('aumenta a Provação para seis tentativas', () => {

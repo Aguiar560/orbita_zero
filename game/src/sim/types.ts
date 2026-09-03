@@ -428,6 +428,14 @@ export interface Settings {
 
 // ── Estado global ───────────────────────────────────────────────────────────
 
+/** Um ganho ou gasto esperando confirmação do servidor. */
+export interface MovimentoPendente {
+  moeda: ResourceId;
+  /** Positivo credita, negativo debita. */
+  quantia: number;
+  motivo: 'drop' | 'missao' | 'loja' | 'craft' | 'morte';
+}
+
 export interface GameState {
   version: number;
   createdAt: number;
@@ -491,10 +499,39 @@ export interface GameState {
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;
 
-  /** Passe de conveniência. Timestamp permite expirar mesmo com o jogo fechado. */
+  /**
+   * Passe de conveniência.
+   *
+   * ⚠️ **Espelho, não verdade.** A assinatura mora no servidor desde a Fase 2
+   * do Passo 9; este campo é o último valor confirmado, para a tela não ter de
+   * perguntar a cada quadro. Editar aqui muda o que se vê e nada mais: a
+   * próxima sincronização traz o valor do servidor por cima.
+   */
   vip: {
     expiresAt: number;
   };
+
+  /**
+   * Ganhos ainda não confirmados pelo servidor.
+   *
+   * ## Por que uma fila, e por que ela é salva
+   *
+   * O ganho acontece no meio do combate, e a rede pode estar fora. Sem fila, o
+   * jogador que fecha a aba com a rede caída perde o setor inteiro que acabou
+   * de limpar — e a perda é invisível, porque o número já tinha aparecido na
+   * tela.
+   *
+   * Ela é PERSISTIDA pelo mesmo motivo: uma fila só em memória não sobrevive a
+   * fechar a aba, que é exatamente quando ela mais precisa existir.
+   *
+   * ## O que ela não protege
+   *
+   * Escrever aqui à mão declara um ganho que não aconteceu. Nesta fase o
+   * servidor ainda acredita no que o cliente reporta — ver o comentário de
+   * `server/src/carteira.ts` sobre por que um teto por valor não funcionaria, e
+   * a Fase 5, onde o servidor passa a CALCULAR em vez de acreditar.
+   */
+  pendentes: MovimentoPendente[];
 
   /**
    * Cargas de serviço compradas e ainda não usadas. id → quantidade.

@@ -17,6 +17,7 @@ import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
 import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
+import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -151,6 +152,16 @@ export class Game {
     // escolha de piloto porque um save que desce troca o estado inteiro, e
     // escolher piloto para um save que vai ser substituído é decidir duas vezes.
     await this.juntarComANuvem();
+
+    // A carteira vem DEPOIS do save e antes de tudo que lê saldo.
+    //
+    // Depois porque juntar com a nuvem pode trocar o estado inteiro, e um
+    // saldo buscado antes disso pertenceria ao save que acabou de ser
+    // descartado. Antes do resto porque a escolha de piloto, a loja e o HUD
+    // desenham número de recurso — e mostrar o valor local por um instante,
+    // para ele mudar sozinho logo em seguida, parece defeito.
+    await sincronizarCarteira();
+    await drenarCarteira(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -332,6 +343,13 @@ export class Game {
     // quarenta marcas iguais a cada ciclo gastaria a cota de escrita do D1
     // para nao mudar nada.
     void enviarMarcas(this.sim.state);
+    // A carteira anda no MESMO relógio, e não num próprio.
+    //
+    // Dois relógios independentes dobrariam as requisições sem dobrar a
+    // informação: o que o jogador ganhou desde a última subida é justamente o
+    // que a fila acumulou desde a última drenagem. Um ciclo só mantém as duas
+    // coisas coerentes e cabe na cota de escrita do D1.
+    void drenarCarteira(this.sim);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {

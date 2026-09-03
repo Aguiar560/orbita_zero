@@ -530,17 +530,45 @@ maior custo (combate).
    - **Ainda não há rota que ESCREVE.** É de propósito: quem credita e debita é
      a Fase 2, junto com as moedas saindo do save.
 
-**Fase 2 — Economia.** Menor superfície, maior valor: é o que vira dinheiro.
+**Fase 2 — Economia.** ✅ 03/09. Menor superfície, maior valor: é o que vira
+dinheiro.
 
-- `cristal`, `sucata` e `núcleo` saem de `state.resources` e viram saldo do
-  servidor.
-- Toda concessão de recurso vira **transação** no livro-caixa.
-- Loja e VIP passam a ser comandos: `POST /loja/comprar`, `POST /vip`. O
-  servidor debita, e só ele.
-- `state.vip.expiresAt` sai do save.
+- As três moedas e o passe saem do save e viram estado do servidor. `resources`
+  e `vip` viram ESPELHO; a verdade é `transacoes` + `saldos` + `assinaturas`.
+- Todo movimento passa por `state.pendentes`, uma **fila de saída persistida**.
+  Ela é salva porque o ganho acontece no meio do combate e a rede pode estar
+  fora — sem fila, quem fecha a aba offline perde o setor que acabou de limpar,
+  e perde sem sintoma, porque o número já tinha aparecido na tela.
+- `POST /carteira` aplica um LOTE, tudo ou nada: a recompensa de missão entrega
+  três moedas juntas, e em três chamadas a segunda pode falhar e deixar o
+  jogador com um terço do prêmio.
+- `POST /vip` debita e renova no servidor. `Sim.buyVip()` foi **removido** —
+  manter a compra local seria manter um caminho que dá passe de graça pelo
+  console.
+- O save que sobe tem dinheiro e passe **arrancados** (`semODinheiro`). Campo
+  que não sobe não pode ser lido de volta por engano numa migração futura.
+- `motivo: compra` e `motivo: estorno` são **recusados vindos do cliente**:
+  nascem do provedor de pagamento, no servidor.
 
-*Aceite:* editar `resources` ou `vip` no console e sincronizar **não muda nada**
-— o servidor devolve os valores dele e o cliente adota.
+*Aceite, verificado:* editar `resources` ou `vip` no console muda o que se vê e
+nada mais — a sincronização seguinte traz o valor do servidor por cima, e todo
+gasto é reconferido lá.
+
+**Um defeito que esta fase revelou.** `sim/morte.ts` subtraía a multa direto de
+`state.resources.sucata`, sem passar por `spend`. Com o servidor mandando, a
+sincronização seguinte DEVOLVERIA a sucata que a morte cobrou, e a punição
+viraria um número piscando. Corrigido: a multa entra na fila com `motivo:
+'morte'`, arredondada para baixo porque o livro-caixa é INTEGER.
+
+**O que esta fase NÃO comprou, e é importante não confundir.** O servidor ainda
+ACREDITA no valor que o cliente declara ter ganhado. O que ele garante agora é
+que o saldo não é editável, que gastar exige o livro concordar, que todo ganho
+deixa rastro com motivo e hora, e que o ritmo é limitado. Conferir se o ganho
+foi merecido é a Fase 5 — e um teto por valor **não funcionaria** antes disso:
+medido em 03/09, a recompensa por setor vai de 0,06 (setor 1) a 192.201 (setor
+300), **3,2 milhões de vezes**, e o número que escolheria a faixa certa é
+justamente o que o cliente alega. Está documentado em `server/src/carteira.ts`
+para ninguém tentar adicionar o teto achando que resolve.
 
 **Fase 3 — Inventário.** Item e nave param de nascer no cliente.
 

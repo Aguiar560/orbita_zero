@@ -97,8 +97,22 @@ export function cobrarMorte(state: GameState): ResumoDaMorte {
     nosDevolvidos.push(ultimo);
   }
 
-  const sucata = state.resources.sucata * SUCATA_PERDIDA;
-  state.resources.sucata -= sucata;
+  // A multa passa pela FILA, como todo movimento de dinheiro.
+  //
+  // Ela subtraía `state.resources.sucata` direto, e isso deixou de bastar na
+  // Fase 2 do Passo 9: o saldo agora mora no servidor, e o campo local é só
+  // espelho. Uma perda que não é enviada some na sincronização seguinte —
+  // o servidor devolveria a sucata que a morte tinha cobrado, e a punição
+  // viraria um número piscando na tela.
+  //
+  // Arredonda para baixo porque o livro-caixa é INTEGER: mandar fração faria
+  // o servidor recusar o lançamento inteiro com `quantia_invalida`, e aí a
+  // multa sumiria pelo outro caminho.
+  const sucata = Math.floor(state.resources.sucata * SUCATA_PERDIDA);
+  if (sucata > 0) {
+    state.resources.sucata -= sucata;
+    state.pendentes.push({ moeda: 'sucata', quantia: -sucata, motivo: 'morte' });
+  }
 
   return {
     xpPersonagem: personagem.xp,

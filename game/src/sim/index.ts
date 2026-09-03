@@ -46,7 +46,7 @@ import {
   type CamadaDeRecompensa, type EstadoDoPiso,
 } from './provacao';
 import {
-  VIP_COST_CRYSTALS, VIP_DURATION_MS, controleManualDisponivel,
+  controleManualDisponivel,
   limiteTentativasDaProvacao, vipAtivo,
 } from './vip';
 import {
@@ -85,6 +85,7 @@ import {
   RESOURCE_IDS,
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
   type NaveProgresso, type NivelProgresso, type SlotId, type Stats,
+  type MovimentoPendente,
 } from './types';
 import {
   SHOP_BY_ID, SHOP_CARGO_IDS, shopCost, shopLimit,
@@ -576,9 +577,18 @@ export class Sim {
 
   // ── recursos ──────────────────────────────────────────────────────────────
 
-  grant(resource: ResourceId, amount: number): void {
+  /**
+   * Deposita no banco.
+   *
+   * O número sobe na tela na hora E entra na fila de saída. São as duas
+   * metades do mesmo depósito: a tela não pode esperar a rede, e o servidor
+   * é quem soma de verdade. Quando ele confirma, o saldo dele substitui este
+   * — já incluindo o que a fila levou, então não há dobra.
+   */
+  grant(resource: ResourceId, amount: number, motivo: MovimentoPendente['motivo'] = 'drop'): void {
     if (!(amount > 0)) return;
     this.state.resources[resource] += amount;
+    this.state.pendentes.push({ moeda: resource, quantia: Math.trunc(amount), motivo });
     this.state.lifetime[resource] += amount;
     this.registrar({ tipo: 'moeda', moeda: resource, quantidade: amount });
     bus.emit('resources:changed');
@@ -1053,10 +1063,22 @@ export class Sim {
     return this.testMode || this.state.resources[resource] >= amount;
   }
 
-  spend(resource: ResourceId, amount: number): boolean {
+  /**
+   * Gasta do banco.
+   *
+   * O gasto entra na MESMA fila do ganho, com quantia negativa. É o que
+   * mantém o livro-caixa completo: um saldo que só registra entradas não
+   * reconstrói nada, e a auditoria do pódio precisa das duas metades.
+   *
+   * A recusa aqui é otimista — usa o espelho local. O servidor recusa de
+   * novo, e de verdade, se o saldo não cobrir; nesse caso a sincronização
+   * seguinte traz o saldo dele por cima e o gasto local desaparece.
+   */
+  spend(resource: ResourceId, amount: number, motivo: MovimentoPendente['motivo'] = 'loja'): boolean {
     if (this.testMode) return true;
     if (!this.can(resource, amount)) return false;
     this.state.resources[resource] -= amount;
+    this.state.pendentes.push({ moeda: resource, quantia: -Math.trunc(amount), motivo });
     bus.emit('resources:changed');
     return true;
   }
@@ -1901,13 +1923,16 @@ export class Sim {
 
   // ── loja ──────────────────────────────────────────────────────────────────
 
-  /** Compra ou renova o passe. O checkout de cristais é uma integração separada. */
-  buyVip(agora = Date.now()): boolean {
-    if (!this.spend('cristal', VIP_COST_CRYSTALS)) return false;
-    this.state.vip.expiresAt = Math.max(agora, this.state.vip.expiresAt) + VIP_DURATION_MS;
-    this.touch();
-    return true;
-  }
+  // `buyVip()` foi REMOVIDO, e a ausência é deliberada.
+  //
+  // Ele debitava 500 cristais e carimbava `vip.expiresAt` aqui, no cliente.
+  // Desde a Fase 2 do Passo 9 quem faz isso é o servidor (`POST /vip`), e
+  // manter a versão local seria manter um caminho que dá passe de graça a
+  // quem o chamar pelo console — cosmético até a próxima sincronização, mas
+  // cosmético é exatamente como um relato de bug começa.
+  //
+  // A compra vive em `app/carteira.ts`, que é a camada que pode falar com a
+  // rede. `sim/` não conhece rede, e é por isso que ela não mora aqui.
 
   shopOwned(id: string): number {
     return this.state.shop[id] ?? 0;

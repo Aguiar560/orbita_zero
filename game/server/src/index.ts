@@ -2,8 +2,9 @@ import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
 import {
-  MOEDAS, conferirLancamento, podeDebitar, saldosDoLivro,
-  type Lancamento, type Moeda, type Recusa,
+  MOEDAS, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar,
+  renovar, saldosDoLivro,
+  type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
 
 /**
@@ -265,7 +266,15 @@ export default {
       if (!podeLer(usuario.id, Math.floor(Date.now() / 1000))) {
         return json({ erro: 'rapido_demais' }, 429, origem);
       }
-      return json({ saldos: await saldosDe(env, usuario.id) }, 200, origem);
+      return json(await carteiraDe(env, usuario.id), 200, origem);
+    }
+
+    if (url.pathname === '/carteira' && req.method === 'POST') {
+      return movimentar(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/vip' && req.method === 'POST') {
+      return comprarVip(env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -294,6 +303,116 @@ async function saldosDe(env: Env, usuario: string): Promise<Record<Moeda, number
     if ((MOEDAS as readonly string[]).includes(linha.moeda)) r[linha.moeda as Moeda] = linha.quantia;
   }
   return r;
+}
+
+/** Saldos e passe numa resposta só: a tela da Loja precisa dos dois juntos. */
+async function carteiraDe(env: Env, usuario: string): Promise<{ saldos: Record<Moeda, number>; vipExpiraEm: number }> {
+  const [saldos, assinatura] = await Promise.all([
+    saldosDe(env, usuario),
+    env.DB.prepare('SELECT expira_em FROM assinaturas WHERE usuario = ?')
+      .bind(usuario).first<{ expira_em: number }>(),
+  ]);
+  return { saldos, vipExpiraEm: assinatura?.expira_em ?? 0 };
+}
+
+/**
+ * Aplica um lote de movimentos, tudo ou nada.
+ *
+ * ## Por que um lote e não um movimento por chamada
+ *
+ * A recompensa de missão entrega sucata, núcleo e cristal JUNTOS. Em três
+ * chamadas, a segunda pode falhar e deixar o jogador com um terço do prêmio e
+ * um livro que registra uma entrega que não aconteceu inteira. O lote resolve
+ * pela raiz: ou os três entram, ou nenhum.
+ *
+ * ## Por que o cliente ainda declara o valor
+ *
+ * Porque nesta fase ele ainda é quem calcula o combate. O que o servidor
+ * garante AGORA é que o saldo não é editável, que gastar exige o livro
+ * concordar, e que todo ganho fica registrado com motivo e hora. Conferir se o
+ * ganho foi merecido é a Fase 5 — e o comentário em `carteira.ts` explica, com
+ * medição, por que um teto por valor não funcionaria antes disso.
+ */
+async function movimentar(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { movimentos?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const lista = Array.isArray(corpo.movimentos) ? corpo.movimentos : null;
+  // Teto de itens no lote: uma recompensa toca no máximo as três moedas, e o
+  // dobro disso já cobre qualquer combinação futura sem virar caminho barato
+  // para inflar uma requisição.
+  if (!lista || lista.length === 0 || lista.length > 6) {
+    return json({ erro: 'movimentos_invalidos' }, 400, origem);
+  }
+
+  const lancamentos: Lancamento[] = [];
+  for (const m of lista as { moeda?: unknown; quantia?: unknown; motivo?: unknown }[]) {
+    const l: Lancamento = {
+      usuario: id,
+      moeda: m.moeda as Moeda,
+      quantia: Math.trunc(Number(m.quantia)),
+      motivo: m.motivo as Motivo,
+      em: agora,
+    };
+    const recusa = conferirLancamento(l);
+    if (recusa) return json({ erro: recusa }, 400, origem);
+    // `compra` e `estorno` nascem do provedor de pagamento, no servidor. Aceitar
+    // do cliente seria deixar qualquer um declarar que pagou.
+    if (l.motivo === 'compra' || l.motivo === 'estorno') {
+      return json({ erro: 'motivo_so_do_servidor' }, 403, origem);
+    }
+    lancamentos.push(l);
+  }
+
+  for (const l of lancamentos) {
+    const r = await lancar(env, l);
+    if (!r.ok) return json({ erro: r.erro, saldos: (await carteiraDe(env, id)).saldos }, 409, origem);
+  }
+
+  return json(await carteiraDe(env, id), 200, origem);
+}
+
+/**
+ * Compra ou renova o passe.
+ *
+ * O débito e a extensão são do SERVIDOR: o cliente só pede. Era a última peça
+ * em que `state.vip.expiresAt` no save bastava para ter passe de graça.
+ */
+async function comprarVip(env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const r = await lancar(env, {
+    usuario: id, moeda: 'cristal', quantia: -VIP_CUSTO_CRISTAIS, motivo: 'vip', em: agora,
+  });
+  if (!r.ok) return json({ erro: r.erro }, 409, origem);
+
+  const atual = await env.DB.prepare('SELECT expira_em FROM assinaturas WHERE usuario = ?')
+    .bind(id).first<{ expira_em: number }>();
+  const novo = renovar(atual?.expira_em ?? 0, agora);
+
+  await env.DB.prepare(`
+    INSERT INTO assinaturas (usuario, expira_em) VALUES (?, ?)
+    ON CONFLICT(usuario) DO UPDATE SET expira_em = excluded.expira_em
+  `).bind(id, novo).run();
+
+  return json(await carteiraDe(env, id), 200, origem);
 }
 
 /** Reconstrói os saldos a partir do livro. A verdade, para conferir o cache. */

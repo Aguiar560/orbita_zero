@@ -89,6 +89,19 @@ export const BALDES = {
    * nome de verdade, e fecha a porta de quem varre nomes livres um por um.
    */
   apelido: { refil: 300, capacidade: 2 },
+  /**
+   * Carteira: um depósito por setor concluído, mais missões e Provação.
+   *
+   * Medido no jogo em 03/09: cinco ondas por setor, cerca de três minutos por
+   * setor — **20 depósitos por hora** no ritmo normal. É baixo porque o ganho
+   * de combate entra em `run.carga` e só é bancado quando o setor inteiro cai;
+   * abate não deposita nada.
+   *
+   * Um a cada 30 s com estouro de 6 dá folga de 9× sobre o ritmo real, o que
+   * cobre missão e Provação caindo junto do setor, e ainda assim recusa um
+   * laço que chame a rota em série.
+   */
+  carteira: { refil: 30, capacidade: 6 },
 } as const;
 
 export type NomeDeBalde = keyof typeof BALDES;

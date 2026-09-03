@@ -116,6 +116,14 @@ Regras de camada, em ordem de importância:
   A regra é testada e não combinada porque convenção que depende de memória se
   perde na terceira nave — e um catálogo com metade das naves mudas é pior que
   um sem nenhuma.
+- **Dinheiro e assinatura NÃO moram no save.** `resources` e `vip` em
+  `GameState` são ESPELHO do servidor desde a Fase 2 do Passo 9; a verdade está
+  em `transacoes`, `saldos` e `assinaturas` no D1. Todo movimento entra em
+  `state.pendentes` e sobe pela fila — nunca escreva `state.resources` direto,
+  porque a próxima sincronização apaga a escrita e a punição (ou o prêmio) some
+  sem sintoma. Foi exatamente o defeito encontrado em `sim/morte.ts`. O save que
+  sobe para a nuvem tem esses campos ARRANCADOS (`semODinheiro`), para não
+  existirem duas verdades no mesmo servidor.
 - **A nave evolui por item, craft e Matriz. Só.** Não existe sistema paralelo de
   upgrade. Já foram removidos por serem um: o menu **Melhorias** (§31) e os
   **Power Ups** de batalha (§30). Qualquer proposta de nova fonte de poder fora

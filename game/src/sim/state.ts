@@ -78,6 +78,7 @@ export function createState(
 
     shop: {},
     vip: { expiresAt: 0 },
+    pendentes: [],
     servicos: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
     naves: {},
@@ -178,6 +179,7 @@ export function migrate(raw: unknown): GameState | null {
     settings: { ...fresh.settings, ...data.settings },
     shop: { ...data.shop },
     vip: { ...fresh.vip, ...(data.vip ?? {}) },
+    pendentes: Array.isArray(data.pendentes) ? data.pendentes : [],
     servicos: { ...data.servicos },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },

@@ -155,7 +155,7 @@ export async function subirSave(estado: GameState, saindo = false): Promise<Resu
   const agora = Math.floor(Date.now() / 1000);
   if (agora < nuvem.esperarAte) return { fase: 'cedo', esperar: nuvem.esperarAte - agora };
 
-  const r = await chamar('PUT', { estado, versao: SAVE_VERSION, base: nuvem.versaoServidor }, saindo);
+  const r = await chamar('PUT', { estado: semODinheiro(estado), versao: SAVE_VERSION, base: nuvem.versaoServidor }, saindo);
   if (!r) return { fase: 'falhou' };
 
   if (r.status === 429) {
@@ -236,4 +236,37 @@ export async function reconciliar(local: GameState): Promise<Reconciliacao> {
     return { acao: 'nada', motivo: r.fase === 'cedo' ? 'cedo' : 'falhou' };
   }
   return { acao: 'nada', motivo: 'empate' };
+}
+
+/**
+ * O save que sobe NÃO leva dinheiro nem passe.
+ *
+ * ## Por que arrancar, em vez de só ignorar
+ *
+ * Saldo e assinatura moram em `transacoes`, `saldos` e `assinaturas` desde a
+ * Fase 2 do Passo 9. Se o save continuasse carregando uma cópia, existiriam
+ * duas verdades no MESMO servidor — e a segunda seria escrita pelo cliente,
+ * que é exatamente o que a fase inteira existe para acabar.
+ *
+ * O perigo não é hipotético: bastaria alguém, um dia, restaurar recurso a
+ * partir do save (numa migração, num conserto de conta) para reabrir o buraco
+ * sem perceber. Campo que não sobe não pode ser lido de volta por engano.
+ *
+ * ## `pendentes` também fica
+ *
+ * É fila de saída, não progresso: ela existe para sobreviver a fechar a aba
+ * com a rede fora, e isso o `localStorage` já garante. Subir a fila faria o
+ * outro dispositivo baixar movimentos que este ainda vai enviar — e o mesmo
+ * ganho entraria duas vezes no livro.
+ */
+function semODinheiro(estado: GameState): GameState {
+  // Cópia rasa e sobrescrita dos três campos: clonar fundo o save inteiro a
+  // cada subida custaria mais que a requisição, e nada aqui muda em
+  // profundidade.
+  return {
+    ...estado,
+    resources: { sucata: 0, nucleo: 0, cristal: 0 },
+    vip: { expiresAt: 0 },
+    pendentes: [],
+  };
 }

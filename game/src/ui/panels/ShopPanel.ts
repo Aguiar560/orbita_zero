@@ -5,6 +5,7 @@ import {
 } from '@data/shop';
 import { nivelExigido } from '@data/balance/curvas';
 import { CHESTS, type ChestDef } from '@data/chests';
+import { comprarVip } from '@app/carteira';
 import {
   CRYSTAL_PACKAGES, VIP_COST_CRYSTALS, VIP_DURATION_DAYS, cristaisDoPacote,
 } from '@sim/vip';
@@ -52,6 +53,8 @@ export class ShopPanel implements Panel {
   private selected = 'carga';
   private section: ShopSection = 'servicos';
   private feedback = 'SELECIONE UM SERVIÇO';
+  /** Trava do botão do passe enquanto o servidor responde. */
+  private comprando = false;
 
   badge(sim: Sim): number {
     return SHOP.filter((item) => this.visible(sim, item) && sim.canBuyShopItem(item.id)).length;
@@ -184,11 +187,28 @@ export class ShopPanel implements Panel {
             ? `Acesso ativo por mais ${sim.vipDiasRestantes} dias. Renovar agora acumula mais 30 dias.`
             : 'Mais automação e liberdade de pilotagem, sem adicionar dano, defesa ou atributos exclusivos.' }),
         ),
+        // A compra é do SERVIDOR, e por isso é assíncrona.
+        //
+        // Era o último lugar em que escrever `vip.expiresAt` no console dava um
+        // passe de graça: o cliente debitava, carimbava a validade, e o save
+        // subia isso como blob que o servidor gravava sem olhar dentro.
+        //
+        // O botão trava enquanto espera. Sem a trava, dois cliques viram duas
+        // cobranças de 500 cristais — e a segunda só seria descoberta quando o
+        // saldo voltasse menor do que deveria.
         h('button.btn.loj-vip-comprar', {
-          disabled: !sim.can('cristal', VIP_COST_CRYSTALS),
+          disabled: this.comprando || !sim.can('cristal', VIP_COST_CRYSTALS),
           onclick: () => {
-            if (!sim.buyVip()) return;
-            this.feedback = `PASSE VIP ATIVO · ${sim.vipDiasRestantes} DIAS`;
+            if (this.comprando) return;
+            this.comprando = true;
+            this.render(sim);
+            void comprarVip().then((ok) => {
+              this.comprando = false;
+              this.feedback = ok
+                ? `PASSE VIP ATIVO · ${sim.vipDiasRestantes} DIAS`
+                : 'NÃO FOI POSSÍVEL ATIVAR. TENTE DE NOVO.';
+              this.render(sim);
+            });
           },
         },
           h('span', { text: sim.vipAtivo ? 'RENOVAR PASSE' : 'ATIVAR PASSE' }),

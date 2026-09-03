@@ -36,6 +36,7 @@ export const MOTIVOS = [
   'craft',    // fabricação e síntese
   'estorno',  // devolução de uma compra
   'ajuste',   // correção administrativa, sempre com justificativa fora do banco
+  'morte',    // multa cobrada ao perder a nave
   'semente',  // migração do save antigo para o servidor
 ] as const;
 export type Motivo = (typeof MOTIVOS)[number];
@@ -122,3 +123,60 @@ export function divergencias(
 export function podeDebitar(saldo: number, quantia: number): boolean {
   return quantia > 0 && saldo >= quantia;
 }
+
+// ─── o passe ────────────────────────────────────────────────────────────────
+
+/** Preço e duração do passe. Espelha `sim/vip.ts` do cliente. */
+export const VIP_CUSTO_CRISTAIS = 500;
+export const VIP_DIAS = 30;
+export const VIP_SEGUNDOS = VIP_DIAS * 24 * 60 * 60;
+
+/** O passe está valendo agora? Zero e passado significam a mesma coisa. */
+export const vipAtivo = (expiraEm: number, agora: number): boolean => expiraEm > agora;
+
+/**
+ * A nova expiração ao renovar.
+ *
+ * Soma sobre o MAIOR entre agora e a expiração atual: quem renova antes de
+ * vencer não perde o que sobrou. Renovar depois de vencido começa de agora, e
+ * não do vencimento — senão comprar um passe hoje, para uma assinatura que
+ * venceu há um ano, entregaria um passe já vencido.
+ */
+export const renovar = (expiraEm: number, agora: number): number =>
+  Math.max(agora, expiraEm) + VIP_SEGUNDOS;
+
+// ─── o que este módulo NÃO faz, e por quê ───────────────────────────────────
+
+/*
+ * Não existe teto por valor no depósito. É deliberado, e foi medido.
+ *
+ * A tentação óbvia é limitar quanto o cliente pode declarar por hora, como
+ * `placar.ts` faz com as marcas. Aqui não funciona, e o motivo é a escala da
+ * curva de recompensa — medido em 03/09 com `sectorBounty`:
+ *
+ * | setor | recompensa por unidade |
+ * |-------|------------------------|
+ * | 1     | 0,06                   |
+ * | 50    | 475                    |
+ * | 100   | 5.187                  |
+ * | 300   | 192.201                |
+ *
+ * São **3,2 milhões de vezes** entre as pontas. Um teto apertado o bastante
+ * para pegar trapaça no setor 1 recusaria em silêncio todo jogador legítimo do
+ * fim da campanha; um teto folgado para o setor 300 deixa passar qualquer
+ * coisa no começo. E o número que escolheria a faixa certa — o setor alcançado
+ * — é justamente o que o cliente alega.
+ *
+ * Não há teto honesto a escrever aqui, então não se escreve nenhum. O que este
+ * módulo entrega de verdade é outra coisa:
+ *
+ * - **o saldo não é editável** — está no servidor, não no save;
+ * - **gastar exige que o livro concorde** — não se compra o que não se tem;
+ * - **todo ganho deixa rastro** com motivo e carimbo de tempo, então a
+ *   auditoria do pódio tem o que reconstruir;
+ * - **o ritmo é limitado** pelo balde `carteira`.
+ *
+ * O que falta — o servidor CALCULAR o ganho em vez de acreditar nele — é a
+ * Fase 5 do Passo 9, e lá o teto deixa de ser necessário: não se confere o que
+ * não foi declarado.
+ */
