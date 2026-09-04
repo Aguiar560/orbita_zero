@@ -849,7 +849,23 @@ atributos.
    ausência. Nenhum dos três decide poder — são contexto de cena.
 3. ✅ **Feito para a AUSÊNCIA em 03/09.** O servidor monta um `GameState` a
    partir das oito tabelas, roda `applyOffline` e grava os deltas.
-4. 🔴 **Falta para o jogo AO VIVO, e a medição de 03/09 mostrou POR QUÊ.**
+4. 🟡 **MEDE, ainda não impede — feito em 04/09.** O servidor registra em `excedentes` quando o ganho declarado passa do teto físico com 10× de folga, e nunca recusa. Ver `server/src/teto.ts`.
+
+   **A medição de 04/09 corrigiu a de 03/09, e a correção é o achado.** Registrava-se aqui que "no setor 1 o teto fica três vezes ABAIXO do ganho honesto". Aquilo foi medido em **XP** — e o livro não registra XP, registra sucata, núcleo e cristal. Refeita em MOEDA, com o build representativo e `abstractTick` de verdade, a conta é outra:
+
+   | setor | moeda/s honesta | teto de registro/s | uso |
+   |---|---|---|---|
+   | 1 | 1,83 | 24,8 | 7,4% |
+   | 21 | 102,3 | 9.464,7 | 1,1% |
+   | 85 | 20.004 | 1.198.203 | 1,7% |
+   | 180 | 1.140.871 | 15.358.643 | **7,4%** |
+   | 300 | 1.601.305 | 79.077.022 | 2,0% |
+
+   **Pior caso 7,4% em toda a faixa de 1 a 300 — folga de 13×.** A fórmula nunca esteve errada; estava sendo comparada com a grandeza errada.
+
+   Falta: dados de jogadores reais. A tabela deve ficar VAZIA — e ficar vazia é o resultado esperado, não sinal de registro quebrado. Ligar a recusa é a decisão que vem depois desses dados.
+
+   O histórico das duas tentativas que falharam fica abaixo, porque é o que impede a próxima pessoa de repeti-las.
    A ausência já não é reportada; o ganho de quem está com a aba aberta ainda
    é. Duas tentativas de fechar isso foram medidas e as duas falharam — o
    detalhe está abaixo, porque é o que impede a próxima pessoa de repetir.

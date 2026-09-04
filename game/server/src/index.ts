@@ -6,6 +6,7 @@ import {
   renovar, saldosDoLivro,
   type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
+import { excedeu } from './teto';
 import {
   ITENS_POR_POOL, TIPOS, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
   setorValido, sorteValida, type TipoDeDrop,
@@ -370,9 +371,18 @@ async function carteiraDe(env: Env, usuario: string): Promise<{ saldos: Record<M
  *
  * Porque nesta fase ele ainda é quem calcula o combate. O que o servidor
  * garante AGORA é que o saldo não é editável, que gastar exige o livro
- * concordar, e que todo ganho fica registrado com motivo e hora. Conferir se o
- * ganho foi merecido é a Fase 5 — e o comentário em `carteira.ts` explica, com
- * medição, por que um teto por valor não funcionaria antes disso.
+ * concordar, e que todo ganho fica registrado com motivo e hora.
+ *
+ * ## E o que ele passou a MEDIR (Fase 5, passo 4)
+ *
+ * Conferir se o ganho foi merecido continua não acontecendo, e de propósito:
+ * duas fórmulas de recusa foram medidas e as duas falharam — a menos ruim
+ * recusaria todo jogador novo no setor 1, em silêncio. O `PLANO` deixou o
+ * caminho escrito: *medir antes de impedir*.
+ *
+ * Então o lançamento entra sempre, e quando o declarado passa do teto físico
+ * com dez vezes de folga, uma linha vai para `excedentes`. Ver `teto.ts` para
+ * por que a margem é absurda de propósito e por que isso não custa cota.
  */
 async function movimentar(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
@@ -423,7 +433,72 @@ async function movimentar(req: Request, env: Env, id: string, origem: string): P
     if (!r.ok) return json({ erro: r.erro, saldos: (await carteiraDe(env, id)).saldos }, 409, origem);
   }
 
+  // Depois de pagar, nunca antes: a auditoria não pode atrasar nem derrubar o
+  // caminho do dinheiro. Se ela falhar, o jogador recebe igual.
+  await registrarExcedentes(env, id, lancamentos, agora);
+
   return json(await carteiraDe(env, id), 200, origem);
+}
+
+/**
+ * Registra o que passou do teto físico. Não recusa nada — ver `teto.ts`.
+ *
+ * ## Duas leituras, nenhuma escrita no caso normal
+ *
+ * O teto depende do SETOR (o quanto um abate pode render ali) e da JANELA (o
+ * quanto de tempo o ganho cobre). Nenhum dos dois vem do cliente: o setor sai
+ * de `progresso`, que só sobe e é do servidor, e a janela sai do próprio livro
+ * — o intervalo desde o lançamento anterior. Aceitar qualquer um dos dois do
+ * cliente daria ao trapaceiro o botão de afrouxar o próprio teto.
+ *
+ * Leitura é barata na cota (5 milhões por dia contra 100 mil escritas), e no
+ * caso normal isto termina sem gravar nada.
+ *
+ * ## Por que engole o próprio erro
+ *
+ * Porque ela roda DEPOIS do pagamento. Uma exceção aqui devolveria 500 para um
+ * jogador que já recebeu — ele veria erro, tentaria de novo, e a idempotência
+ * do livro é o que o salvaria. Auditoria que quebra o jogo não é auditoria.
+ */
+async function registrarExcedentes(
+  env: Env, id: string, lancamentos: readonly Lancamento[], agora: number,
+): Promise<void> {
+  try {
+    const ganhos = lancamentos.filter((l) => l.quantia > 0);
+    if (!ganhos.length) return;
+
+    const ctx = await env.DB
+      .prepare(
+        'SELECT (SELECT setor FROM progresso WHERE usuario = ?1) AS setor,'
+        + ' (SELECT MAX(em) FROM transacoes WHERE usuario = ?1 AND em < ?2) AS anterior',
+      )
+      .bind(id, agora)
+      .first<{ setor: number | null; anterior: number | null }>();
+
+    // Sem progresso gravado, o setor 1 é o mais CONSERVADOR possível: é onde o
+    // teto é mais baixo, então usá-lo nunca deixa passar o que deveria pegar.
+    const setor = ctx?.setor ?? 1;
+    // Primeira transação da conta não tem janela anterior. Uma janela de zero
+    // faria qualquer valor exceder, então ela vale o intervalo mínimo do
+    // balde de fichas — o menor tempo real entre duas declarações.
+    const segundos = ctx?.anterior ? Math.max(1, agora - ctx.anterior) : 120;
+
+    const escritas: D1PreparedStatement[] = [];
+    for (const l of ganhos) {
+      const e = excedeu(l.quantia, setor, segundos);
+      if (!e) continue;
+      escritas.push(env.DB
+        .prepare(
+          'INSERT INTO excedentes (usuario, em, moeda, motivo, quantia, teto, folga, setor, segundos)'
+          + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .bind(id, agora, l.moeda, l.motivo, e.quantia, e.teto, e.folga, e.setor, e.segundos));
+    }
+    if (escritas.length) await env.DB.batch(escritas);
+  } catch {
+    // Ver o cabeçalho: o pagamento já aconteceu, e a auditoria não pode
+    // transformar um erro dela num erro dele.
+  }
 }
 
 /**
