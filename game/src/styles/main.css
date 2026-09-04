@@ -8075,11 +8075,22 @@ select option:disabled { color: #667991; }
   transform: translate(-50%, -50%);
   z-index: 40;
   pointer-events: none;
+  /*
+   * O MESMO padrão de "CASCO PERDIDO" e "RECONSTRUINDO CASCO…", que a cena
+   * desenha no canvas por `Surface.text`. Lá a fonte é
+   * `700 30px "Rajdhani"` com sombra de 1px, e aqui era 800 numa família
+   * herdada do documento — duas mensagens de aviso, dois tipos.
+   *
+   * O tamanho continua fluido em vez de fixo em 30px: o canvas desenha num
+   * espaço lógico que ele mesmo escala, e a mensagem vive no DOM, onde 30px
+   * são 30px de verdade em qualquer janela.
+   */
+  font-family: "Rajdhani", "Segoe UI", system-ui, sans-serif;
   color: #ff3b3b;
-  font-weight: 800;
-  font-size: clamp(20px, 3.4vw, 40px);
-  letter-spacing: 0.06em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .9), 0 0 3px rgba(0, 0, 0, .95);
+  font-weight: 700;
+  font-size: clamp(22px, 3.2vw, 34px);
+  letter-spacing: 0.04em;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, .9), 0 2px 12px rgba(0, 0, 0, .85);
   animation: inventario-cheio-entra .14s ease-out;
 }
 
@@ -8113,9 +8124,25 @@ select option:disabled { color: #667991; }
   margin: 2px 0 6px; font-size: 12px; color: #9fe8ff;
 }
 
-/* A cor do aviso segue o SENTIDO do que aconteceu, não o evento. Vermelho é a
- * única perda de verdade — peça deixada para trás; âmbar é a automação agindo
- * como foi pedida; verde é troca, em que o jogador ganhou. Pintar os três de
- * vermelho ensinaria a ignorar a mensagem inteira. */
-.inventario-cheio[data-motivo="descartada"] { color: #ffb638; }
-.inventario-cheio[data-motivo="trocada"] { color: #7ed957; }
+/*
+ * Os três avisos de Inventário cheio são VERMELHOS, decidido em 04/09.
+ *
+ * Eu os tinha pintado de três cores — vermelho, âmbar e verde — para separar
+ * perda de automação e de troca. A instrução foi outra: um só padrão, igual ao
+ * da mensagem de casco perdido.
+ *
+ * A distinção não se perdeu, ela mudou de canal: os três TEXTOS continuam
+ * diferentes e dizem o que aconteceu com a peça. Cor separava de relance, mas
+ * ao custo de três aparências para o mesmo aviso no mesmo lugar da tela.
+ */
+
+/* O aviso de espaço na cápsula: aparece SÓ quando o baú não cabe, então pode
+ * ser chamativo sem virar ruído — ao contrário de um selo permanente. */
+.bau-aviso-espaco {
+  display: grid; gap: 3px; margin: 8px 0 4px; padding: 9px 11px;
+  border: 1px solid rgba(255, 93, 122, .5); border-radius: 8px;
+  background: rgba(60, 12, 24, .35);
+}
+.bau-aviso-espaco strong { font-size: 12px; color: #ff8a9a; letter-spacing: .04em; }
+.bau-aviso-espaco span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+.bau-cancelar { background: rgba(255, 255, 255, .05); }

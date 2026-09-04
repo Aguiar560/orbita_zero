@@ -37,6 +37,14 @@ function chanceText(chance: number): string {
  */
 export class ChestsPanel implements Panel {
   id = 'baus';
+  /**
+   * Baú aguardando confirmação para abrir sem espaço.
+   *
+   * Em dois passos no próprio botão, e não num modal: o painel já é uma
+   * camada por cima do jogo, e uma segunda camada por cima dela para uma
+   * pergunta de uma linha empilharia janela sobre janela.
+   */
+  private confirmando: string | null = null;
   title = 'Baús';
   icon = 'aba/baus';
   iconUrl = '/assets/ui/menu/bau.webp';
@@ -188,10 +196,24 @@ export class ChestsPanel implements Panel {
           h('span', { text: fmt(amount ?? 0) }),
         );
       })),
+      ...this.avisoDeEspaco(sim, def, stock),
       h('.bau-acoes', {},
         h('button.btn.bau-abrir', {
           disabled: stock <= 0,
           onclick: () => {
+            /**
+             * Sem espaço para o MÍNIMO que o baú solta? Pergunta antes.
+             *
+             * O mínimo, e não o máximo: com o máximo quase todo baú pediria
+             * confirmação, e um aviso que aparece sempre é um aviso que não se
+             * lê. Se nem o piso cabe, a perda é certa — não é risco, é fato.
+             */
+            if (this.precisaConfirmar(sim, def) && this.confirmando !== def.id) {
+              this.confirmando = def.id;
+              sim.touch();
+              return;
+            }
+            this.confirmando = null;
             const items = sim.openChestFromStock(def.id);
             if (items?.length) {
               const best = Math.max(...items.map((item) => item.rarity)) as Rarity;
@@ -199,12 +221,59 @@ export class ChestsPanel implements Panel {
             }
             sim.touch();
           },
-        }, h('span', { text: stock > 0 ? 'ABRIR CÁPSULA' : 'SEM ESTOQUE' })),
+        }, h('span', {
+          text: stock <= 0 ? 'SEM ESTOQUE'
+            : this.confirmando === def.id ? 'ABRIR MESMO ASSIM'
+              : 'ABRIR CÁPSULA',
+        })),
+        this.confirmando === def.id
+          ? h('button.btn.bau-cancelar', {
+            onclick: () => { this.confirmando = null; sim.touch(); },
+          }, h('span', { text: 'CANCELAR' }))
+          : null,
         def.buy > 0
           ? h('span.bau-loja-nota', { text: 'Aquisição disponível na Loja' })
           : null,
       ),
     );
+  }
+
+  /** Vagas livres no Inventário. */
+  private vagas(sim: Sim): number {
+    return Math.max(0, sim.cargoSlots - sim.state.inventory.length);
+  }
+
+  /**
+   * O baú pode soltar mais peças do que cabem?
+   *
+   * Compara com `def.items[0]`, o PISO da faixa. Ver o comentário no botão.
+   */
+  private precisaConfirmar(sim: Sim, def: ChestDef): boolean {
+    return this.vagas(sim) < def.items[0];
+  }
+
+  /**
+   * A linha que explica por que o botão está pedindo confirmação.
+   *
+   * Diz o destino REAL do que não couber: a peça não some, ela é desmontada
+   * (ou vendida, com o passe) na hora da coleta. "Será perdido" assustaria
+   * mais do que a verdade, e a verdade já basta para o jogador querer abrir
+   * espaço antes.
+   */
+  private avisoDeEspaco(sim: Sim, def: ChestDef, stock: number): HTMLElement[] {
+    if (stock <= 0 || !this.precisaConfirmar(sim, def)) return [];
+    const vagas = this.vagas(sim);
+    const faixa = def.items[0] === def.items[1]
+      ? `${def.items[0]}`
+      : `${def.items[0]} a ${def.items[1]}`;
+    return [h('.bau-aviso-espaco', {},
+      h('strong', { text: 'Inventário sem espaço' }),
+      h('span', {
+        text: `Esta cápsula solta ${faixa} peças e você tem `
+          + `${vagas === 0 ? 'nenhuma vaga' : vagas === 1 ? '1 vaga' : `${vagas} vagas`}. `
+          + 'O que não couber é desmontado na hora da coleta.',
+      }),
+    )];
   }
 
   private intelligence(sim: Sim, def: ChestDef, result: { items: Item[]; best: Rarity } | null): HTMLElement {
