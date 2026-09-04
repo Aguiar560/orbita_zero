@@ -1236,9 +1236,12 @@ export class Sim {
   /**
    * Encontro limpo: paga, avança onda/setor e prepara o próximo.
    *
-   * `abstract` indica que não houve cena — nesse caso o loot é entregue direto,
-   * já que não existiram cápsulas para a nave coletar. Sem isso, jogar com a
-   * aba fechada nunca renderia equipamento.
+   * `abstract` indica que não houve cena.
+   *
+   * ⚠️ Este comentário dizia que nesse caso "o loot é entregue direto, já que
+   * não existiram cápsulas para a nave coletar". Isso deixou de ser verdade e
+   * ficou contradizendo o bloco lá embaixo, que diz **OFFLINE NÃO SOLTA ITEM**
+   * — a regra atual, e a explicação de por que ela existe está lá.
    */
   completeEncounter(abstract = false): void {
     const e = this.encounter;

@@ -1,7 +1,7 @@
 /**
  * A fronteira entre jogar com a aba aberta e com ela fechada.
  *
- * ## As três regras, decididas em 04/09
+ * ## As quatro regras, decididas em 04/09
  *
  * 1. **O ganho é o MESMO.** Abate paga XP e carga igual nos dois modos. Antes
  *    não pagava: `abstractTick` descontava os inimigos e seguia, então quem
@@ -11,8 +11,11 @@
  *    escolher onde parar é dele.
  * 3. **Missão não conta com a aba fechada.** Só o jogo aberto registra o fato
  *    do abate.
+ * 4. **A ausência não solta ITEM.** Nenhum. O item é a recompensa de ESTAR LÁ:
+ *    ele cai numa cápsula que a nave precisa coletar, e coletar só acontece
+ *    com o jogo aberto. O que a ausência paga é progresso — XP e recursos.
  *
- * ## Por que a 3 precisa de teste
+ * ## Por que a 3 e a 4 precisam de teste
  *
  * Porque ela parece defeito. Depois da regra 1, a pergunta natural é "se o
  * ganho é igual nos dois modos, por que a missão não seria?" — e acrescentar o
@@ -118,5 +121,49 @@ describe('a ausência não avança de setor', () => {
     const antes = sim.state.universe.bestSector;
     sim.completeEncounter(true);
     expect(sim.state.universe.bestSector).toBeGreaterThan(antes);
+  });
+});
+
+describe('a ausência não solta item', () => {
+  /**
+   * A regra tem história, e ela explica por que não se tenta "calibrar melhor".
+   *
+   * O caminho abstrato já tentou compensar as cápsulas que a cena não
+   * materializa. A conta nunca fechou: chegou a entregar **1.822 itens em duas
+   * horas contra 44** do jogo ao vivo — 41×. Depois de calibrado, ainda eram
+   * 368 contra 44. Fechar a aba continuava sendo a forma mais rápida de
+   * conseguir equipamento, que é o oposto do pretendido.
+   *
+   * A saída não foi um número melhor: foi reconhecer que o item é a recompensa
+   * de ESTAR LÁ. Este teste existe para ninguém tentar o número de novo.
+   */
+  it('nenhum item entra pelo caminho abstrato', () => {
+    const sim = new Sim(createState(7));
+    sim.jumpSector(3);
+    // Pote cheio de propósito: se houvesse um caminho de entrega, ele acharia
+    // item para entregar. Vazio, o teste passaria por falta de estoque.
+    const peca = (uid: string) => ({
+      uid, baseId: 'b', slot: 'principal', rarity: 3, ilvl: 10,
+      affixes: [], icon: 'i', origin: 0,
+    });
+    const faz = (n: number, tag: string) =>
+      Array.from({ length: n }, (_, i) => peca(`${tag}${i}`));
+    sim.receberLote({
+      onda: faz(50, 'o'), elite: faz(50, 'e'), chefe: faz(50, 'c'),
+    } as never);
+
+    const antes = sim.state.inventory.length;
+    for (let t = 0; t < 900; t += 0.5) sim.abstractTick(0.5);
+    expect(sim.state.inventory.length).toBe(antes);
+  });
+
+  it('mas o progresso entra', () => {
+    // O contrapeso: sem ele, este arquivo passaria com a ausência não pagando
+    // NADA — que foi exatamente o defeito corrigido em 04/09.
+    const sim = new Sim(createState(8));
+    sim.jumpSector(3);
+    const antes = sim.state.command.xp;
+    for (let t = 0; t < 120; t += 0.5) sim.abstractTick(0.5);
+    expect(sim.state.command.xp).toBeGreaterThan(antes);
   });
 });
