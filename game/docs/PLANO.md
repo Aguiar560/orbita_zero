@@ -501,10 +501,18 @@ maior custo (combate).
    - ⚠️ **Depende de uma chave no painel do Supabase:** *Authentication →
      Sign In / Providers → Allow anonymous sign-ins*. Medido em 03/09 com ela
      desligada: a rota responde `422 anonymous_provider_disabled`.
-   - Com a chave desligada o jogo **não trava** — volta ao save só local — mas
-     emite `console.warn` nomeando a chave. O recuo é silencioso para o
-     jogador e barulhento para quem publica, porque a falha que parece sucesso
-     é a mais cara que existe aqui.
+   - Com a chave desligada o jogo **não deixa entrar** (04/09). O `console.warn`
+     nomeando a chave continua, e agora o jogador também vê um recado e pode
+     tentar de novo.
+   - **O recuo antigo foi removido, e vale saber por quê.** Ele resolvia com
+     `null` e deixava jogar só com o save do navegador — "um ajuste de painel
+     esquecido não pode impedir alguém de jogar". O argumento valia enquanto o
+     loot rolava no cliente. Depois da Fase 3 o lote vem do servidor:
+     `garantirLote` desiste sem token, o pote nunca chega e **nenhum item cai,
+     nunca** — enquanto abate, XP e recurso seguem entrando, então nada parece
+     quebrado. A dívida de drop não cobre isso: teto de 100, só em memória,
+     morre com a aba. Entrar sem sessão virou entregar calado um jogo que não é
+     o jogo, e `tests/porta-fechada.test.ts` guarda o caminho fechado.
    - **Falta:** vincular a conta anônima a um e-mail depois. Enquanto não
      existir, limpar o navegador perde a conta — o `refresh_token` mora no
      `localStorage` e não há outro caminho de volta.

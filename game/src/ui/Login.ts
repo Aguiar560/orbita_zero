@@ -15,9 +15,23 @@ import { clear, h } from './dom';
  * cria uma **conta anônima** de verdade, com id no servidor e nada pedido ao
  * jogador.
  *
- * Se o Supabase estiver com o cadastro anônimo desligado, ele volta ao
- * comportamento antigo (`null`, save só local) em vez de trancar a porta: um
- * ajuste de painel esquecido não pode impedir alguém de jogar.
+ * ## Por que NÃO dá mais para entrar sem sessão
+ *
+ * Havia um recuo: se o cadastro anônimo falhasse, esta tela resolvia com
+ * `null` e deixava jogar só com o save do navegador. O argumento era que um
+ * ajuste de painel esquecido não podia impedir alguém de jogar.
+ *
+ * Ele valia enquanto o loot rolava no cliente — sem conta o jogo funcionava,
+ * só não sincronizava. Depois que o lote passou a vir do servidor (Fase 3), a
+ * mesma linha significa outra coisa: `garantirLote` desiste sem token, o pote
+ * nunca chega e **nenhum item cai, nunca**. Abate, XP e recurso continuam
+ * entrando, então nada parece quebrado — e a dívida de drop tem teto de 100,
+ * mora só em memória e morre ao fechar a aba.
+ *
+ * Entrar sem sessão virou, então, jogar um jogo que não é o jogo. A tela
+ * insiste em vez de deixar passar: falhou, mostra o motivo e oferece tentar de
+ * novo. É pior para quem tem azar de rede no boot, e é a única saída que não
+ * entrega calado um jogo sem item.
  *
  * ## Por que uma tela e não um painel
  *
@@ -32,14 +46,18 @@ export class Login {
   private recado = '';
 
   /**
-   * Mostra a tela e resolve com a sessão, ou `null` se o jogador pulou.
+   * Mostra a tela e resolve com a SESSÃO. Não existe caminho para `null`.
+   *
+   * O tipo é a regra: quem chama não precisa tratar "entrou sem conta" porque
+   * isso deixou de ser possível. A promessa fica pendente enquanto a pessoa
+   * não entra, e o jogo não começa — que é o ponto.
    *
    * Uma sessão guardada e ainda válida dispensa a tela: `tokenValido` renova
    * sozinho quando falta pouco, então quem já entrou não vê isto de novo.
    */
-  async mostrar(host: HTMLElement): Promise<Sessao | null> {
+  async mostrar(host: HTMLElement): Promise<Sessao> {
     const guardada = sessaoGuardada();
-    if (guardada && (await tokenValido())) return sessaoGuardada();
+    if (guardada && (await tokenValido())) return sessaoGuardada()!;
     // Sessão que existia mas não renova é sessão morta: limpar aqui evita a
     // tela abrir já com um estado de "logado" que o servidor não reconhece.
     if (guardada) sair();
@@ -53,7 +71,7 @@ export class Login {
     });
   }
 
-  private render(pronto: (s: Sessao | null) => void): void {
+  private render(pronto: (s: Sessao) => void): void {
     const email = h('input.login-campo', {
       type: 'email', placeholder: 'seu@email.com', autocomplete: 'email',
     }) as HTMLInputElement;
@@ -90,10 +108,10 @@ export class Login {
     /**
      * Entrar sem dar e-mail.
      *
-     * Cria uma conta anônima de verdade. Se o Supabase estiver com o cadastro
-     * anônimo desligado, cai no comportamento antigo — save só neste navegador
-     * — em vez de trancar a porta: um ajuste de painel esquecido não pode
-     * impedir alguém de jogar.
+     * Cria uma conta anônima de verdade — id no servidor, nada pedido ao
+     * jogador. Falhando, a tela CONTINUA aberta: ver o motivo e poder tentar de
+     * novo é melhor que entrar num jogo onde item nenhum cai. Ver o comentário
+     * da classe para por que o recuo antigo deixou de servir.
      */
     const semCadastro = async (): Promise<void> => {
       if (this.ocupado) return;
@@ -105,23 +123,21 @@ export class Login {
       this.ocupado = false;
       if (r.ok) return pronto(r.sessao);
 
-      // O recuo é silencioso PARA O JOGADOR e barulhento para quem publica.
-      //
-      // Sem esta linha, esquecer "Allow anonymous sign-ins" no painel do
-      // Supabase derruba a conta anônima inteira sem nenhum sintoma: todo mundo
-      // continua jogando, o save volta a ser só do navegador, e o servidor
-      // nunca vira dono de nada. É a falha mais cara possível — a que parece
-      // sucesso.
-      //
-      // O jogador não vê nada porque não há nada que ele possa fazer a
-      // respeito, e assustá-lo com um erro de configuração alheia só o faria
-      // desistir de uma tela que funciona.
+      // Barulhento para quem publica: esquecer "Allow anonymous sign-ins" no
+      // painel do Supabase derruba a conta anônima de todo mundo, e o console é
+      // onde isso fica legível para quem pode consertar.
       console.warn(
-        '[conta] Cadastro anônimo indisponível — jogando só com save local.',
+        '[conta] Cadastro anônimo indisponível.',
         'Ligue "Allow anonymous sign-ins" no painel do Supabase.',
         r.erro,
       );
-      pronto(null);
+
+      // E visível para o jogador, sem culpá-lo por uma configuração alheia. O
+      // texto não promete que tentar de novo resolve — se o painel estiver
+      // desligado, não resolve — mas tentar é a única coisa que ele pode fazer,
+      // e insistir custa uma requisição.
+      this.recado = 'Não foi possível preparar sua conta. Verifique a conexão e tente de novo.';
+      this.render(pronto);
     };
 
     const aoTeclar = (ev: KeyboardEvent): void => {
@@ -172,7 +188,13 @@ export class Login {
           onclick: () => { void semCadastro(); },
         }),
         h('p.login-nota.tiny.muted', {
-          text: 'Sem e-mail o progresso fica preso a este navegador. Dá para vincular uma conta depois.',
+          // Dizia "o progresso fica preso a este navegador". Deixou de ser
+          // verdade quando o botão passou a criar uma conta anônima de verdade:
+          // o save fica no servidor, com dono. O que falta sem e-mail é a forma
+          // de RECUPERAR essa conta — e é isso que a frase precisa avisar, porque
+          // é o que se perde ao limpar os dados do site.
+          text: 'Sem e-mail seu progresso fica salvo, mas só dá para voltar a ele '
+            + 'neste navegador. Dá para vincular uma conta depois.',
         }),
       ),
     );

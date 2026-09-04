@@ -150,9 +150,14 @@ export class Game {
     // troca o estado inteiro, e escolher piloto para um save que vai ser
     // substituido seria fazer o jogador decidir duas vezes.
     //
-    // Dá para pular. O jogo funciona inteiro sem conta — o save mora no
-    // navegador desde sempre —, e cobrar um e-mail antes de a pessoa saber se
-    // gosta do jogo trocaria jogadores por cadastros.
+    // NÃO dá para pular, e não é rigor: sem token, `garantirLote` desiste antes
+    // da rede e nenhum item cai — nunca. Ver o comentário de classe do `Login`.
+    //
+    // Ninguém precisa dar e-mail, porém: a conta anônima entra com um clique e
+    // não pede nada. O que a tela cobra é uma SESSÃO, não um cadastro.
+    //
+    // A promessa fica pendente enquanto não houver uma, então este `await`
+    // segura o boot de propósito.
     await new Login().mostrar(this.rootEl);
 
     // Com a conta resolvida dá para juntar o save local ao da nuvem. Antes da
