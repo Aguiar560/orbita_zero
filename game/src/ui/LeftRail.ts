@@ -15,10 +15,32 @@ import { RESOURCE_META } from './recursos';
  * Três posturas, sem meio-termo. A quarta (`EQU`) saiu porque não era uma
  * escolha: nunca era a melhor, nunca era a errada, e por isso ficava sempre.
  */
+/**
+ * O rótulo é o nome inteiro, e a dica descreve o COMPORTAMENTO.
+ *
+ * Eram `AGR`, `EVA` e `COL`, com a dica repetindo o id em minúsculas — que não
+ * explicava nada que a abreviação já não escondesse. Escolher a postura é uma
+ * das poucas decisões de combate que o jogador tem; ela não pode depender de
+ * adivinhar o que três letras querem dizer.
+ *
+ * As dicas saem dos números de `POLICIES`, em `modes/vertical/PilotAI.ts`, e
+ * não de impressão: `evade`, `aggression`, `greed`, `standoff` e o critério de
+ * alvo. Se aqueles números mudarem, estas frases passam a mentir — é o preço
+ * de descrever comportamento em vez de rotular.
+ */
 const PILOTS = [
-  { id: 'agressivo', label: 'AGR' },
-  { id: 'evasivo', label: 'EVA' },
-  { id: 'coletor', label: 'COL' },
+  {
+    id: 'agressivo', label: 'Agressivo',
+    dica: 'Avança e fecha distância. Desvia menos, mira o alvo mais perigoso — chefes e quem causa mais dano — e ignora cápsulas.',
+  },
+  {
+    id: 'evasivo', label: 'Evasivo',
+    dica: 'Prioriza sobreviver. Mantém distância, desvia muito e atira no inimigo mais próximo. Rende menos por minuto e morre menos.',
+  },
+  {
+    id: 'coletor', label: 'Coletor',
+    dica: 'Vai atrás das cápsulas que caem. Mira o inimigo mais fraco para limpar a tela rápido, com defesa intermediária.',
+  },
 ] as const;
 
 /**
@@ -161,11 +183,17 @@ export class LeftRail {
         h('.rail-pilots', {}, ...PILOTS.map((p) =>
           h(`button.rail-pilot${sim.state.settings.pilot === p.id ? '.active' : ''}`, {
             text: p.label,
-            title: p.id,
+            title: p.dica,
             onclick: () => { sim.state.settings.pilot = p.id; sim.touch(); },
           }),
         )),
-        h('.rail-sync', {},
+        // A dica diz o EFEITO, não a definição. "Sincronia é a perícia da IA"
+        // não ajuda ninguém a decidir nada; "quanto maior, menos tiro ela leva"
+        // explica por que vale investir nela.
+        h('.rail-sync', {
+          title: 'Perícia da IA que pilota: quanto maior, mais tiro ela desvia. '
+            + 'Sobe com a sua patente e com afixos de sincronia.',
+        },
           h('span.tiny.muted', { text: `Sincronia ${pct(stats.iaSkill)}` }),
           progressBar(stats.iaSkill, '#7fe4ff', 4),
         ),
@@ -176,11 +204,19 @@ export class LeftRail {
         ...(() => {
           const tanque = sim.combustivelDe();
           const restam = tanque * autonomiaDoCasco(sim.state.hull);
-          // Vermelho abaixo de 15%: é aproximadamente o ponto em que uma sessão
-          // comum não termina antes de o tanque acabar.
-          const cor = tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a';
-          return [h('.rail-sync.rail-fuel', {},
-            h('span.tiny.muted', { text: `Combustível ${pct(tanque)} · ${duration(restam)}` }),
+          // Verde até 10%, vermelho daí para baixo. Havia um âmbar em 40% no
+          // meio, e ele saiu: três estados numa barra de 4px de altura viravam
+          // três tons parecidos, e o jogador só precisa saber uma coisa aqui —
+          // se dá para continuar ou se é hora de reabastecer.
+          const cor = tanque <= 0.1 ? '#ff5d7a' : '#6ee49a';
+          return [h('.rail-sync.rail-fuel', {
+            title: 'Só a nave em campo gasta; as do Hangar reabastecem sozinhas. '
+              + 'Ao secar, a nave aterrissa e para de render — e o tanque enche com núcleos na loja.',
+          },
+            // Sem a porcentagem: ela e a barra diziam a mesma coisa, e a barra já
+            // diz melhor. O que ela NÃO dá é quanto tempo aquilo vale, e é isso
+            // que sobra aqui — o número que decresce junto com o verde.
+            h('span.tiny.muted', { text: `Combustível restante ${duration(restam)}` }),
             progressBar(tanque, cor, 4),
           )];
         })(),

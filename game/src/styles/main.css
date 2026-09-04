@@ -772,7 +772,16 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   /* 30px é a altura dos botões IDLE/PILOTAR logo acima: as duas fileiras são
    * o mesmo controle em dois níveis, e altura diferente as separaria à toa. */
   min-height: 30px;
-  padding: 6px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
+  /* O rotulo passou de `AGR` para `Agressivo` (04/09): nove caracteres em vez
+   * de tres. Cabia com 2px de folga, que e ruido — se a Chakra Petch nao
+   * carregar e o fallback tiver metrica mais larga, transborda. Menos
+   * espacamento e uma fonte um ponto menor compram margem de verdade sem que
+   * ninguem perceba a diferenca. */
+  padding: 6px 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+  /* Com a Chakra Petch sobram 14px; com uma fallback larga (Verdana) "Agressivo"
+   * passa 2,3px. Cortar com reticencias e melhor que vazar por cima da borda —
+   * e a dica no `title` continua dando o nome inteiro de qualquer jeito. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   background: rgba(255, 255, 255, 0.05); border: 1px solid transparent; border-radius: 6px; color: var(--muted);
 }
 .rail-pilot.active { background: rgba(79, 195, 255, 0.15); border-color: var(--line-strong); color: var(--text); }
