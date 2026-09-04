@@ -244,7 +244,15 @@ export class LeftRail {
     const vazia = RESOURCE_IDS.every((id) => carga[id] < 1);
     const faltam = WAVES_PER_SECTOR + 1 - sim.state.run.wave;
 
-    return h('.rail-cargo', {},
+    return h('.rail-cargo', {
+      // O painel mostra QUANTO está em risco; a dica diz qual é o risco. São
+      // coisas diferentes, e a segunda o jogador só descobria morrendo. Vale
+      // para os dois modos desde 04/09 — a carga da ausência corre exatamente
+      // os mesmos riscos.
+      title: 'Sucata e núcleos ganhos nesta incursão, ainda NÃO depositados. '
+        + 'Concluir o setor deposita tudo; morrer perde tudo. Vale igual com a '
+        + 'aba aberta ou fechada.',
+    },
       vazia
         ? h('span.muted.tiny', { text: 'Nada em risco no momento.' })
         : h('.cargo-itens', {}, ...RESOURCE_IDS.filter((id) => carga[id] >= 1).map((id) =>
@@ -293,11 +301,26 @@ export class LeftRail {
 
     return h('.rail-elements', {},
       h('.elem-row', {}, chip(meu, 'seu tiro'), chip(alvo, 'ameaça')),
-      h('.rail-row', {},
+      /**
+       * As dicas explicam o NÚMERO, não o que fazer com ele.
+       *
+       * É a mesma linha que o comentário abaixo defende para o rótulo: dizer
+       * "leve raio contra químico" entrega a resposta junto com a pergunta, e
+       * o anel elemental deixa de ser algo que o jogador aprende. Aqui elas
+       * dizem o que o multiplicador MEDE e sobre qual parte do dano ele age —
+       * que é o que ninguém descobre olhando.
+       */
+      h('.rail-row', {
+        title: `${meu.name} contra ${alvo.name}. Multiplica só a parte ELEMENTAL do seu dano — `
+          + `o dano normal passa inteiro, sempre. Acima de 1 é vantagem; abaixo, a ameaça resiste.`,
+      },
         h('span.muted.tiny', { text: `Dano ×${ataque.toFixed(2)}` }),
         veredito(ataque, 'vantagem', 'resistido'),
       ),
-      h('.rail-row', {},
+      h('.rail-row', {
+        title: `${alvo.name} contra o seu escudo ${defesa.name}. Multiplica o dano ELEMENTAL que você `
+          + `recebe. Abaixo de 1 o escudo absorve bem; acima, a ameaça machuca mais.`,
+      },
         h('span.muted.tiny', { text: `Escudo ${defesa.name} ×${recebido.toFixed(2)}` }),
         veredito(recebido, 'você absorve', 'você sofre'),
       ),
