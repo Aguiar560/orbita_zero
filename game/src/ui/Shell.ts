@@ -12,6 +12,7 @@ import { Anatomia } from './Anatomia';
 import { PerfilMenu } from './PerfilMenu';
 import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
 import { ELEMENTS, getElement } from '@data/elements';
+import { getHull } from '@data/hulls';
 import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
 import { temTutorial } from '@data/tutoriais';
 import type { Panel } from './panels/types';
@@ -346,6 +347,12 @@ export class Shell {
     });
 
     bus.on('sector:advanced', ({ sector }) => this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star'));
+    // Ninguém escutava este evento: o casco trocava sozinho por tanque seco e
+    // o jogador via a nave mudar sem explicação nenhuma. O `Sim` já o emitia
+    // desde sempre — faltava alguém do lado da tela.
+    bus.on('combustivel:seco', ({ trocouPara }) => this.pushToast(
+      `Tanque seco — assumindo ${getHull(trocouPara)?.name ?? 'outra nave'}`, 'bad', 'ui/icon_ship',
+    ));
     bus.on('sector:parede', ({ setor, quedas }) => this.oferecerRecuo(setor, quedas));
     bus.on('boss:defeated', ({ name }) => this.pushToast(`${name} destruído`, 'epic', 'fx/blast_fire_3'));
     // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a

@@ -428,6 +428,27 @@ export class Game {
 
   private readonly tick = (dt: number): void => {
     const speed = this.sim.timeScale;
+
+    /**
+     * O combustível gasta AQUI, no tempo ao vivo.
+     *
+     * Ele não gastava. `gastarCombustivel` só era chamado de `abstractTick`, e
+     * `abstractTick` só roda em `applyOffline` — ou seja, o tanque descia
+     * apenas com a aba FECHADA. Com o jogo aberto ficava eternamente cheio, e
+     * o trilho mostrava sempre a mesma autonomia.
+     *
+     * O comentário dentro de `abstractTick` já dizia a intenção certa:
+     * "combustível corre no MESMO ponto do tempo ao vivo e do offline. Se
+     * fossem dois caminhos, aba aberta e fechada renderiam tanques
+     * diferentes". São dois caminhos mesmo — o que faltava era o segundo
+     * chamar. Continua sendo uma linha por caminho, e não uma terceira
+     * contabilidade.
+     *
+     * Fora do laboratório: ali o jogo roda para medir, e secar o tanque no
+     * meio de uma bateria de confrontos falsearia a medição.
+     */
+    if (!this.sim.laboratorio.active) this.sim.gastarCombustivel(dt * speed);
+
     // O modo de teste acelera o jogo repetindo o passo fixo, e não esticando
     // `dt`: a IA e as colisões dependem de um passo constante para não falhar.
     for (let i = 0; i < speed; i++) {
