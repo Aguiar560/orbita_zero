@@ -33,6 +33,7 @@ import { SettingsPanel } from './panels/SettingsPanel';
 import { LaboratorioPanel } from './panels/LaboratorioPanel';
 import { ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
+import { ChatPanel } from './ChatPanel';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
@@ -117,6 +118,7 @@ export class Shell {
   /** HUD independente dos trilhos: continua visível no modo de combate amplo. */
   private missionHud!: HTMLElement;
   private perfil!: PerfilMenu;
+  private chat: ChatPanel | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -125,6 +127,8 @@ export class Shell {
 
   /** Monta o esqueleto e devolve o canvas para o modo de jogo. */
   build(): { stage: HTMLCanvasElement; stageWrap: HTMLElement } {
+    this.chat?.destruir();
+    this.chat = new ChatPanel();
     document.documentElement.dataset.contrast = this.sim.state.settings.highContrast ? 'high' : '';
     const stage = h('canvas#stage', {
       role: 'img', tabindex: '0',
@@ -222,6 +226,8 @@ export class Shell {
       mobileDock,
       this.toastHost,
       this.labToolbar,
+      this.chat.botao,
+      this.chat.root,
     );
 
     this.buildTabs();

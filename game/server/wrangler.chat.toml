@@ -1,0 +1,38 @@
+name = "orbita-zero-chat"
+main = "src/chat/worker.ts"
+compatibility_date = "2026-08-01"
+
+[vars]
+SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
+ORIGENS = "https://orbita-zero.vercel.app"
+CHAT_ENABLED = "true"
+# Rafael / Aguiar560 — mesma conta administrativa já cadastrada no jogo.
+CHAT_MODERADORES = "8d4be4e6-52d6-437c-ad4e-556cca3aa43b"
+
+[env.local.vars]
+SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
+ORIGENS = "http://localhost:5180,http://localhost:5181,http://127.0.0.1:5180,http://127.0.0.1:5181"
+CHAT_ENABLED = "true"
+CHAT_MODERADORES = "8d4be4e6-52d6-437c-ad4e-556cca3aa43b"
+
+[[durable_objects.bindings]]
+name = "CHAT"
+class_name = "CentralChat"
+
+[[migrations]]
+tag = "chat-v1"
+new_sqlite_classes = ["CentralChat"]
+
+# Usado SOMENTE para consultar os apelidos existentes; nunca recebe SQL social.
+[[d1_databases]]
+binding = "DB"
+database_name = "orbita-zero"
+database_id = "12e2e0fd-80ed-4962-8f31-deaaa00ee06a"
+
+[[d1_databases]]
+binding = "CHAT_DB"
+database_name = "orbita-zero-chat"
+database_id = "c4183434-fb2c-41e5-a106-0c27de89779e"
+
+[triggers]
+crons = ["17 4 * * *"]

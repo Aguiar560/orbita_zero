@@ -8,10 +8,28 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 03/09/2026 · 788 testes passando · registro consolidado
+**Última atualização:** 04/09/2026 · 962 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
+
+## 04/09/2026 — Chat global e particular (implementação local)
+
+Implementados Worker social separado, Durable Object com WebSocket, histórico
+em D1 dedicado, autenticação por ticket e identidade Supabase validada. Global,
+privadas por solicitação/aceite, não lidas, bloqueio, denúncia e painel de moderação
+com permissões server-side/auditoria. Interface desktop/mobile independente do
+loop; campos não acionam controles da nave. Nenhuma conversa entra no save.
+
+Verificação: 962 testes da suíte; 96 verificações de integração no runtime local
+Cloudflare; 25 conexões/625 entregas; browser com duas contas, XSS como texto,
+logout e listeners reais de foco, em 1440×1000, 390×844 e 390×460. Build e
+typecheck frontend/backend passaram; empacotamento Worker em dry-run.
+
+**Não publicado.** Feature fechada por configuração, sem recursos remotos criados
+ou migrações aplicadas. Ativação, responsáveis pela moderação, homologação/carga
+real, Android/iOS e operação/privacidade continuam pendentes. Instruções e limites
+em [CHAT-OPERACAO.md](CHAT-OPERACAO.md).
 
 ## Onde estamos
 

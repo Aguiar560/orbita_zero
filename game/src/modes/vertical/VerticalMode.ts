@@ -11,6 +11,7 @@ import {
   type Clima, type ClimaDeDetrito, type FamiliaDeDetrito,
 } from '@data/detritos';
 import { fmt } from '@core/format';
+import { focoDeEntrada } from '@app/focoDeEntrada';
 import { assets } from '@render/Assets';
 import { Particles } from '@render/Particles';
 import type { Surface } from '@render/Surface';
@@ -190,6 +191,9 @@ export class VerticalMode {
     this.syncEncounter(true);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('blur', this.limparTeclas);
+    window.addEventListener('focusin', this.onFocusIn);
+    window.addEventListener('oz:chat-foco', this.limparTeclas);
   }
 
   /** Executa o mesmo combate do jogo, sem desenho, para a bateria administrativa. */
@@ -210,6 +214,7 @@ export class VerticalMode {
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (focoDeEntrada(e.target) || focoDeEntrada(document.activeElement)) { this.keys.clear(); return; }
     this.keys.add(e.code);
     const manual = this.sim.laboratorio.active
       ? this.sim.laboratorio.config.control === 'manual'
@@ -218,6 +223,8 @@ export class VerticalMode {
   };
 
   private readonly onKeyUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
+  private readonly limparTeclas = (): void => { this.keys.clear(); };
+  private readonly onFocusIn = (e: FocusEvent): void => { if (focoDeEntrada(e.target)) this.keys.clear(); };
 
   private get currentStats(): Stats { return this.labStats ?? this.sim.stats; }
   private get currentHull(): Hull { return this.labHull ?? this.sim.hull; }
@@ -2829,6 +2836,9 @@ export class VerticalMode {
     this.particles.clear();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.limparTeclas);
+    window.removeEventListener('focusin', this.onFocusIn);
+    window.removeEventListener('oz:chat-foco', this.limparTeclas);
   }
 }
 

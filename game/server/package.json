@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "chat:dev": "wrangler dev --config wrangler.chat.toml --env local --port 8788",
+    "chat:db:local": "wrangler d1 execute orbita-zero-chat --config wrangler.chat.toml --local --file=chat-schema.sql",
+    "chat:check": "wrangler deploy --config wrangler.chat.toml --dry-run --outdir .wrangler/chat-build",
+    "chat:test": "npm run chat:check && node ../tools/test-chat-integration.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:local": "wrangler d1 execute orbita-zero --local --file=schema.sql",

@@ -24,6 +24,8 @@ export interface Usuario {
   /** `sub` do token: o id do usuário no Supabase. É a chave de tudo. */
   id: string;
   email?: string;
+  anonima: boolean;
+  expiraEm: number;
 }
 
 interface Jwk extends JsonWebKey {
@@ -129,7 +131,7 @@ export async function usuarioDoToken(
     if (!ok) return null;
 
     const carga = JSON.parse(new TextDecoder().decode(b64url(cargaB64))) as {
-      sub?: string; exp?: number; iss?: string; email?: string;
+      sub?: string; exp?: number; iss?: string; email?: string; is_anonymous?: boolean;
     };
 
     // A assinatura só prova que o token é AUTÊNTICO. Que ele ainda vale, e que
@@ -141,7 +143,7 @@ export async function usuarioDoToken(
     if (typeof carga.exp !== 'number' || carga.exp <= agora) return null;
     if (carga.iss !== `${urlBase}/auth/v1`) return null;
 
-    return { id: carga.sub, email: carga.email };
+    return { id: carga.sub, email: carga.email, anonima: carga.is_anonymous ?? !carga.email, expiraEm: carga.exp };
   } catch {
     return null;
   }

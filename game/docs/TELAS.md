@@ -8,6 +8,23 @@ um painel precisa calcular, o cálculo mora em `sim/`. Painel lê `Sim` e desenh
 
 ---
 
+## Comunicações — chat global e particular
+
+`src/ui/ChatPanel.ts` + `src/styles/chat.css`, com rede em `src/app/ChatClient.ts`.
+Botão CHAT abre painel recolhível sobre o desktop ou tela própria no celular.
+Não participa dos re-renders de 5 Hz do Shell e não usa estado econômico/Sim.
+
+Global, privadas por solicitação/aceite, busca de apelido de quem já acessou o
+chat, não lidas, histórico anterior, ajustes de novas solicitações, bloqueio e
+denúncia pelo nome do autor. Moderação aparece apenas se autorizada pelo Worker;
+o servidor também verifica cada ação. Mensagens são sempre `textContent`.
+
+Contas anônimas só leem global; conta vinculada com apelido pode escrever. Sem
+paywall VIP. Campo de texto não aciona WASD/espaço; o combate não pausa.
+
+Status: implementado/testado localmente; `VITE_CHAT_URL` ausente e Worker desativado
+por padrão. Ativação/limites/retenção/testes em [CHAT-OPERACAO.md](CHAT-OPERACAO.md).
+
 ## Ícones das abas
 
 As treze abas usam arte própria em `assets-static/ui/menu/*.webp`, publicada

@@ -168,6 +168,7 @@ function guardar(sessao: Sessao): void {
     // Sessão que não persiste ainda serve para esta aba. Falhar o login por
     // causa do armazenamento seria trocar um problema pequeno por um grande.
   }
+  window.dispatchEvent(new Event('oz:conta'));
 }
 
 export function sessaoGuardada(): Sessao | null {
@@ -186,6 +187,7 @@ export function sair(): void {
   try {
     localStorage.removeItem(CHAVE);
   } catch { /* nada a fazer */ }
+  window.dispatchEvent(new Event('oz:conta'));
 }
 
 /**
