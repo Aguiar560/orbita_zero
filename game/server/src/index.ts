@@ -6,6 +6,10 @@ import {
   renovar, saldosDoLivro,
   type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
+import {
+  ITENS_POR_POOL, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
+  setorValido, sorteValida,
+} from './lote';
 
 /**
  * A API do Órbita Zero.
@@ -275,6 +279,10 @@ export default {
 
     if (url.pathname === '/vip' && req.method === 'POST') {
       return comprarVip(env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/lote' && req.method === 'POST') {
+      return entregarLote(req, env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -696,4 +704,81 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
   }
 
   return json({ ok: true, aceitas, recusadas }, 200, origem);
+}
+
+// ── lote de itens ───────────────────────────────────────────────────────────
+
+/**
+ * Entrega o lote de itens do setor em curso.
+ *
+ * ## O contrato
+ *
+ * Mesmo setor → MESMO lote, sempre. Setor diferente → lote novo, com semente e
+ * sorte novas. É esse par que fecha o re-rolar: reiniciar, morrer ou recarregar
+ * a aba devolve os mesmos itens, e conseguir outros exige jogar outro setor.
+ *
+ * ## Por que a sorte só é lida na PRIMEIRA chamada
+ *
+ * Porque sorte diferente muda o resultado da mesma semente. Se cada chamada
+ * aceitasse um valor novo, bastaria pedir o lote com sorte 0.1, 0.2, 0.3… até
+ * gostar do que veio — o re-rolar de volta, por outra porta.
+ *
+ * ## Por que o balde da carteira, e não um próprio
+ *
+ * O lote é pedido no MESMO evento que move dinheiro: o setor caiu. Dois baldes
+ * independentes dobrariam o teto sem dobrar a atividade legítima.
+ */
+async function entregarLote(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { setor?: unknown; sorte?: unknown; universo?: unknown; pagina?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const setor = setorValido(corpo.setor);
+  if (setor === null) return json({ erro: 'setor_invalido' }, 400, origem);
+
+  // O último lançamento é a EVIDÊNCIA de progresso que destrava um lote novo.
+  // Sem ela, alternar entre dois setores re-rolava de graça — ver o comentário
+  // de `precisaDeLoteNovo`.
+  const [guardado, ultimo] = await Promise.all([
+    env.DB
+      .prepare('SELECT setor, semente, sorte, criado_em FROM lotes WHERE usuario = ?')
+      .bind(id)
+      .first<{ setor: number; semente: number; sorte: number; criado_em: number }>(),
+    env.DB
+      .prepare('SELECT MAX(em) AS em FROM transacoes WHERE usuario = ?')
+      .bind(id)
+      .first<{ em: number | null }>(),
+  ]);
+
+  let semente: number;
+  let sorte: number;
+  if (precisaDeLoteNovo(guardado, setor, ultimo?.em ?? 0)) {
+    semente = novaSemente();
+    sorte = sorteValida(corpo.sorte);
+    await env.DB.prepare(`
+      INSERT INTO lotes (usuario, setor, semente, sorte, criado_em) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(usuario) DO UPDATE SET
+        setor = excluded.setor, semente = excluded.semente,
+        sorte = excluded.sorte, criado_em = excluded.criado_em
+    `).bind(id, setor, semente, sorte, agora).run();
+  } else {
+    semente = guardado!.semente;
+    sorte = guardado!.sorte;
+  }
+
+  const pagina = paginaValida(corpo.pagina);
+  const lote = rolarLote(semente, setor, sorte, Number(corpo.universo), pagina);
+  return json({ setor, pagina, lote, porPool: ITENS_POR_POOL }, 200, origem);
 }

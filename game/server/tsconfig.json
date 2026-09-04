@@ -9,7 +9,16 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // O Worker importa `sim/` e `data/` do jogo — mesmo arquivo, sem cópia.
+    // É o que a regra de camada nº 1 existe para permitir: nenhuma fórmula
+    // duplicada entre quem joga e quem confere.
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["../src/core/*"],
+      "@sim/*": ["../src/sim/*"],
+      "@data/*": ["../src/data/*"]
+    }
   },
   "include": ["src"]
 }

@@ -570,17 +570,59 @@ medido em 03/09, a recompensa por setor vai de 0,06 (setor 1) a 192.201 (setor
 justamente o que o cliente alega. Está documentado em `server/src/carteira.ts`
 para ninguém tentar adicionar o teto achando que resolve.
 
-**Fase 3 — Inventário.** Item e nave param de nascer no cliente.
+**Fase 3 — Inventário.** 🟡 Metade feita em 03/09.
 
-- **`rollItem` roda no servidor.** É o ponto mais importante da fase inteira: se
-  o cliente rola o dado do loot, ele rola até sair Divino, e nenhuma proteção
-  posterior recupera isso. A semente é do servidor e não sai de lá.
-- `state.inventory`, `state.naves` e `state.fleet` viram tabelas.
-- Equipar, desmontar, vender e sintetizar viram comandos validados, não
-  mutações locais.
+**3a — a rolagem saiu do cliente. ✅**
 
-*Aceite:* não existe caminho no cliente que crie, apague ou altere um item. Uma
-peça Divina só aparece se o servidor a tiver gerado e registrado.
+O Worker importa `rollItem`, `resolverDrop` e `sectorIlvl` — os MESMOS
+arquivos que o navegador usa. É a regra de camada nº 1 se pagando: não existe
+cópia da fórmula, e um item rolado no servidor é indistinguível de um rolado
+no cliente. O pacote do Worker foi de 25,6 KiB para 145 KiB (41 comprimido).
+
+O buraco não era o gerador, era o CONTROLE sobre ele. Fechá-lo exigiu tirar do
+cliente **três alavancas**, porque cada uma sozinha reabre tudo — a mesma
+semente com um parâmetro diferente devolve itens diferentes:
+
+| alavanca | como fica |
+|---|---|
+| semente | sorteada com `crypto.getRandomValues` e guardada em `lotes` |
+| regras de drop | derivadas no servidor de `(setor, kind)` |
+| sorte | travada junto da semente, na primeira chamada do setor |
+
+**Dois defeitos que só apareceram medindo, e que eu mesmo tinha criado:**
+
+1. *Alternar setores re-rolava de graça.* A primeira versão dava semente nova
+   sempre que o setor mudava, apostando que trocar de setor custa tempo. Não
+   custa: o setor é um número que o cliente declara, e alternar 60↔61 era
+   re-rolagem instantânea. Agora lote novo exige **evidência de progresso** —
+   um lançamento no livro-caixa posterior ao lote atual.
+2. *O jogador preso num setor secava o pote.* O lote é por setor CONCLUÍDO,
+   mas o drop é por abate: dez minutos morrendo no setor 3 acumularam 39 drops
+   devidos contra 12 no pote. Repor sorteando de novo devolveria o re-rolar,
+   então o lote **pagina**: a página seguinte continua a mesma sequência da
+   mesma semente, e pedi-la de novo dá sempre o mesmo resultado.
+
+**Rede fora não volta a rolar localmente.** Seria a saída óbvia e é o buraco
+de novo — bastaria bloquear a requisição. Quando o pote está vazio o drop fica
+**devendo**, e a dívida é paga na ordem quando o lote chega. Medido: 10 minutos
+de combate sem servidor geraram **zero itens** e 39 dívidas.
+
+**A única coisa que mudou no jogo:** a afinidade elemental *por inimigo* saiu.
+`afinidadeDoAlvo` enviesava o elemento do item pelo elemento de quem morreu, e
+é a única entrada de `resolverDrop` que não se deriva do setor — aceitá-la do
+cliente devolveria a alavanca das regras, e escolher o elemento do drop vale
+mais que subir a raridade. Piso de raridade, bônus de nível, itens extras e
+multiplicador de sorte do chefe continuam **idênticos**.
+
+**3b — o inventário ainda é do cliente. 🔴**
+
+`state.inventory`, `state.naves` e `state.fleet` continuam no save. O cliente
+não escolhe mais QUAL item cai, mas ainda pode injetar um item direto no save.
+Falta: as três coleções viram tabelas, e equipar/desmontar/vender/sintetizar
+viram comandos validados.
+
+*Aceite da fase (ainda não atingido):* não existe caminho no cliente que crie,
+apague ou altere um item.
 
 **Fase 4 — Progressão.** XP, nível, setor alcançado e Matriz.
 
@@ -592,6 +634,14 @@ peça Divina só aparece se o servidor a tiver gerado e registrado.
 calcular atributos. Não existe segunda verdade.
 
 **Fase 5 — O tick de autoridade.** Aqui o cliente vira renderizador.
+
+> ⚠️ **Trabalho que o plano não previa, achado em 03/09.** `sim/` e `data/` não
+> são tão livres de DOM quanto o `CLAUDE.md` afirma: `sim/index.ts` importa
+> `@app/Bus`, `sim/state.ts` usa `localStorage`, `data/clips.ts` importa
+> `@render/Anim` e `data/onboarding.ts` importa `@ui/Tour`. `loot.ts`,
+> `progression.ts` e `balance/` estão limpos — foi o que permitiu a Fase 3a —,
+> mas **a classe `Sim` não roda no Worker hoje**, e esta fase depende disso.
+> Descontaminar esses quatro pontos é pré-requisito.
 
 - O servidor calcula, por intervalo, o que aconteceu: abates, perdas, itens,
   recursos, XP — a partir dos atributos guardados e do tempo decorrido.

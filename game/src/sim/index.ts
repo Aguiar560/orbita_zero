@@ -151,6 +151,9 @@ export interface OfflineReport {
  * o que mantém a invalidação de cache de atributos e a emissão de eventos em
  * um lugar só.
  */
+/** Os três tipos de encontro que soltam item. Espelha `server/src/lote.ts`. */
+export type TipoDeDrop = 'onda' | 'elite' | 'chefe';
+
 export class Sim {
   state: GameState;
 
@@ -170,6 +173,24 @@ export class Sim {
    * guardar o meio da luta abriria a porta para reiniciá-la sem custo.
    */
   desafio: DesafioAtivo | null = null;
+
+  /**
+   * O pote de itens que o servidor rolou para este setor.
+   *
+   * NÃO é salvo, de propósito: o servidor devolve o mesmo lote para o mesmo
+   * setor, então guardar seria manter uma segunda cópia que pode divergir.
+   * Recarregar a aba busca de novo e recebe idêntico.
+   */
+  private pote: Record<TipoDeDrop, Item[]> | null = null;
+
+  /**
+   * Drops ganhos com o pote vazio ou ausente.
+   *
+   * Existe para a resposta a "rede fora" não ser "volta a rolar localmente" —
+   * que seria o buraco de novo, porque bastaria bloquear a requisição. O
+   * jogador não perde o item: ele o recebe quando o lote chega.
+   */
+  private devendo: TipoDeDrop[] = [];
 
   /**
    * O resultado da última luta da Provação, para as telas do §30–§33.
@@ -1486,6 +1507,46 @@ export class Sim {
    * inventário quando a nave alcança a cápsula. Separar a rolagem da entrega é
    * o que permite que um drop seja perdido de verdade.
    */
+  get temLote(): boolean {
+    return this.pote !== null;
+  }
+
+  /** O pote secou e há drop devendo: é hora de pedir a próxima página. */
+  get poteSecou(): boolean {
+    return this.devendo.length > 0;
+  }
+
+  /** Recebe o pote do servidor e paga o que estava devendo. */
+  receberLote(lote: Record<TipoDeDrop, Item[]>): void {
+    this.pote = { onda: [...lote.onda], elite: [...lote.elite], chefe: [...lote.chefe] };
+    if (!this.devendo.length) return;
+
+    // A dívida é paga na ORDEM em que foi contraída: o chefe que matou antes
+    // do lote chegar recebe o item de chefe, e não o que sobrar.
+    const pendentes = this.devendo.splice(0, this.devendo.length);
+    for (const kind of pendentes) {
+      const item = this.tirarDoPote(kind);
+      if (item) this.acquire(item);
+    }
+  }
+
+  /**
+   * Tira um item do pote, ou registra a dívida.
+   *
+   * Devolve `null` quando não há o que entregar — e quem chama NÃO deve rolar
+   * localmente nesse caso. É a regra inteira da Fase 3 em uma linha: o cliente
+   * consome, nunca gera.
+   */
+  private tirarDoPote(kind: TipoDeDrop): Item | null {
+    const item = this.pote?.[kind].shift();
+    if (item) return item;
+    // Teto na dívida: um cliente offline por horas acumularia milhares de
+    // promessas, e pagá-las de uma vez despejaria um inventário inteiro num
+    // quadro. Cem cobre qualquer ausência plausível entre dois setores.
+    if (this.devendo.length < 100) this.devendo.push(kind);
+    return null;
+  }
+
   rollDrops(kind: 'onda' | 'elite' | 'chefe', alvoDef?: { id?: string; tags?: readonly string[]; element?: ElementId }): Item[] {
     const e = this.encounter;
     const out: Item[] = [];
@@ -1531,7 +1592,17 @@ export class Sim {
     const sorteados = this.rng.chance(dropChance(kind, luck)) ? 1 : 0;
     const total = Math.max(0, Math.round((garantidos + sorteados) * regra.quantidade));
 
-    for (let i = 0; i < total; i++) out.push(rollItem(this.rng, ilvl, luck, this.state.universe.index, opts));
+    // O item NÃO é rolado aqui: vem do pote que o servidor mandou.
+    //
+    // `ilvl`, `luck` e `opts` continuam sendo calculados acima porque a regra
+    // de drop ainda decide QUANTOS itens caem — é só o CONTEÚDO que mudou de
+    // dono. O servidor aplica os mesmos `pisoDeRaridade`, `ilvlBonus` e
+    // `slotFavorecido` ao montar cada pote, derivando-os do setor.
+    void ilvl; void opts;
+    for (let i = 0; i < total; i++) {
+      const item = this.tirarDoPote(kind);
+      if (item) out.push(item);
+    }
     return out;
   }
 

@@ -18,6 +18,7 @@ import { desligarModoDeTesteSeNaoForAdmin } from './admin';
 import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
+import { garantirLote } from './lote';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -131,6 +132,11 @@ export class Game {
     window.addEventListener('pagehide', () => this.sim.save());
     window.addEventListener('beforeunload', () => this.sim.save());
     bus.on('state:changed', () => this.vertical.refreshPlayer());
+    // O lote é do SETOR, então o pedido acompanha o evento do setor, e não só
+    // o relógio de 150 s da nuvem: o setor cai a cada ~3 min, e quem avança
+    // rápido secaria o pote antes do próximo ciclo. Pedir duas vezes o mesmo
+    // setor é barato — o servidor devolve o mesmo lote.
+    bus.on('sector:advanced', ({ sector }) => { void garantirLote(this.sim, sector); });
 
     this.layout();
 
@@ -162,6 +168,7 @@ export class Game {
     // para ele mudar sozinho logo em seguida, parece defeito.
     await sincronizarCarteira();
     await drenarCarteira(this.sim);
+    await garantirLote(this.sim, this.sim.state.run.sector);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -350,6 +357,9 @@ export class Game {
     // que a fila acumulou desde a última drenagem. Um ciclo só mantém as duas
     // coisas coerentes e cabe na cota de escrita do D1.
     void drenarCarteira(this.sim);
+    // O lote acompanha o setor, e o setor muda no mesmo evento que enche a
+    // carteira. Pedir aqui cobre o caso comum sem um relógio próprio.
+    void garantirLote(this.sim, this.sim.state.run.sector);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {
