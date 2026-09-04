@@ -88,7 +88,25 @@ export class InventoryPanel implements Panel {
     // número fixo. Desenhar 70 células com capacidade 15 mostrava 55 espaços
     // que não existem — o oposto do que um inventário apertado deve comunicar.
     const capacidade = sim.cargoSlots;
-    const cells: HTMLElement[] = items.slice(0, capacidade).map((item) => this.cell(sim, item));
+
+    /**
+     * TODO item vira célula, mesmo passando da capacidade.
+     *
+     * Havia um `.slice(0, capacidade)` aqui, e ele ESCONDIA. Com 30 peças e 15
+     * espaços a grade desenhava 15 e as outras 15 sumiam da tela — sem aviso, e
+     * sem forma de chegar nelas para vender ou desmontar. O jogador via
+     * "30 / 15" no contador e metade do inventário inalcançável.
+     *
+     * Passar da capacidade não deveria acontecer pelo caminho normal: a coleta
+     * recusa o que não cabe. Mas `adotar`, em `app/inventario.ts`, substitui a
+     * mochila inteira pelo que o SERVIDOR diz, e não consulta capacidade
+     * nenhuma — basta o servidor ter mais peças que a carga atual do save.
+     *
+     * Mostrar tudo é a saída segura: excesso vira um estado VISÍVEL, que o
+     * jogador resolve descartando. Esconder transforma o mesmo excesso em perda
+     * silenciosa, que é o que aconteceu.
+     */
+    const cells: HTMLElement[] = items.map((item) => this.cell(sim, item));
     // Preenche o resto com espaços vazios para a grade nunca "desmontar".
     while (cells.length < capacidade) cells.push(h('.inv-cell.vazio'));
 
@@ -97,7 +115,15 @@ export class InventoryPanel implements Panel {
         h('.inv-console-head', {},
           h('span.inv-signal', { 'aria-hidden': 'true' }),
           h('span', { text: 'TRIAGEM DE CARGA' }),
-          h('strong', { text: `${items.length} VISÍVEIS` }),
+          // Quando um filtro esconde peça, o contador DIZ quanto escondeu.
+          // Sem isso, "26 VISÍVEIS" ao lado de "70 / 70" parecia defeito — e
+          // era só o seletor de elemento em "Padrão", que é um elemento e não
+          // "sem filtro". O jogador não relacionava os dois números.
+          h('strong', {
+            text: items.length === sim.state.inventory.length
+              ? `${items.length} VISÍVEIS`
+              : `${items.length} DE ${sim.state.inventory.length} · FILTRADO`,
+          }),
         ),
         h('.toolbar.inv-rarity-toolbar', {},
           h('.filters', {},

@@ -135,6 +135,23 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
       ),
       buildDeltas(item, equipped),
     );
+  } else if (opts.compare !== false && !equipped) {
+    /**
+     * Slot vazio: o cartão DIZ isso em vez de ficar calado.
+     *
+     * A comparação some quando não há peça no slot, o que é correto — não há
+     * com o que comparar. Mas o silêncio se parece com defeito: quem está
+     * acostumado a ver os deltas conclui que a comparação quebrou, e não que o
+     * soquete está livre. Foi exatamente o que aconteceu, e a diferença entre
+     * as duas leituras é uma linha de texto.
+     *
+     * A frase também é a informação útil do momento: equipar aqui não desiste
+     * de nada.
+     */
+    frag.append(h('.tip-vs', {},
+      h('span.muted.tiny', { text: `Nenhuma peça de ${SLOT_LABEL[item.slot].toLowerCase()} equipada` }),
+      h('span.tiny', { text: 'ganho integral', style: { color: '#7ed957' } }),
+    ));
   }
 
   const retorno = retornoDeDesmanche(item);
