@@ -139,12 +139,20 @@ export class GalaxyPanel implements Panel {
           const reachable = best >= phase.sector;
           const active = selected.sector === phase.sector;
           const cleared = best > phase.sector;
+          const bloqueio = `Vença o setor ${phase.sector - 1} para desbloquear`;
           return h(`button.galaxy-command-sector${active ? '.selected' : ''}${cleared ? '.cleared' : ''}${reachable ? '' : '.locked'}${phase.isBoss ? '.boss' : ''}`, {
             disabled: !reachable,
-            title: reachable ? `Selecionar setor ${phase.sector}` : `Vença o setor ${phase.sector - 1} para desbloquear`,
+            title: reachable ? `Selecionar setor ${phase.sector}` : bloqueio,
+            'aria-label': reachable ? `Selecionar setor ${phase.sector}` : `Setor ${phase.sector} bloqueado. ${bloqueio}`,
             onclick: () => { this.selectedSector = phase.sector; sim.touch(); },
             style: active ? { '--sector-cor': info.color } as Partial<CSSStyleDeclaration> : {},
-          }, reachable ? spriteIcon(phase.icon, phase.isBoss ? 60 : 54, 'galaxy-command-sector-art') : h('.galaxy-command-lock'), h('span', { text: String(phase.sector) }), phase.isBoss && reachable ? h('small', { text: phase.bossName ?? 'Chefe' }) : null);
+          }, reachable
+            ? spriteIcon(phase.icon, phase.isBoss ? 60 : 54, 'galaxy-command-sector-art')
+            : h('img.galaxy-command-lock', {
+              src: '/assets/ui/provacao/icons/prv_icone_cadeado.png',
+              alt: '',
+              'aria-hidden': 'true',
+            }), h('span', { text: String(phase.sector) }), phase.isBoss && reachable ? h('small', { text: phase.bossName ?? 'Chefe' }) : null);
         })),
       ),
       h('.galaxy-command-sector-detail', { style: { '--gal-cor': info.color } as Partial<CSSStyleDeclaration> },

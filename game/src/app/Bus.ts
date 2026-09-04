@@ -83,7 +83,18 @@ export interface GameEvents {
    * Evento e não fato: a tela avisa, e se ninguém ouvir o jogo segue igual.
    * O item continua no lote, para ser coletado quando houver espaço.
    */
-  'inventario:cheio': void;
+  /**
+   * O Armazém do jogador está cheio e uma peça chegou. `motivo` diz o destino:
+   *
+   * - `nao-coletado`: ela ficou no lote e volta a cair quando houver espaço.
+   * - `descartada`: ela FOI coletada e desmontada/vendida na hora, porque a
+   *   automação que o jogador ligou manda fazer isso.
+   * - `trocada`: ela era melhor, entrou, e a pior guardada saiu no lugar.
+   *
+   * Os três precisam de textos diferentes porque só o primeiro é uma perda. O
+   * silêncio anterior tratava os três como o mesmo nada.
+   */
+  'inventario:cheio': { motivo: 'nao-coletado' | 'descartada' | 'trocada' };
 
   /** Caiu a primeira peça de escudo: oferece desligar a bolha. */
   'dica:escudo': void;

@@ -320,7 +320,7 @@ export class Shell {
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
-    bus.on('inventario:cheio', () => this.avisarInventarioCheio());
+    bus.on('inventario:cheio', ({ motivo }) => this.avisarInventarioCheio(motivo));
 
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
@@ -623,29 +623,48 @@ export class Shell {
   }
 
   /**
-   * "Inventário Cheio!" no meio da tela.
+   * O aviso de Inventário cheio, no meio da tela.
+   *
+   * ## Três desfechos, três textos — e só um é perda
+   *
+   * Antes ele dizia "Inventário Cheio!" e nada mais, e só aparecia quando a
+   * peça NÃO era coletada. Nos outros dois casos o jogador via a cápsula sumir
+   * sem o inventário mudar, e sem nada explicando: relatado em 04/09 como
+   * "não sei o que está sendo feito com o item".
+   *
+   * A cor segue o SENTIDO, não o evento: vermelho quando se deixa peça para
+   * trás, âmbar quando a automação que o jogador ligou desfez a peça, verde
+   * quando foi troca — nesse último ele ganhou, e o mesmo alarme dos outros
+   * dois ensinaria a ignorar a mensagem inteira.
    *
    * ## Sem moldura, sem fundo, sem botão
    *
-   * É um estado momentâneo do jogo, não uma decisão a tomar: o item ficou no
-   * lote e volta a cair quando houver espaço. Um cartão com borda e botão de
-   * fechar pediria uma resposta que não existe, e o jogador teria de
-   * dispensá-lo no meio de uma onda.
+   * É um estado momentâneo do jogo, não uma decisão a tomar. Um cartão com
+   * borda e botão de fechar pediria uma resposta que não existe, e o jogador
+   * teria de dispensá-lo no meio de uma onda.
    *
    * ## Por que ele não pisca sem parar
    *
-   * O evento dispara a cada tentativa de drop enquanto o Inventário estiver
-   * cheio — dezenas de vezes por minuto. Se cada um recriasse o aviso, o texto
-   * ficaria reiniciando a animação e viraria um estrobo. Enquanto um está na
-   * tela, os seguintes só REARMAM o relógio: a mensagem some quando o jogo
-   * para de tentar, e não N segundos depois do primeiro item.
+   * O evento dispara a cada peça enquanto o Inventário estiver cheio —
+   * dezenas de vezes por minuto. Se cada um recriasse o aviso, o texto ficaria
+   * reiniciando a animação e viraria um estrobo. O elemento é REAPROVEITADO e
+   * o relógio REARMADO: a mensagem some quando o jogo para de tentar, e não N
+   * segundos depois da primeira peça.
    */
-  private avisarInventarioCheio(): void {
+  private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada' | 'trocada'): void {
+    const texto = motivo === 'nao-coletado'
+      ? 'Inventário Cheio!'
+      : motivo === 'descartada'
+        ? 'Inventário cheio — peça desfeita ao coletar'
+        : 'Inventário cheio — a pior peça saiu no lugar';
+
     let aviso = this.root.querySelector<HTMLElement>('.inventario-cheio');
     if (!aviso) {
-      aviso = h('.inventario-cheio', { role: 'status', text: 'Inventário Cheio!' });
+      aviso = h('.inventario-cheio', { role: 'status' });
       this.root.append(aviso);
     }
+    aviso.textContent = texto;
+    aviso.dataset.motivo = motivo;
 
     window.clearTimeout(this.relogioDoInventarioCheio);
     this.relogioDoInventarioCheio = window.setTimeout(() => aviso?.remove(), 2000);

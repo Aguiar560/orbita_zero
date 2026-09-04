@@ -1874,7 +1874,7 @@ export class Sim {
       // seguinte, e insistir só avisaria a mesma coisa várias vezes.
       const proximo = this.pote?.[kind][0];
       if (proximo && this.seriaPerdidoPorFalta(proximo)) {
-        bus.emit('inventario:cheio');
+        bus.emit('inventario:cheio', { motivo: 'nao-coletado' });
         break;
       }
       const item = this.tirarDoPote(kind);
@@ -2086,10 +2086,17 @@ export class Sim {
         .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl)[0];
       if (!worst || worst.rarity > item.rarity) {
         this.descartarAutomaticamente(item);
+        // A peça foi coletada e desfeita na hora. Sem este aviso o jogador via
+        // a cápsula sumir e o inventário não mudar, sem nada explicando —
+        // relatado em 04/09: "não sei o que está sendo feito com o item".
+        bus.emit('inventario:cheio', { motivo: 'descartada' });
         return;
       }
       if (this.vipAtivo && this.state.settings.autoDispose === 'vender') this.sell(worst.uid);
       else if (!this.salvage(worst.uid)) this.sell(worst.uid);
+      // Aqui o jogador GANHOU: a peça nova é melhor e a pior saiu. Merece texto
+      // próprio, e não o mesmo alarme do caso acima.
+      bus.emit('inventario:cheio', { motivo: 'trocada' });
     }
     this.state.inventory.push(item);
   }

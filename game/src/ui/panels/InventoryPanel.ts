@@ -6,6 +6,7 @@ import { RARITIES, rarityInfo } from '@data/rarity';
 import { getElement } from '@data/elements';
 import { colunasDaGrade } from '@data/balance/capacidade';
 import { ELEMENTS } from '@data/elements';
+import { SLOTS } from '@data/items';
 import { RECURSO_POR_ID } from '@data/recursos';
 import type { ElementId } from '@sim/types';
 
@@ -15,7 +16,7 @@ function melhorTier(item: Item): number {
 }
 
 import { scoreItem } from '@sim/loot';
-import type { Item, Rarity } from '@sim/types';
+import type { Item, Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 
 /**
@@ -73,6 +74,15 @@ export class InventoryPanel implements Panel {
    * inteira olhando os pips.
    */
   private elemento: ElementId | 'todos' = 'todos';
+  /**
+   * Filtro por SLOT: "só asas", "só arma principal".
+   *
+   * Ordenar por slot já agrupava as peças, mas agrupar não é filtrar: com o
+   * inventário cheio, achar as três asas no meio de setenta peças exigia rolar
+   * a grade inteira contando ícones. A pergunta que se faz aqui é "o que tenho
+   * para ESTE soquete", e ela merece resposta direta.
+   */
+  private slot: SlotId | 'todos' = 'todos';
   /** Só favoritos — o inventário nasce com 15 espaços, então marcar importa. */
   private soFavoritos = false;
   private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
@@ -142,6 +152,29 @@ export class InventoryPanel implements Panel {
             h('option', { value: 'tier', text: 'Melhor tier', selected: this.sort === 'tier' }),
           ),
 
+          /**
+           * Filtro por SLOT, o primeiro dos dois seletores de filtro.
+           *
+           * Vem antes do de elemento porque é a pergunta mais frequente: "o que
+           * tenho para este soquete" se faz toda vez que uma peça cai, e "o que
+           * tenho de fogo" só quando se monta um conjunto elemental.
+           *
+           * Usa o nome CURTO (`short`). O longo — "Asas / Estrutura",
+           * "Sistemas de Controle" — estoura a largura do seletor no trilho de
+           * 378px, e o nome inteiro já está no cartão de cada peça.
+           */
+          h('select.select', {
+            onchange: (e: Event) => {
+              this.slot = (e.target as HTMLSelectElement).value as SlotId | 'todos';
+              sim.touch();
+            },
+          },
+            h('option', { value: 'todos', text: 'Todas as peças', selected: this.slot === 'todos' }),
+            ...SLOTS.map((sl) => h('option', {
+              value: sl.id, text: sl.short, selected: this.slot === sl.id,
+            })),
+          ),
+
           // Filtro por elemento, ao lado da ordenação e não junto das raridades:
           // são dois eixos independentes, e empilhar tudo numa fileira de chips
           // faria vinte botões numa barra de 378px.
@@ -184,6 +217,7 @@ export class InventoryPanel implements Panel {
     const list = sim.state.inventory.filter((i) =>
       (this.filter < 0 || i.rarity === this.filter)
       && (this.elemento === 'todos' || (i.element ?? 'padrao') === this.elemento)
+      && (this.slot === 'todos' || i.slot === this.slot)
       && (!this.soFavoritos || i.favorite));
 
     switch (this.sort) {

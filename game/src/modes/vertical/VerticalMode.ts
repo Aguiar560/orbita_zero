@@ -186,6 +186,11 @@ export class VerticalMode {
   /** Congelamento disponível. Recarrega com o tempo; ver `CONGELAMENTO`. */
   private reservaDeCongelamento: number = CONGELAMENTO.reserva;
   private flash = 0;
+  /** Pulso dourado curto disparado quando a nave ativa ganha nível. */
+  private pulsoDeNivel = 0;
+  /** Par casco/nível observado; impede celebrar troca de nave como level-up. */
+  private cascoDeNivelObservado = '';
+  private nivelDeNaveObservado = 0;
   private banner = '';
   private bannerTime = 0;
   private threat = 0;
@@ -259,6 +264,18 @@ export class VerticalMode {
 
   /** Recria o estado da nave a partir dos atributos atuais. */
   refreshPlayer(full = false): void {
+    const casco = this.sim.state.hull;
+    const nivel = this.sim.state.naves[casco]?.nivel ?? 1;
+    if (casco !== this.cascoDeNivelObservado) {
+      this.cascoDeNivelObservado = casco;
+      this.nivelDeNaveObservado = nivel;
+    } else if (!full && this.nivelDeNaveObservado > 0 && nivel > this.nivelDeNaveObservado) {
+      this.celebrarNivelDaNave(nivel);
+      this.nivelDeNaveObservado = nivel;
+    } else {
+      this.nivelDeNaveObservado = nivel;
+    }
+
     const s = this.currentStats;
     const hpRatio = full ? 1 : clamp01(this.player.hp / Math.max(1, this.player.hpMax));
     const shRatio = full ? 1 : clamp01(this.player.shield / Math.max(1, this.player.shieldMax));
@@ -267,6 +284,17 @@ export class VerticalMode {
     this.player.hp = s.vida * hpRatio;
     this.player.shield = s.escudo * shRatio;
     this.syncPlayerHitbox();
+  }
+
+  /** Confirma o level-up na própria nave, além do toast fora do palco. */
+  private celebrarNivelDaNave(nivel: number): void {
+    const p = this.player;
+    this.pulsoDeNivel = 1;
+    this.particles.shockwave(p.x, p.y, 92, 'rgba(255,213,82,.95)', 0.72);
+    this.particles.shockwave(p.x, p.y, 58, 'rgba(255,244,174,.9)', 0.48);
+    this.particles.sparks(p.x, p.y, 28, '#ffd452', 210);
+    this.particles.sparks(p.x, p.y, 12, '#fff3b0', 125);
+    this.particles.popup(p.x, p.y - 38, `NAVE · NÍVEL ${nivel}`, '#ffe477', 15);
   }
 
   private syncPlayerHitbox(): void {
@@ -477,6 +505,7 @@ export class VerticalMode {
 
   update(dt: number): void {
     this.lastDt = dt;
+    this.pulsoDeNivel = Math.max(0, this.pulsoDeNivel - dt);
     if (this.sim.laboratorio.active) {
       this.wasLabActive = true;
       if (this.labRevision !== this.sim.laboratorio.revision) this.resetLaboratorio();
@@ -848,7 +877,11 @@ export class VerticalMode {
   /** Segundos sem levar dano até a regeneração do chefe voltar a contar. */
   private static readonly REGEN_APOS = 2.5;
 
-  private damagePlayer(amount: number, element: ElementId = 'padrao'): void {
+  private damagePlayer(
+    amount: number,
+    element: ElementId = 'padrao',
+    impacto?: { x: number; y: number; cor: string },
+  ): void {
     const p = this.player;
     if (!p.alive || p.invuln > 0) return;
     // Alimenta o registro do piso (§27) sem que a Provação precise observar o
@@ -890,23 +923,43 @@ export class VerticalMode {
     // No modo de teste o dano ainda dá feedback visual, mas não mata: o ponto
     // é inspecionar conteúdo, não sobreviver a ele.
     if (this.sim.laboratorio.active ? this.sim.laboratorio.config.immortal : this.sim.testMode) {
-      this.particles.sparks(p.x, p.y, 6, '#ff6a5a', 150);
+      this.particles.sparks(impacto?.x ?? p.x, impacto?.y ?? p.y, 8, impacto?.cor ?? '#ff6a5a', 150);
       return;
     }
 
+    const ix = impacto?.x ?? p.x;
+    const iy = impacto?.y ?? p.y;
     p.shieldLock = SHIELD_LOCK;
     if (p.shield > 0) {
       const absorbed = Math.min(p.shield, amount);
       p.shield -= absorbed;
       amount -= absorbed;
       this.particles.shockwave(p.x, p.y, 30, 'rgba(90,190,255,.8)', 0.25);
+      // O anel sozinho se perde sob a bolha do escudo. A faísca nasce no ponto
+      // em que o projétil encostou e torna cada impacto legível em movimento.
+      this.particles.sparks(ix, iy, impacto ? 12 : 7, '#7de7ff', 180);
+      this.particles.sparks(ix, iy, impacto ? 5 : 3, '#e5fbff', 105);
+      if (impacto) {
+        this.particles.flash(
+          arteElemental('faisca', element, Math.floor(this.elapsed * 60)),
+          ix, iy, 0.48, { vida: 0.2, crescimento: 0.35 },
+        );
+        this.shake = Math.max(this.shake, 1.5);
+      }
     }
     if (amount <= 0) return;
 
     p.hp -= amount;
     this.shake = 6;
     this.flash = 0.35;
-    this.particles.sparks(p.x, p.y, 10, '#ff6a5a', 190);
+    this.particles.sparks(ix, iy, impacto ? 16 : 10, impacto?.cor ?? '#ff6a5a', 210);
+    this.particles.sparks(ix, iy, impacto ? 7 : 4, '#ffd09a', 135);
+    if (impacto) {
+      this.particles.flash(
+        arteElemental('faisca', element, Math.floor(this.elapsed * 60)),
+        ix, iy, 0.62, { vida: 0.24, crescimento: 0.48 },
+      );
+    }
 
     if (p.hp <= 0) {
       p.hp = 0;
@@ -1516,8 +1569,7 @@ export class VerticalMode {
       } else if (p.alive && p.invuln <= 0) {
         if (this.circleHitsPlayer(b.x, b.y, b.radius)) {
           b.alive = false;
-          this.damagePlayer(b.damageTotal, b.element);
-          this.particles.sparks(b.x, b.y, 6, b.color, 130);
+          this.damagePlayer(b.damageTotal, b.element, { x: b.x, y: b.y, cor: b.color });
         }
       }
     });
@@ -2129,7 +2181,63 @@ export class VerticalMode {
       s.ctx.fillRect(0, 0, VIEW.w, VIEW.h);
     }
 
+    this.drawBrilhoDeNivel(s);
+
     this.drawHud(s);
+    this.drawAlertaDeCascoCritico(s);
+  }
+
+  /** Pulso dourado de tela que amarra as partículas ao ganho de nível. */
+  private drawBrilhoDeNivel(s: Surface): void {
+    if (this.pulsoDeNivel <= 0) return;
+    const ctx = s.ctx;
+    const t = clamp01(this.pulsoDeNivel);
+    const onda = 1 - t;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const halo = ctx.createRadialGradient(
+      this.player.x, this.player.y, 12,
+      this.player.x, this.player.y, 110 + onda * 90,
+    );
+    halo.addColorStop(0, `rgba(255,244,174,${0.3 * t})`);
+    halo.addColorStop(.32, `rgba(255,205,62,${0.16 * t})`);
+    halo.addColorStop(1, 'rgba(255,188,34,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+    ctx.strokeStyle = `rgba(255,216,85,${0.22 * t})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, VIEW.w - 4, VIEW.h - 4);
+    ctx.restore();
+  }
+
+  /** Vinheta permanente abaixo de 10%: aviso espacial, não outro painel. */
+  private drawAlertaDeCascoCritico(s: Surface): void {
+    const p = this.player;
+    if (!p.alive || p.hpMax <= 0 || p.hp / p.hpMax > 0.1) return;
+    const ctx = s.ctx;
+    const pulso = this.sim.state.settings.reduceEffects
+      ? 0.24
+      : 0.22 + (Math.sin(this.elapsed * 5.2) + 1) * 0.07;
+    const espessura = Math.max(22, Math.min(VIEW.w, VIEW.h) * 0.065);
+    ctx.save();
+    const faixa = (x0: number, y0: number, x1: number, y1: number): CanvasGradient => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, `rgba(255,26,45,${pulso})`);
+      g.addColorStop(1, 'rgba(255,20,35,0)');
+      return g;
+    };
+    ctx.fillStyle = faixa(0, 0, 0, espessura);
+    ctx.fillRect(0, 0, VIEW.w, espessura);
+    ctx.fillStyle = faixa(0, VIEW.h, 0, VIEW.h - espessura);
+    ctx.fillRect(0, VIEW.h - espessura, VIEW.w, espessura);
+    ctx.fillStyle = faixa(0, 0, espessura, 0);
+    ctx.fillRect(0, 0, espessura, VIEW.h);
+    ctx.fillStyle = faixa(VIEW.w, 0, VIEW.w - espessura, 0);
+    ctx.fillRect(VIEW.w - espessura, 0, espessura, VIEW.h);
+    ctx.strokeStyle = `rgba(255,48,58,${Math.min(.72, pulso * 2)})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1.5, 1.5, VIEW.w - 3, VIEW.h - 3);
+    ctx.restore();
   }
 
   /**

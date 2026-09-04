@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { bus } from '@app/Bus';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 
@@ -74,5 +75,44 @@ describe('com espaço, nada muda', () => {
     const antes = sim.pote!.chefe.length;
     expect(sim.rollDrops('chefe').length).toBeGreaterThan(0);
     expect(sim.pote!.chefe.length).toBeLessThan(antes);
+  });
+});
+
+describe('os três desfechos do Inventário cheio', () => {
+  /**
+   * Relatado em 04/09: *"o inventário está full, e ao pegar um item não está
+   * mostrando a mensagem e também não sei o que está sendo feito com o item"*.
+   *
+   * O aviso existia para UM caso só — a peça que não é coletada. Os outros dois
+   * aconteciam em silêncio, e são os mais comuns: com desmanche automático
+   * ligado, a peça É coletada e desfeita na hora, e a cápsula sumia sem o
+   * inventário mudar.
+   *
+   * Os três precisam de textos diferentes porque só o primeiro é uma perda.
+   */
+  const eventos = (sim: Sim, corpo: () => void): string[] => {
+    const vistos: string[] = [];
+    const off = bus.on('inventario:cheio', ({ motivo }) => vistos.push(motivo));
+    try { corpo(); } finally { off(); }
+    return vistos;
+  };
+
+  it('a peça que não cabe avisa que NÃO foi coletada', () => {
+    const sim = lotado(21);
+    expect(eventos(sim, () => { sim.rollDrops('chefe'); })).toContain('nao-coletado');
+  });
+
+  it('a peça desfeita ao coletar avisa que foi desfeita', () => {
+    // Cheio de peças MELHORES: a que chega é pior, então é ela que se desfaz.
+    const sim = lotado(22);
+    sim.state.inventory = Array.from({ length: sim.cargoSlots }, (_, i) => peca(`bom${i}`, 3));
+    expect(eventos(sim, () => { sim.acquire(peca('ruim', 0)); })).toContain('descartada');
+  });
+
+  it('e a troca avisa que foi troca — ali o jogador GANHOU', () => {
+    // O contrapeso: pintar os três de vermelho ensinaria a ignorar a mensagem.
+    const sim = lotado(23);
+    sim.state.inventory = Array.from({ length: sim.cargoSlots }, (_, i) => peca(`ruim${i}`, 0));
+    expect(eventos(sim, () => { sim.acquire(peca('bom', 4)); })).toContain('trocada');
   });
 });
