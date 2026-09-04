@@ -1746,6 +1746,14 @@ export class Sim {
     // `slotFavorecido` ao montar cada pote, derivando-os do setor.
     void ilvl; void opts;
     for (let i = 0; i < total; i++) {
+      // ESPIA antes de consumir. Se o item não vai caber, ele fica no lote —
+      // e o `break` para o resto: o que não coube para um não cabe para o
+      // seguinte, e insistir só avisaria a mesma coisa várias vezes.
+      const proximo = this.pote?.[kind][0];
+      if (proximo && this.seriaPerdidoPorFalta(proximo)) {
+        bus.emit('inventario:cheio');
+        break;
+      }
       const item = this.tirarDoPote(kind);
       if (item) out.push(item);
     }
@@ -1923,6 +1931,34 @@ export class Sim {
 
     this.stash(item);
     bus.emit('loot:dropped', { item });
+  }
+
+  /**
+   * O item seria simplesmente PERDIDO por falta de espaço?
+   *
+   * Serve para não tirá-lo do lote: se ele vai ser jogado fora por não caber,
+   * o certo é não coletar. Antes ele era coletado, avançava o cursor do lote e
+   * só então `stash` o descartava — o jogador gastava uma peça do lote para
+   * receber nada, e o servidor gravava e apagava uma linha à toa.
+   *
+   * ## O que NÃO conta como perda por falta
+   *
+   * Desmanche por raridade (`autoSalvage`) e auto-equipar são automação que o
+   * jogador PEDIU: ali o item é consumido e pago, e deve continuar sendo. A
+   * pergunta aqui é outra — "não coube" —, e só ela justifica deixar no chão.
+   */
+  seriaPerdidoPorFalta(item: Item): boolean {
+    if (item.rarity < this.state.settings.autoSalvage) return false;
+    if (this.vipAtivo && this.state.settings.autoEquip
+      && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) return false;
+    if (this.state.inventory.length < this.cargoSlots) return false;
+
+    // Cheio: só se perde quando o que chegou é PIOR que o pior guardado. Se for
+    // melhor, `stash` troca — e trocar é coletar.
+    const pior = this.state.inventory
+      .filter((i) => !i.favorite)
+      .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl)[0];
+    return !pior || pior.rarity > item.rarity;
   }
 
   private stash(item: Item): void {

@@ -67,6 +67,14 @@ export interface GameEvents {
    * entao ninguem as le durante o quadro: precisam ser empurradas quando mudam.
    */
   'preferencias:visuais': void;
+  /**
+   * Caiu item e o Armazém está cheio — ele NÃO foi coletado.
+   *
+   * Evento e não fato: a tela avisa, e se ninguém ouvir o jogo segue igual.
+   * O item continua no lote, para ser coletado quando houver espaço.
+   */
+  'inventario:cheio': void;
+
   /** Caiu a primeira peça de escudo: oferece desligar a bolha. */
   'dica:escudo': void;
   'laboratorio:changed': void;

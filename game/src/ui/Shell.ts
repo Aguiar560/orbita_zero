@@ -88,6 +88,8 @@ export class Shell {
   private active: Panel = this.painelFixo;
   private panelTimer = 0;
   private dirty = true;
+  /** Some com o "Inventário Cheio!" quando o jogo para de tentar. */
+  private relogioDoArmazemCheio = 0;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
 
@@ -310,6 +312,7 @@ export class Shell {
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
+    bus.on('inventario:cheio', () => this.avisarArmazemCheio());
 
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
@@ -603,6 +606,35 @@ export class Shell {
     // parte da moldura da tela. Não responder é ficar — que é o padrão certo,
     // porque é o que não mexe em nada.
     setTimeout(fechar, 45_000);
+  }
+
+  /**
+   * "Inventário Cheio!" no meio da tela.
+   *
+   * ## Sem moldura, sem fundo, sem botão
+   *
+   * É um estado momentâneo do jogo, não uma decisão a tomar: o item ficou no
+   * lote e volta a cair quando houver espaço. Um cartão com borda e botão de
+   * fechar pediria uma resposta que não existe, e o jogador teria de
+   * dispensá-lo no meio de uma onda.
+   *
+   * ## Por que ele não pisca sem parar
+   *
+   * O evento dispara a cada tentativa de drop enquanto o Armazém estiver
+   * cheio — dezenas de vezes por minuto. Se cada um recriasse o aviso, o texto
+   * ficaria reiniciando a animação e viraria um estrobo. Enquanto um está na
+   * tela, os seguintes só REARMAM o relógio: a mensagem some quando o jogo
+   * para de tentar, e não N segundos depois do primeiro item.
+   */
+  private avisarArmazemCheio(): void {
+    let aviso = this.root.querySelector<HTMLElement>('.armazem-cheio');
+    if (!aviso) {
+      aviso = h('.armazem-cheio', { role: 'status', text: 'Inventário Cheio!' });
+      this.root.append(aviso);
+    }
+
+    window.clearTimeout(this.relogioDoArmazemCheio);
+    this.relogioDoArmazemCheio = window.setTimeout(() => aviso?.remove(), 2000);
   }
 
   private renderPanel(): void {

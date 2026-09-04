@@ -871,6 +871,33 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
 
   const escritas: D1PreparedStatement[] = [];
 
+  /**
+   * COLETA LÍQUIDA: o que cai e é descartado no mesmo lote nunca é gravado.
+   *
+   * ## O desperdício
+   *
+   * Medido no jogo: caem ~186 itens por hora, cerca de 8 por ciclo de 150 s, e
+   * o inventário NÃO cresce — o descarte automático some com quase todos. O
+   * servidor então inseria 8 linhas e apagava 8 linhas por ciclo para o
+   * inventário terminar igual ao que começou.
+   *
+   * Eram ~16 das ~33 linhas escritas por ciclo: metade do custo de D1 do jogo
+   * inteiro, gasta para não guardar nada.
+   *
+   * ## Por que o servidor resolve isto sozinho
+   *
+   * Ele DERIVA quais itens a coleta produziu (é a semente mais o cursor) e
+   * recebe a lista de descarte. A interseção dos dois é exatamente o que
+   * nasceu e morreu no mesmo lote. Não é preciso mudar o protocolo nem o
+   * cliente — a informação já está toda aqui.
+   *
+   * O cursor avança do mesmo jeito: o item FOI consumido do lote, e ele não
+   * pode voltar a ser oferecido. O que muda é só não gravar uma linha que
+   * seria apagada três instruções depois.
+   */
+  const descartados = new Set(comandos.descartar ?? []);
+  const nascidosEMortos = new Set<string>();
+
   // ── coletar ───────────────────────────────────────────────────────────────
   const pedido = comandos.coletar ?? {};
   const querColetar = TIPOS.some((t) => (pedido[t] ?? 0) > 0);
@@ -902,6 +929,8 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
     if (!coleta) return json({ erro: 'lote_esgotado' }, 409, origem);
 
     for (const item of coleta.itens) {
+      // Caiu e já foi descartado neste mesmo lote: não grava.
+      if (descartados.has(item.uid)) { nascidosEMortos.add(item.uid); continue; }
       escritas.push(env.DB
         .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
         .bind(item.uid, id, JSON.stringify(item), agora));
@@ -913,6 +942,9 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
 
   // ── descartar ─────────────────────────────────────────────────────────────
   for (const uid of comandos.descartar ?? []) {
+    // Nunca foi gravado: não há o que apagar. É a outra metade da economia —
+    // sem esta linha, o DELETE inútil continuaria custando uma escrita.
+    if (nascidosEMortos.has(uid)) continue;
     // `usuario` no WHERE não é zelo: sem ele, um uid alheio apagaria o item de
     // outra pessoa. O crédito em sucata NÃO acontece aqui — ele já sobe pela
     // fila da carteira, e creditar nos dois lugares pagaria em dobro.

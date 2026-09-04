@@ -8046,3 +8046,44 @@ select option:disabled { color: #667991; }
   .inv-body .chip { min-width: 38px; padding-inline: 5px; font-size: 9px; }
   .inv-body > .hint { font-size: 10.5px; }
 }
+
+/* ── "Inventário Cheio!" ────────────────────────────────────────────────────
+ *
+ * Sem fundo, sem borda, sem sombra de caixa: é só o texto. O pedido foi esse, e
+ * ele é coerente com o que a mensagem é — um estado momentâneo do jogo, não uma
+ * caixa de diálogo. O item ficou no lote e volta a cair quando houver espaço.
+ *
+ * `pointer-events: none` porque não há nada para clicar, e sem isso o texto
+ * roubaria o clique da nave bem no meio do campo de combate.
+ *
+ * A sombra é de TEXTO, não de caixa: o vermelho puro sobre o fundo estrelado
+ * some em galáxias claras, e o contorno escuro segura a leitura sem introduzir
+ * o fundo que o pedido excluiu. */
+.armazem-cheio {
+  /* `fixed` e nao `absolute`: "no meio da tela" nao pode depender de qual
+   * ancestral por acaso esta posicionado — `#app` nao esta, e a mensagem
+   * acabaria centrada no bloco inicial por coincidencia. E a mesma escolha da
+   * `.dica-escudo`. */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 40;
+  pointer-events: none;
+  color: #ff3b3b;
+  font-weight: 800;
+  font-size: clamp(20px, 3.4vw, 40px);
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .9), 0 0 3px rgba(0, 0, 0, .95);
+  animation: armazem-cheio-entra .14s ease-out;
+}
+
+@keyframes armazem-cheio-entra {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.94); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Quem pediu menos movimento não recebe o pulso de entrada. */
+@media (prefers-reduced-motion: reduce) {
+  .armazem-cheio { animation: none; }
+}
