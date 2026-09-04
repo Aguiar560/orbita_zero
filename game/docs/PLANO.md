@@ -9,20 +9,23 @@ mas "a razão golpes/alvo fica entre 0,8 e 1,2 em todos os setores medidos".
 
 ---
 
-## Chat — implementação concluída, lançamento pendente (04/09/2026)
+## Chat — implementação e ativação concluídas (04/09/2026)
 
 Global, privadas com aceite, histórico, reconexão, não lidas, bloqueio, denúncias,
 moderação server-side e interface responsiva já estão implementados/testados
 localmente. Ver [CHAT-OPERACAO.md](CHAT-OPERACAO.md).
 
-Falta para abrir ao público:
+Produção ativa: D1 social isolado, Worker/cron, moderador, URL Vercel e frontend
+foram publicados e validados no domínio canônico. A conta anônima conectou em
+somente leitura; origem estranha/token inválido foram recusados e nenhum conteúdo
+de teste foi inserido no global.
 
-- Criar D1 social e implantar Worker independente em homologação, com migração
-  exclusiva, namespace isolado, origens exatas, `CHAT_MODERADORES` e URL do frontend.
-- Definir equipe de moderação, revisar retenção/privacidade/exclusão/backups e
+Operação contínua:
+
+- Ampliar a equipe de moderação, revisar retenção/privacidade/exclusão/backups e
   configurar observabilidade/alertas de custo e abuso.
 - Validar suspensão/hibernação/rede móvel, aparelhos Android/iOS e carga real.
-- Liberar gradualmente; produção permanece desativada nesta etapa.
+- Acompanhar a liberação e usar `CHAT_ENABLED=false` caso os indicadores exijam.
 
 Aceite local já verificado: terceiro jogador não lê/injeta privada; reenvio não
 duplica; bloqueio vale em socket aberto; JWT/ticket expiram; logout limpa conteúdo;

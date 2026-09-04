@@ -114,5 +114,20 @@ Ainda pendentes para lançamento: recursos remotos e configuração, moderadores
 - Vercel recebeu `VITE_CHAT_URL` somente no ambiente Production, tipo Config,
   apontando para `https://orbita-zero-chat.orbitazero.workers.dev`.
 
-O frontend ainda precisa ser commitado/publicado e validado contra as contas
-reais. Atualizar esta seção apenas depois que esses passos forem medidos.
+- Frontend commitado em `6d541f9ecb80857f00301e4bcb1b8e6b7c240aa2`,
+  enviado à `main` e implantado pela Vercel como produção `READY` em
+  `orbita-zero-pdmhmsxun-rafael-aguiar-s-projects.vercel.app`, promovido no
+  domínio canônico `https://orbita-zero.vercel.app`.
+- Validação no domínio canônico com uma conta anônima real: jogo carregou, painel
+  abriu, ticket foi aceito, WebSocket chegou a **Canal conectado**, histórico
+  global vazio foi recebido e envio permaneceu desabilitado como previsto. A
+  auditoria depois do teste confirmou zero mensagens, zero perfis vinculados e
+  zero denúncias no D1 social. O teste criou apenas a conta anônima necessária
+  para atravessar o onboarding; nenhuma mensagem pública foi enviada.
+- Produção recusou origem estranha com 403 e recusou bearer inválido da origem
+  correta com 401. O endpoint de saúde continuou ativo.
+
+Implementação e ativação concluídas. Permanecem como operação contínua e não
+como bloqueio técnico: atendimento às denúncias pelo moderador inicial,
+observabilidade de tráfego/custos, política formal de privacidade/exclusão e
+validação periódica em aparelhos móveis físicos.

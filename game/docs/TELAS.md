@@ -22,8 +22,9 @@ o servidor também verifica cada ação. Mensagens são sempre `textContent`.
 Contas anônimas só leem global; conta vinculada com apelido pode escrever. Sem
 paywall VIP. Campo de texto não aciona WASD/espaço; o combate não pausa.
 
-Status: implementado/testado localmente; `VITE_CHAT_URL` ausente e Worker desativado
-por padrão. Ativação/limites/retenção/testes em [CHAT-OPERACAO.md](CHAT-OPERACAO.md).
+Status: publicado no domínio canônico; Worker/D1/cron ativos e validação real de
+conta anônima concluída. Ativação/limites/retenção/testes e rollback em
+[CHAT-OPERACAO.md](CHAT-OPERACAO.md).
 
 ## Ícones das abas
 

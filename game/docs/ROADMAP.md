@@ -26,10 +26,15 @@ Cloudflare; 25 conexões/625 entregas; browser com duas contas, XSS como texto,
 logout e listeners reais de foco, em 1440×1000, 390×844 e 390×460. Build e
 typecheck frontend/backend passaram; empacotamento Worker em dry-run.
 
-**Não publicado.** Feature fechada por configuração, sem recursos remotos criados
-ou migrações aplicadas. Ativação, responsáveis pela moderação, homologação/carga
-real, Android/iOS e operação/privacidade continuam pendentes. Instruções e limites
-em [CHAT-OPERACAO.md](CHAT-OPERACAO.md).
+**Publicado em produção.** D1 social exclusivo em ENAM, Worker/cron ativos,
+moderador inicial configurado, URL de produção na Vercel e frontend `6d541f9`
+implantado como `READY`. Validado no domínio canônico com conta anônima real:
+ticket/WebSocket/histórico conectaram, somente leitura foi respeitada, origem
+estranha recebeu 403 e token inválido recebeu 401. D1 permaneceu com zero mensagens.
+
+Operação contínua: acompanhar custos/erros/denúncias, formalizar privacidade e
+exclusão e repetir em Android/iOS físicos. Instruções em
+[CHAT-OPERACAO.md](CHAT-OPERACAO.md).
 
 ## Onde estamos
 
