@@ -819,8 +819,75 @@ atributos.
    ausência. Nenhum dos três decide poder — são contexto de cena.
 3. ✅ **Feito para a AUSÊNCIA em 03/09.** O servidor monta um `GameState` a
    partir das oito tabelas, roda `applyOffline` e grava os deltas.
-4. 🔴 **Falta para o jogo AO VIVO.** A ausência já não é reportada; o ganho de
-   quem está com a aba aberta ainda é.
+4. 🔴 **Falta para o jogo AO VIVO, e a medição de 03/09 mostrou POR QUÊ.**
+   A ausência já não é reportada; o ganho de quem está com a aba aberta ainda
+   é. Duas tentativas de fechar isso foram medidas e as duas falharam — o
+   detalhe está abaixo, porque é o que impede a próxima pessoa de repetir.
+
+#### Por que o passo 4 não foi entregue (medido em 03/09)
+
+Havia dois desenhos plausíveis, e a medição derrubou os dois.
+
+**Tentativa 1 — o servidor SUBSTITUI o ganho ao vivo pelo `abstractTick`.**
+Não serve: os dois modelos discordam em SINAL, não só em magnitude. Medido no
+setor 3, mesma janela de 5 minutos e mesmo ponto de partida:
+
+| | sucata | XP |
+|---|---|---|
+| cena ao vivo | **−21** | **+955** |
+| `applyOffline` | +209 | +98 |
+| `abstractTick` cru | +177 | −26 |
+
+A causa apareceu ao olhar a carga: ao vivo o jogador **morre** antes de fechar
+o setor e perde os 365 de carga acumulada (1 morte em 180 s), enquanto o
+modelo abstrato não mata ninguém na mesma janela. É a divergência que o
+comentário de `abstractTick` já registrava — só que hoje ela está invertida:
+a CENA é mais dura que o modelo.
+
+Substituir daria ao jogador +209 de sucata onde ele hoje perde 21, e 98 de XP
+onde ele ganha 955. Não é proteção, é mudança de economia.
+
+**Tentativa 2 — o servidor LIMITA o ganho declarado por um teto físico.**
+
+A ideia era boa e não depende do modelo divergente: não se mata quem não
+entrou, e `TAXA_DE_ENTRADA` (3,43 inimigos/s) é teto de projeto do próprio
+jogo. A primeira amostra animava — no setor 3, o jogador honesto usava 35% do
+teto de abates, folga de 2,8×.
+
+Varrer mais setores derrubou a fórmula `TAXA_DE_ENTRADA × sectorBounty × 12`:
+
+| setor | XP honesto em 90 s | teto proposto | folga |
+|---|---|---|---|
+| 1 | 673 | 223 | **0,3×** |
+| 3 | 390 | 509 | 1,3× |
+| 8 | 565 | 5.604 | 9,9× |
+| 15 | −1.193 | 31.093 | — |
+
+**No setor 1 o teto fica TRÊS VEZES ABAIXO do ganho honesto** — ele recusaria
+todo jogador novo, em silêncio, no primeiro minuto de jogo. E a folga varia de
+0,3× a 9,9× em quinze setores, porque `sectorBounty` cresce exponencialmente
+enquanto o XP do começo vem de DENSIDADE, não de recompensa por abate.
+
+Foi por pouco: a amostra do setor 3, sozinha, dizia que a fórmula servia.
+
+#### O que falta para o passo 4, concretamente
+
+Um teto por valor exige uma curva calibrada contra o jogo AO VIVO ao longo dos
+300 setores — o mesmo rigor que `npm run simular` já aplica ao balanceamento,
+e não um palpite de duas amostras. Sem isso, qualquer teto ou recusa jogador
+honesto ou não pega nada.
+
+O caminho seguro, quando for a hora: **medir antes de impedir.** O servidor
+passa a REGISTRAR quando o ganho declarado passaria do teto, sem clipar nada,
+e a decisão de ligar a recusa vem dos dados de jogadores reais. Um teto que
+nunca disparou em produção é um teto que se pode ligar com confiança; um teto
+calibrado em laboratório é o que recusa o jogador novo na segunda-feira.
+
+**E vale dizer o que já está protegido**, para a fase não parecer aberta: o
+caminho mais lucrativo — ficar fora e voltar — é calculado pelo servidor desde
+o passo 3, com o relógio dele. O ganho ao vivo passa por ritmo, deixa rastro
+no livro-caixa e tem teto de sanidade. O que falta é a conferência de VALOR,
+não a de existência.
 
 #### O que o passo 3 entregou (03/09)
 
