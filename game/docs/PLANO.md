@@ -1074,71 +1074,65 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | 7 | ✅ **Zerar os saves no corte** — decidido em 03/09. Elimina a conversão campo a campo, a defesa contra valor inflado e uma classe inteira de brecha. A regra do repositório já autoriza zerar durante o desenvolvimento |
 | 8 | ✅ **Manual pontua igual** — decidido em 03/09: o modo de controle não entra na conta. É mais simples que as duas opções oferecidas e coerente com a Fase 5: se o servidor calcula o resultado a partir de atributos × tempo, o modo deixa de ser variável. **A consequência a aceitar:** pilotar bem não rende mais que deixar a IA — manual vira preferência, não vantagem |
 | 9 | ✅ **Anunciar o prêmio só depois da Fase 6** — decidido em 03/09. Anunciar antes convida exatamente quem sabe quebrar o que ainda não está protegido |
-| 6 | 🔴 **A premissa se INVERTEU — medido em 03/09.** Era "offline rende mais que jogar (368 itens contra 44)". Hoje o caminho abstrato rende **ZERO** do setor 11 para cima: ele mata o jogador antes de a ONDA 1 terminar, e a onda reinicia para sempre. Ao vivo, no setor 61, o mesmo build morre **uma** vez em 300 s e ganha 15 XP/s; no abstrato morre **21** vezes e ganha nada. Detalhe abaixo, em "O caminho abstrato está quebrado" |
+| 6 | **Offline rende mais item que jogar** — segue em aberto, e a medição de 03/09 NÃO a resolveu: eu comparei XP/s em vez de setores concluídos e conclui errado (ver a correção de 04/09 acima). O que se sabe: quem está empacado ganha XP ao vivo, por abate, e nada com a aba fechada — o que é desenho. A comparação original, 368 itens contra 44, continua precisando de uma corrida nova em setores que o build REALMENTE conclui |
 
 ---
 
-## 🔴 O caminho abstrato está quebrado (achado em 03/09)
+## O caminho abstrato NÃO está quebrado — correção de 04/09
 
-**É crítico e vai para produção**, porque desde a Fase 5 do Passo 9 o SERVIDOR
-usa `applyOffline` para creditar ausência. Um jogador que fecha a aba a partir
-do setor 11 recebe **zero**.
+> **A seção anterior aqui estava errada, e o erro era meu.** Ela afirmava que
+> `applyOffline` era um defeito crítico porque rende zero do setor 11 para
+> cima. Duas coisas estavam erradas: a conclusão e o método que levou a ela.
 
-### O que foi medido
+### O que eu media, e por que dava a resposta errada
 
-Mesmo build representativo, mesmo setor, mesma janela de 300 s — a cena de
-verdade contra `abstractTick`:
+Comparei **XP por segundo** entre a cena e o caminho abstrato, e vi 15 XP/s ao
+vivo contra 0 no abstrato. Concluí que o abstrato estava quebrado.
 
-| setor | | XP/s | mortes |
+Medindo a coisa certa — **setores concluídos** — os dois empatam em ZERO:
+
+| setor | | setores concluídos em 20 min | mortes |
 |---|---|---|---|
-| 11 | ao vivo | 4,34 | 11 |
-| 11 | **abstrato** | **0** | 15 |
-| 31 | ao vivo | 24,97 | 8 |
-| 31 | **abstrato** | **0** | 20 |
-| 61 | ao vivo | 15,04 | **1** |
-| 61 | **abstrato** | **0** | **21** |
+| 11 | aba aberta | **0** | 46 |
+| 11 | aba fechada | **0** | 60 |
+| 31 | aba aberta | **0** | 19 |
+| 31 | aba fechada | **0** | 80 |
 
-O zero é literal, não arredondamento: `run.wave` **nunca muda** em 300 s. O
-jogador morre na onda 1, ela reinicia, e o laço se repete. Nenhum encontro é
-concluído, então `completeEncounter` nunca roda e nada é creditado.
+O build não passa daqueles setores em modo nenhum. Não é o modelo offline que
+diverge do jogo — é o build que não dá conta, e nos dois casos igualmente.
 
-### A causa
+### A diferença real, que é bem menor
 
-A janela de sobrevivência é menor que o tempo de limpar a onda, em toda a
-faixa — que é exatamente a condição de `isStalled`:
+`creditKill` paga XP **por abate** e é chamado só por `VerticalMode`. O
+caminho abstrato só paga em `completeEncounter`. Então, para quem está
+empacado:
 
-| setor | sobrevive | precisa para limpar | `incomingDps` | `regen` |
-|---|---|---|---|---|
-| 11 | 19,6 s | 37,6 s | 16 | 3 |
-| 31 | 14,9 s | 17,5 s | 94 | 12 |
-| 61 | 13,5 s | 19,2 s | 265 | 32 |
+- **aba aberta:** continua subindo de nível devagar, matando sem concluir;
+- **aba fechada:** não ganha nada.
 
-`incomingDps` é `dano do encontro × 1,5 × (1 − iaSkill × 0,82)`. Com
-`iaSkill` de 0,05 a 0,15, o modelo assume que a nave leva de 1,3 a 1,4 tiros
-por segundo, o tempo todo. **A cena não é assim** — o piloto se move, e a
-diferença cresce com o setor porque o dano do inimigo cresce.
+Isso é **desenho, não defeito**: quem deixa a nave num setor que ela não vence
+deve ser prejudicado, e a nave fica exatamente onde o jogador a deixou —
+`completeEncounter` não avança fora do jogo, de propósito. A regra é do
+jogador: parar num setor que ele consiga passar.
 
-### Por que isto NÃO foi corrigido aqui
+### O que sobra de verdade
 
-Mexer em `incomingDps` muda a recompensa de ausência de todo jogador, e a
-ausência é metade do que um idle entrega. É decisão de balanceamento, não de
-engenharia, e ela tem pelo menos três saídas:
+Uma pergunta de CURVA, não de offline: o build representativo de `balanco.ts`
+não conclui o próprio setor a partir do 11, em modo nenhum. Ou a régua monta
+um conjunto mais fraco do que o jogador real teria naquele ponto, ou a
+dificuldade subiu além do que o equipamento acompanha.
 
-1. **Calibrar `incomingDps` contra a cena** — medir a taxa real de acertos por
-   segundo ao vivo, por faixa de setor, e ajustar o `1,5` e o peso do
-   `iaSkill`. É o conserto de raiz e o mais caro.
-2. **Dar ao caminho abstrato o mesmo desconto que o jogador tem ao vivo**, como
-   um fator único de mitigação. Barato, e some com a diferença por setor.
-3. **Aceitar que o abstrato é mais duro** e compensar no crédito, com um
-   multiplicador de ausência. Não conserta a simulação, mas devolve o
-   rendimento — e mantém a ausência abaixo do jogo ao vivo, que era a
-   preocupação original da decisão nº 6.
+É a decisão pendente **nº 5** (setor 5 depois do adensamento) vista mais
+adiante na curva, e `npm run simular -- ganho` é a régua para ela.
 
-A régua para escolher já existe: `npm run simular -- ganho`, e a comparação ao
-vivo roda no navegador importando `tools/lib/balanco.ts`, que o Vite serve.
+### A lição de método
+
+Escolhi a métrica que confirmava a hipótese em vez da que respondia a
+pergunta. XP por segundo mede atividade; setores concluídos medem PROGRESSO —
+e a pergunta era sobre progresso. As duas medições estavam corretas; só uma
+era sobre o assunto.
 
 ---
-
 ## Dívidas técnicas conhecidas
 
 Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
