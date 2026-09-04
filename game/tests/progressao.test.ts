@@ -1,4 +1,4 @@
-import { TAXA_DE_ENTRADA } from '@data/balance/curvas';
+import { EFICIENCIA_DA_CENA, TAXA_DE_ENTRADA } from '@data/balance/curvas';
 import { describe, expect, it } from 'vitest';
 import { TREE_NODES, custoDoNo } from '@data/tree';
 import { allocatePath, pointsAvailable, pointsForLevel } from '@sim/tree';
@@ -133,7 +133,27 @@ describe('progresso do encontro (§16)', () => {
    * enquanto a cena conta abates, o progresso mudaria de ritmo conforme o
    * jogador estivesse com o jogo aberto ou não.
    */
-  it('o caminho abstrato limpa o encontro no tempo que o jogo ao vivo levaria', () => {
+  /**
+   * ⚠️ **Este teste afirmava algo falso até 04/09.**
+   *
+   * Ele dizia "o caminho abstrato limpa no tempo que o jogo ao vivo levaria"
+   * e comparava o abstrato com a FÓRMULA — a mesma que o abstrato usa. Era
+   * uma verificação circular: nunca olhou a cena.
+   *
+   * Medido no navegador em 04/09, nave nua no setor 1, exatamente a montagem
+   * deste teste: a **cena leva 142,1 s** para virar a onda, contra os 35,3 s
+   * da fórmula. Quatro vezes mais.
+   *
+   * É de onde sai `EFICIENCIA_DA_CENA`: o abstrato precisa ser MAIS LENTO que
+   * a fórmula para render o mesmo que jogar. Sem isso, fechar a aba passa a
+   * ser o jeito rápido de progredir — que é a preocupação da decisão nº 6.
+   *
+   * A referência ao vivo não pode ser medida aqui (a cena precisa de canvas),
+   * então ela entra como número medido e datado. Quando a cena mudar, este
+   * teste não vai perceber sozinho — a régua é o navegador, e o valor de 142 s
+   * é o que precisa ser remedido.
+   */
+  it('o caminho abstrato leva o tempo que a CENA leva, não o da fórmula', () => {
     // Setor 1 de propósito: é o único ponto da curva onde a nave SEM
     // equipamento é a premissa. Num setor adiantado, um jogador nu levaria
     // horas — e o teste mediria a falta de itens, não a conversão de dano em
@@ -151,7 +171,10 @@ describe('progresso do encontro (§16)', () => {
     // fechada seria o jeito rápido de progredir.
     const porDano = s.encounter.hpPool / dps(s.stats);
     const porEntrada = s.encounter.unidades / TAXA_DE_ENTRADA;
-    const esperado = Math.max(porDano, porEntrada);
+    // A fórmula é o TETO teórico; o esperado é ele dividido pela eficiência
+    // que a cena de fato alcança.
+    const teto = Math.max(porDano, porEntrada);
+    const esperado = teto / EFICIENCIA_DA_CENA;
     const ondaAntes = s.state.run.wave;
 
     let t = 0;
@@ -162,7 +185,11 @@ describe('progresso do encontro (§16)', () => {
     }
 
     expect(s.state.run.wave, 'o encontro precisa ter sido concluído').not.toBe(ondaAntes);
-    expect(Math.abs(t / esperado - 1), `levou ${t.toFixed(1)}s contra ${esperado.toFixed(1)}s (dano ${porDano.toFixed(1)}s, entrada ${porEntrada.toFixed(1)}s)`)
+    // A folga é de 15% sobre o esperado, e o alvo é a MEDIÇÃO da cena — 142 s
+    // no setor 1. `EFICIENCIA_DA_CENA` é uma média de seis setores com
+    // dispersão real (0,33 a 0,61), então bater exatamente em todo ponto da
+    // curva não é o objetivo: é o total ao longo dela.
+    expect(Math.abs(t / esperado - 1), `levou ${t.toFixed(1)}s contra ${esperado.toFixed(1)}s (teto ${teto.toFixed(1)}s ÷ ${EFICIENCIA_DA_CENA})`)
       .toBeLessThan(0.15);
   });
 });

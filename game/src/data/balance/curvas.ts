@@ -290,6 +290,34 @@ export const LEVA_INTERVALO_MAX = 2.4;
 export const TAXA_DE_ENTRADA =
   ((LEVA_MIN + LEVA_MAX) / 2) / ((LEVA_INTERVALO_MIN + LEVA_INTERVALO_MAX) / 2);
 
+/**
+ * Quanto do ritmo teórico a CENA de fato alcança.
+ *
+ * O caminho abstrato calcula abates por `dano ÷ vida média`, limitado pela
+ * taxa de entrada. Isso é o teto: supõe que todo tiro acerta, que ninguém
+ * escapa pela borda e que não existe tempo de voo. A cena não é assim.
+ *
+ * Medido em 04/09, mesma janela de 400 s e o mesmo build esperado de cada
+ * setor, contando abates na cena contra o caminho abstrato:
+ *
+ * | setor | cena | abstrato | razão |
+ * |-------|------|----------|-------|
+ * |     1 |  451 |     1356 | 0,333 |
+ * |     5 |  466 |     1350 | 0,345 |
+ * |    11 |  840 |     1371 | 0,612 |
+ * |    21 |  662 |     1345 | 0,492 |
+ * |    31 |  463 |     1366 | 0,339 |
+ * |    51 |  771 |     1366 | 0,564 |
+ *
+ * O abstrato fica praticamente CONSTANTE — preso no teto de entrada — e a
+ * cena oscila sem tendência com o setor. Por isso a correção é um número, e
+ * não uma curva: a média das seis amostras é 0,45.
+ *
+ * A dispersão é grande (0,33 a 0,61) e vale saber disso: este número acerta
+ * o TOTAL ao longo da campanha, não cada setor isolado.
+ */
+export const EFICIENCIA_DA_CENA = 0.45;
+
 export const DENSIDADE_XP_INICIO = 5;
 export const DENSIDADE_XP_FIM = 20;
 

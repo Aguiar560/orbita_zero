@@ -331,7 +331,7 @@ export class VerticalMode {
     // estrela: atravessar dez fases e ver o céu mudar é o que dá a sensação de
     // ter viajado. Antes as estrelas eram as mesmas do setor 1 ao 200.
     const galaxy = describeGalaxy(galaxyOfSector(e.sector));
-    const biomaAtmosferico = biomaAtmosfericoDaGalaxia(galaxy.index);
+    const biomaAtmosferico = biomaAtmosfericoDaGalaxia(galaxy.index, this.sim.testMode);
     if (biomaAtmosferico) assets.prefetch(biomaAtmosferico.src);
     /**
      * Monta as camadas do cenário. Prefere o conjunto novo e cai no antigo.
@@ -2126,7 +2126,7 @@ export class VerticalMode {
     ctx.save();
     // Rebaixa a fotografia da superfície para ela permanecer atrás de naves,
     // projéteis e telegráficos — terreno não pode competir com alvo.
-    ctx.filter = CONFIG_BIOMA_ATMOSFERICO.filtro;
+    ctx.filter = bioma.filtro ?? CONFIG_BIOMA_ATMOSFERICO.filtro;
     ctx.drawImage(img, x, y, w, h);
 
     // Camada atmosférica: faixas de luz difusa avançam mais rápido que o solo.
@@ -2146,7 +2146,7 @@ export class VerticalMode {
   }
 
   private drawBackground(s: Surface): void {
-    const bioma = biomaAtmosfericoDaGalaxia(galaxyOfSector(this.sim.state.run.sector));
+    const bioma = biomaAtmosfericoDaGalaxia(galaxyOfSector(this.sim.state.run.sector), this.sim.testMode);
     if (bioma && this.drawBiomaAtmosfera(s, bioma)) return;
 
     /**

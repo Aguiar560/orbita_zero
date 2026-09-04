@@ -1,7 +1,7 @@
 /**
  * Cenários planetários da camada vertical.
  *
- * A configuração fica centralizada porque os seis biomas precisam responder
+ * A configuração fica centralizada porque os biomas precisam responder
  * como uma coleção: mesma escala, duração da passagem, interpolação nas
  * junções e tratamento de contraste. Alterar um deles isoladamente faria uma
  * galáxia parecer lenta, pixelada ou mais brilhante que as demais.
@@ -19,6 +19,8 @@ export interface BiomaAtmosferico {
   galaxia: number;
   id: string;
   src: string;
+  /** Artes já escuras podem dispensar o rebaixamento usado nas fotografias. */
+  filtro?: string;
 }
 
 /**
@@ -38,6 +40,22 @@ export const BIOMAS_ATMOSFERICOS: readonly BiomaAtmosferico[] = [
   { galaxia: 5, id: 'cristalina', src: 'fundo/bioma-cristalina-longo.webp' },
 ];
 
-export function biomaAtmosfericoDaGalaxia(indiceDaGalaxia: number): BiomaAtmosferico | null {
+/** Prévia exclusiva do modo de teste; não substitui a coleção da campanha. */
+export const BIOMAS_ATMOSFERICOS_DE_TESTE: readonly BiomaAtmosferico[] = [
+  { galaxia: 5, id: 'bosque-fotonico', src: 'fundo/teste/bioma-bosque-fotonico.webp' },
+  { galaxia: 6, id: 'necropole-mecanica', src: 'fundo/teste/bioma-necropole-mecanica.webp' },
+  { galaxia: 7, id: 'tempestade-de-ambar', src: 'fundo/teste/bioma-tempestade-de-ambar.webp' },
+  { galaxia: 8, id: 'recife-carmesim', src: 'fundo/teste/bioma-recife-carmesim.webp' },
+  { galaxia: 9, id: 'mar-de-regolito', src: 'fundo/teste/bioma-mar-de-regolito.webp' },
+].map((bioma) => ({ ...bioma, filtro: 'saturate(.9) brightness(.95)' }));
+
+export function biomaAtmosfericoDaGalaxia(
+  indiceDaGalaxia: number,
+  modoDeTeste = false,
+): BiomaAtmosferico | null {
+  if (modoDeTeste) {
+    const previa = BIOMAS_ATMOSFERICOS_DE_TESTE.find((bioma) => bioma.galaxia === indiceDaGalaxia);
+    if (previa) return previa;
+  }
   return BIOMAS_ATMOSFERICOS.find((bioma) => bioma.galaxia === indiceDaGalaxia) ?? null;
 }

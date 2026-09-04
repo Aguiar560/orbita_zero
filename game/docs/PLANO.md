@@ -1078,59 +1078,76 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 
 ---
 
-## O caminho abstrato NÃO está quebrado — correção de 04/09
+## Offline e online rendem o mesmo (04/09)
 
-> **A seção anterior aqui estava errada, e o erro era meu.** Ela afirmava que
-> `applyOffline` era um defeito crítico porque rende zero do setor 11 para
-> cima. Duas coisas estavam erradas: a conclusão e o método que levou a ela.
+**A regra, decidida em 04/09:** offline e online não diferem em GANHO. O que
+difere é que a ausência não avança de setor — a nave fica onde o jogador a
+deixou, e parar num setor que ela não vence tem de custar. A responsabilidade
+é do jogador: parar onde consegue passar.
 
-### O que eu media, e por que dava a resposta errada
+### Dois defeitos que impediam isso
 
-Comparei **XP por segundo** entre a cena e o caminho abstrato, e vi 15 XP/s ao
-vivo contra 0 no abstrato. Concluí que o abstrato estava quebrado.
+**1. O caminho abstrato não pagava pelos abates.** `rewardKill` paga XP e
+carga, e é chamada só pela cena. `abstractTick` descontava `run.restam` na mão
+e seguia — então quem repetia um setor com a aba fechada, sem conseguir
+fechá-lo, não recebia NADA, enquanto o mesmo jogador com a aba aberta subia de
+nível matando. O pagamento virou `premiarAbates(abates, fracao)`, com os dois
+caminhos chamando a mesma função.
 
-Medindo a coisa certa — **setores concluídos** — os dois empatam em ZERO:
+**2. O abstrato matava rápido demais.** Corrigido o item 1, ele passou a
+render **2,2× o do jogo ao vivo** — o que inverte o incentivo e recria a
+preocupação da decisão nº 6. A causa: `dano ÷ vida média` é o TETO teórico,
+que supõe todo tiro acertando, ninguém escapando pela borda e nenhum tempo de
+voo.
 
-| setor | | setores concluídos em 20 min | mortes |
+### A medição que deu o número
+
+Mesma janela de 400 s, mesmo build esperado de cada setor, contando abates:
+
+| setor | cena | abstrato | razão |
 |---|---|---|---|
-| 11 | aba aberta | **0** | 46 |
-| 11 | aba fechada | **0** | 60 |
-| 31 | aba aberta | **0** | 19 |
-| 31 | aba fechada | **0** | 80 |
+| 1 | 451 | 1356 | 0,333 |
+| 5 | 466 | 1350 | 0,345 |
+| 11 | 840 | 1371 | 0,612 |
+| 21 | 662 | 1345 | 0,492 |
+| 31 | 463 | 1366 | 0,339 |
+| 51 | 771 | 1366 | 0,564 |
 
-O build não passa daqueles setores em modo nenhum. Não é o modelo offline que
-diverge do jogo — é o build que não dá conta, e nos dois casos igualmente.
+O abstrato fica praticamente CONSTANTE — preso no teto de entrada — e a cena
+oscila sem tendência. Por isso a correção é um número e não uma curva:
+`EFICIENCIA_DA_CENA = 0,45`, a média das seis amostras.
 
-### A diferença real, que é bem menor
+**Depois da correção:** a razão de abates caiu de 2,2× para **1,11× em média**
+(0,76 a 1,50 pelos seis setores).
 
-`creditKill` paga XP **por abate** e é chamado só por `VerticalMode`. O
-caminho abstrato só paga em `completeEncounter`. Então, para quem está
-empacado:
+### `OFFLINE_EFFICIENCY` foi de 0,6 para 1
 
-- **aba aberta:** continua subindo de nível devagar, matando sem concluir;
-- **aba fechada:** não ganha nada.
+Ela existia com o comentário "o offline rende menos que jogar ativamente — de
+propósito". A regra nova diz o contrário, então o desconto saiu. A constante
+fica no código: é o lugar de quem um dia quiser desestimular a aba fechada, e
+o histórico explica saves antigos que renderam menos.
 
-Isso é **desenho, não defeito**: quem deixa a nave num setor que ela não vence
-deve ser prejudicado, e a nave fica exatamente onde o jogador a deixou —
-`completeEncounter` não avança fora do jogo, de propósito. A regra é do
-jogador: parar num setor que ele consiga passar.
+### Um teste que afirmava algo falso
 
-### O que sobra de verdade
+`progressao.test.ts` tinha um caso chamado *"o caminho abstrato limpa o
+encontro no tempo que o jogo ao vivo levaria"*. Ele comparava o abstrato com a
+FÓRMULA — a mesma que o abstrato usa. Verificação circular: nunca olhou a cena.
 
-Uma pergunta de CURVA, não de offline: o build representativo de `balanco.ts`
-não conclui o próprio setor a partir do 11, em modo nenhum. Ou a régua monta
-um conjunto mais fraco do que o jogador real teria naquele ponto, ou a
-dificuldade subiu além do que o equipamento acompanha.
+Medido no navegador, nave nua no setor 1, exatamente a montagem do teste: a
+**cena leva 142,1 s** para virar a onda, contra os 35,3 s da fórmula. Quatro
+vezes mais. O teste passou a comparar com o teto dividido pela eficiência, e o
+comentário registra que a referência ao vivo é uma medição datada — quando a
+cena mudar, ele não vai perceber sozinho.
 
-É a decisão pendente **nº 5** (setor 5 depois do adensamento) vista mais
-adiante na curva, e `npm run simular -- ganho` é a régua para ela.
+### O que ficou de fora
 
-### A lição de método
-
-Escolhi a métrica que confirmava a hipótese em vez da que respondia a
-pergunta. XP por segundo mede atividade; setores concluídos medem PROGRESSO —
-e a pergunta era sobre progresso. As duas medições estavam corretas; só uma
-era sobre o assunto.
+- **A XP líquida ainda diverge**, e a causa é a multa de morte: as duas
+  trajetórias morrem em momentos diferentes, e 15% do XP acumulado por morte
+  domina o saldo. Os ABATES batem; o líquido depende de quantas vezes cada
+  caminho caiu. Se isso precisa convergir também, é medição própria.
+- **Fatos de abate não são registrados no caminho abstrato** (`registrar({tipo:
+  'abate'})`). Missões de "derrube N inimigos" não progridem com a aba fechada.
+  É a mesma classe de assimetria, ainda em aberto.
 
 ---
 ## Dívidas técnicas conhecidas

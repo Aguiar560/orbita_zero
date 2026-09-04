@@ -103,7 +103,10 @@ import {
   type CustoDeModulacao, type OperacaoDeModulacaoId,
 } from '@data/balance/modulacao';
 import { aplicarModulacao, type ResultadoDeModulacao } from './modulacao';
-import { NIVEL_MAX, TAXA_DE_ENTRADA, curvaXpNave,  curvaXpPersonagem, nivelExigido } from '@data/balance/curvas';
+import {
+  EFICIENCIA_DA_CENA, NIVEL_MAX, TAXA_DE_ENTRADA,
+  curvaXpNave, curvaXpPersonagem, nivelExigido,
+} from '@data/balance/curvas';
 
 /**
  * Multiplicador global de XP.
@@ -139,8 +142,19 @@ import {
 
 /** Teto de progresso offline, em segundos (4h). */
 const OFFLINE_BASE_CAP = 4 * 3600;
-/** O offline rende menos que jogar ativamente — de propósito. */
-const OFFLINE_EFFICIENCY = 0.6;
+/**
+ * A ausência rende o MESMO que jogar. Decidido em 04/09.
+ *
+ * Era 0,6, com o comentário "o offline rende menos que jogar ativamente — de
+ * propósito". A regra passou a ser outra: offline e online não devem diferir
+ * em ganho; o que difere é que a ausência não AVANÇA de setor — a nave fica
+ * onde o jogador a deixou, e parar num setor que ela não vence tem de custar.
+ *
+ * Fica como constante, e não some do código, porque o dia em que alguém
+ * quiser desestimular a aba fechada este é o lugar — e porque o histórico de
+ * ter sido 0,6 explica saves antigos que renderam menos.
+ */
+const OFFLINE_EFFICIENCY = 1;
 
 export interface OfflineReport {
   seconds: number;
@@ -1151,12 +1165,27 @@ export class Sim {
     return e.hpPool / Math.max(1, e.unidades);
   }
 
-  /** Recompensa de um abate individual dentro do encontro. */
-  rewardKill(fraction: number): void {
+  /**
+   * Paga por `abates` inimigos derrubados, cada um valendo `fracao` do
+   * encontro.
+   *
+   * Existe separada de `rewardKill` porque o caminho ABSTRATO derruba um
+   * número fracionário de inimigos por passo — não um por vez. Antes ele
+   * descontava `run.restam` na mão e não pagava nada: quem jogava com a aba
+   * fechada, repetindo o mesmo setor, não ganhava XP nem recurso pelos abates.
+   * Só o bônus de concluir o encontro, que não vem quando o setor não cai.
+   *
+   * Duplicar a fórmula no caminho abstrato era a alternativa, e é a que
+   * garante que os dois divirjam na primeira vez que alguém mexer num dos
+   * dois. Uma função, dois chamadores.
+   */
+  premiarAbates(abates: number, fracao: number): void {
+    if (!(abates > 0)) return;
     const e = this.encounter;
     const s = this.stats;
-    this.grantCarga('nucleo', e.bounty * fraction * RENDA_POR_ABATE.nucleo * (1 + s.nucleoGanho));
-    this.grantCarga('sucata', e.bounty * fraction * RENDA_POR_ABATE.sucata * (1 + s.sucataGanho));
+    const parte = fracao * abates;
+    this.grantCarga('nucleo', e.bounty * parte * RENDA_POR_ABATE.nucleo * (1 + s.nucleoGanho));
+    this.grantCarga('sucata', e.bounty * parte * RENDA_POR_ABATE.sucata * (1 + s.sucataGanho));
     // XP por abate divide um ORÇAMENTO DA ONDA, em vez de pagar por cabeça.
     //
     // Continua sem usar `fraction` — a fatia de um inimigo numa onda de 200 é
@@ -1168,8 +1197,14 @@ export class Sim {
     // O total da onda é `abatesDeReferencia × (2 + bounty × 0,25)` — exatamente
     // o que ela pagava antes do adensamento, em qualquer setor e qualquer
     // perfil.
-    this.grantXp((2 + e.bounty * 0.25) * (e.abatesDeReferencia / Math.max(1, e.unidades)));
-    this.state.stats.kills++;
+    this.grantXp((2 + e.bounty * 0.25) * (e.abatesDeReferencia / Math.max(1, e.unidades)) * abates);
+    this.state.stats.kills += abates;
+  }
+
+  /** Recompensa de um abate individual dentro do encontro. */
+  rewardKill(fraction: number): void {
+    const e = this.encounter;
+    this.premiarAbates(1, fraction);
     // O fato do abate. O elemento sai do ENCONTRO e não do alvo individual
     // porque `rewardKill` recebe só a fração; levar a def do inimigo até aqui é
     // trabalho para quando existir missão de inimigo específico. O campo
@@ -1406,7 +1441,31 @@ export class Sim {
     // Sem este teto aqui, ficar offline limparia o setor 1 em 0,4s contra os
     // 70s do jogo ao vivo — e a aba fechada viraria o jeito rápido de subir.
     const porDano = dps(this.stats) / Math.max(0.01, this.unitHpMedio);
-    run.restam = Math.max(0, run.restam - Math.min(porDano, TAXA_DE_ENTRADA) * dt);
+    // `EFICIENCIA_DA_CENA` aproxima o abstrato do que a cena realmente faz.
+    //
+    // Sem ela o caminho abstrato mata no teto de entrada o tempo todo e rende
+    // 2,2× o que o jogador com a aba aberta rende — medido em 04/09, seis
+    // setores. Isso inverteria o incentivo: fechar a aba passaria a ser o jeito
+    // rápido de progredir, que é a preocupação registrada na decisão nº 6.
+    const ritmo = Math.min(porDano, TAXA_DE_ENTRADA) * EFICIENCIA_DA_CENA;
+    const mortos = Math.min(ritmo * dt, run.restam);
+    run.restam = Math.max(0, run.restam - mortos);
+
+    /**
+     * O abate PAGA aqui também, e não só ao concluir o encontro.
+     *
+     * Antes esta linha não existia: o caminho abstrato descontava `restam` e
+     * seguia. Quem jogava com a aba fechada só recebia o bônus de conclusão —
+     * e quem estava repetindo um setor sem conseguir fechá-lo não recebia
+     * NADA, enquanto o mesmo jogador com a aba aberta subia de nível devagar,
+     * matando. Duas contas diferentes para a mesma coisa.
+     *
+     * A fração é `1 / unidades`: no caminho abstrato não existe inimigo
+     * individual, então cada unidade de `restam` vale a mesma parte do
+     * encontro. Ao vivo a cena passa o `share` real de cada um, e a soma dá o
+     * mesmo total — é a média que o abstrato usa por não ter os indivíduos.
+     */
+    this.premiarAbates(mortos, 1 / Math.max(1, this.encounter.unidades));
     run.elapsed += dt;
 
     /**
