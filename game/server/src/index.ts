@@ -17,6 +17,7 @@ import {
 import {
   conferirDelta, conferirMatriz, melhorSetor, nivelDoPiloto,
 } from './progresso';
+import { simDoServidor, type ContextoDoCliente } from './estado';
 import { HULL_BY_ID } from '@data/hulls';
 import type { Item, SlotId } from '@sim/types';
 
@@ -311,6 +312,10 @@ export default {
     if (url.pathname === '/progresso') {
       if (req.method === 'GET') return json(await progressoDe(env, usuario.id), 200, origem);
       if (req.method === 'POST') return gravarProgresso(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/ausencia' && req.method === 'POST') {
+      return creditarAusencia(req, env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -1204,4 +1209,162 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
 
   await env.DB.batch(escritas);
   return json(await progressoDe(env, id), 200, origem);
+}
+// ── ausência: o servidor simula o que aconteceu ─────────────────────────────
+
+/**
+ * Teto de ausência creditada.
+ *
+ * Doze horas. Não é anti-trapaça — o relógio é do servidor —, é custo: cada
+ * hora simulada são ~8 ms de CPU, e sem teto uma conta parada por um mês
+ * pediria quase seis segundos de Worker numa requisição só.
+ */
+const AUSENCIA_MAX = 12 * 3600;
+
+/** Abaixo disto não vale simular: o cliente já cobre com o laço ao vivo. */
+const AUSENCIA_MIN = 120;
+
+/**
+ * Credita o progresso de quem esteve fora.
+ *
+ * ## O que muda de dono aqui
+ *
+ * O cálculo. Ele rodava no CLIENTE: `applyOffline` simulava a ausência e o
+ * resultado subia como ganho declarado. Era o maior buraco que sobrava, e a
+ * medição registrada no PLANO mostra o tamanho — offline rendia **368 itens
+ * contra 44** do jogo ao vivo no mesmo trecho.
+ *
+ * ## O cliente não diz quanto tempo ficou fora
+ *
+ * É a peça central. A ausência sai da diferença entre AGORA e o último
+ * carimbo que o servidor gravou — `progresso.atualizado_em`. Alegar dez horas
+ * depois de cinco minutos não funciona, porque ninguém pergunta ao cliente.
+ *
+ * ## O que o cliente ainda informa
+ *
+ * Casco em campo, setor, onda e postura. Nenhum decide poder, e os dois que
+ * poderiam ser abusados são aparados contra o que o servidor sabe: o casco
+ * precisa estar na frota, e o setor não passa do melhor já alcançado.
+ */
+async function creditarAusencia(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+  let ctx: ContextoDoCliente;
+  try {
+    ctx = JSON.parse(bruto) as ContextoDoCliente;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const marca = await env.DB
+    .prepare('SELECT atualizado_em FROM progresso WHERE usuario = ?')
+    .bind(id)
+    .first<{ atualizado_em: number }>();
+
+  // Conta sem carimbo é conta nova: não há ausência a creditar, e inventar uma
+  // daria progresso de graça a quem acabou de entrar.
+  const desde = marca?.atualizado_em ?? agora;
+  const fora = Math.min(AUSENCIA_MAX, Math.max(0, agora - desde));
+  if (fora < AUSENCIA_MIN) {
+    return json({ segundos: 0, motivo: !marca ? 'conta_nova' : 'curta_demais' }, 200, origem);
+  }
+
+  const [carteira, prog, frota, itens] = await Promise.all([
+    carteiraDe(env, id), progressoDe(env, id), frotaDe(env, id), inventarioDe(env, id),
+  ]);
+
+  const lote = await env.DB
+    .prepare('SELECT semente FROM lotes WHERE usuario = ?')
+    .bind(id).first<{ semente: number }>();
+
+  const sim = simDoServidor(
+    {
+      saldos: carteira.saldos,
+      xp: prog.xp, nivel: prog.nivel, matriz: prog.matriz,
+      melhorSetor: prog.melhorSetor, materiais: prog.materiais,
+      naves: prog.naves, frota, itens,
+    },
+    ctx,
+    lote?.semente ?? novaSemente(),
+  );
+
+  const antes = {
+    saldos: { ...sim.state.resources },
+    xp: sim.state.command.xp,
+    uids: new Set(sim.state.inventory.map((i) => i.uid)),
+  };
+
+  const relatorio = sim.applyOffline(fora);
+
+  // ── escreve de volta ──────────────────────────────────────────────────────
+  const escritas: D1PreparedStatement[] = [];
+
+  for (const moeda of MOEDAS) {
+    const d = Math.trunc(sim.state.resources[moeda] - antes.saldos[moeda]);
+    if (d !== 0) {
+      const r = await lancar(env, { usuario: id, moeda, quantia: d, motivo: 'drop', em: agora });
+      // Um lançamento recusado não derruba a ausência inteira: o resto do
+      // progresso é legítimo e já foi simulado.
+      void r;
+    }
+  }
+
+  escritas.push(env.DB.prepare(`
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(usuario) DO UPDATE SET
+      xp = excluded.xp, melhor_setor = excluded.melhor_setor, atualizado_em = excluded.atualizado_em
+  `).bind(
+    id, sim.state.command.xp,
+    Math.max(prog.melhorSetor, sim.state.run.sector),
+    JSON.stringify(prog.matriz), agora,
+  ));
+
+  for (const [casco, nave] of Object.entries(sim.state.naves)) {
+    escritas.push(env.DB.prepare(`
+      INSERT INTO naves_progresso (usuario, casco, xp) VALUES (?, ?, ?)
+      ON CONFLICT(usuario, casco) DO UPDATE SET xp = excluded.xp
+    `).bind(id, casco, nave.xp));
+  }
+
+  for (const [material, quantia] of Object.entries(sim.state.armazem)) {
+    escritas.push(env.DB.prepare(`
+      INSERT INTO materiais (usuario, material, quantia) VALUES (?, ?, ?)
+      ON CONFLICT(usuario, material) DO UPDATE SET quantia = excluded.quantia
+    `).bind(id, material, Math.max(0, Math.trunc(quantia))));
+  }
+
+  // Itens: entra o que nasceu, sai o que a automação descartou. Diferença de
+  // conjuntos, e não "insere tudo": o descarte automático consome a maior
+  // parte do que cai, e sem a remoção o inventário do servidor cresceria com
+  // peças que o jogador nunca teve.
+  const depois = new Set(sim.state.inventory.map((i) => i.uid));
+  for (const item of sim.state.inventory) {
+    if (antes.uids.has(item.uid)) continue;
+    escritas.push(env.DB
+      .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
+      .bind(item.uid, id, JSON.stringify(item), agora));
+  }
+  for (const uid of antes.uids) {
+    if (depois.has(uid)) continue;
+    escritas.push(env.DB.prepare('DELETE FROM itens WHERE uid = ? AND usuario = ? AND nave IS NULL').bind(uid, id));
+  }
+
+  await env.DB.batch(escritas);
+
+  return json({
+    segundos: relatorio.seconds,
+    limitado: relatorio.capped || fora >= AUSENCIA_MAX,
+    ganhou: relatorio.gained,
+    setores: relatorio.sectorsCleared,
+    abates: relatorio.kills,
+    baus: relatorio.chests,
+    xp: Math.round(sim.state.command.xp - antes.xp),
+    itensNovos: [...depois].filter((u) => !antes.uids.has(u)).length,
+  }, 200, origem);
 }

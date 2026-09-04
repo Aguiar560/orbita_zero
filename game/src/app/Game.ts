@@ -21,6 +21,7 @@ import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota, sincronizarInventario } from './inventario';
 import { drenarProgresso, sincronizarProgresso } from './progresso';
+import { creditarAusencia } from './ausencia';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -32,13 +33,13 @@ import { drenarProgresso, sincronizarProgresso } from './progresso';
 const INTERVALO_DE_SUBIDA = 150;
 
 /**
- * Ausência mínima (segundos) para creditar progresso offline.
+ * A ausência mínima saiu daqui na Fase 5 do Passo 9.
  *
- * Ausência aqui significa JANELA FECHADA — o tempo entre o último save e o
- * boot. Trocar de aba não passa por este caminho: a aba oculta continua
- * simulando no relógio de fundo do laço.
+ * Quem decide se houve ausência é o SERVIDOR, pela diferença entre agora e o
+ * carimbo que ele mesmo gravou. O cliente não tem mais como opinar — e é essa
+ * ausência de opinião que fecha o buraco: não existe campo onde mentir sobre
+ * quanto tempo se passou.
  */
-const AWAY_THRESHOLD = 3;
 
 /** Ausência mínima para o relatório aparecer. Recarregar a página não conta. */
 const REPORT_THRESHOLD = 120;
@@ -80,10 +81,8 @@ export class Game {
     this.sim = new Sim(loaded?.state);
     this.shell = new Shell(root, this.sim);
     this.loop = new Loop(this.tick, this.draw);
-    this.offlineSeconds = loaded?.offlineSeconds ?? 0;
   }
 
-  private readonly offlineSeconds: number;
 
   /** Segundos desde a última tentativa de subir o save. */
   private relogioDaNuvem = 0;
@@ -205,13 +204,56 @@ export class Game {
     bus.on('preferencias:visuais', () => this.aplicarPreferenciasVisuais());
     if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
 
-    if (this.offlineSeconds > AWAY_THRESHOLD) {
-      const report = this.sim.applyOffline(this.offlineSeconds);
-      this.vertical.refreshPlayer(true);
-      if (this.offlineSeconds > REPORT_THRESHOLD) this.shell.showOfflineReport(report);
-    }
+    await this.creditarAusencia();
 
     this.loop.start();
+  }
+
+  /**
+   * Credita a ausência — no SERVIDOR, desde a Fase 5 do Passo 9.
+   *
+   * ## O que saiu daqui
+   *
+   * `sim.applyOffline(this.offlineSeconds)`. O cliente simulava a própria
+   * ausência e o resultado subia como ganho declarado — o maior buraco que
+   * sobrava depois da Fase 4. Medido e registrado no PLANO: offline rendia
+   * **368 itens contra 44** do jogo ao vivo no mesmo trecho.
+   *
+   * ## Não existe recuo local, e é deliberado
+   *
+   * Calcular aqui quando o servidor não responde devolveria o buraco inteiro:
+   * bastaria bloquear a requisição. E não é preciso — o carimbo do servidor
+   * só anda quando ele CREDITA, então a tentativa que falha não perde nada. A
+   * ausência continua contando e o crédito vem na próxima conexão que der
+   * certo. Quem ficou sem rede recebe atrasado, não recebe a menos.
+   *
+   * ## Por que o estado é resincronizado depois
+   *
+   * O servidor mexeu em saldo, XP e inventário ao simular. Sem buscar de
+   * volta, a tela continuaria mostrando o que havia antes da ausência — e o
+   * jogador veria o relatório dizer "+900 sucata" com o contador parado.
+   */
+  private async creditarAusencia(): Promise<void> {
+    const r = await creditarAusencia(this.sim);
+    if (!r || r.segundos <= 0) return;
+
+    await Promise.all([
+      sincronizarCarteira(),
+      sincronizarInventario(this.sim),
+      sincronizarProgresso(this.sim),
+    ]);
+    this.vertical.refreshPlayer(true);
+
+    if (r.segundos > REPORT_THRESHOLD) {
+      this.shell.showOfflineReport({
+        seconds: r.segundos,
+        capped: r.limitado ?? false,
+        gained: r.ganhou ?? { sucata: 0, nucleo: 0, cristal: 0 },
+        sectorsCleared: r.setores ?? 0,
+        kills: r.abates ?? 0,
+        chests: r.baus ?? 0,
+      });
+    }
   }
 
   /**

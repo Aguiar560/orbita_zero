@@ -815,13 +815,56 @@ atributos.
    exceção declarada: medido, nada em `sim/` importa `clips.ts`, então ela
    nunca entra no grafo do Worker — e há um teste separado que quebra no dia em
    que entrar.
-2. `run`, `hull` e a postura da IA passam a subir junto do ciclo — são poucos
-   campos e já viajam no save hoje.
-3. O servidor monta o `GameState`, roda `abstractTick` pelo tempo decorrido e
-   grava os deltas nas tabelas que já existem.
-4. O cliente para de REPORTAR ganho e passa a RECEBER. `state.pendentes` e
-   `comandosDeItem` deixam de existir; sobra a previsão local para desenhar,
-   corrigida quando o servidor responde.
+2. ✅ **Feito em 03/09.** `run`, `hull` e a postura sobem junto do pedido de
+   ausência. Nenhum dos três decide poder — são contexto de cena.
+3. ✅ **Feito para a AUSÊNCIA em 03/09.** O servidor monta um `GameState` a
+   partir das oito tabelas, roda `applyOffline` e grava os deltas.
+4. 🔴 **Falta para o jogo AO VIVO.** A ausência já não é reportada; o ganho de
+   quem está com a aba aberta ainda é.
+
+#### O que o passo 3 entregou (03/09)
+
+Era o maior buraco que sobrava depois da Fase 4, e a medição registrada neste
+mesmo documento diz o tamanho: **offline rendia 368 itens contra 44** do jogo
+ao vivo no mesmo trecho — e o cliente calculava sozinho quanto tinha ganhado.
+
+**A peça central: o cliente não diz quanto tempo ficou fora.** A ausência sai
+da diferença entre agora e o último carimbo que o servidor gravou
+(`progresso.atualizado_em`). Alegar dez horas depois de cinco minutos não
+funciona porque não existe campo onde mentir — verificado ao vivo: o corpo do
+pedido tem `hull`, `setor`, `onda` e `postura`, e nada mais.
+
+**Não há recuo para o cálculo local, e é deliberado.** Calcular no cliente
+quando o servidor não responde devolveria o buraco inteiro: bastaria bloquear
+a requisição. E não é preciso — o carimbo só anda quando o servidor CREDITA,
+então a tentativa que falha não perde nada. Quem ficou sem rede recebe
+atrasado, não recebe a menos.
+
+**Os dois aparos que o contexto do cliente recebe**, porque são os únicos
+campos abusáveis:
+
+| campo | aparo |
+|---|---|
+| `hull` | precisa estar na frota do servidor, senão cai no primeiro casco |
+| `setor` | não passa do `melhor_setor` já alcançado |
+
+O segundo vale mais que todos os outros juntos: a recompensa por setor vai de
+0,06 (setor 1) a 192.201 (setor 300), então alegar o fim da campanha para
+simular a ausência seria o exploit mais barato do jogo.
+
+**Como a montagem é segura.** O `GameState` parte de `createState()` e recebe
+por cima o que o servidor sabe. Montar à mão os 31 campos significaria
+escrever um valor plausível para cada um que falta — e errar um em silêncio,
+com a simulação divergindo do jogo por um motivo que ninguém encontraria.
+
+**Teto de 12 horas por crédito.** Não é anti-trapaça, é custo: cada hora
+simulada são ~8 ms de CPU, e sem teto uma conta parada por um mês pediria
+quase seis segundos de Worker numa requisição só.
+
+**O que falta, e é o passo 4.** O ganho de quem está jogando AO VIVO ainda
+sobe declarado. A diferença é que agora o caminho mais lucrativo — ficar fora
+e voltar — passou a ser o mais protegido, e a máquina para fechar o resto já
+existe: é a mesma montagem de estado, chamada num ritmo diferente.
 
 **O que continua fora do alcance, e é honesto dizer:** o jogador ainda escolhe
 quando fechar a aba. Um cliente adulterado pode reportar tempo decorrido maior
