@@ -715,8 +715,11 @@ export class Shell {
     // A casca da camada é comum, mas cada tela recebe uma assinatura estável
     // para o CSS aplicar o mesmo kit visual sem depender da estrutura interna
     // (a Matriz, por exemplo, nem usa `.panel-body`).
+    // A tela mudou, ou é o mesmo painel se redesenhando? A diferença decide se
+    // o tutorial abre — ver `talvezAbrirTutorial`.
+    const trocou = this.camadaHost.dataset.tela !== painel.id;
     this.camadaHost.dataset.tela = painel.id;
-    this.talvezAbrirTutorial(painel);
+    if (trocou) this.talvezAbrirTutorial(painel);
 
     clear(this.camadaHost).append(
       h('.camada-caixa', { role: 'dialog', 'aria-modal': 'true', 'aria-label': painel.title },
@@ -752,6 +755,18 @@ export class Shell {
    *
    * O microtask existe porque o painel acabou de ser inserido: o `Tour` mede o
    * alvo com `getBoundingClientRect`, e medir antes do layout dá zero em tudo.
+   *
+   * ## Por que só na TROCA de tela
+   *
+   * `renderPanel` roda no laço do jogo, a cada quadro em que o estado mudou —
+   * e `abrirCamada` vem junto. Chamar isto ali sem condição abria um `Tour`
+   * NOVO a cada redesenho, porque o id só entra em `guiasVistos` ao fechar:
+   * dois, três, dez balões empilhados, cada um com a sua camada escura, e
+   * fechar um deixava o escuro dos outros. Foi o que apareceu na tela.
+   *
+   * A guarda daqui evita o disparo repetido; a do `Game` evita o passeio
+   * duplicado por qualquer outro caminho. As duas existem porque protegem
+   * coisas diferentes.
    */
   private talvezAbrirTutorial(painel: Panel): void {
     if (!temTutorial(painel.id)) return;

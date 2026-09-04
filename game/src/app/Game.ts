@@ -328,7 +328,18 @@ export class Game {
    * guia voltar toda vez para quem escolheu pular — que é justamente quem já
    * disse que não quer.
    */
+  /**
+   * O passeio em cena, se houver.
+   *
+   * Dois passeios ao mesmo tempo não é um estado que alguém queira: são duas
+   * camadas escuras somadas e dois balões disputando a tela, e fechar um deixa
+   * o outro. Um guardião só, aqui, cobre os três caminhos que abrem passeio —
+   * o de entrada, o de tela e o botão "?".
+   */
+  private passeioEmCena: Tour | null = null;
+
   abrirGuia(): void {
+    if (this.passeioEmCena) return;
     // O que o jogador tinha aberto antes do guia. O passeio pode precisar abrir
     // a Anatomia para explica-la, e mexer numa preferencia salva sem devolver e
     // a mesma cicatriz do modo de teste: o jogador so queria uma explicacao e
@@ -337,6 +348,8 @@ export class Game {
 
     const tour = new Tour({
       passos: passosDoOnboarding(this.sim.controleManualDisponivel),
+      // Este passeio roda ANTES da primeira partida, entao a frase e literal.
+      rotuloFinal: 'Começar a jogar',
       aoAbrirPainel: (id) => bus.emit('panel:open', { id }),
       aoExigir: (oQue) => {
         if (oQue === 'anatomia') {
@@ -345,12 +358,14 @@ export class Game {
         }
       },
       aoFechar: () => {
+        this.passeioEmCena = null;
         this.sim.state.settings.anatomiaAberta = anatomiaAntes;
         this.sim.state.settings.guiaVisto = true;
         this.sim.touch();
         this.sim.save();
       },
     });
+    this.passeioEmCena = tour;
     tour.comecar(this.rootEl);
   }
 
@@ -367,6 +382,7 @@ export class Game {
    * completar traria o guia de volta toda vez para quem escolheu pular.
    */
   abrirTutorialDeTela(id: string): void {
+    if (this.passeioEmCena) return;
     const passos = TUTORIAIS[id];
     if (!passos?.length) return;
 
@@ -374,12 +390,14 @@ export class Game {
       passos,
       aoAbrirPainel: (alvo) => bus.emit('panel:open', { id: alvo }),
       aoFechar: () => {
+        this.passeioEmCena = null;
         const vistos = this.sim.state.settings.guiasVistos;
         if (!vistos.includes(id)) vistos.push(id);
         this.sim.touch();
         this.sim.save();
       },
     });
+    this.passeioEmCena = tour;
     tour.comecar(this.rootEl);
   }
 

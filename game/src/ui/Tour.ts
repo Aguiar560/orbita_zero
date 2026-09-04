@@ -61,6 +61,15 @@ export interface OpcoesDoTour {
   aoAbrirPainel?: (id: string) => void;
   /** Abre uma parte recolhida da interface. Devolve o estado anterior. */
   aoExigir?: (o_que: 'anatomia') => void;
+  /**
+   * O rotulo do ultimo botao.
+   *
+   * O passeio de entrada fecha com "Comecar a jogar", que e verdade: ele roda
+   * antes da primeira partida. Um tutorial de tela roda com o jogo em andamento
+   * ha horas, e ali a mesma frase mente. Padrao neutro, e quem tem motivo troca.
+   */
+  rotuloFinal?: string;
+
   /** Chamado ao terminar ou pular. `completo` diz qual dos dois. */
   aoFechar?: (completo: boolean) => void;
 }
@@ -158,7 +167,7 @@ export class Tour {
             ? [h('button.tour-btn', { text: 'Voltar', onclick: () => this.ir(-1) })]
             : []),
           h('button.tour-btn.tour-principal', {
-            text: this.indice === total - 1 ? 'Começar a jogar' : 'Próximo',
+            text: this.indice === total - 1 ? (this.opcoes.rotuloFinal ?? 'Entendi') : 'Próximo',
             onclick: () => this.ir(1),
           }),
         ),

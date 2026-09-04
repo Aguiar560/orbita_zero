@@ -100,3 +100,40 @@ describe('a forma de cada tutorial', () => {
     }
   });
 });
+
+describe('um passeio de cada vez', () => {
+  /**
+   * O defeito de 04/09, relatado com print: dois balões na tela ao mesmo tempo,
+   * "2 de 4" e "1 de 4", e a tela presa no escuro.
+   *
+   * A causa era de ciclo de vida, não de tutorial. `renderPanel` roda no LAÇO DO
+   * JOGO a cada quadro em que o estado mudou, e `abrirCamada` vem junto — então
+   * o gatilho, chamado ali sem condição, abria um `Tour` novo a cada redesenho.
+   * O id só entra em `guiasVistos` ao FECHAR, então nada segurava a repetição:
+   * eram dez, vinte balões empilhados, cada um com a própria camada escura, e
+   * fechar um deixava o escuro dos outros.
+   *
+   * Duas guardas, porque protegem coisas diferentes: o `Shell` só dispara quando
+   * a tela TROCA, e o `Game` recusa abrir um passeio com outro em cena — esta
+   * segunda também cobre o botão "?" clicado duas vezes e o passeio de entrada.
+   */
+  const fonte = (f: string): string =>
+    readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
+
+  it('o Shell só dispara quando a tela troca', () => {
+    const s = fonte('ui/Shell.ts');
+    expect(s).toContain("const trocou = this.camadaHost.dataset.tela !== painel.id;");
+    expect(s).toContain('if (trocou) this.talvezAbrirTutorial(painel);');
+  });
+
+  it('e o Game recusa um segundo passeio', () => {
+    const s = fonte('app/Game.ts');
+    // O guardião, e as duas portas que ele tranca.
+    expect(s).toContain('private passeioEmCena: Tour | null = null;');
+    expect((s.match(/if \(this\.passeioEmCena\) return;/g) ?? []).length).toBe(2);
+    // E as duas que ele destranca: sem isto, o primeiro passeio trancaria todos
+    // os seguintes para sempre — um defeito pior que o original.
+    expect((s.match(/this\.passeioEmCena = null;/g) ?? []).length).toBe(2);
+    expect((s.match(/this\.passeioEmCena = tour;/g) ?? []).length).toBe(2);
+  });
+});
