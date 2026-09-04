@@ -268,5 +268,16 @@ function semODinheiro(estado: GameState): GameState {
     resources: { sucata: 0, nucleo: 0, cristal: 0 },
     vip: { expiresAt: 0 },
     pendentes: [],
+    // O inventário mora na tabela `itens` desde a Fase 3b. Mesmo motivo do
+    // dinheiro: duas verdades no mesmo servidor, e a segunda escrita pelo
+    // cliente, é o buraco que estas fases existem para fechar.
+    inventory: [],
+    comandosDeItem: [],
+    // O equipado também sai, e este era o furo: `inventory` vazio não basta se
+    // a peça Divina viaja dentro de `naves[id].equipped`. O progresso da nave
+    // — nível e xp — continua subindo; o que sai é só o item.
+    naves: Object.fromEntries(
+      Object.entries(estado.naves).map(([id, n]) => [id, { ...n, equipped: {} }]),
+    ),
   };
 }

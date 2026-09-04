@@ -428,6 +428,23 @@ export interface Settings {
 
 // ── Estado global ───────────────────────────────────────────────────────────
 
+/**
+ * Uma mudança no inventário esperando confirmação do servidor.
+ *
+ * `coletar` diz QUANTOS itens de cada tipo saíram do lote, nunca QUAIS: o
+ * servidor tem a semente e o cursor, então deriva sozinho. É o que impede o
+ * cliente de inventar uma peça — item nenhum trafega daqui para lá.
+ */
+export interface ComandoDeItem {
+  tipo: 'coletar' | 'descartar' | 'equipar';
+  /** `coletar`: de qual pote. */
+  pote?: 'onda' | 'elite' | 'chefe';
+  /** `descartar` e `equipar`: qual peça. */
+  uid?: string;
+  /** `equipar`: casco de destino, ou nulo para desequipar. */
+  nave?: string | null;
+}
+
 /** Um ganho ou gasto esperando confirmação do servidor. */
 export interface MovimentoPendente {
   moeda: ResourceId;
@@ -532,6 +549,15 @@ export interface GameState {
    * a Fase 5, onde o servidor passa a CALCULAR em vez de acreditar.
    */
   pendentes: MovimentoPendente[];
+
+  /**
+   * Mudanças de inventário ainda não confirmadas.
+   *
+   * ⚠️ `inventory`, `naves` e `fleet` são ESPELHO desde a Fase 3b do Passo 9.
+   * A verdade é a tabela `itens` no D1. Escrever neles muda o que se vê e
+   * nada mais — a sincronização seguinte traz a lista do servidor por cima.
+   */
+  comandosDeItem: ComandoDeItem[];
 
   /**
    * Cargas de serviço compradas e ainda não usadas. id → quantidade.

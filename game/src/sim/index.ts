@@ -1539,7 +1539,12 @@ export class Sim {
    */
   private tirarDoPote(kind: TipoDeDrop): Item | null {
     const item = this.pote?.[kind].shift();
-    if (item) return item;
+    if (item) {
+      // O comando diz o TIPO, nunca o item: o servidor deriva qual é pela
+      // semente e pelo cursor. É o que impede inventar uma peça.
+      this.state.comandosDeItem.push({ tipo: 'coletar', pote: kind });
+      return item;
+    }
     // Teto na dívida: um cliente offline por horas acumularia milhares de
     // promessas, e pagá-las de uma vez despejaria um inventário inteiro num
     // quadro. Cem cobre qualquer ausência plausível entre dois setores.
@@ -1855,6 +1860,7 @@ export class Sim {
     this.state.inventory.splice(idx, 1);
     this.equipamentoDe(hullId)[item.slot] = item;
     if (previous) this.state.inventory.push(previous);
+    this.state.comandosDeItem.push({ tipo: 'equipar', uid, nave: hullId });
     this.touch();
     return true;
   }
@@ -1864,6 +1870,7 @@ export class Sim {
     if (!item) return;
     delete this.equipamentoDe(hullId)[slot];
     this.stash(item);
+    this.state.comandosDeItem.push({ tipo: 'equipar', uid: item.uid, nave: null });
     this.touch();
   }
 
@@ -1875,6 +1882,7 @@ export class Sim {
     if (item.favorite) return 0;
     const valor = valorDeVenda(item);
     this.state.inventory.splice(idx, 1);
+    this.state.comandosDeItem.push({ tipo: 'descartar', uid });
     this.grant('sucata', valor);
     return valor;
   }
@@ -1894,6 +1902,7 @@ export class Sim {
     const retorno = retornoDeDesmanche(item);
     if (!this.cabemMateriais(retorno.materiais)) return null;
     this.state.inventory.splice(idx, 1);
+    this.state.comandosDeItem.push({ tipo: 'descartar', uid });
     this.guardarRetorno(retorno);
     return retorno;
   }

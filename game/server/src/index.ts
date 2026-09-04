@@ -7,9 +7,12 @@ import {
   type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
 import {
-  ITENS_POR_POOL, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
-  setorValido, sorteValida,
+  ITENS_POR_POOL, TIPOS, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
+  setorValido, sorteValida, type TipoDeDrop,
 } from './lote';
+import { conferirComandos, derivarColeta, podeIrPara, type Comandos } from './inventario';
+import { HULL_BY_ID } from '@data/hulls';
+import type { Item, SlotId } from '@sim/types';
 
 /**
  * A API do Órbita Zero.
@@ -283,6 +286,11 @@ export default {
 
     if (url.pathname === '/lote' && req.method === 'POST') {
       return entregarLote(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/inventario') {
+      if (req.method === 'GET') return json({ itens: await inventarioDe(env, usuario.id) }, 200, origem);
+      if (req.method === 'POST') return aplicarComandos(req, env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -781,4 +789,140 @@ async function entregarLote(req: Request, env: Env, id: string, origem: string):
   const pagina = paginaValida(corpo.pagina);
   const lote = rolarLote(semente, setor, sorte, Number(corpo.universo), pagina);
   return json({ setor, pagina, lote, porPool: ITENS_POR_POOL }, 200, origem);
+}
+
+// ── inventário ──────────────────────────────────────────────────────────────
+
+interface LinhaDeItem { uid: string; dados: string; nave: string | null; slot: string | null }
+
+/** A mochila e o equipado, do jeito que o cliente desenha. */
+async function inventarioDe(env: Env, usuario: string) {
+  const { results } = await env.DB
+    .prepare('SELECT uid, dados, nave, slot FROM itens WHERE usuario = ?')
+    .bind(usuario)
+    .all<LinhaDeItem>();
+
+  return results.map((l) => ({
+    item: JSON.parse(l.dados) as Item,
+    nave: l.nave,
+    slot: l.slot,
+  }));
+}
+
+/**
+ * Aplica coletar, descartar e equipar num lote só.
+ *
+ * ## O item nunca sobe
+ *
+ * `coletar` diz QUANTOS de cada tipo, nunca QUAIS. O servidor tem a semente, a
+ * página e o cursor, então deriva os itens sozinho. Nenhum byte de item viaja
+ * do cliente para cá — e o que não trafega não pode ser forjado.
+ *
+ * ## Por que tudo numa transação
+ *
+ * Coletar avança o cursor. Se o avanço gravasse e a inserção dos itens não,
+ * o jogador perderia o lote inteiro daquele setor sem nada explicando. O
+ * `batch` do D1 é transação: ou tudo entra, ou nada.
+ */
+async function aplicarComandos(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let comandos: Comandos;
+  try {
+    comandos = JSON.parse(bruto) as Comandos;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const recusa = conferirComandos(comandos);
+  if (recusa) return json({ erro: recusa }, 400, origem);
+
+  const escritas: D1PreparedStatement[] = [];
+
+  // ── coletar ───────────────────────────────────────────────────────────────
+  const pedido = comandos.coletar ?? {};
+  const querColetar = TIPOS.some((t) => (pedido[t] ?? 0) > 0);
+  if (querColetar) {
+    const lote = await env.DB
+      .prepare('SELECT setor, semente, sorte, usados_onda, usados_elite, usados_chefe FROM lotes WHERE usuario = ?')
+      .bind(id)
+      .first<{
+        setor: number; semente: number; sorte: number;
+        usados_onda: number; usados_elite: number; usados_chefe: number;
+      }>();
+    if (!lote) return json({ erro: 'lote_esgotado' }, 409, origem);
+
+    // A página é derivada do cursor: quem já consumiu 12 de um tipo está na
+    // página 1 daquele tipo. Guardar a página separado seria um segundo
+    // número dizendo a mesma coisa, com uma chance a mais de divergir.
+    const cursor = {
+      onda: lote.usados_onda, elite: lote.usados_elite, chefe: lote.usados_chefe,
+    } as Record<TipoDeDrop, number>;
+    const pagina = paginaValida(Math.floor(Math.max(...TIPOS.map((t) => cursor[t])) / ITENS_POR_POOL));
+    const rolado = rolarLote(lote.semente, lote.setor, lote.sorte, 0, pagina);
+
+    // O cursor é absoluto e o lote é da página: desloca antes de comparar.
+    const base = pagina * ITENS_POR_POOL;
+    const relativo = {} as Record<TipoDeDrop, number>;
+    for (const t of TIPOS) relativo[t] = Math.max(0, cursor[t] - base);
+
+    const coleta = derivarColeta(rolado, relativo, pedido);
+    if (!coleta) return json({ erro: 'lote_esgotado' }, 409, origem);
+
+    for (const item of coleta.itens) {
+      escritas.push(env.DB
+        .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
+        .bind(item.uid, id, JSON.stringify(item), agora));
+    }
+    escritas.push(env.DB
+      .prepare('UPDATE lotes SET usados_onda = ?, usados_elite = ?, usados_chefe = ? WHERE usuario = ?')
+      .bind(base + coleta.cursor.onda, base + coleta.cursor.elite, base + coleta.cursor.chefe, id));
+  }
+
+  // ── descartar ─────────────────────────────────────────────────────────────
+  for (const uid of comandos.descartar ?? []) {
+    // `usuario` no WHERE não é zelo: sem ele, um uid alheio apagaria o item de
+    // outra pessoa. O crédito em sucata NÃO acontece aqui — ele já sobe pela
+    // fila da carteira, e creditar nos dois lugares pagaria em dobro.
+    escritas.push(env.DB.prepare('DELETE FROM itens WHERE uid = ? AND usuario = ?').bind(uid, id));
+  }
+
+  // ── equipar ───────────────────────────────────────────────────────────────
+  for (const e of comandos.equipar ?? []) {
+    const linha = await env.DB
+      .prepare('SELECT dados FROM itens WHERE uid = ? AND usuario = ?')
+      .bind(e.uid, id)
+      .first<{ dados: string }>();
+    if (!linha) return json({ erro: 'item_nao_e_seu' }, 409, origem);
+
+    if (e.nave === null) {
+      escritas.push(env.DB.prepare('UPDATE itens SET nave = NULL, slot = NULL WHERE uid = ? AND usuario = ?').bind(e.uid, id));
+      continue;
+    }
+
+    const item = JSON.parse(linha.dados) as Item;
+    const casco = HULL_BY_ID.get(e.nave);
+    if (!casco) return json({ erro: 'item_nao_e_seu' }, 409, origem);
+    const mau = podeIrPara(item, casco.element, (e.slot ?? item.slot) as SlotId);
+    if (mau) return json({ erro: mau }, 409, origem);
+
+    // Desequipa o que estiver no slot antes de ocupar: o índice único recusaria
+    // a segunda peça, e o jogador veria "falhou" onde o jogo sempre trocou.
+    escritas.push(env.DB
+      .prepare('UPDATE itens SET nave = NULL, slot = NULL WHERE usuario = ? AND nave = ? AND slot = ?')
+      .bind(id, e.nave, item.slot));
+    escritas.push(env.DB
+      .prepare('UPDATE itens SET nave = ?, slot = ? WHERE uid = ? AND usuario = ?')
+      .bind(e.nave, item.slot, e.uid, id));
+  }
+
+  if (escritas.length) await env.DB.batch(escritas);
+  return json({ itens: await inventarioDe(env, id) }, 200, origem);
 }

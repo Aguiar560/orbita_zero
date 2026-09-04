@@ -19,6 +19,7 @@ import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
+import { drenarInventario, sincronizarInventario } from './inventario';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -169,6 +170,10 @@ export class Game {
     await sincronizarCarteira();
     await drenarCarteira(this.sim);
     await garantirLote(this.sim, this.sim.state.run.sector);
+    // O inventário vem antes do primeiro quadro: os atributos da nave saem do
+    // que está equipado, e desenhar com o equipamento local para trocá-lo um
+    // segundo depois é uma piscada de números errados na primeira tela.
+    await sincronizarInventario(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -360,6 +365,9 @@ export class Game {
     // O lote acompanha o setor, e o setor muda no mesmo evento que enche a
     // carteira. Pedir aqui cobre o caso comum sem um relógio próprio.
     void garantirLote(this.sim, this.sim.state.run.sector);
+    // O inventário anda no mesmo relógio: coletar, descartar e equipar
+    // acontecem no mesmo evento que enche a carteira — o setor caiu.
+    void drenarInventario(this.sim);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {

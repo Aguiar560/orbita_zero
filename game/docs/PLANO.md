@@ -570,7 +570,7 @@ medido em 03/09, a recompensa por setor vai de 0,06 (setor 1) a 192.201 (setor
 justamente o que o cliente alega. Está documentado em `server/src/carteira.ts`
 para ninguém tentar adicionar o teto achando que resolve.
 
-**Fase 3 — Inventário.** 🟡 Metade feita em 03/09.
+**Fase 3 — Inventário.** 🟡 Quase toda em 03/09; falta a síntese e a frota.
 
 **3a — a rolagem saiu do cliente. ✅**
 
@@ -614,15 +614,45 @@ cliente devolveria a alavanca das regras, e escolher o elemento do drop vale
 mais que subir a raridade. Piso de raridade, bônus de nível, itens extras e
 multiplicador de sorte do chefe continuam **idênticos**.
 
-**3b — o inventário ainda é do cliente. 🔴**
+**3b — o inventário saiu do save. ✅ 03/09**
 
-`state.inventory`, `state.naves` e `state.fleet` continuam no save. O cliente
-não escolhe mais QUAL item cai, mas ainda pode injetar um item direto no save.
-Falta: as três coleções viram tabelas, e equipar/desmontar/vender/sintetizar
-viram comandos validados.
+A 3a tirou o poder de escolher QUAL item cai. Faltava a outra metade: o
+inventário morava no save, e save é blob que o cliente escreve — dava para não
+rolar nada e simplesmente ESCREVER uma peça Divina na lista.
 
-*Aceite da fase (ainda não atingido):* não existe caminho no cliente que crie,
-apague ou altere um item.
+**A ideia que fecha isso é uma só: o item nunca sobe.** O comando `coletar`
+diz QUANTOS itens de cada tipo saíram do lote, nunca QUAIS. O servidor tem a
+semente e o cursor, então deriva sozinho. Nenhum byte de item viaja do cliente
+para o servidor — e o que não trafega não pode ser forjado.
+
+- `itens` guarda uid, dono, o item em JSON, e **nave/slot em coluna** — o
+  vínculo precisa ser consultável e conferível, o resto não.
+- Índice único em `(usuario, nave, slot)`: uma retentativa de rede não pode
+  deixar a nave com dois peitorais, e o cálculo de atributos somaria os dois
+  sem reclamar.
+- Cursor por tipo em `lotes`, que é o que impede coletar o mesmo item duas
+  vezes.
+- `naveAceita` roda no servidor — o MESMO arquivo do cliente. Equipar uma arma
+  Divina de fogo numa nave de gelo vale poder real, e só o cliente conferindo
+  seria o mesmo que não conferir.
+- O save que sobe perde `inventory`, `comandosDeItem` **e o `equipped` de cada
+  nave** — este último era um furo real: `inventory` vazio não basta se a peça
+  viaja dentro de `naves[id].equipped`. Nível e XP da nave continuam subindo.
+
+*Aceite, verificado ao vivo:* o corpo do `PUT /save` sai com `inventory: []`,
+`resources` zerados, `vip` zerado e nenhuma nave com equipamento — com 14
+itens e 132 de sucata no espelho local.
+
+**O que ainda falta na fase**
+
+- `fleet` (quais cascos o jogador tem) continua no save. Injetar um casco
+  ainda é possível; injetar um ITEM não.
+- A **síntese** (`FabricacaoPanel`) ainda funde no cliente: ela consome peças e
+  produz uma nova com `rollItem` local. É a última porta por onde um item
+  nasce fora do servidor.
+- O serviço de loja que TROCA o elemento de uma nave mora no save, então o
+  servidor valida `naveAceita` contra o elemento de fábrica. Uma nave com
+  elemento trocado é avaliada pelo antigo.
 
 **Fase 4 — Progressão.** XP, nível, setor alcançado e Matriz.
 
