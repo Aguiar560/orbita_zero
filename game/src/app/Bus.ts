@@ -12,13 +12,13 @@ export interface GameEvents {
   'sector:advanced': { universe: number; sector: number };
   'sector:failed': { sector: number; perdido: Resources; resumo: ResumoDaMorte };
   /**
-   * O laço recuou um setor para farmar.
+   * A nave bateu na parede: três quedas seguidas no mesmo setor.
    *
-   * Acontece depois de três falhas seguidas no mesmo lugar. É evento e não
-   * fato: a tela avisa, e se ninguém ouvir o jogo continua igual — o recuo já
-   * aconteceu no estado.
+   * O jogo NÃO recua sozinho — mover a fase por conta própria tira do jogador
+   * a decisão que a trava de fase existe para dar. Este evento só avisa; quem
+   * escuta oferece a escolha, e o estado só muda se ele aceitar.
    */
-  'sector:recuado': { de: number; para: number };
+  'sector:parede': { setor: number; quedas: number };
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };

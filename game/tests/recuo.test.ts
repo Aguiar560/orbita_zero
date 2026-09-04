@@ -1,124 +1,142 @@
 /**
- * O recuo automático na parede do chefe.
+ * A parede do chefe: o jogo OFERECE recuar, e não recua.
  *
- * ## O que existia antes
+ * ## As duas metades disto
  *
- * Nada. `failEncounter` contava `falhasNoSetor` e ninguém lia o contador: o
- * laço reiniciava o MESMO setor para sempre. A nave que não vence o chefe fica
- * morrendo até alguém abrir a aba e perceber — num idle, isso pode ser um dia
- * inteiro de nada.
+ * **O problema é real e foi medido.** `failEncounter` contava `falhasNoSetor` e
+ * ninguém lia o contador: o laço reiniciava o MESMO setor para sempre. Com
+ * `npm run simular -- ganho 5 25 10 3600`, uma hora por setor com o build
+ * representativo, o setor 25 acumulava **225 mortes, zero setores concluídos e
+ * zero XP**. Num idle isso acontece com a aba fechada — o jogador só descobre
+ * no dia seguinte, e descobre como "o jogo não rendeu nada".
  *
- * ## O tamanho do problema, medido
+ * **A solução não é o jogo decidir.** A primeira versão recuava sozinha, e
+ * estava errada pelo mesmo motivo que `completeEncounter` não avança sozinho:
+ * mover a fase por conta própria tira do jogador a decisão que a trava de fase
+ * existe para dar. O argumento já estava escrito no código, para o avanço — eu
+ * o apliquei numa direção só.
  *
- * `npm run simular -- ganho 5 25 10 3600`, uma hora de jogo por setor, com o
- * build representativo de cada um:
- *
- * | setor | | setores limpos | mortes |
- * |---|---|---|---|
- * | 5 | sem recuo | 0 | 112 |
- * | 5 | com recuo | **31** | **6** |
- * | 25 | sem recuo | 0 | 225 |
- * | 25 | com recuo | **31** | **21** |
- *
- * No setor 25 sem recuo: 225 mortes, zero setores concluídos e zero XP numa
- * hora inteira.
+ * Então o que estes testes protegem é uma coisa e o contrário dela: que o aviso
+ * apareça, e que o estado NÃO mude sem alguém pedir.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
+import { bus } from '@app/Bus';
 
 /** Mata a nave `n` vezes no setor atual. */
 const matar = (sim: Sim, n: number): void => {
   for (let i = 0; i < n; i++) sim.failEncounter();
 };
 
-describe('três falhas no mesmo setor fazem recuar', () => {
-  it('duas falhas ainda não recuam', () => {
-    // Uma falha é azar — a rolagem do encontro varia. Recuar na primeira
-    // mandaria o jogador para trás por uma morte que ele já ia superar.
+/** Coleta os avisos de parede emitidos durante `corpo`. */
+function avisos(corpo: () => void): { setor: number; quedas: number }[] {
+  const vistos: { setor: number; quedas: number }[] = [];
+  const solta = bus.on('sector:parede', (p) => vistos.push(p));
+  try { corpo(); } finally { solta(); }
+  return vistos;
+}
+
+describe('o jogo AVISA depois de três quedas', () => {
+  it('duas quedas não avisam', () => {
+    // Uma queda é azar — a rolagem do encontro varia. Avisar na primeira seria
+    // barulho sobre uma morte que o jogador já ia superar.
     const sim = new Sim(createState(1));
     sim.jumpSector(10);
-    matar(sim, 2);
-    expect(sim.state.run.sector).toBe(10);
-    expect(sim.state.run.falhasNoSetor).toBe(2);
+    expect(avisos(() => matar(sim, 2))).toEqual([]);
   });
 
-  it('a terceira recua um setor e zera o contador', () => {
+  it('a terceira avisa, com o setor e a contagem', () => {
     const sim = new Sim(createState(2));
     sim.jumpSector(10);
+    const vistos = avisos(() => matar(sim, 3));
+    expect(vistos).toEqual([{ setor: 10, quedas: 3 }]);
+  });
+
+  it('não avisa no setor 1, onde não há para onde recuar', () => {
+    const sim = new Sim(createState(3));
+    sim.jumpSector(1);
+    expect(avisos(() => matar(sim, 9))).toEqual([]);
+  });
+
+  it('avisa UMA vez por visita ao setor', () => {
+    // Reoferecer a cada três quedas viraria uma janela piscando durante a noite
+    // inteira, e a segunda oferta não traz informação nova nenhuma.
+    const sim = new Sim(createState(4));
+    sim.jumpSector(10);
+    expect(avisos(() => matar(sim, 12))).toHaveLength(1);
+  });
+
+  it('avisa de novo depois de trocar de setor e bater outra vez', () => {
+    // Aí a situação mudou de verdade: é outro lugar, e o jogador pode não saber
+    // que este também está acima do poder da nave.
+    const sim = new Sim(createState(5));
+    sim.jumpSector(10);
     matar(sim, 3);
+    sim.jumpSector(11);
+    expect(avisos(() => matar(sim, 3))).toEqual([{ setor: 11, quedas: 3 }]);
+  });
+});
+
+describe('o jogo NÃO recua sozinho', () => {
+  it('doze quedas não movem a fase', () => {
+    // É o teste central deste arquivo. A versão anterior recuava aqui, e o
+    // jogador voltava para encontrar a nave num setor que ele não escolheu.
+    const sim = new Sim(createState(6));
+    sim.jumpSector(20);
+    matar(sim, 12);
+    expect(sim.state.run.sector).toBe(20);
+  });
+
+  it('nem pelo caminho abstrato, com a aba fechada', () => {
+    // O caso que mais tentaria automatizar: ninguém está olhando. É exatamente
+    // por isso que mexer sozinho aqui é pior — o jogador volta e não entende o
+    // que aconteceu com a fase dele.
+    const sim = new Sim(createState(7));
+    sim.jumpSector(25);
+    for (let i = 0; i < 6; i++) {
+      sim.state.run.vidaFracao = 0;
+      sim.abstractTick(0.5);
+    }
+    expect(sim.state.run.sector).toBe(25);
+  });
+});
+
+describe('quando o jogador PEDE para recuar', () => {
+  it('desce um setor e zera o contador de quedas', () => {
+    const sim = new Sim(createState(8));
+    sim.jumpSector(10);
+    matar(sim, 3);
+    expect(sim.recuarUmSetor()).toBe(true);
     expect(sim.state.run.sector).toBe(9);
     expect(sim.state.run.falhasNoSetor).toBe(0);
   });
 
-  it('recua UM por vez, não para o começo', () => {
-    // Encontra o degrau mais alto que a nave vence. Despachar para o setor 1
-    // jogaria fora todo o progresso que ela consegue sustentar.
-    const sim = new Sim(createState(3));
-    sim.jumpSector(20);
-    matar(sim, 9);
-    expect(sim.state.run.sector).toBe(17);
-  });
-
-  it('nunca recua abaixo do setor 1', () => {
-    const sim = new Sim(createState(4));
+  it('não desce abaixo do setor 1', () => {
+    const sim = new Sim(createState(9));
     sim.jumpSector(1);
-    matar(sim, 12);
+    expect(sim.recuarUmSetor()).toBe(false);
     expect(sim.state.run.sector).toBe(1);
   });
-});
 
-describe('o que o recuo NÃO faz', () => {
-  it('não tira o acesso ao setor conquistado', () => {
-    // `bestSector` é o que abre a fase no mapa. O ponteiro volta; o acesso,
-    // não — senão morrer três vezes custaria conteúdo já conquistado.
-    const sim = new Sim(createState(5));
+  it('o acesso ao setor conquistado NÃO volta', () => {
+    // `bestSector` é o que abre a fase no mapa. Recuar move o ponteiro, não
+    // desfaz conquista — senão morrer três vezes custaria conteúdo.
+    const sim = new Sim(createState(10));
     sim.jumpSector(30);
     const antes = sim.state.universe.bestSector;
-    matar(sim, 3);
+    sim.recuarUmSetor();
     expect(sim.state.universe.bestSector).toBe(antes);
     expect(sim.state.universe.bestSectorEver).toBeGreaterThanOrEqual(30);
   });
 
   it('não des-limpa o que já foi limpo', () => {
-    // `run.cleared` conta setores concluídos. A primeira versão o zerava no
-    // recuo, e com isso apagava o único número que mostra se o recuo funcionou.
-    const sim = new Sim(createState(6));
+    const sim = new Sim(createState(11));
     sim.jumpSector(10);
     sim.state.run.cleared = 7;
-    matar(sim, 3);
+    sim.recuarUmSetor();
     expect(sim.state.run.cleared).toBe(7);
-  });
-
-  it('a onda volta ao começo do setor, como em qualquer falha', () => {
-    const sim = new Sim(createState(7));
-    sim.jumpSector(10);
-    sim.state.run.wave = 4;
-    matar(sim, 3);
-    expect(sim.state.run.wave).toBe(1);
-  });
-});
-
-describe('o recuo vale também fora do jogo', () => {
-  it('o caminho abstrato recua', () => {
-    /**
-     * `completeEncounter` não AVANÇA no caminho abstrato, e de propósito: o
-     * jogador escolheu aquela fase, e avançar sozinho o levaria para uma que
-     * ele não escolheu.
-     *
-     * Recuar é o contrário disso. Ninguém escolhe morrer em série, e foi
-     * exatamente o que a medição encontrou: 225 mortes numa hora, no setor 25,
-     * sem sair do lugar.
-     */
-    const sim = new Sim(createState(8));
-    sim.jumpSector(25);
-    // Vida a zero força `failEncounter` pelo caminho abstrato.
-    for (let i = 0; i < 3; i++) {
-      sim.state.run.vidaFracao = 0;
-      sim.abstractTick(0.5);
-    }
-    expect(sim.state.run.sector).toBeLessThan(25);
   });
 });

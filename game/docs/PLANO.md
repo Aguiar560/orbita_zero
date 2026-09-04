@@ -912,8 +912,11 @@ não existe: o ganho é dominado por passar ou não do chefe, e no build
 representativo ele não passa em lugar nenhum. Calibrar um teto sobre isso
 produziria o mesmo erro das duas tentativas anteriores, com mais trabalho.
 
-**A decisão nº 2 foi tomada e implementada no mesmo dia**, e a curva mudou de
-cara. Uma hora de jogo por setor, com o build representativo:
+**A decisão nº 2 foi tomada em 03/09: o jogo AVISA, o jogador recua.**
+
+A medição abaixo é do que aconteceria COM o recuo, e ela vale como estimativa
+do que o jogador ganha ao aceitar a oferta — não como comportamento do jogo,
+que não recua sozinho.
 
 | setor | | setores limpos | mortes | xp/s |
 |---|---|---|---|---|
@@ -924,9 +927,13 @@ cara. Uma hora de jogo por setor, com o build representativo:
 | 25 | sem recuo | 0 | 225 | 0,00 |
 | 25 | **com recuo** | **31** | **21** | 9,83 |
 
-O setor 25 sem recuo passava uma hora inteira em 225 mortes, zero setores
-concluídos e zero XP. O laço agora encontra o degrau que a nave vence, farma
-ali e sobe de novo — que é o que um jogador faria.
+O setor 25 sem recuar passa uma hora inteira em 225 mortes, zero setores
+concluídos e zero XP. É esse número que a oferta existe para o jogador
+conhecer: num idle, isso acontece com a aba fechada, e ele só descobriria no
+dia seguinte — como "o jogo não rendeu nada".
+
+Insistir continua sendo escolha legítima, e o cartão diz isso: o jogador pode
+estar a um item de passar, e ninguém sabe disso melhor que ele.
 
 **O que ainda falta para o teto do passo 4.** A curva melhorou muito mas
 continua ruidosa: o ganho por segundo vai de 0,10 a 9,83 nos três pontos
@@ -1060,7 +1067,7 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | # | Decisão | Contexto |
 |---|---|---|
 | 1 | **Anel elemental com deriva de 5%** | `1,5 × 0,7 = 1,05`, deveria fechar em 1,0. A especificação propõe `1,25 × 0,80`. Mexer nisso move todo o combate elemental |
-| 2 | ✅ **Recuo automático** — decidido em 03/09: "bateu no chefe, não matou? volte e farm itens e XP melhores". Implementado: três quedas seguidas no mesmo setor recuam UM setor e zeram o contador. Medido, uma hora por setor: no 25, de 225 mortes e ZERO setores concluídos para 21 mortes e 31 concluídos; no 5, de 112 mortes e zero para 6 e 31. O acesso não volta — só o ponteiro |
+| 2 | ✅ **O jogo OFERECE recuar; quem recua é o jogador** — decidido em 03/09. Três quedas seguidas no mesmo setor abrem um cartão com "Recuar para o N−1" e "Ficar aqui", uma vez por visita. O estado NÃO muda sem alguém pedir. A primeira versão recuava sozinha e estava errada pelo mesmo motivo que `completeEncounter` não avança sozinho: mover a fase por conta própria tira do jogador a decisão que a trava de fase existe para dar |
 | 3 | ✅ **O que a Loja vende** | Resolvido pela opção A: Central de Serviços |
 | 4 | **Item só do elemento da nave** | Pedido em 25/08 e MEDIDO antes de implementar. Se a nave só aceitar item neutro ou do próprio elemento, o Divino fica inutilizável **78%** das vezes — e trocar o elemento invalida **88%** de um conjunto lendário, o que torna o serviço de loja um botão que ninguém aperta. A alternativa medida é restringir só **principal + escudo**, os dois slots onde o elemento já significa algo: aí o Divino fica usável em 84% e a troca custa no máximo 2 peças de 10. Falta escolher entre as duas |
 | 5 | **Setor 5 depois do adensamento** | Onda mais longa é mais tempo sob fogo, e `incomingDps` é taxa fixa. A vida mínima do setor 3 caiu de 90% para 52%, e o setor 5 passou de 36% e nenhuma morte para 0% e três mortes. Compensar mexeria em `curvaDano`, que é outro sistema calibrado — decisão de quanto o começo deve doer |

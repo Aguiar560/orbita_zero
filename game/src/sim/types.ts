@@ -280,6 +280,14 @@ export interface RunState {
    * imitar o que um humano faz depois de apanhar três vezes no mesmo chefe.
    */
   falhasNoSetor?: number;
+  /**
+   * Setor em que a oferta de recuo já apareceu.
+   *
+   * Existe para não reoferecer a cada três quedas: quem recusou já sabe, e a
+   * segunda oferta não traz informação nova. O aviso volta quando o jogador
+   * troca de setor e bate de novo.
+   */
+  paredeAvisadaEm?: number;
   /** Setores em que o jogador já derrotou o chefe neste universo. */
   cleared: number;
 }

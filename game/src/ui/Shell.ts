@@ -336,14 +336,7 @@ export class Shell {
     });
 
     bus.on('sector:advanced', ({ sector }) => this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star'));
-    // O recuo é FATO, não conselho: o jogo moveu o setor do jogador, e ele
-    // precisa saber por que a fase mudou sozinha. A frase diz o que aconteceu
-    // e por quê, sem mandar ninguém fazer nada — a decisão de voltar a subir
-    // continua sendo dele, e o setor de origem segue liberado no mapa.
-    bus.on('sector:recuado', ({ de, para }) => this.pushToast(
-      `Recuando do setor ${de} para o ${para} — três quedas seguidas`,
-      'bad', 'ui/icon_star',
-    ));
+    bus.on('sector:parede', ({ setor, quedas }) => this.oferecerRecuo(setor, quedas));
     bus.on('boss:defeated', ({ name }) => this.pushToast(`${name} destruído`, 'epic', 'fx/blast_fire_3'));
     // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a
     // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
@@ -549,6 +542,67 @@ export class Shell {
     // uma onda e não poder decidir agora, e um cartão que fica para sempre vira
     // parte da moldura da tela.
     setTimeout(() => cartao.remove(), 45_000);
+  }
+
+  /**
+   * Oferece recuar depois de três quedas no mesmo setor.
+   *
+   * ## Oferece — não faz
+   *
+   * A primeira versão disto recuava sozinha e mostrava um aviso de fato
+   * consumado. Estava errada pelo mesmo motivo que `completeEncounter` não
+   * avança sozinho: mover a fase por conta própria tira do jogador a decisão
+   * que a trava de fase existe para dar.
+   *
+   * ## Por que a oferta precisa existir
+   *
+   * Sem ela ninguém fica sabendo. Medido: no setor 25, a nave morre **225
+   * vezes numa hora** sem concluir um setor sequer e sem ganhar XP nenhum. Num
+   * idle isso acontece com a aba fechada — o jogador só descobre no dia
+   * seguinte, e descobre como "o jogo não rendeu nada".
+   *
+   * O cartão informa e pergunta. Insistir continua sendo escolha legítima: o
+   * jogador pode estar a um item de passar, e ninguém sabe disso melhor que
+   * ele.
+   */
+  private oferecerRecuo(setor: number, quedas: number): void {
+    // Uma por vez. Outra queda pode chegar antes de o jogador responder, e
+    // dois cartões iguais empilhados é defeito.
+    if (this.root.querySelector('.parede-oferta')) return;
+
+    const cartao = h('.dica-escudo.parede-oferta', { role: 'alertdialog' });
+    const fechar = (): void => cartao.remove();
+
+    clear(cartao).append(
+      h('.dica-escudo-topo', {},
+        h('strong', { text: `Parede no setor ${setor}` }),
+        h('button.dica-escudo-x', {
+          text: '\u2715', 'aria-label': 'Fechar',
+          onclick: fechar,
+        }),
+      ),
+      h('p.dica-escudo-txt', {
+        text: `${quedas} quedas seguidas aqui. Recuar para o setor ${setor - 1} rende item e XP`
+          + ' que ajudam a voltar mais forte — mas insistir também vale, se você estiver perto.',
+      }),
+      h('.dica-escudo-acoes', {},
+        h('button.dica-escudo-btn.ligado', {
+          onclick: () => {
+            this.sim.recuarUmSetor();
+            this.sim.save();
+            fechar();
+          },
+        }, h('span', { text: `RECUAR PARA ${setor - 1}` })),
+        h('button.dica-escudo-ok', { text: 'Ficar aqui', onclick: fechar }),
+      ),
+    );
+
+    this.root.append(cartao);
+    // Some sozinho, como a dica de escudo: o jogador pode estar no meio de uma
+    // onda e não poder decidir agora, e um cartão que fica para sempre vira
+    // parte da moldura da tela. Não responder é ficar — que é o padrão certo,
+    // porque é o que não mexe em nada.
+    setTimeout(fechar, 45_000);
   }
 
   private renderPanel(): void {
