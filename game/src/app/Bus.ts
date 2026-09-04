@@ -14,8 +14,8 @@ export interface GameEvents {
   /**
    * A nave bateu na parede: três quedas seguidas no mesmo setor.
    *
-   * O jogo NÃO recua sozinho — mover a fase por conta própria tira do jogador
-   * a decisão que a trava de fase existe para dar. Este evento só avisa; quem
+   * O jogo NÃO recua sozinho — mover o setor por conta própria tira do jogador
+   * a decisão que a trava de setor existe para dar. Este evento só avisa; quem
    * escuta oferece a escolha, e o estado só muda se ele aceitar.
    */
   'sector:parede': { setor: number; quedas: number };

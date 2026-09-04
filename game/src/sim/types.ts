@@ -698,3 +698,40 @@ export interface GameState {
 
   settings: Settings;
 }
+
+/**
+ * Marco do começo de um setor. Interno ao `Sim`; ver o campo `marco`.
+ */
+export interface MarcoDeSetor {
+  setor: number;
+  /** `Date.now()` na entrada. Tempo de relógio, que é o que o jogador sente. */
+  em: number;
+  /** Acumulado, não diferença: `command.xp` cai ao subir de nível. */
+  xp: number;
+  abates: number;
+  chefes: number;
+  quedas: number;
+  itens: number;
+  baus: number;
+  materiais: Record<string, number>;
+}
+
+/**
+ * O que uma incursão rendeu, para o painel de conclusão de setor.
+ *
+ * Não vai para o save: é o assunto de uma tela que se lê e se fecha.
+ */
+export interface ResumoDeIncursao {
+  setor: number;
+  segundos: number;
+  xp: number;
+  /** A carga RETIDA, que a conclusão está prestes a depositar. */
+  carga: Resources;
+  /** Só o que subiu, já em diferença. */
+  materiais: Record<string, number>;
+  abates: number;
+  chefes: number;
+  quedas: number;
+  itens: number;
+  baus: number;
+}

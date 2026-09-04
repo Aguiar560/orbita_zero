@@ -140,7 +140,7 @@ export class SettingsPanel implements Panel {
       ], s.pilot, (v) => { s.pilot = v as typeof s.pilot; sim.touch(); }),
 
       h('h3.section', { text: 'Em campo' }),
-      toggle('Repetir a fase', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); }),
+      toggle('Repetir o setor', s.repetirSetor, (v) => { s.repetirSetor = v; sim.touch(); }),
       toggle('Bolha de escudo', s.mostrarEscudo, (v) => { s.mostrarEscudo = v; sim.touch(); }),
       toggle('Números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); }),
 

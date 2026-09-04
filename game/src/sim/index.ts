@@ -92,7 +92,7 @@ import {
   RESOURCE_IDS,
   type ElementId, type GameState, type Item, type ResourceId, type Resources,
   type NaveProgresso, type NivelProgresso, type SlotId, type Stats,
-  type MovimentoPendente,
+  type MovimentoPendente, type MarcoDeSetor, type ResumoDeIncursao,
 } from './types';
 import {
   SHOP_BY_ID, SHOP_CARGO_IDS, shopCost, shopLimit,
@@ -214,6 +214,27 @@ export class Sim {
   private devendo: TipoDeDrop[] = [];
 
   /**
+   * Marco do começo do setor, para o painel de conclusão dizer o que mudou.
+   *
+   * ## Por que marco e não contadores próprios
+   *
+   * Abates, quedas, itens e baús já são contados em `stats`, e material em
+   * `armazem`. Somar de novo em campos paralelos daria duas verdades para a
+   * mesma pergunta, e a segunda erra no dia em que alguém acrescentar uma
+   * fonte e esquecer de somar nos dois lugares. Guardar o valor de partida e
+   * subtrair no fim usa a contagem que já existe.
+   *
+   * O XP é a exceção e precisa de acumulador: `command.xp` é o progresso
+   * DENTRO do nível, então subir de nível o faz cair. Diferença de marco daria
+   * número negativo justamente na hora mais comemorativa.
+   *
+   * Em memória e não no save: é o assunto de uma tela que se lê e se fecha.
+   */
+  // Sem inicializador: campo declarado roda ANTES do corpo do construtor, e
+  // `tirarMarco` lê `this.state`, que só existe depois. O construtor marca.
+  private marco!: MarcoDeSetor;
+
+  /**
    * O resultado da última luta da Provação, para as telas do §30–§33.
    *
    * Em memória e não no save: é uma tela que se lê uma vez e se fecha. Guardá-lo
@@ -233,6 +254,7 @@ export class Sim {
 
   constructor(state?: GameState) {
     this.state = state ?? createState();
+    this.marcarSetor();
     // A primeira abertura do Laboratório precisa refletir a mesma fonte que os
     // cartões marcam como revisada. Sem esta sincronização, a UI dizia
     // “calibrada” mas começava nos antigos 30×30 até a nave ser reselecionada.
@@ -602,8 +624,8 @@ export class Sim {
    * Recua um setor, por pedido do jogador.
    *
    * Existe separado de `jumpSector` para o pedido ficar legível na origem, e
-   * porque o acesso NÃO volta: `bestSector` continua onde estava, então a fase
-   * de origem segue aberta no mapa. Recuar move o ponteiro, não desfaz
+   * porque o acesso NÃO volta: `bestSector` continua onde estava, então o setor
+   * de origem segue aberto no mapa. Recuar move o ponteiro, não desfaz
    * conquista.
    */
   recuarUmSetor(): boolean {
@@ -622,6 +644,8 @@ export class Sim {
     // lugar novo já disparava o aviso de parede — que diz "três quedas
     // seguidas aqui" sobre um lugar onde o jogador caiu uma vez. O teste pegou.
     this.state.run.falhasNoSetor = 0;
+    // A contagem do painel de conclusão é DESTE setor, pelo mesmo motivo.
+    this.marcarSetor();
     this.state.universe.bestSector = Math.max(this.state.universe.bestSector, this.state.run.sector);
     this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
     this.refreshEncounter();
@@ -1242,6 +1266,59 @@ export class Sim {
    * ficou contradizendo o bloco lá embaixo, que diz **OFFLINE NÃO SOLTA ITEM**
    * — a regra atual, e a explicação de por que ela existe está lá.
    */
+  private tirarMarco(): MarcoDeSetor {
+    const st = this.state;
+    return {
+      setor: st.run.sector,
+      em: Date.now(),
+      xp: 0,
+      abates: st.stats.kills,
+      chefes: st.stats.bossKills,
+      quedas: st.stats.deaths,
+      itens: st.stats.itemsFound,
+      baus: st.stats.chestsOpened,
+      materiais: { ...st.armazem },
+    };
+  }
+
+  /** Recomeça a contagem. Chamado ao entrar num setor — inclusive o mesmo. */
+  private marcarSetor(): void {
+    this.marco = this.tirarMarco();
+  }
+
+  /**
+   * O que esta incursão rendeu, para o painel de conclusão de setor.
+   *
+   * Lido ANTES de `completeEncounter`, porque a cena mostra o painel e só
+   * conclui o encontro quando a pausa acaba. Então `run.carga` ainda está
+   * cheia — é exatamente o que está prestes a virar saldo — e o bônus de fim
+   * de encontro ainda não entrou. Mostrar a carga retida é o certo: é o número
+   * que o jogador perde se morrer, e o que ele acabou de garantir.
+   */
+  resumoDaIncursao(): ResumoDeIncursao {
+    const st = this.state;
+    const m = this.marco;
+
+    const materiais: Record<string, number> = {};
+    for (const [id, n] of Object.entries(st.armazem)) {
+      const ganho = n - (m.materiais[id] ?? 0);
+      if (ganho > 0) materiais[id] = ganho;
+    }
+
+    return {
+      setor: m.setor,
+      segundos: Math.max(0, (Date.now() - m.em) / 1000),
+      xp: m.xp,
+      carga: { ...st.run.carga },
+      materiais,
+      abates: Math.max(0, st.stats.kills - m.abates),
+      chefes: Math.max(0, st.stats.bossKills - m.chefes),
+      quedas: Math.max(0, st.stats.deaths - m.quedas),
+      itens: Math.max(0, st.stats.itemsFound - m.itens),
+      baus: Math.max(0, st.stats.chestsOpened - m.baus),
+    };
+  }
+
   completeEncounter(abstract = false): void {
     const e = this.encounter;
     const run = this.state.run;
@@ -1260,7 +1337,7 @@ export class Sim {
       this.grantCarga('cristal', Math.max(1, Math.floor(e.bounty * 0.02)));
       this.state.stats.bossKills++;
       // Chefe de galáxia amplia a carga (§28). É idempotente por id, então
-      // rematar o mesmo chefe — coisa comum, com a trava de fase — não concede
+      // rematar o mesmo chefe — coisa comum, com a trava de setor — não concede
       // de novo.
       const g = galaxyOfSector(e.sector) + 1;
       if (g === 1 || g === 5 || g === 10) this.concederCarga(`chefe_g${g}`);
@@ -1296,10 +1373,10 @@ export class Sim {
      * A saída não é calibrar melhor: é reconhecer que o item é a RECOMPENSA DE
      * ESTAR LÁ. Ele cai numa cápsula que a nave precisa coletar, e coletar é
      * uma coisa que só acontece com o jogo aberto. O que a ausência rende é
-     * progresso — XP e recursos da fase onde a nave ficou —, e progresso é o
+     * progresso — XP e recursos do setor onde a nave ficou —, e progresso é o
      * que um jogo ocioso deve pagar por tempo.
      *
-     * A fase também não avança sozinha (ver mais abaixo): o jogador volta para
+     * O setor também não avança sozinho (ver mais abaixo): o jogador volta para
      * o setor onde deixou, com mais nível para enfrentá-lo.
      *
      * Recursos CONTINUAM entrando. Sem eles a ausência não pagaria nem o
@@ -1323,18 +1400,18 @@ export class Sim {
       run.cleared++;
 
       // O setor seguinte libera de qualquer forma: quem venceu conquistou o
-      // acesso, mesmo que escolha ficar. É `bestSector` que abre a fase no mapa,
+      // acesso, mesmo que escolha ficar. É `bestSector` que abre o setor no mapa,
       // não a posição da incursão.
       const proximo = run.sector + 1;
       this.state.universe.bestSector = Math.max(this.state.universe.bestSector, proximo);
       this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
 
       /**
-       * Fora do jogo, a fase NUNCA avança.
+       * Fora do jogo, o setor NUNCA avança.
        *
-       * O modo ocioso é o jogador delegando o combate à IA numa fase que ele
+       * O modo ocioso é o jogador delegando o combate à IA num setor que ele
        * escolheu e sabe que a nave aguenta. Avançar sozinho tiraria dele
-       * justamente a decisão que a trava de fase existe para dar — e o levaria
+       * justamente a decisão que a trava de setor existe para dar — e o levaria
        * para um setor que ele não escolheu, possivelmente um que a nave não
        * vence, onde ficaria morrendo sem ninguém ver.
        *
@@ -1344,9 +1421,13 @@ export class Sim {
        */
       if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
       run.falhasNoSetor = 0;
+      // Depois de mover o ponteiro, e SEMPRE — mesmo repetindo o mesmo setor,
+      // que é quando `run.sector` não muda e uma checagem preguiçosa por
+      // número não perceberia que uma incursão nova começou.
+      this.marcarSetor();
 
       // O setor CONCLUIDO, nao o proximo: a missao pede 'concluir o setor 10',
-      // e com a trava de repetir a fase run.sector nem chega a mudar.
+      // e com a trava de repetir o setor run.sector nem chega a mudar.
       this.registrar({ tipo: 'setor', setor: e.sector, galaxia: galaxyOfSector(e.sector) });
       this.registrar({ tipo: 'galaxia', galaxia: galaxyOfSector(this.state.universe.bestSectorEver) });
       bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
@@ -1398,8 +1479,8 @@ export class Sim {
      * ## Por que oferecer e não fazer
      *
      * A primeira versão recuava sozinha, e estava errada pelo mesmo motivo que
-     * `completeEncounter` não avança sozinho: mover a fase por conta própria
-     * tira do jogador a decisão que a trava de fase existe para dar. O
+     * `completeEncounter` não avança sozinho: mover o setor por conta própria
+     * tira do jogador a decisão que a trava de setor existe para dar. O
      * argumento já estava escrito ali, para o avanço — eu o apliquei numa
      * direção só.
      *
@@ -1532,6 +1613,10 @@ export class Sim {
   grantXp(amount: number): void {
     if (!(amount > 0)) return;
     const ganho = amount * XP_GANHO_GLOBAL * (1 + this.stats.xpGanho);
+
+    // Único ponto por onde XP entra, então é aqui que o acumulador do setor
+    // soma — ver `marco` para por que ele não pode ser uma diferença.
+    this.marco.xp += ganho;
 
     const cmd = this.state.command;
     const subiu = this.avancarNivel(cmd, ganho, curvaXpPersonagem);

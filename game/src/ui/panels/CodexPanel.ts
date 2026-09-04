@@ -107,7 +107,7 @@ function bestiario(sim: Sim): HTMLElement {
       h('.codex-entry-main', {},
         h('strong', { text: known ? boss.name : 'Comando hostil desconhecido' }),
         h('span.muted.tiny', { text: known ? boss.title : `Registro protegido · setor ${(index + 1) * 10}` }),
-        known ? h('.codex-tags', {}, tag(element.name, element.color), tag(`${boss.phases.length} fases`), tag('Chefe', '#ff6d80')) : null),
+        known ? h('.codex-tags', {}, tag(element.name, element.color), tag(`${boss.phases.length} estágios`), tag('Chefe', '#ff6d80')) : null),
     );
   }));
   return h('section', {}, h('h3.section', { text: `Chefes · ${BOSSES.length}` }), bosses,

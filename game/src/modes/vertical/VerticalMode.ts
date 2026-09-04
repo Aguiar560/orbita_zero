@@ -10,13 +10,17 @@ import {
   PERFIL_DE_DETRITO, VELOCIDADE_BASE, spriteDeDetrito, tamanhoSorteado,
   type Clima, type ClimaDeDetrito, type FamiliaDeDetrito,
 } from '@data/detritos';
-import { fmt } from '@core/format';
+import { duration, fmt } from '@core/format';
 import { focoDeEntrada } from '@app/focoDeEntrada';
 import { assets } from '@render/Assets';
 import { Particles } from '@render/Particles';
 import type { Surface } from '@render/Surface';
 import { frameAt, getClip } from '@render/Anim';
 import { PLANET_KEYS, describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector } from '@data/galaxies';
+import { RECURSO_POR_ID } from '@data/recursos';
+// Tabela de APRESENTAÇÃO, sem DOM: o painel precisa do mesmo rótulo que a
+// barra superior usa, e duplicá-lo aqui daria dois nomes para a mesma moeda.
+import { RESOURCE_META } from '@ui/recursos';
 import { SKY_FAMILIES, SKY_NEBULAE } from '@data/orbs';
 import { WAVES_PER_SECTOR } from '@sim/progression';
 import { rarityInfo } from '@data/rarity';
@@ -28,7 +32,10 @@ import { biomaAtmosfericoDaGalaxia, CONFIG_BIOMA_ATMOSFERICO, type BiomaAtmosfer
 import { aplicarCritico, danoTotal, montarPacote, resolverDano } from '@sim/dano';
 import { ALL_ENEMIES, type EnemyDef } from '@data/enemies';
 import { HULLS, type Hull } from '@data/hulls';
-import { DANO_STAT, type ElementId, type Item, type Stats } from '@sim/types';
+import {
+  DANO_STAT,
+  type ElementId, type Item, type ResourceId, type ResumoDeIncursao, type Stats,
+} from '@sim/types';
 import type { Sim } from '@sim/index';
 import { controleManualAtivo } from '@sim/vip';
 import { labEnemyHitbox, labHitbox, labScenario, type LaboratorioMetrics, type LabScenarioId } from '@sim/laboratorio';
@@ -49,7 +56,19 @@ const RESPAWN_DELAY = 1.8;
  * a pausa o combate fica congelado — nada nasce, nada atira —, então a
  * comemoração não é interrompida pela próxima onda já entrando na tela.
  */
+/**
+ * A pausa depois de vencer. Onda e setor têm ritmos diferentes.
+ *
+ * Cinco segundos bastam para "onda limpa": é um marco de passagem, o painel
+ * tem três linhas e a próxima onda é o que o jogador quer.
+ *
+ * O setor pede o dobro. Ali o painel presta contas de uma incursão inteira —
+ * tempo, XP, carga, materiais, itens, quedas — e cinco segundos não dão para
+ * ler isso e ainda sentir o feito. É a única tela em que o jogo para para
+ * dizer o que aconteceu.
+ */
 const VICTORY_HOLD = 5;
+const VICTORY_HOLD_SETOR = 10;
 
 /**
  * Segundos sem levar dano até o escudo voltar a regenerar.
@@ -151,10 +170,13 @@ export class VerticalMode {
   private victory = 0;
   private victoryKind: 'onda' | 'elite' | 'chefe' = 'onda';
   private victoryLabel = '';
-  private victoryPhase = 1;
   private victorySector = 1;
   /** A fase inteira acabou, não só mais uma onda dela. */
   private victoryLast = false;
+  /** A espera desta vitória, para a barra saber o total certo. */
+  private victoryHold = VICTORY_HOLD;
+  /** O que a incursão rendeu. Só existe quando o SETOR caiu. */
+  private victoryResumo: ResumoDeIncursao | null = null;
   /** Último `dt`, para a contagem da vitória rodar fora de `update`. */
   private lastDt = 1 / 60;
   private shake = 0;
@@ -2045,12 +2067,22 @@ export class VerticalMode {
       // O marco merece mais barulho: é o pico que o jogador vai lembrar.
       this.setBanner(camadas.includes('marco') ? 'MARCO CONQUISTADO' : 'PISO CONCLUÍDO');
     }
-    this.victory = VICTORY_HOLD;
+    this.victoryLast = e.wave > WAVES_PER_SECTOR;
+
+    /**
+     * O resumo é lido AGORA, antes de `completeEncounter`.
+     *
+     * A cena mostra o painel e só conclui o encontro quando a pausa acaba
+     * (ver `checkCleared`). Ler depois pegaria a carga já depositada e zerada,
+     * e o marco do setor já reiniciado — o painel mostraria tudo em branco.
+     */
+    this.victoryResumo = this.victoryLast ? this.sim.resumoDaIncursao() : null;
+
+    this.victoryHold = this.victoryLast ? VICTORY_HOLD_SETOR : VICTORY_HOLD;
+    this.victory = this.victoryHold;
     this.victoryKind = e.kind;
     this.victoryLabel = e.kind === 'chefe' ? (e.boss?.name ?? 'Chefe') : e.kind === 'elite' ? 'Guarda de Elite' : `Onda ${e.wave}`;
-    this.victoryPhase = phaseOfSector(e.sector);
     this.victorySector = e.sector;
-    this.victoryLast = e.wave > WAVES_PER_SECTOR;
 
     // Fogos proporcionais ao feito: um chefe merece mais que uma onda comum.
     const bursts = e.kind === 'chefe' ? 26 : e.kind === 'elite' ? 14 : 7;
@@ -2785,48 +2817,178 @@ export class VerticalMode {
     ctx.restore();
   }
 
-  /** Painel de conquista, com contagem para a próxima fase. */
+  /**
+   * Painel de conquista.
+   *
+   * Dois painéis, não um. A onda limpa é PASSAGEM: título, onde estou, quanto
+   * falta. O setor concluído é PRESTAÇÃO DE CONTAS — é o único momento em que
+   * a carga retida vira saldo, e o jogador merece ver o que a incursão rendeu
+   * antes de o número simplesmente aparecer somado no HUD.
+   *
+   * O painel antigo era o mesmo nos dois casos: três linhas e uma contagem.
+   * Ele dizia "FASE CONCLUÍDA" para um jogo que não tem fase — tem onda e
+   * setor — e ainda mostrava "fase N", que ali era a posição do setor dentro
+   * da galáxia. Três sentidos para a mesma palavra na mesma tela.
+   */
   private drawVictory(s: Surface): void {
     const cx = VIEW.w / 2;
-    const cy = VIEW.h * 0.42;
-    // Aparece rápido e some rápido, ficando estável no meio da pausa.
-    const t = clamp01(Math.min(VICTORY_HOLD - this.victory, this.victory) / 0.45);
+    const r = this.victoryResumo;
 
+    /**
+     * A altura CONTA as linhas em vez de ser fixa.
+     *
+     * Com 320 fixos, um setor de duas linhas deixava 150px de vazio no meio do
+     * painel, e um de dez linhas encostava a última na contagem. Medir o
+     * conteúdo custa montar as linhas uma vez a mais por quadro — dez itens,
+     * nada perto do resto da cena — e o painel passa a encolher e crescer com
+     * o que a incursão rendeu.
+     */
+    const linhas = r ? this.linhasDoResumo(r) : [];
+    const alturaDasLinhas = Math.ceil(linhas.length / 2) * 22;
+    const hgt = r ? 190 + alturaDasLinhas : 190;
+    const w = Math.min(r ? 600 : 520, VIEW.w * 0.86);
+    const cy = Math.max(hgt / 2 + 12, VIEW.h * (r ? 0.46 : 0.42));
+
+    // Aparece rápido e some rápido, ficando estável no meio da pausa.
+    const t = clamp01(Math.min(this.victoryHold - this.victory, this.victory) / 0.45);
     s.ctx.globalAlpha = t;
-    s.ctx.fillStyle = 'rgba(4,7,16,.72)';
+    s.ctx.fillStyle = 'rgba(4,7,16,.76)';
     s.ctx.fillRect(0, 0, VIEW.w, VIEW.h);
 
     const cor = this.victoryKind === 'chefe' ? '#ffb638' : this.victoryKind === 'elite' ? '#c060ff' : '#7ed957';
-    const titulo = this.victoryKind === 'chefe' ? 'CHEFE DERROTADO' : this.victoryLast ? 'FASE CONCLUÍDA' : 'ONDA LIMPA';
 
-    // Moldura
-    const w = Math.min(560, VIEW.w * 0.8);
-    const hgt = 210;
-    s.ctx.fillStyle = 'rgba(8,13,26,.94)';
-    s.ctx.fillRect(cx - w / 2, cy - hgt / 2, w, hgt);
+    const topo = cy - hgt / 2;
+    s.ctx.fillStyle = 'rgba(8,13,26,.95)';
+    s.ctx.fillRect(cx - w / 2, topo, w, hgt);
     s.ctx.strokeStyle = cor;
     s.ctx.lineWidth = 2;
-    s.ctx.strokeRect(cx - w / 2, cy - hgt / 2, w, hgt);
+    s.ctx.strokeRect(cx - w / 2, topo, w, hgt);
+    // Faixa de cor no topo: dá peso ao painel sem custar altura de leitura.
+    s.rect(cx - w / 2, topo, w, 3, cor);
 
-    s.text(titulo, cx, cy - 62, { size: 30, color: cor, align: 'center', shadow: 'rgba(0,0,0,.9)' });
-    s.text(this.victoryLabel, cx, cy - 26, { size: 16, color: '#dfe8f6', align: 'center' });
-    s.text(
-      `Setor ${this.victorySector} · fase ${this.victoryPhase}`,
-      cx, cy + 2, { size: 13, color: '#8ba0bd', align: 'center' },
-    );
+    const fim = topo + hgt;
+    if (r) this.drawResumoDeSetor(s, cx, topo, w, cor, r);
+    else this.drawResumoDeOnda(s, cx, topo, cor);
 
-    const proxima = this.victoryLast ? 'Próxima fase' : 'Próxima onda';
+    const proxima = this.victoryLast ? 'Próximo setor' : 'Próxima onda';
     // A margem evita o clássico erro de borda: `victory` acumula `dt` em ponto
     // flutuante e cai em 4.0000001, que `ceil` arredondaria de volta para 5.
     const restam = Math.max(1, Math.ceil(this.victory - 0.01));
-    s.text(`${proxima} em ${restam}s`, cx, cy + 44, { size: 14, color: '#9fe8ff', align: 'center' });
+    s.text(`${proxima} em ${restam}s`, cx, fim - 34, { size: 14, color: '#9fe8ff', align: 'center' });
 
     // Barra de contagem, para a espera ser legível em vez de arbitrária.
     const bw = w - 60;
-    s.rect(cx - bw / 2, cy + 66, bw, 5, 'rgba(255,255,255,.12)');
-    s.rect(cx - bw / 2, cy + 66, bw * (1 - this.victory / VICTORY_HOLD), 5, cor);
+    s.rect(cx - bw / 2, fim - 16, bw, 5, 'rgba(255,255,255,.12)');
+    s.rect(cx - bw / 2, fim - 16, bw * (1 - this.victory / this.victoryHold), 5, cor);
 
     s.ctx.globalAlpha = 1;
+  }
+
+  /**
+   * As linhas do resumo, e SÓ o que não é zero.
+   *
+   * Fora do método de desenho porque a altura do painel precisa contá-las
+   * antes de desenhar. Um setor sem queda não ganha uma linha dizendo "0
+   * quedas" — listar campo vazio só porque ele existe é o que fazia o painel
+   * antigo parecer um formulário.
+   */
+  private linhasDoResumo(r: ResumoDeIncursao): { rotulo: string; valor: string; cor: string }[] {
+    const linhas: { rotulo: string; valor: string; cor: string }[] = [];
+    const por = (n: number, rotulo: string, c = '#dfe8f6'): void => {
+      if (n > 0) linhas.push({ rotulo, valor: fmt(n, 0), cor: c });
+    };
+
+    por(r.xp, 'XP', '#9fe8ff');
+    for (const [id, meta] of Object.entries(RESOURCE_META)) {
+      por(r.carga[id as ResourceId] ?? 0, meta.label, meta.color);
+    }
+    for (const [id, n] of Object.entries(r.materiais)) {
+      por(n, RECURSO_POR_ID.get(id)?.nome ?? id, '#b6f2c2');
+    }
+    por(r.itens, r.itens === 1 ? 'item' : 'itens', '#e0b0ff');
+    por(r.baus, r.baus === 1 ? 'baú' : 'baús', '#e0b0ff');
+    por(r.abates, 'abates');
+    por(r.chefes, r.chefes === 1 ? 'chefe' : 'chefes');
+    por(r.quedas, r.quedas === 1 ? 'queda' : 'quedas', '#ff8fa3');
+
+    // Teto de dez: acima disso as duas colunas passariam da moldura em tela
+    // baixa. O que sobra é sempre material, que o Armazém mostra inteiro.
+    return linhas.slice(0, 10);
+  }
+
+  /** Onda limpa: título, onde estou, quanto falta do setor. */
+  private drawResumoDeOnda(s: Surface, cx: number, topo: number, cor: string): void {
+    const titulo = this.victoryKind === 'chefe' ? 'CHEFE DERROTADO'
+      : this.victoryKind === 'elite' ? 'ELITE ABATIDA' : 'ONDA LIMPA';
+    s.text(titulo, cx, topo + 42, { size: 28, color: cor, align: 'center', shadow: 'rgba(0,0,0,.9)' });
+    s.text(this.victoryLabel, cx, topo + 70, { size: 15, color: '#dfe8f6', align: 'center' });
+
+    // Quantas ondas o setor tem, com a do chefe incluída — é o denominador
+    // que o jogador precisa para saber quanto falta.
+    const total = WAVES_PER_SECTOR + 1;
+    const atual = Math.min(total, this.sim.state.run.wave);
+    s.text(
+      `Setor ${this.victorySector} · onda ${atual} de ${total}`,
+      cx, topo + 96, { size: 13, color: '#8ba0bd', align: 'center' },
+    );
+
+    // Trilha de ondas: as vencidas acesas, a do chefe redonda. Diz o mesmo que
+    // a linha acima, mas de relance — e é o que dá sensação de avanço.
+    const passo = 26;
+    const x0 = cx - (total - 1) * passo / 2;
+    for (let i = 0; i < total; i++) {
+      const venceu = i < atual;
+      const y = topo + 124;
+      if (i === total - 1) {
+        s.circle(x0 + i * passo, y, 6, venceu ? '#ffb638' : 'rgba(255,182,56,.22)');
+      } else {
+        s.rect(x0 + i * passo - 6, y - 3, 12, 6, venceu ? cor : 'rgba(255,255,255,.14)');
+      }
+    }
+  }
+
+  /**
+   * Setor concluído: o que a incursão rendeu.
+   *
+   * Duas colunas em vez de uma lista: são até dez números, e em coluna única o
+   * painel passaria de 500px de altura e sairia da tela em janela baixa.
+   *
+   * Só entra o que NÃO é zero. Um setor sem queda não precisa de uma linha
+   * dizendo "0 quedas", e o painel encolhe sozinho quando há pouco a contar —
+   * o que também evita o vício de listar campos vazios só porque existem.
+   */
+  private drawResumoDeSetor(
+    s: Surface, cx: number, topo: number, w: number, cor: string, r: ResumoDeIncursao,
+  ): void {
+    s.text('SETOR CONCLUÍDO', cx, topo + 44, {
+      size: 30, color: cor, align: 'center', shadow: 'rgba(0,0,0,.9)', weight: 700,
+    });
+
+    const gx = describeGalaxy(galaxyOfSector(r.setor));
+    s.text(
+      `Setor ${r.setor} · ${gx.name}`,
+      cx, topo + 70, { size: 13, color: '#8ba0bd', align: 'center' },
+    );
+    s.text(duration(r.segundos), cx, topo + 94, { size: 15, color: '#9fe8ff', align: 'center' });
+
+    s.rect(cx - (w - 60) / 2, topo + 108, w - 60, 1, 'rgba(255,255,255,.12)');
+
+    const mostrar = this.linhasDoResumo(r);
+    const meio = Math.ceil(mostrar.length / 2);
+    const colX = [cx - w / 4, cx + w / 4];
+
+    mostrar.forEach((l, i) => {
+      const col = i < meio ? 0 : 1;
+      const y = topo + 134 + (i - (col ? meio : 0)) * 22;
+      s.text(l.rotulo, colX[col]! - 8, y, { size: 13, color: '#8ba0bd', align: 'right' });
+      s.text(l.valor, colX[col]! + 8, y, { size: 14, color: l.cor, align: 'left', weight: 600 });
+    });
+
+    if (!mostrar.length) {
+      s.text('Setor limpo sem ganho registrado.', cx, topo + 146, {
+        size: 13, color: '#8ba0bd', align: 'center',
+      });
+    }
   }
 
   dispose(): void {

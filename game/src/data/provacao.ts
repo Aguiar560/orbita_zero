@@ -154,7 +154,7 @@ export const MODIFICADORES: readonly ModificadorDef[] = [
     travaEscudo: true,
   },
   {
-    id: 'invulneravel', nome: 'Fase Nula', profundidadeMin: 22, peso: 4,
+    id: 'invulneravel', nome: 'Intangível', profundidadeMin: 22, peso: 4,
     descricao: 'Alterna brevemente para invulnerabilidade. Espere a abertura.',
     invulneravelCada: 10, invulneravelPor: 2.2,
   },
