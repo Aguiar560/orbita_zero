@@ -1178,6 +1178,17 @@ export class Sim {
    * Duplicar a fórmula no caminho abstrato era a alternativa, e é a que
    * garante que os dois divirjam na primeira vez que alguém mexer num dos
    * dois. Uma função, dois chamadores.
+   *
+   * ## Ela paga, e NÃO registra o fato do abate
+   *
+   * Isto é regra de jogo, não esquecimento: **missão não conta com a aba
+   * fechada.** Quem registra o fato é `rewardKill`, chamada só pela cena.
+   *
+   * Acrescentar `registrar({ tipo: 'abate' })` aqui pareceria conserto — o
+   * ganho é igual nos dois modos desde 04/09, então por que a missão não
+   * seria? — e mudaria o jogo: missão de "derrube N inimigos" passaria a se
+   * cumprir sozinha durante a noite. `tests/offline-online.test.ts` guarda
+   * essa fronteira.
    */
   premiarAbates(abates: number, fracao: number): void {
     if (!(abates > 0)) return;
@@ -1201,7 +1212,12 @@ export class Sim {
     this.state.stats.kills += abates;
   }
 
-  /** Recompensa de um abate individual dentro do encontro. */
+  /**
+   * Recompensa de um abate individual — o caminho DA CENA.
+   *
+   * Além de pagar, ela registra o fato do abate, e é a única que registra: é
+   * o que faz missão progredir só com o jogo aberto. Ver `premiarAbates`.
+   */
   rewardKill(fraction: number): void {
     const e = this.encounter;
     this.premiarAbates(1, fraction);

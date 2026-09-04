@@ -1139,15 +1139,24 @@ vezes mais. O teste passou a comparar com o teto dividido pela eficiência, e o
 comentário registra que a referência ao vivo é uma medição datada — quando a
 cena mudar, ele não vai perceber sozinho.
 
-### O que ficou de fora
+### Duas coisas que pareciam pendência e são REGRA (04/09)
 
-- **A XP líquida ainda diverge**, e a causa é a multa de morte: as duas
-  trajetórias morrem em momentos diferentes, e 15% do XP acumulado por morte
-  domina o saldo. Os ABATES batem; o líquido depende de quantas vezes cada
-  caminho caiu. Se isso precisa convergir também, é medição própria.
-- **Fatos de abate não são registrados no caminho abstrato** (`registrar({tipo:
-  'abate'})`). Missões de "derrube N inimigos" não progridem com a aba fechada.
-  É a mesma classe de assimetria, ainda em aberto.
+**A XP líquida diverge entre os dois modos, e está certo.** Os ABATES batem; o
+saldo difere porque a multa de morte cobra 15% do acumulado, e as duas
+trajetórias caem em momentos diferentes. Morreu, perdeu XP — é assim que tem
+de ser.
+
+**Missão não conta com a aba fechada.** O caminho abstrato PAGA o abate mas
+não registra o fato dele; quem registra é `rewardKill`, chamada só pela cena.
+
+Essa segunda parece defeito, e é por isso que virou teste
+(`tests/offline-online.test.ts`): depois da regra de ganho igual, a pergunta
+natural é "se o ganho é o mesmo, por que a missão não seria?" — e acrescentar
+o registro no abstrato é UMA LINHA. O efeito seria missão de "derrube N
+inimigos" se cumprindo sozinha durante a noite.
+
+O teste guarda as três fronteiras: ganho igual, ausência não avança de setor,
+missão só no jogo aberto.
 
 ---
 ## Dívidas técnicas conhecidas
