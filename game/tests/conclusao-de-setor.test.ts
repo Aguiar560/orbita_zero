@@ -10,6 +10,17 @@
  * 2. **O painel de setor presta contas.** É o único momento em que a carga
  *    retida vira saldo, e o número aparecia somado no HUD sem ninguém ver de
  *    onde veio.
+ *
+ * ## A exceção, decidida em 04/09
+ *
+ * Três nomes de conteúdo mantêm a palavra e devem ser deixados em paz:
+ * **Agulha de Fase** (casco), **Salto de Fase** e **Barreira de Fase** (itens).
+ *
+ * Ali "fase" é sabor de física — atravessar, deslocar —, não unidade de
+ * progressão, e nenhum deles se confunde com onda ou setor. Não há asserção
+ * guardando isto de propósito: uma trancaria o catálogo por um motivo que não
+ * é o desta regra. Esta nota existe para a próxima varredura não "consertar"
+ * o que foi decidido manter.
  */
 
 import { readFileSync } from 'node:fs';
