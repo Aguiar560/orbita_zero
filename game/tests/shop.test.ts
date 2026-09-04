@@ -44,7 +44,6 @@ describe('Central de Serviços', () => {
     sim.state.shop.carga = 2;
     sim.state.cargaLiberada = [];
     expect(sim.cargoSlots).toBe(25);
-    expect(sim.resourceSlots).toBe(25);
   });
 
   it('o câmbio debita a entrada e credita somente a saída declarada', () => {

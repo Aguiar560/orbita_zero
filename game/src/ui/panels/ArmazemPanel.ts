@@ -45,9 +45,6 @@ export class ArmazemPanel implements Panel {
 
   render(sim: Sim): HTMLElement {
     const armazem = sim.state.armazem;
-    const guardados = sim.materiaisGuardados;
-    const teto = sim.resourceSlots;
-    const cheio = guardados >= teto;
 
     const grupos = FAMILIAS_ORDENADAS.map((cat) => {
       const linhas = RECURSOS
@@ -93,10 +90,10 @@ export class ArmazemPanel implements Panel {
     return h('.panel-body', {},
       h('.toolbar', {},
         h('span.muted.tiny', {
-          // O número que importa é TIPOS guardados, não unidades: é isso que a
-          // capacidade limita, e é o que decide se um material novo cabe.
-          text: `${guardados} / ${teto} tipos`,
-          style: cheio ? { color: 'var(--bad)' } : {},
+          // Era "guardados / capacidade", em vermelho ao encostar no teto. Sem
+          // teto, o mesmo número responde a uma pergunta melhor: quanto do
+          // catálogo já apareceu. Colecionar substitui administrar espaço.
+          text: `${sim.materiaisGuardados} de ${RECURSOS.length} tipos descobertos`,
         }),
         h(`button.mini${this.soPossuidos ? '.ativa' : ''}`, {
           text: this.soPossuidos ? 'Só o que tenho' : 'Catálogo inteiro',
@@ -104,9 +101,6 @@ export class ArmazemPanel implements Panel {
           onclick: () => { this.soPossuidos = !this.soPossuidos; sim.touch(); },
         }),
       ),
-      ...(cheio
-        ? [h('.aviso', { text: 'Armazém cheio: materiais de tipo NOVO serão perdidos. Amplie a carga para acompanhar mais tipos.' })]
-        : []),
 
       h('nav.armazem-abas', { role: 'tablist', 'aria-label': 'Grupos do armazém' },
         // Serviços vem PRIMEIRO: é a única aba com algo a fazer, não só a ver.
@@ -242,9 +236,9 @@ export class ArmazemPanel implements Panel {
     modal.addEventListener('click', (e) => { if (e.target === modal) fechar(); });
     document.body.append(modal);
   }
-  badge(sim: Sim): number {
-    // O marcador avisa que o depósito está no limite, não quantos materiais há:
-    // acumular material não é problema, deixar de recolher um tipo novo é.
-    return sim.materiaisGuardados >= sim.resourceSlots ? 1 : 0;
+  badge(): number {
+    // Nada a marcar: o Armazém é ilimitado, então não existe estado dele que
+    // exija atenção. O marcador avisava "no limite" — um limite que não há mais.
+    return 0;
   }
 }

@@ -6,7 +6,7 @@ import { Rng } from '@core/math';
 import { rollItem } from '@sim/loot';
 import { ELEMENTS } from '@data/elements';
 import {
-  CARGA_INICIAL, CARGA_MAXIMA, CONCESSOES, RECURSO_INICIAL,
+  CARGA_INICIAL, CARGA_MAXIMA, CONCESSOES,
   capacidadeDeItens, colunasDaGrade, linhasDaGrade,
 } from '@data/balance/capacidade';
 import { Sim } from '@sim/index';
@@ -196,11 +196,13 @@ describe('a carga começa pequena e cresce por conquista', () => {
     expect(sim.state.cargaLiberada).not.toContain('fonte_que_nao_existe');
   });
 
-  it('o depósito de recursos é separado e cresce junto (§29)', () => {
+  it('a concessão vale pelo depósito de ITENS — o de recursos não tem teto', () => {
+    // Este teste media as duas metades da concessão. O Armazém deixou de ter
+    // capacidade (04/09), então resta a metade que ainda limita algo.
     const sim = new Sim(createState(7));
-    expect(sim.resourceSlots).toBe(RECURSO_INICIAL);
+    const antes = sim.cargoSlots;
     sim.concederCarga('universo_2');
-    expect(sim.resourceSlots).toBeGreaterThan(RECURSO_INICIAL);
+    expect(sim.cargoSlots).toBeGreaterThan(antes);
   });
 });
 
@@ -210,32 +212,26 @@ describe('a carga começa pequena e cresce por conquista', () => {
  * A separação de itens não é arrumação, é natureza: equipamento é escolha que
  * compete por espaço, material é acúmulo que vira outra coisa no craft.
  */
-describe('o armazém guarda TIPOS, não unidades', () => {
-  it('material já guardado sempre aceita mais, mesmo com o depósito cheio', () => {
+describe('o armazém é ilimitado', () => {
+  /**
+   * A regra decidida em 04/09: recurso é ilimitado, item não.
+   *
+   * Havia um teto de TIPOS — 15 de um catálogo de 70, crescendo por concessão.
+   * O tipo que não coubesse era perdido em silêncio, porque quase nenhum dos
+   * sete pontos que chamam `guardarMaterial` olhava o retorno zero. E a decisão
+   * que o teto pretendia criar não existia: não há como desistir de um tipo
+   * para abrir espaço a outro sem jogar fora o que já se tem.
+   */
+  it('todos os 70 tipos do catálogo cabem', () => {
     const sim = new Sim(createState(11));
-    // Enche o depósito de tipos até o limite inicial.
-    const ids = RECURSOS.map((m) => m.id).slice(0, sim.resourceSlots);
-    for (const id of ids) expect(sim.guardarMaterial(id, 10)).toBe(10);
-    expect(sim.materiaisGuardados).toBe(ids.length);
-
-    // Mais do MESMO entra; é a quantidade que não é limitada.
-    expect(sim.guardarMaterial(ids[0]!, 500)).toBe(500);
+    for (const m of RECURSOS) expect(sim.guardarMaterial(m.id, 10)).toBe(10);
+    expect(sim.materiaisGuardados).toBe(RECURSOS.length);
   });
 
-  it('tipo novo é recusado quando não há espaço, e devolve zero', () => {
+  it('e a quantidade de cada um também não é limitada na prática', () => {
     const sim = new Sim(createState(12));
-    // Força o depósito a caber um tipo só.
-    sim.state.armazem = {};
-    const todos = RECURSOS.map((m) => m.id);
-    for (const id of todos.slice(0, sim.resourceSlots)) sim.guardarMaterial(id, 1);
-
-    const excedente = todos[sim.resourceSlots];
-    if (excedente) {
-      // Zero e não uma exceção: quem chamou precisa poder AVISAR o jogador em
-      // vez de o material sumir calado.
-      expect(sim.guardarMaterial(excedente, 5)).toBe(0);
-      expect(sim.state.armazem[excedente]).toBeUndefined();
-    }
+    expect(sim.guardarMaterial('ferrita', 500_000)).toBe(500_000);
+    expect(sim.guardarMaterial('ferrita', 500_000)).toBe(500_000);
   });
 
   it('gastar até o fim remove a chave em vez de deixá-la em zero', () => {

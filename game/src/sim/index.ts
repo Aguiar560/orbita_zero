@@ -1,7 +1,7 @@
 ﻿import { Rng, clamp } from '@core/math';
 import { bus, toast } from '@app/Bus';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
-import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
+import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { receitaPara } from '@data/balance/fusao';
@@ -756,7 +756,6 @@ export class Sim {
     const atual = this.eventoAtivo;
     if (!atual.liberado || atual.resgatado || atual.progresso < atual.alvo) return false;
     const { def, chave } = atual.janela;
-    if ((this.state.armazem[def.gas] ?? 0) <= 0 && this.materiaisGuardados >= this.resourceSlots) return false;
     const guardado = this.guardarMaterial(def.gas, def.quantidade);
     if (guardado < def.quantidade) return false;
     this.state.eventos[chave] = { progresso: atual.alvo, resgatado: true };
@@ -1768,20 +1767,19 @@ export class Sim {
   /**
    * Guarda material (§29).
    *
-   * O Armazém limita quantos TIPOS se acompanha, não a quantidade de cada um: a
-   * decisão interessante é "que materiais eu mantenho", não "quantos cabem".
-   * Material que já está guardado sempre aceita mais; só abrir um tipo NOVO
-   * consome espaço, e é isso que dá peso a ampliar o depósito.
+   * O Armazém é ILIMITADO: nem em tipos nem em quantidade. Todo material que
+   * cai entra. O depósito que limita é o Inventário, e ele guarda item, não
+   * recurso.
    *
-   * Devolve quanto de fato entrou — zero quando o armazém está cheio e o tipo
-   * é novo, para quem chamou poder avisar em vez de perder o material calado.
+   * Devolve quanto de fato entrou. Hoje só é menor que o pedido ao encostar em
+   * `PILHA_MAX`, que existe para o contador não virar notação científica — não
+   * é regra de jogo, e nenhum caminho normal chega perto.
    */
   guardarMaterial(id: string, quantidade: number): number {
     const def = RECURSO_POR_ID.get(id);
     if (!def || !(quantidade > 0)) return 0;
 
     const atual = this.state.armazem[id] ?? 0;
-    if (atual === 0 && this.materiaisGuardados >= this.resourceSlots) return 0;
 
     const cabe = Math.max(0, Math.min(quantidade, PILHA_MAX - atual));
     if (cabe <= 0) return 0;
@@ -1819,11 +1817,6 @@ export class Sim {
     return true;
   }
 
-  /** Capacidade do depósito de RECURSOS (§29), separada da de itens. */
-  get resourceSlots(): number {
-    // Modo de teste: depósito cheio, para o conteúdo caber sem farmar concessão.
-    return this.testMode ? CARGA_MAXIMA : capacidadeDeRecursos(this.concessoesDeCarga);
-  }
 
   /**
    * Concede espaço de carga. Idempotente por id.
@@ -2047,8 +2040,9 @@ export class Sim {
     if (idx < 0) return null;
     const item = this.state.inventory[idx]!;
     if (item.favorite) return null;
+    // Sem recusa por falta de espaço: o Armazém é ilimitado. Antes, desmontar
+    // podia devolver `null` sem explicação quando o material era de tipo novo.
     const retorno = retornoDeDesmanche(item);
-    if (!this.cabemMateriais(retorno.materiais)) return null;
     this.state.inventory.splice(idx, 1);
     this.state.comandosDeItem.push({ tipo: 'descartar', uid });
     this.guardarRetorno(retorno);
@@ -2085,24 +2079,18 @@ export class Sim {
     return { itens, materiais };
   }
 
-  private cabemMateriais(materiais: Readonly<Record<string, number>>): boolean {
-    const novos = Object.keys(materiais).filter((id) => (this.state.armazem[id] ?? 0) <= 0).length;
-    return this.materiaisGuardados + novos <= this.resourceSlots;
-  }
 
   private guardarRetorno(retorno: RetornoDeDesmanche): void {
     for (const [id, n] of Object.entries(retorno.materiais)) this.guardarMaterial(id, n);
   }
 
-  /** Item ainda fora do inventário: se o Armazém lotou, vende em vez de perder. */
+  /** Item ainda fora do inventário: desmancha, e o material sempre cabe. */
   private descartarAutomaticamente(item: Item): void {
     if (this.vipAtivo && this.state.settings.autoDispose === 'vender') {
       this.grant('sucata', valorDeVenda(item));
       return;
     }
-    const retorno = retornoDeDesmanche(item);
-    if (this.cabemMateriais(retorno.materiais)) this.guardarRetorno(retorno);
-    else this.grant('sucata', valorDeVenda(item));
+    this.guardarRetorno(retornoDeDesmanche(item));
   }
 
   toggleFavorite(uid: string): void {

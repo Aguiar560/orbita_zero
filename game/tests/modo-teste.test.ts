@@ -21,7 +21,6 @@ describe('modo de teste', () => {
     expect(sim.nivelLiberado).toBe(NIVEL_MAX);
     expect(sim.frotaDisponivel.length).toBe(HULLS.length);
     expect(sim.cargoSlots).toBe(CARGA_MAXIMA);
-    expect(sim.resourceSlots).toBe(CARGA_MAXIMA);
     expect(sim.materialDisponivel('ferrita')).toBe(Infinity);
     expect(sim.can('nucleo', 1e12)).toBe(true);
   });

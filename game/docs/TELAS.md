@@ -252,7 +252,17 @@ corrida boa de mineração comeria o espaço das peças.
 O save guarda só o que o jogador **tem** — material zerado é removido, não
 guardado como `0`, senão o save cresceria com o catálogo.
 
-- **Lê:** `state.armazem`, `RECURSOS`, `sim.resourceSlots`
+O Armazém **não tem teto**: nem em tipos nem em quantidade. Já teve — 15 tipos
+de um catálogo de 70, crescendo por concessão —, e o tipo que não coubesse era
+perdido em silêncio, porque quase nenhum dos sete pontos que guardam material
+olhava o retorno zero. A decisão que o teto pretendia criar também não existia:
+não há como desistir de um tipo para abrir espaço a outro sem jogar fora o que
+já se tem. **Quem limita é o Inventário**, e ele guarda item, não recurso.
+
+O contador da barra mudou junto: era `guardados / capacidade`, em vermelho ao
+encostar no teto; virou `N de 70 tipos descobertos`, que é progresso de coleção.
+
+- **Lê:** `state.armazem`, `RECURSOS`
 - **Escreve:** nada diretamente (a Fabricação consome)
 
 ---

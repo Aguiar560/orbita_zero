@@ -68,7 +68,7 @@ export interface GameEvents {
    */
   'preferencias:visuais': void;
   /**
-   * Caiu item e o Armazém está cheio — ele NÃO foi coletado.
+   * Caiu item e o Inventário está cheio — ele NÃO foi coletado.
    *
    * Evento e não fato: a tela avisa, e se ninguém ouvir o jogo segue igual.
    * O item continua no lote, para ser coletado quando houver espaço.

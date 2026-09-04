@@ -4,7 +4,7 @@
  * ## O que era feito antes
  *
  * `rollDrops` tirava a peça do lote e entregava; `stash` descobria que o
- * Armazém estava cheio e a jogava fora. O jogador gastava uma peça do lote —
+ * Inventário estava cheio e a jogava fora. O jogador gastava uma peça do lote —
  * que tem cursor e não volta — para receber nada, e o servidor gravava e
  * apagava uma linha à toa no mesmo ciclo.
  *
@@ -22,7 +22,7 @@ const peca = (uid: string, rarity: number) => ({
   affixes: [], icon: 'i', origin: 0,
 });
 
-/** Sim com o Armazém lotado de peças ÓTIMAS e um lote de peças ruins. */
+/** Sim com o Inventário lotado de peças ÓTIMAS e um lote de peças ruins. */
 function lotado(semente: number): Sim {
   const sim = new Sim(createState(semente));
   sim.jumpSector(3);
@@ -34,7 +34,7 @@ function lotado(semente: number): Sim {
   return sim;
 }
 
-describe('Armazém cheio', () => {
+describe('Inventário cheio', () => {
   it('a peça continua no lote', () => {
     const sim = lotado(11);
     const antes = sim.pote!.chefe.length;

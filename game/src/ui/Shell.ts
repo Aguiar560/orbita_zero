@@ -89,7 +89,7 @@ export class Shell {
   private panelTimer = 0;
   private dirty = true;
   /** Some com o "Inventário Cheio!" quando o jogo para de tentar. */
-  private relogioDoArmazemCheio = 0;
+  private relogioDoInventarioCheio = 0;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
 
@@ -312,7 +312,7 @@ export class Shell {
 
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
-    bus.on('inventario:cheio', () => this.avisarArmazemCheio());
+    bus.on('inventario:cheio', () => this.avisarInventarioCheio());
 
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
@@ -620,21 +620,21 @@ export class Shell {
    *
    * ## Por que ele não pisca sem parar
    *
-   * O evento dispara a cada tentativa de drop enquanto o Armazém estiver
+   * O evento dispara a cada tentativa de drop enquanto o Inventário estiver
    * cheio — dezenas de vezes por minuto. Se cada um recriasse o aviso, o texto
    * ficaria reiniciando a animação e viraria um estrobo. Enquanto um está na
    * tela, os seguintes só REARMAM o relógio: a mensagem some quando o jogo
    * para de tentar, e não N segundos depois do primeiro item.
    */
-  private avisarArmazemCheio(): void {
-    let aviso = this.root.querySelector<HTMLElement>('.armazem-cheio');
+  private avisarInventarioCheio(): void {
+    let aviso = this.root.querySelector<HTMLElement>('.inventario-cheio');
     if (!aviso) {
-      aviso = h('.armazem-cheio', { role: 'status', text: 'Inventário Cheio!' });
+      aviso = h('.inventario-cheio', { role: 'status', text: 'Inventário Cheio!' });
       this.root.append(aviso);
     }
 
-    window.clearTimeout(this.relogioDoArmazemCheio);
-    this.relogioDoArmazemCheio = window.setTimeout(() => aviso?.remove(), 2000);
+    window.clearTimeout(this.relogioDoInventarioCheio);
+    this.relogioDoInventarioCheio = window.setTimeout(() => aviso?.remove(), 2000);
   }
 
   private renderPanel(): void {

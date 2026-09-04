@@ -113,20 +113,25 @@ describe('desmontagem de equipamento', () => {
       .toBeGreaterThan(retornoDeDesmanche(item(2, 100)).materiais.titanio!);
   });
 
-  it('recusa favorito e desmontagem que abriria tipos além da capacidade', () => {
+  it('recusa favorito — e SÓ favorito', () => {
     const sim = new Sim(createState(103));
     const favorita = { ...item(2), favorite: true };
     sim.state.inventory = [favorita];
     expect(sim.salvage(favorita.uid)).toBeNull();
     expect(sim.state.inventory).toHaveLength(1);
 
+    // A segunda metade deste teste exigia que desmontar TAMBÉM fosse recusado
+    // quando o retorno abrisse um tipo de material além da capacidade. O
+    // Armazém passou a ser ilimitado (04/09), então essa recusa não existe:
+    // com o depósito lotado de outros tipos, a desmontagem acontece igual.
     favorita.favorite = false;
-    const bloqueados = RECURSOS
-      .filter((r) => !['titanio', 'cristal_quantico'].includes(r.id))
-      .slice(0, sim.resourceSlots);
-    sim.state.armazem = Object.fromEntries(bloqueados.map((r) => [r.id, 1]));
-    expect(sim.salvage(favorita.uid)).toBeNull();
-    expect(sim.state.inventory).toHaveLength(1);
+    sim.state.armazem = Object.fromEntries(
+      RECURSOS.filter((r) => !['titanio', 'cristal_quantico'].includes(r.id))
+        .map((r) => [r.id, 1]),
+    );
+    expect(sim.salvage(favorita.uid)).not.toBeNull();
+    expect(sim.state.inventory).toHaveLength(0);
+    expect(sim.state.armazem.titanio).toBeGreaterThan(0);
   });
 });
 
@@ -162,17 +167,25 @@ describe('descarte em lote e automático', () => {
     expect(desmontar.state.armazem.ferrita).toBeGreaterThan(0);
   });
 
-  it('automação vende como proteção quando o Armazém não comporta o retorno', () => {
+  it('a automação desmonta mesmo com o Armazém cheio de outros tipos', () => {
+    /**
+     * Era o contrário: com o depósito lotado, a automação VENDIA em vez de
+     * desmontar, "como proteção". A proteção existia porque o material de tipo
+     * novo seria perdido em silêncio — e agora nenhum é.
+     *
+     * O teste ficou porque a regra a guardar continua: o que o jogador escolheu
+     * em `autoDispose` é o que acontece. Só que agora acontece SEMPRE.
+     */
     const sim = new Sim(createState(109));
     sim.state.settings.autoEquip = false;
     sim.state.settings.autoSalvage = 2;
     sim.state.settings.autoDispose = 'desmontar';
     sim.state.armazem = Object.fromEntries(
-      RECURSOS.filter((r) => r.id !== 'ferrita').slice(0, sim.resourceSlots).map((r) => [r.id, 1]),
+      RECURSOS.filter((r) => r.id !== 'ferrita').map((r) => [r.id, 1]),
     );
     sim.acquire(item(0, 50));
-    expect(sim.state.armazem.ferrita).toBeUndefined();
-    expect(sim.state.resources.sucata).toBeGreaterThan(0);
+    expect(sim.state.armazem.ferrita).toBeGreaterThan(0);
+    expect(sim.state.resources.sucata).toBe(0);
     expect(sim.state.inventory).toEqual([]);
   });
 });
