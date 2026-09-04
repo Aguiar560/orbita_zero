@@ -41,6 +41,15 @@ export interface RelatorioDeAusencia {
   baus?: number;
   xp?: number;
   itensNovos?: number;
+  /**
+   * A incursão como o servidor a deixou: setor, onda e carga.
+   *
+   * O cliente ADOTA isto. É o que faz a ausência se comportar como o jogo ao
+   * vivo: morreu lá dentro, a carga foi perdida na simulação e volta zerada;
+   * fechou o setor, ela já virou saldo e volta zerada também, com o saldo
+   * creditado. O que sobra é o que ainda está em risco.
+   */
+  incursao?: { setor: number; onda: number; carga: Record<string, number> };
   motivo?: string;
 }
 
@@ -65,6 +74,20 @@ export async function creditarAusencia(sim: Sim): Promise<RelatorioDeAusencia | 
         setor: sim.state.run.sector,
         onda: sim.state.run.wave,
         postura: sim.state.settings.pilot,
+        /**
+         * A carga RETIDA da incursão em curso.
+         *
+         * Sem ela o servidor simulava a ausência a partir de um porão vazio e
+         * jogava fora o que rendeu: quem fechasse a aba no meio de um setor
+         * voltava sem a sucata que já tinha juntado, e a ausência inteira
+         * rendia moeda zero enquanto nenhum setor caísse.
+         *
+         * Declarar a carga NÃO abre buraco novo. Ela já é declarada pelo
+         * cliente no jogo ao vivo — `bankCarga` a converte em movimento de
+         * carteira, que sobe pela mesma fila e passa pela mesma auditoria de
+         * `teto.ts`. O que muda aqui é só de onde ela parte.
+         */
+        carga: sim.state.run.carga,
       }),
     });
     if (!r.ok) return null;

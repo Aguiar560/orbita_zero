@@ -253,6 +253,10 @@ export class Game {
       sincronizarInventario(this.sim),
       sincronizarProgresso(this.sim),
     ]);
+
+    // A incursão volta como o servidor a deixou: a carga que sobreviveu à
+    // ausência, e a onda em que a nave parou. Ver `adotarIncursao`.
+    if (r.incursao) this.sim.adotarIncursao(r.incursao.onda, r.incursao.carga);
     this.vertical.refreshPlayer(true);
 
     if (r.segundos > REPORT_THRESHOLD) {

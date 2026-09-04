@@ -914,10 +914,11 @@ export class Shell {
         .filter((id) => report.gained[id] > 0)
         .map((id) => linha(RESOURCE_META[id].icon, RESOURCE_META[id].label,
           `+${fmt(report.gained[id])}`, RESOURCE_META[id].color)),
-      (report.itens ?? 0) > 0
-        ? linha('ui/icon_star', report.itens === 1 ? 'Peça nova' : 'Peças novas',
-          `+${report.itens}`, '#e0b0ff')
-        : null,
+      // NÃO existe linha de item aqui, e a ausência dela é a regra: a ausência
+      // não solta item, nenhum. O item é a recompensa de ESTAR LÁ — ele cai numa
+      // cápsula que a nave precisa coletar. Uma linha "peças novas" que nunca
+      // aparece é pior que nenhuma: ela ensina o oposto da regra a quem lê o
+      // código. Ver tests/offline-online.test.ts.
     ].filter(Boolean) as HTMLElement[];
 
     const modal = h('.modal-backdrop', {},

@@ -2,7 +2,7 @@ import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
 import {
-  MOEDAS, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar,
+  MOEDAS, TETO_POR_LANCAMENTO, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar,
   renovar, saldosDoLivro,
   type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
@@ -1401,6 +1401,20 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     lote?.semente ?? novaSemente(),
   );
 
+  /**
+   * A carga declarada pelo cliente entra na incursão ANTES de simular.
+   *
+   * Aparada contra `TETO_POR_LANCAMENTO`, que é o mesmo teto de sanidade da
+   * carteira: a carga vira lançamento quando o setor cai, então aceitar aqui
+   * mais do que se aceita lá seria uma porta lateral para o mesmo lugar.
+   */
+  const declarada = (ctx as { carga?: Record<string, unknown> }).carga ?? {};
+  for (const moeda of MOEDAS) {
+    const v = Number(declarada[moeda]);
+    sim.state.run.carga[moeda] = Number.isFinite(v) && v > 0
+      ? Math.min(v, TETO_POR_LANCAMENTO) : 0;
+  }
+
   const antes = {
     saldos: { ...sim.state.resources },
     xp: sim.state.command.xp,
@@ -1473,5 +1487,12 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     baus: relatorio.chests,
     xp: Math.round(sim.state.command.xp - antes.xp),
     itensNovos: [...depois].filter((u) => !antes.uids.has(u)).length,
+    // A incursão como ficou. O cliente adota — é o que faz morrer perder a
+    // carga e concluir o setor guardá-la, igual ao jogo ao vivo.
+    incursao: {
+      setor: sim.state.run.sector,
+      onda: sim.state.run.wave,
+      carga: sim.state.run.carga,
+    },
   }, 200, origem);
 }

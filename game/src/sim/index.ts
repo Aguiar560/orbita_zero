@@ -1294,6 +1294,32 @@ export class Sim {
     };
   }
 
+  /**
+   * Adota a incursão como o SERVIDOR a deixou depois de simular a ausência.
+   *
+   * É o que faz a ausência render igual ao jogo ao vivo. A carga da incursão
+   * corre os mesmos riscos nos dois modos porque é a MESMA simulação: se a
+   * nave morreu lá dentro, `failEncounter` já chamou `dropCarga` e ela volta
+   * zerada; se o setor caiu, `bankCarga` já a converteu em saldo — creditado
+   * pelo servidor no mesmo passo — e ela volta zerada também. O que chega
+   * aqui é só o que continua em risco.
+   *
+   * Não mexe em `sector` de propósito. A ausência NÃO avança de setor (a nave
+   * fica onde o jogador a deixou), então o setor que voltaria é o mesmo que
+   * subiu — e escrever por cima abriria a porta para ele mudar no dia em que
+   * essa regra for revista noutro lugar.
+   */
+  adotarIncursao(onda: number, carga: Readonly<Record<string, number>>): void {
+    const run = this.state.run;
+    if (Number.isFinite(onda) && onda >= 1) run.wave = Math.floor(onda);
+    for (const id of RESOURCE_IDS) {
+      const v = Number(carga[id]);
+      run.carga[id] = Number.isFinite(v) && v > 0 ? v : 0;
+    }
+    this.refreshEncounter();
+    this.touch();
+  }
+
   /** Recomeça a contagem. Chamado ao entrar num setor — inclusive o mesmo. */
   private marcarSetor(): void {
     this.marco = this.tirarMarco();
