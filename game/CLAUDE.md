@@ -54,6 +54,7 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run build` | assets + typecheck + build |
 | `npm test` | suíte do Vitest |
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
+| `npm run simular -- ganho 1 300 5` | ganho por segundo, setores limpos e mortes — mede o que o jogador REALMENTE recebe |
 | `npm run simular -- drops 200000` | distribuição real de raridade |
 | `npm run simular -- item 30` | dispersão de poder entre itens do mesmo nível |
 | `npm run simular -- afixos 30 5` | valor marginal de cada afixo, para o orçamento do §7 |

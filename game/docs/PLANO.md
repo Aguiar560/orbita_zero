@@ -870,12 +870,52 @@ enquanto o XP do começo vem de DENSIDADE, não de recompensa por abate.
 
 Foi por pouco: a amostra do setor 3, sozinha, dizia que a fórmula servia.
 
+#### A calibração foi feita, e ela parou noutro lugar (03/09)
+
+Entrou `npm run simular -- ganho <de> <ate> <passo>`, que mede o que o jogador
+REALMENTE recebe: roda `abstractTick` com o build representativo de cada setor
+— o mesmo que `curva` usa, de `balanco.ts` — e conta XP por segundo, setores
+limpos e mortes.
+
+O resultado impede o teto, mas por um motivo diferente do esperado:
+
+| setor | xp/s | setores limpos | mortes em 300 s | a onda mataria em |
+|---|---|---|---|---|
+| 1 | 0,06 | 0 | 0 | 3 707 s |
+| 5 | 0,17 | 0 | 9 | 814 s |
+| 13 | 1,92 | 0 | 6 | nunca |
+| 21 | 2,30 | 0 | 7 | nunca |
+| 25 | 0,00 | 0 | **18** | nunca |
+| 29 | 0,00 | 0 | **25** | nunca |
+
+**Zero setores limpos em toda a faixa de 1 a 29**, e as mortes sobem de 0 para
+25 enquanto a onda comum nunca mata. O ganho por segundo varia 98× e é
+ruidoso entre setores vizinhos, porque ele não mede habilidade nem
+equipamento: mede se aquela semente passou do chefe.
+
+**Isto não é um defeito novo — é a decisão pendente nº 2 vista pela régua.**
+"O laço ocioso trava na parede do chefe" já estava registrada com medição ao
+vivo (setor 5, dos 90 aos 120 min, mortes de 20 para 31). O que muda é que
+agora ela é reprodutível em Node, ao longo da curva, por quem não a escreveu.
+
+**A reconciliação que custou a maior parte do trabalho.** `curva` diz
+"trivial" e "30 a 40 golpes até morrer" nos mesmos setores em que a simulação
+conta nove mortes em cinco minutos. As duas réguas estão certas e medem coisas
+diferentes: **`curva` mede a ONDA, e quem mata é o CHEFE.** A coluna
+`morte.na.onda` existe para isso — quando ela diz `nunca` e `mortes` diz nove,
+a leitura é imediata.
+
 #### O que falta para o passo 4, concretamente
 
-Um teto por valor exige uma curva calibrada contra o jogo AO VIVO ao longo dos
-300 setores — o mesmo rigor que `npm run simular` já aplica ao balanceamento,
-e não um palpite de duas amostras. Sem isso, qualquer teto ou recusa jogador
-honesto ou não pega nada.
+Um teto por valor precisa de uma expectativa de ganho ESTÁVEL por setor. Hoje
+não existe: o ganho é dominado por passar ou não do chefe, e no build
+representativo ele não passa em lugar nenhum. Calibrar um teto sobre isso
+produziria o mesmo erro das duas tentativas anteriores, com mais trabalho.
+
+**A ordem certa é resolver a decisão nº 2 primeiro.** Com a parede do chefe
+resolvida, `simular -- ganho` passa a devolver uma curva com setores limpos > 0
+e ganho monotônico — e aí o teto se calibra em uma tarde, contra números que
+não oscilam.
 
 O caminho seguro, quando for a hora: **medir antes de impedir.** O servidor
 passa a REGISTRAR quando o ganho declarado passaria do teto, sem clipar nada,

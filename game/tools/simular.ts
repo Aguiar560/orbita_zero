@@ -15,6 +15,7 @@
  *   npm run simular -- item 30
  */
 import { diagnosticoDoPiso, medirPiso } from './lib/provacao-balanco';
+import { medirGanho } from './lib/ganho';
 import { Rng } from '@core/math';
 import { RARITIES } from '@data/rarity';
 import { rollItem, rollRarity } from '@sim/loot';
@@ -51,6 +52,50 @@ function tabela(cabecalho: string[], linhas: string[][]): void {
 }
 
 // ── comandos ────────────────────────────────────────────────────────────────
+
+/**
+ * Quanto o jogador ganha por segundo, setor a setor.
+ *
+ * Existe para o teto do passo 4 da Fase 5 (Passo 9): o servidor precisa saber
+ * quanto é plausível declarar. Duas fórmulas fechadas foram tentadas e as duas
+ * falharam — a última ficava TRÊS VEZES ABAIXO do ganho honesto no setor 1, e
+ * teria recusado todo jogador novo em silêncio.
+ *
+ * A coluna `morte.na.onda` diz em quantos segundos a onda comum mataria o
+ * jogador. `nunca` é o caso normal — a regeneração empata com o dano recebido
+ * ali. Quando ela diz `nunca` e a coluna `mortes` mostra nove, a morte veio do
+ * CHEFE: foi essa leitura que explicou por que `curva` chama de "trivial" um
+ * setor onde a simulação morre nove vezes em cinco minutos.
+ */
+function comandoGanho(de: number, ate: number, passo: number): void {
+  console.log('setor  casco                 xp/s   setores  mortes   morte.na.onda');
+  console.log('─'.repeat(78));
+
+  const linhas: { setor: number; xp: number }[] = [];
+  for (let setor = de; setor <= ate; setor += passo) {
+    const g = medirGanho(setor);
+    linhas.push({ setor, xp: g.xpPorSegundo });
+    console.log(
+      String(setor).padStart(5),
+      g.casco.padEnd(20),
+      g.xpPorSegundo.toFixed(2).padStart(7),
+      String(g.setoresLimpos).padStart(9),
+      String(g.mortes).padStart(7),
+      (Number.isFinite(g.segundosAteMorrerNaOnda) ? g.segundosAteMorrerNaOnda.toFixed(0) : 'nunca').padStart(15),
+    );
+  }
+
+  // A razão entre o maior e o menor ganho por segundo diz se UM multiplicador
+  // serve para a curva toda. Se ela for grande, o teto precisa ser função do
+  // setor — que foi exatamente o que a fórmula anterior errou.
+  const xps = linhas.map((l) => l.xp).filter((x) => x > 0);
+  if (xps.length > 1) {
+    const min = Math.min(...xps);
+    const max = Math.max(...xps);
+    console.log('');
+    console.log(`ganho/s de ${min.toFixed(2)} a ${max.toFixed(2)} — amplitude ${(max / min).toFixed(1)}×`);
+  }
+}
 
 /**
  * Curva de dificuldade contra curva de poder.
@@ -419,10 +464,14 @@ switch (comando) {
   case 'afixos':
     comandoAfixos(Number(args[0] ?? 30), Number(args[1] ?? 5));
     break;
+  case 'ganho':
+    comandoGanho(Number(args[0] ?? 1), Number(args[1] ?? 60), Number(args[2] ?? 1));
+    break;
   default:
     console.log(`Arnês de simulação do Órbita Zero.
 
   npm run simular -- curva <de> <ate>           dificuldade × poder, setor a setor
+  npm run simular -- ganho <de> <ate> <passo>   ganho por segundo, setor a setor
   npm run simular -- drops <amostras> [sorte]   distribuição de raridade
   npm run simular -- item <ilvl> [amostras]     dispersão de poder por item
 
