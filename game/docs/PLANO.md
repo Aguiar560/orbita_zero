@@ -1074,7 +1074,68 @@ Estas **bloqueiam** trabalho e não devem ser decididas por conta própria.
 | 7 | ✅ **Zerar os saves no corte** — decidido em 03/09. Elimina a conversão campo a campo, a defesa contra valor inflado e uma classe inteira de brecha. A regra do repositório já autoriza zerar durante o desenvolvimento |
 | 8 | ✅ **Manual pontua igual** — decidido em 03/09: o modo de controle não entra na conta. É mais simples que as duas opções oferecidas e coerente com a Fase 5: se o servidor calcula o resultado a partir de atributos × tempo, o modo deixa de ser variável. **A consequência a aceitar:** pilotar bem não rende mais que deixar a IA — manual vira preferência, não vantagem |
 | 9 | ✅ **Anunciar o prêmio só depois da Fase 6** — decidido em 03/09. Anunciar antes convida exatamente quem sabe quebrar o que ainda não está protegido |
-| 6 | **Offline rende mais item que jogar** | Setor 10 contra 8, e **368 itens contra 44**. O caminho abstrato já modela morte e já não banca recurso; o que resta é o item. Precisa de uma corrida AO VIVO nova para comparar — os 44 são de antes das Fases 2 e 3 |
+| 6 | 🔴 **A premissa se INVERTEU — medido em 03/09.** Era "offline rende mais que jogar (368 itens contra 44)". Hoje o caminho abstrato rende **ZERO** do setor 11 para cima: ele mata o jogador antes de a ONDA 1 terminar, e a onda reinicia para sempre. Ao vivo, no setor 61, o mesmo build morre **uma** vez em 300 s e ganha 15 XP/s; no abstrato morre **21** vezes e ganha nada. Detalhe abaixo, em "O caminho abstrato está quebrado" |
+
+---
+
+## 🔴 O caminho abstrato está quebrado (achado em 03/09)
+
+**É crítico e vai para produção**, porque desde a Fase 5 do Passo 9 o SERVIDOR
+usa `applyOffline` para creditar ausência. Um jogador que fecha a aba a partir
+do setor 11 recebe **zero**.
+
+### O que foi medido
+
+Mesmo build representativo, mesmo setor, mesma janela de 300 s — a cena de
+verdade contra `abstractTick`:
+
+| setor | | XP/s | mortes |
+|---|---|---|---|
+| 11 | ao vivo | 4,34 | 11 |
+| 11 | **abstrato** | **0** | 15 |
+| 31 | ao vivo | 24,97 | 8 |
+| 31 | **abstrato** | **0** | 20 |
+| 61 | ao vivo | 15,04 | **1** |
+| 61 | **abstrato** | **0** | **21** |
+
+O zero é literal, não arredondamento: `run.wave` **nunca muda** em 300 s. O
+jogador morre na onda 1, ela reinicia, e o laço se repete. Nenhum encontro é
+concluído, então `completeEncounter` nunca roda e nada é creditado.
+
+### A causa
+
+A janela de sobrevivência é menor que o tempo de limpar a onda, em toda a
+faixa — que é exatamente a condição de `isStalled`:
+
+| setor | sobrevive | precisa para limpar | `incomingDps` | `regen` |
+|---|---|---|---|---|
+| 11 | 19,6 s | 37,6 s | 16 | 3 |
+| 31 | 14,9 s | 17,5 s | 94 | 12 |
+| 61 | 13,5 s | 19,2 s | 265 | 32 |
+
+`incomingDps` é `dano do encontro × 1,5 × (1 − iaSkill × 0,82)`. Com
+`iaSkill` de 0,05 a 0,15, o modelo assume que a nave leva de 1,3 a 1,4 tiros
+por segundo, o tempo todo. **A cena não é assim** — o piloto se move, e a
+diferença cresce com o setor porque o dano do inimigo cresce.
+
+### Por que isto NÃO foi corrigido aqui
+
+Mexer em `incomingDps` muda a recompensa de ausência de todo jogador, e a
+ausência é metade do que um idle entrega. É decisão de balanceamento, não de
+engenharia, e ela tem pelo menos três saídas:
+
+1. **Calibrar `incomingDps` contra a cena** — medir a taxa real de acertos por
+   segundo ao vivo, por faixa de setor, e ajustar o `1,5` e o peso do
+   `iaSkill`. É o conserto de raiz e o mais caro.
+2. **Dar ao caminho abstrato o mesmo desconto que o jogador tem ao vivo**, como
+   um fator único de mitigação. Barato, e some com a diferença por setor.
+3. **Aceitar que o abstrato é mais duro** e compensar no crédito, com um
+   multiplicador de ausência. Não conserta a simulação, mas devolve o
+   rendimento — e mantém a ausência abaixo do jogo ao vivo, que era a
+   preocupação original da decisão nº 6.
+
+A régua para escolher já existe: `npm run simular -- ganho`, e a comparação ao
+vivo roda no navegador importando `tools/lib/balanco.ts`, que o Vite serve.
 
 ---
 
