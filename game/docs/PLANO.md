@@ -570,7 +570,7 @@ medido em 03/09, a recompensa por setor vai de 0,06 (setor 1) a 192.201 (setor
 justamente o que o cliente alega. Está documentado em `server/src/carteira.ts`
 para ninguém tentar adicionar o teto achando que resolve.
 
-**Fase 3 — Inventário.** 🟡 Quase toda em 03/09; falta a síntese e a frota.
+**Fase 3 — Inventário.** ✅ 03/09.
 
 **3a — a rolagem saiu do cliente. ✅**
 
@@ -643,16 +643,47 @@ para o servidor — e o que não trafega não pode ser forjado.
 `resources` zerados, `vip` zerado e nenhuma nave com equipamento — com 14
 itens e 132 de sucata no espelho local.
 
+**3c — síntese e frota. ✅ 03/09**
+
+As duas portas que sobravam, e as duas davam poder de graça.
+
+**A síntese** consumia dez peças e produzia uma com `rollItem` LOCAL: bastava
+fundir lixo até o resultado agradar, e a peça saía legítima pelos olhos de
+todo o resto do sistema — inclusive do inventário que a 3b tinha acabado de
+blindar. Agora é `POST /sintetizar`. Não há re-rolagem mesmo com semente nova
+a cada chamada, e o motivo é a própria mecânica: **a fusão consome as peças**,
+então repetir não encontra mais os `uid`s e não existe segunda tentativa para
+comparar com a primeira.
+
+**A frota** era uma lista de ids no save, e casco é poder: cada um tem
+atributos-base próprios e os melhores custam cristal. Escrever um id em
+`state.fleet` entregava de graça o que a loja cobra. Agora é a tabela `frota`,
+com `origem` em coluna — `piloto`, `compra` ou `semente` —, pela mesma razão
+do `motivo` do livro-caixa: sem ela, "de onde saiu esta nave" não tem resposta.
+
+Os dois caminhos locais foram **removidos**, não desativados: `Sim.fundirItens`
+e `Sim.buyHull` sumiram. Caminho morto que ainda funciona pelo console é o
+mesmo buraco com outro nome.
+
+`buyHull` virou `podeComprarCasco`, que só RESPONDE. A verificação de setor e
+nível continua no cliente e não é redundante: os dois são o ritmo da
+progressão, e o servidor não pode conferi-los porque é o cliente que os
+declara. O que ele confere é o que sabe — existência, protótipo, casco de
+piloto, posse e preço. Os dois conjuntos são diferentes de propósito.
+
+*Aceite, verificado ao vivo:* com 2 cascos e 14 itens no espelho local, o
+corpo do `PUT /save` sai com `fleet: []`, `inventory: []`, recursos zerados,
+VIP zerado e nenhuma nave com equipamento. `fundirItens` e `buyHull` não
+existem mais no objeto.
+
 **O que ainda falta na fase**
 
-- `fleet` (quais cascos o jogador tem) continua no save. Injetar um casco
-  ainda é possível; injetar um ITEM não.
-- A **síntese** (`FabricacaoPanel`) ainda funde no cliente: ela consome peças e
-  produz uma nova com `rollItem` local. É a última porta por onde um item
-  nasce fora do servidor.
 - O serviço de loja que TROCA o elemento de uma nave mora no save, então o
   servidor valida `naveAceita` contra o elemento de fábrica. Uma nave com
   elemento trocado é avaliada pelo antigo.
+- O custo em MATERIAIS da síntese continua no cliente: `armazem` ainda é save.
+  O núcleo, que é moeda, já é debitado pelo livro-caixa.
+- Nível e XP de cada nave continuam no save — são a Fase 4.
 
 **Fase 4 — Progressão.** XP, nível, setor alcançado e Matriz.
 

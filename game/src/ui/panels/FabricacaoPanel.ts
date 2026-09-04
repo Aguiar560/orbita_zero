@@ -3,6 +3,7 @@ import { equipamentoDe } from '@sim/stats';
 import { RECEITAS, chanceDeSubir, type ReceitaDeFusao } from '@data/balance/fusao';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { RARITIES, rarityInfo } from '@data/rarity';
+import { sintetizar } from '@app/inventario';
 import type { Sim } from '@sim/index';
 import type { Item, Rarity } from '@sim/types';
 import { buildItemCard } from '../ItemCard';
@@ -35,6 +36,8 @@ export class FabricacaoPanel implements Panel {
   private selecionada: Rarity = 0;
   /** Uids nos encaixes do anel. `null` = vazio. */
   private slots: (string | null)[] = [];
+  /** Trava do botão enquanto o servidor funde. */
+  private fundindo = false;
   /** Filtro do inventário. `-1` = tudo. */
   private filtro: Rarity | -1 = -1;
   /**
@@ -297,18 +300,36 @@ export class FabricacaoPanel implements Panel {
           h('.fab-dica', { text: faltas[0] ?? 'Pronto para sintetizar' }),
           h(`button.fab-acao${pode ? '.pronta' : ''}`, {
             text: 'FABRICAR',
-            disabled: !pode,
+            disabled: !pode || this.fundindo,
+            // A fusão é do SERVIDOR desde a Fase 3c, e por isso é assíncrona.
+            //
+            // Era a última porta por onde um item nascia no cliente: dez peças
+            // entravam e uma saía de `rollItem` local, então bastava fundir lixo
+            // até o resultado agradar. O item saía legítimo pelos olhos de todo o
+            // resto do sistema.
+            //
+            // O botão trava enquanto espera. Sem a trava, dois cliques consomem
+            // vinte peças e devolvem uma — e a segunda perda só apareceria depois.
             onclick: () => {
-              if (!pode) return;
-              const r = sim.fundirItens(cheios);
-              this.slots = this.slots.map(() => null);
-              if (!r) return;
-              // Onde o item parou depende dos ajustes de automação: `acquire` pode
-              // equipar na hora, guardar, ou desmanchar por raridade baixa. Ler o
-              // destino DEPOIS do fato é mais confiável que reproduzir a regra aqui
-              // — ela mora em `sim` e pode mudar sem este painel saber.
-              this.resultado = { item: r.item, entrada: receita.entrada, destino: destinoDe(sim, r.item) };
-              sim.touch();
+              if (!pode || this.fundindo) return;
+              this.fundindo = true;
+              this.render(sim);
+              void sintetizar(sim, cheios).then((r) => {
+                this.fundindo = false;
+                this.slots = this.slots.map(() => null);
+                if (r) {
+                  // Onde o item parou depende dos ajustes de automação: `acquire`
+                  // pode equipar na hora, guardar, ou desmanchar por raridade
+                  // baixa. Ler o destino DEPOIS do fato é mais confiável que
+                  // reproduzir a regra aqui — ela mora em `sim` e pode mudar sem
+                  // este painel saber.
+                  this.resultado = {
+                    item: r.item, entrada: receita.entrada, destino: destinoDe(sim, r.item),
+                  };
+                }
+                sim.touch();
+                this.render(sim);
+              });
             },
           }),
           h('button.fab-encher', {

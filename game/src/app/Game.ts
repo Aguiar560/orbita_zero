@@ -19,7 +19,7 @@ import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
-import { drenarInventario, sincronizarInventario } from './inventario';
+import { drenarInventario, sincronizarFrota, sincronizarInventario } from './inventario';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -174,6 +174,9 @@ export class Game {
     // que está equipado, e desenhar com o equipamento local para trocá-lo um
     // segundo depois é uma piscada de números errados na primeira tela.
     await sincronizarInventario(this.sim);
+    // A frota vem junto: quais cascos existem decide o que o Hangar mostra e o
+    // que o jogador pode levar a campo.
+    await sincronizarFrota(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou

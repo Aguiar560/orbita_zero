@@ -2,6 +2,7 @@ import { HULL_BY_ID } from '@data/hulls';
 import { describeGalaxy } from '@data/galaxies';
 import { getElement } from '@data/elements';
 import { PILOTOS, type PilotoDef } from '@data/pilotos';
+import { registrarPiloto } from '@app/inventario';
 import type { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { dps, effectiveHp, powerScore, resolveStats } from '@sim/stats';
@@ -93,7 +94,12 @@ export class EscolhaDePiloto {
           }),
           h('button.btn.primary.big.escolha-confirmar', {
             onclick: () => {
-              if (this.sim.escolherPiloto(this.selecionado)) aoConfirmar();
+              // O casco inicial é concedido pelo SERVIDOR, uma vez só. O
+              // `escolherPiloto` local continua gravando a escolha; o que saiu
+              // dele é a autoridade sobre a frota.
+              if (this.sim.escolherPiloto(this.selecionado)) {
+                void registrarPiloto(this.sim, this.selecionado).then(aoConfirmar);
+              }
             },
           }, h('span', { text: `Partir com ${escolhido.nome}` })),
         ),
@@ -124,7 +130,9 @@ export class EscolhaDePiloto {
         // gesto natural de quem já decidiu, e obrigá-lo a mirar o botão lá
         // embaixo seria atrito puro.
         if (ativo) {
-          if (this.sim.escolherPiloto(p.id)) aoConfirmar();
+          if (this.sim.escolherPiloto(p.id)) {
+            void registrarPiloto(this.sim, p.id).then(aoConfirmar);
+          }
           return;
         }
         this.selecionado = p.id;

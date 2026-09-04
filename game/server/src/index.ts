@@ -11,6 +11,9 @@ import {
   setorValido, sorteValida, type TipoDeDrop,
 } from './lote';
 import { conferirComandos, derivarColeta, podeIrPara, type Comandos } from './inventario';
+import {
+  cascoDoPiloto, conferirCompraDeCasco, conferirFusao, fundir,
+} from './fabrica';
 import { HULL_BY_ID } from '@data/hulls';
 import type { Item, SlotId } from '@sim/types';
 
@@ -291,6 +294,15 @@ export default {
     if (url.pathname === '/inventario') {
       if (req.method === 'GET') return json({ itens: await inventarioDe(env, usuario.id) }, 200, origem);
       if (req.method === 'POST') return aplicarComandos(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/sintetizar' && req.method === 'POST') {
+      return sintetizar(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/frota') {
+      if (req.method === 'GET') return json({ frota: await frotaDe(env, usuario.id) }, 200, origem);
+      if (req.method === 'POST') return adquirirCasco(req, env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -925,4 +937,134 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
 
   if (escritas.length) await env.DB.batch(escritas);
   return json({ itens: await inventarioDe(env, id) }, 200, origem);
+}
+// ── síntese e frota ─────────────────────────────────────────────────────────
+
+/**
+ * Funde itens. Era a última porta por onde um item nascia fora do servidor.
+ *
+ * A 3a fechou o drop e a 3b fechou o inventário, mas a fusão continuava
+ * rodando no cliente com `rollItem` local — bastava fundir lixo até o resultado
+ * agradar, e o item saía legítimo pelos olhos de todo o resto do sistema.
+ *
+ * ## Não há re-rolagem mesmo com semente nova a cada chamada
+ *
+ * A fusão CONSOME as peças. Repetir não encontra mais os `uid`s, então não
+ * existe segunda tentativa para comparar com a primeira.
+ *
+ * ## O que continua no cliente
+ *
+ * O custo em MATERIAIS (`armazem`). Materiais ainda moram no save, e cobrá-los
+ * aqui exigiria movê-los junto — trabalho da Fase 4. O núcleo, que é moeda, é
+ * debitado pela fila da carteira como qualquer outro gasto.
+ */
+async function sintetizar(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { uids?: unknown; sorte?: unknown; universo?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const uids = Array.isArray(corpo.uids) ? corpo.uids.filter((u): u is string => typeof u === 'string') : [];
+  if (!uids.length || uids.length > 40) return json({ erro: 'uids_invalidos' }, 400, origem);
+
+  // Carrega do BANCO, nunca do corpo: o item que entra na conta é o que o
+  // servidor tem, não o que o cliente diz ter.
+  const marcas = uids.map(() => '?').join(',');
+  const { results } = await env.DB
+    .prepare(`SELECT uid, dados FROM itens WHERE usuario = ? AND uid IN (${marcas})`)
+    .bind(id, ...uids)
+    .all<{ uid: string; dados: string }>();
+
+  const itens = results.map((l) => JSON.parse(l.dados) as Item);
+  const conferido = conferirFusao(itens, uids);
+  if ('erro' in conferido) return json({ erro: conferido.erro }, 409, origem);
+
+  const saida = fundir(itens, conferido.receita, Number(corpo.sorte), Number(corpo.universo));
+
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM itens WHERE usuario = ? AND uid IN (${marcas})`).bind(id, ...uids),
+    env.DB
+      .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
+      .bind(saida.uid, id, JSON.stringify(saida), agora),
+  ]);
+
+  return json({ item: saida, receita: conferido.receita.id, itens: await inventarioDe(env, id) }, 200, origem);
+}
+
+/** Os cascos que são desta pessoa. */
+async function frotaDe(env: Env, usuario: string): Promise<string[]> {
+  const { results } = await env.DB
+    .prepare('SELECT casco FROM frota WHERE usuario = ?')
+    .bind(usuario)
+    .all<{ casco: string }>();
+  return results.map((l) => l.casco);
+}
+
+/**
+ * Adiciona um casco à frota: comprado, ou o inicial do piloto escolhido.
+ *
+ * Casco é PODER — cada um tem atributos-base próprios, e os melhores custam
+ * cristal. Escrever um id em `state.fleet` entregava de graça o que a loja
+ * cobra, e era o que sobrava depois de a 3b fechar o item.
+ */
+async function adquirirCasco(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { casco?: unknown; piloto?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const frota = await frotaDe(env, id);
+
+  // O casco do piloto entra SEM custo e só uma vez: é a escolha da primeira
+  // tela, não uma compra. `INSERT OR IGNORE` faz a segunda chamada não
+  // conceder nada, então repetir o pedido não rende um casco extra.
+  if (typeof corpo.piloto === 'string') {
+    const casco = cascoDoPiloto(corpo.piloto);
+    if (!casco) return json({ erro: 'casco_desconhecido' }, 400, origem);
+    // Só concede se a frota está VAZIA. Depois disso, escolher piloto de novo
+    // seria um casco grátis por chamada.
+    if (frota.length) return json({ erro: 'casco_ja_e_seu' }, 409, origem);
+    await env.DB
+      .prepare("INSERT OR IGNORE INTO frota (usuario, casco, origem, em) VALUES (?, ?, 'piloto', ?)")
+      .bind(id, casco, agora).run();
+    return json({ frota: await frotaDe(env, id) }, 200, origem);
+  }
+
+  if (typeof corpo.casco !== 'string') return json({ erro: 'casco_desconhecido' }, 400, origem);
+  const conferido = conferirCompraDeCasco(corpo.casco, frota.includes(corpo.casco));
+  if ('erro' in conferido) return json({ erro: conferido.erro }, 409, origem);
+
+  // O preço sai do livro-caixa, que é real. Se o saldo não cobrir, nada muda.
+  const pago = await lancar(env, {
+    usuario: id, moeda: 'cristal', quantia: -conferido.custo, motivo: 'loja', em: agora,
+  });
+  if (!pago.ok && conferido.custo > 0) return json({ erro: pago.erro }, 409, origem);
+
+  await env.DB
+    .prepare("INSERT OR IGNORE INTO frota (usuario, casco, origem, em) VALUES (?, ?, 'compra', ?)")
+    .bind(id, corpo.casco, agora).run();
+
+  return json({ frota: await frotaDe(env, id) }, 200, origem);
 }

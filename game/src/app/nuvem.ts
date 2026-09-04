@@ -279,5 +279,9 @@ function semODinheiro(estado: GameState): GameState {
     naves: Object.fromEntries(
       Object.entries(estado.naves).map(([id, n]) => [id, { ...n, equipped: {} }]),
     ),
+    // A frota mora na tabela `frota` desde a Fase 3c. Casco é poder — os
+    // melhores custam cristal —, então a lista não pode ser escrita pelo
+    // cliente e subir como se fosse verdade.
+    fleet: [],
   };
 }

@@ -267,9 +267,13 @@ describe('nível exigido, além do setor', () => {
 
     const sim = new Sim(s);
     s.command.nivel = 1;
-    expect(sim.buyHull(nave.id), 'nível 1 não deveria comprar').toBe(false);
+    // `podeComprarCasco` só RESPONDE — quem compra é o servidor, desde a Fase
+    // 3c do Passo 9. A verificação continua aqui porque setor e nível são o
+    // ritmo da progressão, e o servidor não pode conferi-los: é o cliente que
+    // os declara. O que ele confere é preço, existência e posse.
+    expect(sim.podeComprarCasco(nave.id), 'nível 1 não deveria comprar').toBe(false);
 
     s.command.nivel = nivelExigido(nave.requiresSector);
-    expect(sim.buyHull(nave.id)).toBe(true);
+    expect(sim.podeComprarCasco(nave.id)).toBe(true);
   });
 });

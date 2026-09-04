@@ -144,3 +144,89 @@ function empacotar(comandos: readonly ComandoDeItem[]): {
 export function esquecerInventario(): void {
   sincronizado = false;
 }
+
+/**
+ * Funde peças no servidor.
+ *
+ * Era a última porta por onde um item nascia fora dele: a fusão consumia dez
+ * peças e produzia uma com `rollItem` LOCAL, então bastava fundir lixo até o
+ * resultado agradar — e o item saía legítimo pelos olhos do resto do sistema.
+ *
+ * Assíncrona porque tem de ser: o resultado é do servidor, e fingir um item
+ * aqui para trocá-lo depois seria mostrar ao jogador uma peça que talvez não
+ * exista.
+ */
+export async function sintetizar(
+  sim: Sim,
+  uids: readonly string[],
+): Promise<{ item: Item; receita: string } | null> {
+  const token = await tokenValido();
+  if (!token) return null;
+  try {
+    const r = await fetch(`${API_URL}/sintetizar`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ uids, sorte: sim.stats.sorte, universo: sim.state.universe.index }),
+    });
+    if (!r.ok) return null;
+    const dados = (await r.json()) as { item: Item; receita: string; itens: LinhaRemota[] };
+    adotar(sim, dados.itens);
+    return { item: dados.item, receita: dados.receita };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A frota, que também saiu do save.
+ *
+ * Casco é PODER: cada um tem atributos-base próprios, e os melhores custam
+ * cristal. Escrever um id em `state.fleet` entregava de graça o que a loja
+ * cobra — era o que sobrava depois de o item ser fechado.
+ */
+async function chamarFrota(corpo?: unknown): Promise<string[] | null> {
+  const token = await tokenValido();
+  if (!token) return null;
+  const body = corpo ? JSON.stringify(corpo) : undefined;
+  try {
+    const r = await fetch(`${API_URL}/frota`, {
+      method: body ? 'POST' : 'GET',
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(body ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(body ? { body } : {}),
+    });
+    if (!r.ok) return null;
+    const dados = (await r.json()) as { frota: string[] };
+    return dados.frota ?? [];
+  } catch {
+    return null;
+  }
+}
+
+export async function sincronizarFrota(sim: Sim): Promise<boolean> {
+  const frota = await chamarFrota();
+  if (!frota) return false;
+  sim.state.fleet = frota;
+  sim.touch();
+  return true;
+}
+
+/** Compra um casco. O preço sai do livro-caixa, no servidor. */
+export async function comprarCasco(sim: Sim, casco: string): Promise<boolean> {
+  const frota = await chamarFrota({ casco });
+  if (!frota) return false;
+  sim.state.fleet = frota;
+  sim.touch();
+  return true;
+}
+
+/** O casco inicial do piloto escolhido. Concedido uma vez, sem custo. */
+export async function registrarPiloto(sim: Sim, piloto: string): Promise<boolean> {
+  const frota = await chamarFrota({ piloto });
+  if (!frota) return false;
+  sim.state.fleet = frota;
+  sim.touch();
+  return true;
+}

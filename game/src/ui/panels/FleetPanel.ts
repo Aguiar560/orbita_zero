@@ -8,6 +8,7 @@ import {
 } from '@data/hulls-spaceships2';
 import { getElement } from '@data/elements';
 import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
+import { comprarCasco } from '@app/inventario';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
 import { nivelExigido } from '@data/balance/curvas';
@@ -210,7 +211,10 @@ export class FleetPanel implements Panel {
         : revelado
           ? h('button.btn.buy', {
               disabled: !sim.can('cristal', hull.cost),
-              onclick: () => { sim.buyHull(hull.id); },
+              // A compra é do SERVIDOR desde a Fase 3c: casco é poder, e
+              // escrever um id em `state.fleet` entregava de graça o que a loja
+              // cobra. O preço sai do livro-caixa, lá.
+              onclick: () => { void comprarCasco(sim, hull.id); },
             }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' }))
           : h('.fleet-action', { text: `Alcance o setor ${hull.requiresSector}` }),
 

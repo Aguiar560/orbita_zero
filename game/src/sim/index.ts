@@ -4,7 +4,7 @@ import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens, capacidadeDeRecursos } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
-import { ilvlDaFusao, receitaPara } from '@data/balance/fusao';
+import { receitaPara } from '@data/balance/fusao';
 import {
   retornoDeDesmanche, valorDeVenda, type RetornoDeDesmanche,
 } from '@data/balance/descarte';
@@ -54,7 +54,6 @@ import {
   sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
 } from './missoes';
 import { aplicarFatoAoEvento, progressoDoEvento, type ProgressoDeEvento } from './eventos';
-import { rarityInfo } from '@data/rarity';
 
 /**
  * Sufixo do id de essência por elemento.
@@ -1727,45 +1726,16 @@ export class Sim {
     return faltas;
   }
 
-  /**
-   * Funde itens (§26). Devolve o item gerado, ou `null` se a receita nem podia
-   * rodar — que é recusa, não fracasso.
-   *
-   * SEMPRE sai um item: ou da raridade superior, ou da mesma que entrou. O peso
-   * da decisão está na razão dez para um, não num desfecho vazio. A versão
-   * anterior tinha perda seca, e no topo ela era o resultado provável: 93% das
-   * vezes dez Lendários viravam nada, o que fazia do último degrau uma parede.
-   */
-  fundirItens(uids: readonly string[]): { item: Item; receita: string } | null {
-    if (this.faltaParaFundir(uids).length) return null;
-
-    const itens = uids.map((u) => this.state.inventory.find((i) => i.uid === u)!);
-    const receita = receitaPara(itens[0]!.rarity)!;
-
-    // Cobra ANTES de sortear: o custo é da tentativa, não do sucesso.
-    this.spend('nucleo', receita.nucleos);
-    for (const [id, n] of Object.entries(receita.custo)) this.gastarMaterial(id, n);
-    this.state.inventory = this.state.inventory.filter((i) => !uids.includes(i.uid));
-
-    const saida = this.rng.weighted(receita.resultados, (r) => r.peso).raridade;
-    const item = rollItem(
-      this.rng,
-      ilvlDaFusao(itens.map((i) => i.ilvl)),
-      this.stats.sorte,
-      this.state.universe.index,
-      // `exata` e não `floor`: a receita JÁ sorteou a raridade, e usá-la como
-      // piso deixava o sorteio natural subir por cima dela.
-      { exata: saida },
-    );
-    this.acquire(item);
-    this.registrar({
-      tipo: 'fusao', entrada: receita.entrada, saida,
-      subiu: saida > receita.entrada,
-    });
-    toast(`${receita.nome}: ${rarityInfo(item.rarity).name}!`);
-    this.touch();
-    return { item, receita: receita.id };
-  }
+  // `fundirItens()` foi REMOVIDO na Fase 3c do Passo 9.
+  //
+  // Ele consumia dez peças e produzia uma com `rollItem` LOCAL — a última
+  // porta por onde um item nascia no cliente. Bastava fundir lixo até o
+  // resultado agradar, e a peça saía legítima pelos olhos de todo o resto do
+  // sistema, inclusive do inventário que a 3b tinha acabado de blindar.
+  //
+  // Quem funde agora é `POST /sintetizar`. `faltaParaFundir` continua aqui:
+  // ela só DIZ o que falta, e é o que o painel usa para desabilitar o botão
+  // antes de gastar uma requisição.
 
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
@@ -2339,7 +2309,22 @@ export class Sim {
     return true;
   }
 
-  buyHull(id: string): boolean {
+  /**
+   * O casco pode ser comprado? NÃO compra — só responde.
+   *
+   * Comprava, até a Fase 3c do Passo 9: debitava o cristal e empurrava o id em
+   * `state.fleet`. Casco é PODER — cada um tem atributos-base próprios, e os
+   * melhores custam caro —, então escrever o id no save entregava de graça o
+   * que a loja cobra. Quem compra agora é `app/inventario.ts`, contra o
+   * servidor, e o preço sai do livro-caixa.
+   *
+   * A verificação fica AQUI mesmo assim, e não é redundante: setor alcançado e
+   * nível são o ritmo da progressão, e o servidor não pode conferi-los porque
+   * é o cliente que os declara (ver Fase 5). O que o servidor confere é o que
+   * ele sabe — que o casco existe, não é protótipo, não é de piloto, ainda não
+   * é seu, e que há cristal. Os dois conjuntos são diferentes de propósito.
+   */
+  podeComprarCasco(id: string): boolean {
     const hull = HULLS.find((h) => h.id === id);
     if (!hull || hull.prototype || this.frotaDisponivel.includes(id)) return false;
     // Casco de personagem nunca é comprável — nem o seu, que você já tem, nem
@@ -2348,11 +2333,7 @@ export class Sim {
     if (hull.piloto) return false;
     if (this.alcanceLiberado < hull.requiresSector) return false;
     if (this.nivelLiberado < nivelExigido(hull.requiresSector)) return false;
-    if (!this.spend('cristal', hull.cost)) return false;
-    this.state.fleet.push(id);
-    this.touch();
-    toast(`${hull.name} adicionada ao hangar`, 'epic', hull.sprite);
-    return true;
+    return this.can('cristal', hull.cost);
   }
 
   /**
