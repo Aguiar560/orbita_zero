@@ -685,14 +685,60 @@ existem mais no objeto.
   O núcleo, que é moeda, já é debitado pelo livro-caixa.
 - Nível e XP de cada nave continuam no save — são a Fase 4.
 
-**Fase 4 — Progressão.** XP, nível, setor alcançado e Matriz.
+**Fase 4 — Progressão.** ✅ 03/09.
 
-- O servidor guarda e concede. `grantXp` vira efeito do tick, não chamada local.
-- A Matriz (nós alocados) vira estado com validação de custo — hoje um cliente
-  pode se dar todos os nós.
+Faltava o que MULTIPLICA tudo que a Fase 3 fechou: nível de piloto e de nave
+(atributos-base), os nós da Matriz (modificadores diretos), o setor alcançado
+(que libera conteúdo e cascos) e os materiais. Um save com `command.nivel =
+300` e a Matriz cheia valia mais que qualquer item Divino injetado.
 
-*Aceite:* nível e setor no ranking vêm da mesma fonte que o jogo usa para
-calcular atributos. Não existe segunda verdade.
+**O nível não é guardado — é derivado do XP.** Guardar os dois é guardar a
+mesma informação duas vezes, e duas cópias divergem: normalmente numa
+migração, em silêncio, e o sintoma aparece meses depois como "meu nível
+voltou". Com só o XP, a curva responde sempre igual e não existe estado
+inconsistente possível.
+
+**Delta para o que acumula, valor inteiro para o que é escolha.** XP e
+materiais sobem como diferença — mandar o total faria duas abas abertas
+sobrescreverem uma à outra com o valor mais velho. A Matriz sobe inteira
+porque não é acúmulo: é uma escolha que se refaz por completo a cada respec.
+
+**A Matriz é validada de verdade**, e as três regras valem poder:
+
+| regra | o que evita |
+|---|---|
+| todo nó existe | inventar um id e ganhar um modificador que não está na árvore |
+| o custo cabe nos pontos do nível | listar todos os nós de uma vez |
+| tudo conectado à raiz | pegar só os nós profundos, que são os melhores, sem pagar o caminho |
+
+A ordem importa: o XP entra primeiro, o nível sai da curva, e só então a
+alocação é conferida contra os pontos DESSE nível. Conferir antes recusaria a
+alocação legítima de quem subiu de nível no mesmo envio.
+
+**Três defeitos que os testes pegaram, todos meus:**
+
+1. `custoDeNo` devolve **1** para id desconhecido, não zero — minha
+   conferência era `if (!custo)`, que nunca disparava. Um id inventado passava
+   por nó barato. Agora a existência é conferida por `NODE_BY_ID`.
+2. `pathTo` devolve vetor vazio quando o nó JÁ está alocado — que é sempre o
+   caso ao conferir uma alocação pronta. A checagem de conexão nunca
+   disparava. Trocada por travessia sobre `TREE_ADJACENCY` a partir da raiz,
+   usando só os nós alocados.
+3. O marco do delta ficava em zero depois do boot, enquanto o espelho já tinha
+   o XP do servidor — o primeiro dreno mandaria o total como ganho e **dobraria
+   o XP**. O marco passou a andar junto do espelho.
+
+*Aceite, verificado ao vivo:* com nível 8, 3.783 de XP, setor 3, 14 itens, 2
+cascos, 2 materiais e 1.177 de XP de naves no espelho local, o corpo do `PUT
+/save` sai com **tudo zerado**: nível 1, XP 0, setor 1, nenhum item, nenhum
+casco, nenhum material, nenhuma nave com XP, recursos e VIP em zero.
+
+**O que ainda falta**
+
+- Materiais sobem como zero: o caminho antigo grava valor ABSOLUTO e a
+  conversão para delta entra junto do Armazém no servidor.
+- O serviço que troca o elemento de uma nave continua no save, então
+  `naveAceita` é conferido contra o elemento de fábrica.
 
 **Fase 5 — O tick de autoridade.** Aqui o cliente vira renderizador.
 

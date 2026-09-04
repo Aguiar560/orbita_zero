@@ -20,6 +20,7 @@ import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota, sincronizarInventario } from './inventario';
+import { drenarProgresso, sincronizarProgresso } from './progresso';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -177,6 +178,10 @@ export class Game {
     // A frota vem junto: quais cascos existem decide o que o Hangar mostra e o
     // que o jogador pode levar a campo.
     await sincronizarFrota(this.sim);
+    // A progressão vem por último e antes do laço: nível e Matriz decidem os
+    // atributos, e um quadro com o nível errado é uma piscada de números
+    // errados na primeira tela que o jogador vê.
+    await sincronizarProgresso(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -371,6 +376,9 @@ export class Game {
     // O inventário anda no mesmo relógio: coletar, descartar e equipar
     // acontecem no mesmo evento que enche a carteira — o setor caiu.
     void drenarInventario(this.sim);
+    // XP, Matriz e setor no mesmo relógio: o ganho é contínuo, mas mandá-lo
+    // no ritmo do setor basta — o delta acumula sozinho até o próximo ciclo.
+    void drenarProgresso(this.sim);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {

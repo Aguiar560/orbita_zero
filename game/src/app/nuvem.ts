@@ -275,13 +275,19 @@ function semODinheiro(estado: GameState): GameState {
     comandosDeItem: [],
     // O equipado também sai, e este era o furo: `inventory` vazio não basta se
     // a peça Divina viaja dentro de `naves[id].equipped`. O progresso da nave
-    // — nível e xp — continua subindo; o que sai é só o item.
-    naves: Object.fromEntries(
-      Object.entries(estado.naves).map(([id, n]) => [id, { ...n, equipped: {} }]),
-    ),
+    // — nem o nível nem o XP, desde a Fase 4 — sobe junto: o que resta em
+    // `naves` é a existência da entrada, e nada mais.
     // A frota mora na tabela `frota` desde a Fase 3c. Casco é poder — os
     // melhores custam cristal —, então a lista não pode ser escrita pelo
     // cliente e subir como se fosse verdade.
     fleet: [],
+    // XP, nível, Matriz e materiais moram no servidor desde a Fase 4. O
+    // `bestSectorEver` também: é ele que libera casco e conteúdo.
+    command: { ...estado.command, xp: 0, nivel: 1, allocated: [] },
+    armazem: {},
+    universe: { ...estado.universe, bestSectorEver: 1 },
+    naves: Object.fromEntries(
+      Object.entries(estado.naves).map(([id, n]) => [id, { ...n, equipped: {}, xp: 0, nivel: 1 }]),
+    ),
   };
 }

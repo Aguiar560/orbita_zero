@@ -14,6 +14,9 @@ import { conferirComandos, derivarColeta, podeIrPara, type Comandos } from './in
 import {
   cascoDoPiloto, conferirCompraDeCasco, conferirFusao, fundir,
 } from './fabrica';
+import {
+  conferirDelta, conferirMatriz, melhorSetor, nivelDoPiloto,
+} from './progresso';
 import { HULL_BY_ID } from '@data/hulls';
 import type { Item, SlotId } from '@sim/types';
 
@@ -303,6 +306,11 @@ export default {
     if (url.pathname === '/frota') {
       if (req.method === 'GET') return json({ frota: await frotaDe(env, usuario.id) }, 200, origem);
       if (req.method === 'POST') return adquirirCasco(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/progresso') {
+      if (req.method === 'GET') return json(await progressoDe(env, usuario.id), 200, origem);
+      if (req.method === 'POST') return gravarProgresso(req, env, usuario.id, origem);
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
@@ -1067,4 +1075,133 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
     .bind(id, corpo.casco, agora).run();
 
   return json({ frota: await frotaDe(env, id) }, 200, origem);
+}
+// ── progressão ──────────────────────────────────────────────────────────────
+
+/** XP, Matriz, setor alcançado, XP por nave e materiais. */
+async function progressoDe(env: Env, usuario: string) {
+  const [linha, naves, mats] = await Promise.all([
+    env.DB
+      .prepare('SELECT xp, melhor_setor, matriz FROM progresso WHERE usuario = ?')
+      .bind(usuario)
+      .first<{ xp: number; melhor_setor: number; matriz: string }>(),
+    env.DB
+      .prepare('SELECT casco, xp FROM naves_progresso WHERE usuario = ?')
+      .bind(usuario).all<{ casco: string; xp: number }>(),
+    env.DB
+      .prepare('SELECT material, quantia FROM materiais WHERE usuario = ?')
+      .bind(usuario).all<{ material: string; quantia: number }>(),
+  ]);
+
+  return {
+    xp: linha?.xp ?? 0,
+    melhorSetor: linha?.melhor_setor ?? 1,
+    // O nível vem JUNTO, derivado aqui. O cliente não recalcula: se ele
+    // derivasse por conta própria e a curva mudasse numa entrega, os dois
+    // discordariam e o jogador veria um nível que o servidor não reconhece.
+    nivel: nivelDoPiloto(linha?.xp ?? 0),
+    matriz: JSON.parse(linha?.matriz ?? '[]') as string[],
+    naves: Object.fromEntries(naves.results.map((n) => [n.casco, n.xp])),
+    materiais: Object.fromEntries(mats.results.map((m) => [m.material, m.quantia])),
+  };
+}
+
+/**
+ * Aplica os ganhos de progressão e a alocação da Matriz.
+ *
+ * ## Deltas para o que ACUMULA, valor absoluto para o que é ESCOLHA
+ *
+ * XP e materiais chegam como delta: são somas, e mandar o total faria duas
+ * abas abertas sobrescreverem uma à outra com o valor mais velho. A Matriz
+ * chega inteira porque não é acúmulo — é uma escolha que se refaz por completo
+ * a cada respec, e enviar "aloquei o nó X" exigiria que o servidor conhecesse a
+ * ordem dos comandos para validar o orçamento no meio do caminho.
+ *
+ * ## A Matriz é validada contra o nível DERIVADO, e nessa ordem
+ *
+ * O XP entra primeiro, o nível sai da curva, e só então a alocação é conferida
+ * contra os pontos desse nível. Conferir antes recusaria a alocação legítima de
+ * quem acabou de subir de nível no mesmo envio.
+ */
+async function gravarProgresso(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: {
+    xp?: unknown; setor?: unknown; matriz?: unknown;
+    naves?: Record<string, unknown>; materiais?: Record<string, unknown>;
+  };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const atual = await progressoDe(env, id);
+  const escritas: D1PreparedStatement[] = [];
+
+  // ── XP do piloto ──────────────────────────────────────────────────────────
+  let xp = atual.xp;
+  if (corpo.xp !== undefined) {
+    const d = conferirDelta(corpo.xp);
+    if (typeof d !== 'number') return json({ erro: d }, 400, origem);
+    xp = Math.max(0, atual.xp + d);
+  }
+
+  // ── setor alcançado ───────────────────────────────────────────────────────
+  let setor = atual.melhorSetor;
+  if (corpo.setor !== undefined) {
+    const s = melhorSetor(atual.melhorSetor, corpo.setor);
+    if (typeof s !== 'number') return json({ erro: s }, 400, origem);
+    setor = s;
+  }
+
+  // ── Matriz, contra o nível JÁ atualizado ──────────────────────────────────
+  let matriz = atual.matriz;
+  if (corpo.matriz !== undefined) {
+    const lista = corpo.matriz as string[];
+    const mau = conferirMatriz(lista, nivelDoPiloto(xp));
+    if (mau) return json({ erro: mau }, 409, origem);
+    matriz = lista;
+  }
+
+  escritas.push(env.DB.prepare(`
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(usuario) DO UPDATE SET
+      xp = excluded.xp, melhor_setor = excluded.melhor_setor,
+      matriz = excluded.matriz, atualizado_em = excluded.atualizado_em
+  `).bind(id, xp, setor, JSON.stringify(matriz), agora));
+
+  // ── XP por nave ───────────────────────────────────────────────────────────
+  for (const [casco, valor] of Object.entries(corpo.naves ?? {})) {
+    const d = conferirDelta(valor);
+    if (typeof d !== 'number') return json({ erro: d }, 400, origem);
+    if (casco.length > 64) continue;
+    escritas.push(env.DB.prepare(`
+      INSERT INTO naves_progresso (usuario, casco, xp) VALUES (?, ?, MAX(0, ?))
+      ON CONFLICT(usuario, casco) DO UPDATE SET xp = MAX(0, xp + ?)
+    `).bind(id, casco, d, d));
+  }
+
+  // ── materiais ─────────────────────────────────────────────────────────────
+  for (const [material, valor] of Object.entries(corpo.materiais ?? {})) {
+    const d = conferirDelta(valor);
+    if (typeof d !== 'number') return json({ erro: d }, 400, origem);
+    if (material.length > 64) continue;
+    // `MAX(0, ...)` no próprio SQL: material nunca fica negativo, e resolver
+    // isso aqui evita ler antes de escrever — que teria janela entre as duas.
+    escritas.push(env.DB.prepare(`
+      INSERT INTO materiais (usuario, material, quantia) VALUES (?, ?, MAX(0, ?))
+      ON CONFLICT(usuario, material) DO UPDATE SET quantia = MAX(0, quantia + ?)
+    `).bind(id, material, Math.trunc(d), Math.trunc(d)));
+  }
+
+  await env.DB.batch(escritas);
+  return json(await progressoDe(env, id), 200, origem);
 }
