@@ -8,10 +8,21 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 04/09/2026 · 962 testes passando · registro consolidado
+**Última atualização:** 04/09/2026 · 982 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
+
+## 04/09/2026 — painel de conquista entre ondas
+
+A transição de onda deixou de ser uma caixa opaca com borda simples e passou a
+usar a linguagem do cockpit: moldura holográfica recortada, profundidade de
+vidro, selo de conclusão, trilho conectado das ondas, núcleo próprio para o
+chefe e contagem regressiva luminosa. O desenho é vetorial no canvas, adapta-se
+à largura do palco e preserva a leitura da gameplay ao fundo.
+
+Verificação: captura direta dos pixels do canvas em 634×840, typecheck e build
+de produção concluídos; 982 testes passando.
 
 ## 04/09/2026 — Chat global e particular (implementação local)
 

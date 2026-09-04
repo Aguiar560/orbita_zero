@@ -2845,43 +2845,133 @@ export class VerticalMode {
      */
     const linhas = r ? this.linhasDoResumo(r) : [];
     const alturaDasLinhas = Math.ceil(linhas.length / 2) * 22;
-    const hgt = r ? 190 + alturaDasLinhas : 190;
+    const hgt = r ? 205 + alturaDasLinhas : 226;
     const w = Math.min(r ? 600 : 520, VIEW.w * 0.86);
     const cy = Math.max(hgt / 2 + 12, VIEW.h * (r ? 0.46 : 0.42));
 
     // Aparece rápido e some rápido, ficando estável no meio da pausa.
     const t = clamp01(Math.min(this.victoryHold - this.victory, this.victory) / 0.45);
     s.ctx.globalAlpha = t;
-    s.ctx.fillStyle = 'rgba(4,7,16,.76)';
+    const vinheta = s.ctx.createRadialGradient(cx, cy, 90, cx, cy, VIEW.h * 0.72);
+    vinheta.addColorStop(0, 'rgba(2,8,17,.36)');
+    vinheta.addColorStop(1, 'rgba(2,5,13,.82)');
+    s.ctx.fillStyle = vinheta;
     s.ctx.fillRect(0, 0, VIEW.w, VIEW.h);
 
     const cor = this.victoryKind === 'chefe' ? '#ffb638' : this.victoryKind === 'elite' ? '#c060ff' : '#7ed957';
 
     const topo = cy - hgt / 2;
-    s.ctx.fillStyle = 'rgba(8,13,26,.95)';
-    s.ctx.fillRect(cx - w / 2, topo, w, hgt);
-    s.ctx.strokeStyle = cor;
-    s.ctx.lineWidth = 2;
-    s.ctx.strokeRect(cx - w / 2, topo, w, hgt);
-    // Faixa de cor no topo: dá peso ao painel sem custar altura de leitura.
-    s.rect(cx - w / 2, topo, w, 3, cor);
+    this.drawMolduraDeConquista(s, cx, topo, w, hgt, cor);
 
     const fim = topo + hgt;
     if (r) this.drawResumoDeSetor(s, cx, topo, w, cor, r);
     else this.drawResumoDeOnda(s, cx, topo, cor);
 
-    const proxima = this.victoryLast ? 'Próximo setor' : 'Próxima onda';
+    const proxima = this.victoryLast ? 'PRÓXIMO SETOR' : 'PRÓXIMA ONDA';
     // A margem evita o clássico erro de borda: `victory` acumula `dt` em ponto
     // flutuante e cai em 4.0000001, que `ceil` arredondaria de volta para 5.
     const restam = Math.max(1, Math.ceil(this.victory - 0.01));
-    s.text(`${proxima} em ${restam}s`, cx, fim - 34, { size: 14, color: '#9fe8ff', align: 'center' });
+    s.text(`${proxima}  //  ${restam}s`, cx, fim - 34, { size: 12, color: '#9fe8ff', align: 'center', weight: 700, shadow: 'rgba(0,0,0,.9)' });
 
     // Barra de contagem, para a espera ser legível em vez de arbitrária.
     const bw = w - 60;
-    s.rect(cx - bw / 2, fim - 16, bw, 5, 'rgba(255,255,255,.12)');
-    s.rect(cx - bw / 2, fim - 16, bw * (1 - this.victory / this.victoryHold), 5, cor);
+    const progresso = clamp01(1 - this.victory / this.victoryHold);
+    s.rect(cx - bw / 2, fim - 15, bw, 3, 'rgba(126,172,203,.16)');
+    s.ctx.shadowColor = cor;
+    s.ctx.shadowBlur = 9;
+    s.rect(cx - bw / 2, fim - 15, bw * progresso, 3, cor);
+    s.ctx.shadowBlur = 0;
+    // Cursor luminoso: o tempo restante se lê mesmo sem acompanhar o número.
+    s.rect(cx - bw / 2 + bw * progresso - 1, fim - 18, 2, 9, '#d8f8ff');
 
     s.ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Moldura holográfica construída em canvas, sem imagem esticada.
+   *
+   * O painel anterior era um retângulo opaco com uma borda verde: parecia uma
+   * caixa HTML colocada sobre o jogo. Cantos recortados, duas profundidades de
+   * vidro e filetes interrompidos fazem a peça pertencer ao mesmo cockpit sem
+   * esconder a cena inteira. Geometria também escala com qualquer viewport.
+   */
+  private drawMolduraDeConquista(
+    s: Surface, cx: number, topo: number, w: number, hgt: number, cor: string,
+  ): void {
+    const ctx = s.ctx;
+    const left = cx - w / 2;
+    const right = cx + w / 2;
+    const bottom = topo + hgt;
+    const corte = 13;
+    const caminho = (recuo = 0): void => {
+      const l = left + recuo, r = right - recuo, t = topo + recuo, b = bottom - recuo;
+      const c = Math.max(5, corte - recuo);
+      ctx.beginPath();
+      ctx.moveTo(l + c, t); ctx.lineTo(r - c, t); ctx.lineTo(r, t + c);
+      ctx.lineTo(r, b - c); ctx.lineTo(r - c, b); ctx.lineTo(l + c, b);
+      ctx.lineTo(l, b - c); ctx.lineTo(l, t + c); ctx.closePath();
+    };
+
+    ctx.save();
+    caminho();
+    ctx.shadowColor = cor;
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = 'rgba(2,9,18,.88)';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    caminho();
+    ctx.clip();
+    const vidro = ctx.createLinearGradient(left, topo, right, bottom);
+    vidro.addColorStop(0, 'rgba(15,39,56,.97)');
+    vidro.addColorStop(.42, 'rgba(5,15,28,.96)');
+    vidro.addColorStop(1, 'rgba(3,10,22,.98)');
+    ctx.fillStyle = vidro;
+    ctx.fillRect(left, topo, w, hgt);
+
+    const halo = ctx.createRadialGradient(cx, topo + 65, 4, cx, topo + 65, w * .44);
+    halo.addColorStop(0, `${cor}28`);
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(left, topo, w, hgt * .72);
+
+    // Linhas de varredura quase invisíveis dão material ao vidro sem poluir.
+    ctx.fillStyle = 'rgba(151,222,247,.018)';
+    for (let y = topo + 8; y < bottom; y += 8) ctx.fillRect(left, y, w, 1);
+    ctx.restore();
+
+    ctx.save();
+    caminho();
+    ctx.strokeStyle = `${cor}dd`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    caminho(5);
+    ctx.strokeStyle = 'rgba(112,205,236,.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Trilho superior interrompido pelo núcleo central.
+    ctx.strokeStyle = `${cor}90`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(left + 34, topo + 10); ctx.lineTo(cx - 76, topo + 10);
+    ctx.moveTo(cx + 76, topo + 10); ctx.lineTo(right - 34, topo + 10);
+    ctx.stroke();
+    ctx.fillStyle = cor;
+    ctx.fillRect(left + 20, topo + 8, 7, 4);
+    ctx.fillRect(right - 27, topo + 8, 7, 4);
+
+    // Cantoneiras técnicas: reforçam a profundidade sem virar outra moldura.
+    ctx.strokeStyle = 'rgba(145,225,250,.72)';
+    ctx.lineWidth = 1;
+    for (const lado of [-1, 1]) {
+      const x = cx + lado * (w / 2 - 8);
+      ctx.beginPath();
+      ctx.moveTo(x, topo + 34); ctx.lineTo(x, topo + 58);
+      ctx.moveTo(x, bottom - 34); ctx.lineTo(x, bottom - 58);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**
@@ -2920,8 +3010,28 @@ export class VerticalMode {
   private drawResumoDeOnda(s: Surface, cx: number, topo: number, cor: string): void {
     const titulo = this.victoryKind === 'chefe' ? 'CHEFE DERROTADO'
       : this.victoryKind === 'elite' ? 'ELITE ABATIDA' : 'ONDA LIMPA';
-    s.text(titulo, cx, topo + 42, { size: 28, color: cor, align: 'center', shadow: 'rgba(0,0,0,.9)' });
-    s.text(this.victoryLabel, cx, topo + 70, { size: 15, color: '#dfe8f6', align: 'center' });
+    const ctx = s.ctx;
+    // Selo de confirmação: forma própria, não um emoji dependente de fonte.
+    ctx.save();
+    ctx.translate(cx, topo + 35);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = 'rgba(5,17,30,.96)';
+    ctx.strokeStyle = cor;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = cor;
+    ctx.shadowBlur = 14;
+    ctx.fillRect(-13, -13, 26, 26);
+    ctx.strokeRect(-13, -13, 26, 26);
+    ctx.shadowBlur = 0;
+    ctx.rotate(-Math.PI / 4);
+    ctx.strokeStyle = '#dfffe2';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-1, 5); ctx.lineTo(8, -6); ctx.stroke();
+    ctx.restore();
+
+    s.text('PROTOCOLO DE COMBATE  //  CONCLUÍDO', cx, topo + 65, { size: 8, color: '#7194aa', align: 'center', weight: 700 });
+    s.text(titulo, cx, topo + 91, { size: 27, color: cor, align: 'center', shadow: `${cor}66`, weight: 700 });
+    s.text(this.victoryLabel.toUpperCase(), cx, topo + 114, { size: 12, color: '#dfe8f6', align: 'center', weight: 700 });
 
     // Quantas ondas o setor tem, com a do chefe incluída — é o denominador
     // que o jogador precisa para saber quanto falta.
@@ -2929,20 +3039,30 @@ export class VerticalMode {
     const atual = Math.min(total, this.sim.state.run.wave);
     s.text(
       `Setor ${this.victorySector} · onda ${atual} de ${total}`,
-      cx, topo + 96, { size: 13, color: '#8ba0bd', align: 'center' },
+      cx, topo + 135, { size: 11, color: '#8ba0bd', align: 'center' },
     );
 
     // Trilha de ondas: as vencidas acesas, a do chefe redonda. Diz o mesmo que
     // a linha acima, mas de relance — e é o que dá sensação de avanço.
-    const passo = 26;
+    const passo = 30;
     const x0 = cx - (total - 1) * passo / 2;
     for (let i = 0; i < total; i++) {
       const venceu = i < atual;
-      const y = topo + 124;
+      const y = topo + 160;
       if (i === total - 1) {
-        s.circle(x0 + i * passo, y, 6, venceu ? '#ffb638' : 'rgba(255,182,56,.22)');
+        // O último marcador é o núcleo do chefe, não mais uma bolinha solta.
+        const x = x0 + i * passo;
+        s.ctx.save(); s.ctx.translate(x, y); s.ctx.rotate(Math.PI / 4);
+        s.ctx.fillStyle = venceu ? '#ffb638' : 'rgba(255,182,56,.18)';
+        s.ctx.strokeStyle = venceu ? '#ffe2a0' : 'rgba(255,182,56,.42)';
+        s.ctx.fillRect(-5, -5, 10, 10); s.ctx.strokeRect(-5, -5, 10, 10); s.ctx.restore();
       } else {
-        s.rect(x0 + i * passo - 6, y - 3, 12, 6, venceu ? cor : 'rgba(255,255,255,.14)');
+        const x = x0 + i * passo;
+        s.circle(x, y, 5, venceu ? cor : 'rgba(119,151,170,.15)');
+        s.ctx.strokeStyle = venceu ? `${cor}bb` : 'rgba(119,151,170,.34)';
+        s.ctx.lineWidth = 1;
+        s.ctx.beginPath(); s.ctx.arc(x, y, 8, 0, TAU); s.ctx.stroke();
+        if (i < total - 1) s.rect(x + 9, y - 1, passo - 18, 2, i + 1 < atual ? `${cor}88` : 'rgba(119,151,170,.18)');
       }
     }
   }

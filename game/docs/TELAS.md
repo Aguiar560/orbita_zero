@@ -910,6 +910,14 @@ Consome os 16 efeitos de modificador da Provação. Além dos números e especia
 `VerticalMode` desenha e executa invulnerabilidade cíclica, zonas telegrafadas,
 clones, barreira frontal e pontos fracos móveis.
 
+Entre ondas, a pausa de conquista usa uma moldura holográfica desenhada no
+próprio canvas: vidro translúcido, cantos recortados, selo de protocolo, trilho
+conectado das ondas e núcleo losangular para o chefe. A cor acompanha o tipo do
+encontro (onda, elite ou chefe), e a contagem regressiva combina número, barra
+luminosa e cursor — continua legível mesmo quando um dos sinais passa despercebido.
+O fundo permanece visível sob uma vinheta, porque a transição é parte do combate,
+não um modal que tira o jogador da cena.
+
 ---
 
 ## O que falta nas telas
