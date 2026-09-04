@@ -538,11 +538,27 @@ maior custo (combate).
    - **Falta:** vincular a conta anônima a um e-mail depois. Enquanto não
      existir, limpar o navegador perde a conta — o `refresh_token` mora no
      `localStorage` e não há outro caminho de volta.
-2. 🔴 **Sair do plano gratuito do Cloudflare** — *ação do Rafael, não é código.* Não é opcional: com sincronização a
-   cada 150 s, o teto de 100 mil escritas de linha por dia do D1 dá cerca de
-   **170 jogadores com a aba aberta o dia inteiro** — e aba aberta o dia inteiro
-   é exatamente o que um idle provoca. São US$ 5/mês de Workers e US$ 5/mês de
-   D1. Descobrir esse teto com jogadores dentro é pior do que pagar antes.
+2. 🟡 **Sair do plano gratuito do Cloudflare** — *ação do Rafael, não é código.*
+
+   **O número de 170 jogadores estava errado por ~17×, e a correção é de 04/09.**
+   Ele supunha ~1 escrita por sincronização, que era verdade quando só o save
+   subia. Desde então o livro-caixa, o inventário e a progressão escrevem junto:
+   medido, são **~33 linhas por ciclo de 150 s**, não uma.
+
+   | | escritas/ciclo | aba aberta 24 h | perfil de 2 h/dia |
+   |---|---|---|---|
+   | antes da coleta líquida | ~33 | ~5 jogadores | ~63 |
+   | **hoje** | **~17** | **~10 jogadores** | **~122** |
+
+   Metade das escritas era item coletado e descartado no mesmo ciclo — o
+   inventário terminava igual ao que começou. A coleta líquida (04/09) cortou
+   isso, e é o que dobrou o teto.
+
+   **Deixou de ser urgente, e não deixou de ser necessário.** Com o perfil
+   realista de 2 h/dia o grátis segura mais de cem jogadores; o aperto aparece
+   se muita gente deixar a aba a noite toda, que é o que um idle provoca. São
+   US$ 5/mês de Workers e US$ 5/mês de D1 — e descobrir o teto com jogadores
+   dentro continua sendo pior do que pagar antes.
 3. ✅ **Livro-caixa** (03/09). `server/migrations/0005-carteira.sql` e
    `server/src/carteira.ts`. `transacoes` é append-only e é a verdade;
    `saldos` é cache reconstruível. `GET /carteira` já lê, com o mesmo balde
