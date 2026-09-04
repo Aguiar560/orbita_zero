@@ -742,13 +742,79 @@ casco, nenhum material, nenhuma nave com XP, recursos e VIP em zero.
 
 **Fase 5 — O tick de autoridade.** Aqui o cliente vira renderizador.
 
-> ⚠️ **Trabalho que o plano não previa, achado em 03/09.** `sim/` e `data/` não
-> são tão livres de DOM quanto o `CLAUDE.md` afirma: `sim/index.ts` importa
-> `@app/Bus`, `sim/state.ts` usa `localStorage`, `data/clips.ts` importa
-> `@render/Anim` e `data/onboarding.ts` importa `@ui/Tour`. `loot.ts`,
-> `progression.ts` e `balance/` estão limpos — foi o que permitiu a Fase 3a —,
-> mas **a classe `Sim` não roda no Worker hoje**, e esta fase depende disso.
-> Descontaminar esses quatro pontos é pré-requisito.
+#### Levantamento de 03/09 — a fase NÃO está bloqueada
+
+> ⚠️ **Correção.** Eu havia registrado que `Sim` não roda no Worker e que
+> descontaminar `sim/` era pré-requisito. **Estava errado**, e a medição
+> mostrou o contrário. O que eu tinha visto eram erros do `tsc` do servidor, e
+> confundi erro de TIPO com impedimento de EXECUÇÃO.
+
+**O que a auditoria encontrou:** quatro erros de compilação, de duas causas —
+e nenhuma delas é contaminação real.
+
+| erro | o que é de verdade |
+|---|---|
+| `sim/index.ts` importa `@app/Bus` | **Não é contaminação.** `Bus.ts` importa só TIPOS de `sim/` e não toca DOM. Falta o alias `@app` no `tsconfig` do servidor — uma linha. |
+| `localStorage` em `sim/state.ts` (3×) | Erro de TIPO: o `lib` do Worker não tem DOM. Em execução as três chamadas estão dentro de `try/catch` e degradam sozinhas. |
+
+**Medido, não deduzido.** Um teste rodando em ambiente sem `window`, sem
+`document` e sem `localStorage` — a mesma situação do Worker — instanciou
+`Sim`, rodou `applyOffline(3600)` e chamou `save()` sem estourar. Os 900
+testes da suíte já provavam isso o tempo todo: eles instanciam `Sim` em Node.
+
+**O custo de CPU, que era a dúvida de verdade:**
+
+| tempo de jogo simulado | custo |
+|---|---|
+| 150 s (um ciclo de sincronização) | **2,5 ms** |
+| 1 hora | 8,3 ms |
+| 4 horas (recuperação de ausência) | 22,9 ms |
+| 100 jogadores × 150 s | 18 ms no total — **0,18 ms cada** |
+
+Cabe folgado até no plano gratuito. O pacote do Worker com `Sim` dentro vai a
+**398 KiB / 112 KiB comprimido**, contra o teto de 1 MB do gratuito e 10 MB do
+pago.
+
+#### O trabalho real desta fase
+
+Não é descontaminar `sim/`. É **montar um `GameState` no servidor**: hoje ele
+guarda o estado em pedaços (carteira, itens, frota, progresso), e `abstractTick`
+precisa do objeto inteiro.
+
+A boa notícia é que os pedaços que faltam são os que NÃO decidem poder:
+
+| o servidor já tem | ainda é só do cliente |
+|---|---|
+| `resources`, `vip`, `armazem` | `run` (setor e onda em curso) |
+| `inventory` e o equipado de cada nave | `settings` (postura da IA, modo de controle) |
+| `fleet`, XP e nível de cada nave | `hull` e `piloto` (nave em campo) |
+| `command` (XP, nível, Matriz) | `provacao`, `missoes`, `eventos`, `codex`, `chests` |
+| `universe.bestSectorEver` | `stats`, `lifetime`, `playtime` |
+
+Ou seja: **tudo que determina PODER já é do servidor.** O que falta é contexto
+de cena — onde a nave está e como ela se comporta. É por isso que a fase é
+grande mas não é arriscada: nenhuma das peças que faltam entra no cálculo de
+atributos.
+
+**Os passos, em ordem**
+
+1. Alias `@app` no `tsconfig` do servidor, e trocar as três chamadas de
+   `localStorage` por uma porta injetada — não porque quebram, mas porque em
+   Worker elas registram um `console.error` a cada gravação, e log que sempre
+   aparece é log que ninguém lê.
+2. `run`, `hull` e a postura da IA passam a subir junto do ciclo — são poucos
+   campos e já viajam no save hoje.
+3. O servidor monta o `GameState`, roda `abstractTick` pelo tempo decorrido e
+   grava os deltas nas tabelas que já existem.
+4. O cliente para de REPORTAR ganho e passa a RECEBER. `state.pendentes` e
+   `comandosDeItem` deixam de existir; sobra a previsão local para desenhar,
+   corrigida quando o servidor responde.
+
+**O que continua fora do alcance, e é honesto dizer:** o jogador ainda escolhe
+quando fechar a aba. Um cliente adulterado pode reportar tempo decorrido maior
+do que o real — mas o servidor tem carimbo próprio, então isso vira uma
+conferência de relógio, não de conteúdo. É um problema muito menor que o de
+hoje.
 
 - O servidor calcula, por intervalo, o que aconteceu: abates, perdas, itens,
   recursos, XP — a partir dos atributos guardados e do tempo decorrido.
