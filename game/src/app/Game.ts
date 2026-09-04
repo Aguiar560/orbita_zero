@@ -244,6 +244,10 @@ export class Game {
     const r = await creditarAusencia(this.sim);
     if (!r || r.segundos <= 0) return;
 
+    // A patente ANTES de resincronizar: é a sincronização que traz o nível
+    // novo do servidor, então medir depois dela não teria com o que comparar.
+    const nivelAntes = this.sim.state.command.nivel;
+
     await Promise.all([
       sincronizarCarteira(),
       sincronizarInventario(this.sim),
@@ -259,6 +263,10 @@ export class Game {
         sectorsCleared: r.setores ?? 0,
         kills: r.abates ?? 0,
         chests: r.baus ?? 0,
+        // Os três que o servidor já mandava e ninguém lia.
+        xp: r.xp ?? 0,
+        itens: r.itensNovos ?? 0,
+        niveis: Math.max(0, this.sim.state.command.nivel - nivelAntes),
       });
     }
   }

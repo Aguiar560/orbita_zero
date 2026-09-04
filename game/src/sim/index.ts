@@ -163,6 +163,19 @@ export interface OfflineReport {
   sectorsCleared: number;
   kills: number;
   chests: number;
+  /**
+   * XP do piloto ganho na ausência.
+   *
+   * O servidor já devolvia este número e o cliente o descartava: o relatório
+   * mostrava "22 abates" e mais nada, num setor onde a carga não é depositada
+   * porque nenhum setor caiu. O jogador voltava de doze minutos achando que
+   * não tinha ganhado nada — e tinha ganhado XP o tempo todo.
+   */
+  xp?: number;
+  /** Níveis de piloto subidos. Zero é o normal numa ausência curta. */
+  niveis?: number;
+  /** Peças novas no inventário. */
+  itens?: number;
 }
 
 /**

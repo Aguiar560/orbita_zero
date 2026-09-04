@@ -8110,3 +8110,9 @@ select option:disabled { color: #667991; }
 /* O título empurra o resto para a direita. Sem isto o space-between espalharia
  * os TRÊS filhos e o "?" pousaria no meio do cabeçalho. */
 .camada-topo h1 { margin-right: auto; }
+
+/* A patente subida no relatório de ausência: é a única LINHA de acontecimento
+ * ali, entre números, e precisa se distinguir deles sem virar alerta. */
+.offline-patente {
+  margin: 2px 0 6px; font-size: 12px; color: #9fe8ff;
+}

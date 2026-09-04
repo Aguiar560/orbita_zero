@@ -895,18 +895,43 @@ export class Shell {
   showOfflineReport(report: OfflineReport): void {
     if (report.seconds < 60) return;
 
-    const rows = RESOURCE_IDS
-      .filter((id) => report.gained[id] > 0)
-      .map((id) => h('.offline-row', {},
-        spriteIcon(RESOURCE_META[id].icon, 22),
-        h('span', { text: RESOURCE_META[id].label }),
-        h('strong', { text: `+${fmt(report.gained[id])}`, style: { color: RESOURCE_META[id].color } }),
-      ));
+    /**
+     * O XP entra na MESMA grade das moedas, e em primeiro lugar.
+     *
+     * O relatório mostrava só "N abates" e a grade vinha vazia sempre que
+     * nenhum setor caía — porque o abate paga em CARGA, e a carga só vira saldo
+     * ao concluir o setor. O jogador voltava de doze minutos lendo "22 abates"
+     * e concluía que a ausência não rendeu nada. Rendeu XP o tempo todo: o
+     * servidor mandava o número e ninguém o lia.
+     */
+    const linha = (icone: string, rotulo: string, valor: string, cor: string): HTMLElement =>
+      h('.offline-row', {}, spriteIcon(icone, 22), h('span', { text: rotulo }),
+        h('strong', { text: valor, style: { color: cor } }));
+
+    const rows = [
+      (report.xp ?? 0) > 0 ? linha('node/exp', 'XP', `+${fmt(report.xp!)}`, '#9fe8ff') : null,
+      ...RESOURCE_IDS
+        .filter((id) => report.gained[id] > 0)
+        .map((id) => linha(RESOURCE_META[id].icon, RESOURCE_META[id].label,
+          `+${fmt(report.gained[id])}`, RESOURCE_META[id].color)),
+      (report.itens ?? 0) > 0
+        ? linha('ui/icon_star', report.itens === 1 ? 'Peça nova' : 'Peças novas',
+          `+${report.itens}`, '#e0b0ff')
+        : null,
+    ].filter(Boolean) as HTMLElement[];
 
     const modal = h('.modal-backdrop', {},
       h('.modal', {},
         h('h2', { text: 'Relatório de ausência' }),
         h('p.muted', { text: `A frota operou sozinha por ${duration(report.seconds)}${report.capped ? ' (teto atingido)' : ''}.` }),
+        // Subir de patente é o único acontecimento aqui, e não um número: ele
+        // dá ponto de Matriz, que é uma decisão esperando o jogador.
+        (report.niveis ?? 0) > 0
+          ? h('p.offline-patente', {
+            text: report.niveis === 1 ? 'Subiu uma patente — há ponto de Matriz para gastar.'
+              : `Subiu ${report.niveis} patentes — há pontos de Matriz para gastar.`,
+          })
+          : null,
         h('.offline-grid', {}, ...rows),
         h('.offline-extra', {},
           h('span', { text: `${fmt(report.kills)} abates` }),
