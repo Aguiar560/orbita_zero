@@ -67,13 +67,13 @@ function tabela(cabecalho: string[], linhas: string[][]): void {
  * CHEFE: foi essa leitura que explicou por que `curva` chama de "trivial" um
  * setor onde a simulação morre nove vezes em cinco minutos.
  */
-function comandoGanho(de: number, ate: number, passo: number): void {
+function comandoGanho(de: number, ate: number, passo: number, janela: number): void {
   console.log('setor  casco                 xp/s   setores  mortes   morte.na.onda');
   console.log('─'.repeat(78));
 
   const linhas: { setor: number; xp: number }[] = [];
   for (let setor = de; setor <= ate; setor += passo) {
-    const g = medirGanho(setor);
+    const g = medirGanho(setor, janela);
     linhas.push({ setor, xp: g.xpPorSegundo });
     console.log(
       String(setor).padStart(5),
@@ -465,13 +465,13 @@ switch (comando) {
     comandoAfixos(Number(args[0] ?? 30), Number(args[1] ?? 5));
     break;
   case 'ganho':
-    comandoGanho(Number(args[0] ?? 1), Number(args[1] ?? 60), Number(args[2] ?? 1));
+    comandoGanho(Number(args[0] ?? 1), Number(args[1] ?? 60), Number(args[2] ?? 1), Number(args[3] ?? 300));
     break;
   default:
     console.log(`Arnês de simulação do Órbita Zero.
 
   npm run simular -- curva <de> <ate>           dificuldade × poder, setor a setor
-  npm run simular -- ganho <de> <ate> <passo>   ganho por segundo, setor a setor
+  npm run simular -- ganho <de> <ate> <passo> <janela>  ganho/s, setores limpos e mortes
   npm run simular -- drops <amostras> [sorte]   distribuição de raridade
   npm run simular -- item <ilvl> [amostras]     dispersão de poder por item
 

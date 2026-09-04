@@ -11,6 +11,14 @@ export interface GameEvents {
 
   'sector:advanced': { universe: number; sector: number };
   'sector:failed': { sector: number; perdido: Resources; resumo: ResumoDaMorte };
+  /**
+   * O laço recuou um setor para farmar.
+   *
+   * Acontece depois de três falhas seguidas no mesmo lugar. É evento e não
+   * fato: a tela avisa, e se ninguém ouvir o jogo continua igual — o recuo já
+   * aconteceu no estado.
+   */
+  'sector:recuado': { de: number; para: number };
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };

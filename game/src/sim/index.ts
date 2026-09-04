@@ -69,6 +69,13 @@ import { aplicarFatoAoEvento, progressoDoEvento, type ProgressoDeEvento } from '
  * (§28), não a quantidade de cada um, então este número existe só para o
  * contador não virar notação científica na tela.
  */
+/**
+ * Falhas no mesmo setor até o laço recuar e ir farmar.
+ *
+ * Uma é azar: a rolagem do encontro varia. Três seguidas são falta de poder.
+ */
+const FALHAS_PARA_RECUAR = 3;
+
 const PILHA_MAX = 999_999_999;
 
 import { galaxyOfSector } from '@data/galaxies';
@@ -1309,6 +1316,50 @@ export class Sim {
     // moeda que mais importa num idle.
     run.wave = 1;
     run.falhasNoSetor = (run.falhasNoSetor ?? 0) + 1;
+
+    /**
+     * Bateu na parede três vezes? Recua um setor e farma.
+     *
+     * ## O que acontecia antes
+     *
+     * Nada. `falhasNoSetor` era contado e ninguém lia. O laço reiniciava o
+     * MESMO setor para sempre, então a nave que não vence o chefe fica
+     * morrendo até alguém abrir a aba e perceber.
+     *
+     * Medido com `npm run simular -- ganho 1 30 4`, antes desta mudança: o
+     * setor 1 conclui três vezes em cinco minutos sem morrer; do setor 5 em
+     * diante, **zero conclusões e de 6 a 25 mortes** na mesma janela. A onda
+     * comum nunca mata — quem mata é o chefe, e a nave batia nele indefinidamente.
+     *
+     * ## Por que recuar, e não parar
+     *
+     * Porque é o que o jogador faria: volta, farma item e XP melhores, e sobe
+     * de novo. Parar guardaria a nave e o idle deixaria de render; insistir é
+     * o que já acontecia e não rende nada além de morte.
+     *
+     * ## Por que TRÊS, e por que um setor de cada vez
+     *
+     * Uma falha é azar — a rolagem do encontro varia. Três seguidas no mesmo
+     * setor não são azar, são falta de poder. E recuar UM por vez encontra o
+     * degrau mais alto que a nave vence, em vez de despachá-la para o começo:
+     * se um setor abaixo também não passar, a próxima trinca recua de novo.
+     *
+     * ## Por que vale também fora do jogo
+     *
+     * `completeEncounter` não AVANÇA no caminho abstrato, e de propósito: o
+     * jogador escolheu aquela fase e avançar sozinho o levaria para uma que ele
+     * não escolheu. Recuar é o contrário disso — ninguém escolhe morrer em
+     * série, e a fase de origem continua liberada por `bestSector`. O ponteiro
+     * volta; o acesso, não.
+     */
+    if (run.falhasNoSetor >= FALHAS_PARA_RECUAR && run.sector > 1) {
+      run.sector -= 1;
+      run.falhasNoSetor = 0;
+      // `run.cleared` NÃO é zerado: recuar não des-limpa o que já foi limpo. A
+      // primeira versão zerava, e com isso apagava o único número que mostra se
+      // o recuo funcionou.
+      bus.emit('sector:recuado', { de: run.sector + 1, para: run.sector });
+    }
     // Renasce inteiro: morrer já custa XP, nível, ponto de Matriz e carga, e a
     // cena devolve a nave cheia. Manter a vida gasta puniria duas vezes.
     run.vidaFracao = 1;

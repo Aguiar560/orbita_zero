@@ -41,7 +41,15 @@ export interface GanhoDoSetor {
   xpPorSegundo: number;
   sucataPorSegundo: number;
   nucleoPorSegundo: number;
-  /** Setores concluídos na janela. Zero significa que ele empacou ali. */
+  /**
+   * Setores CONCLUÍDOS na janela.
+   *
+   * `run.cleared`, e não a diferença de `run.sector`. A primeira versão media o
+   * ponteiro e reportava zero em toda a curva — mas o caminho abstrato NÃO move
+   * o ponteiro de propósito (ver `completeEncounter`: fora do jogo a fase nunca
+   * avança, para não levar o jogador a um setor que ele não escolheu). O
+   * medidor estava contando a decisão de design, não a capacidade da nave.
+   */
   setoresLimpos: number;
   mortes: number;
   /**
@@ -102,7 +110,7 @@ export function medirGanho(setor: number, janela = 300, repeticoes = 3): GanhoDo
       xp: estado.command.xp,
       sucata: estado.resources.sucata,
       nucleo: estado.resources.nucleo,
-      setor: estado.run.sector,
+      limpos: estado.run.cleared,
       mortes: estado.stats.deaths ?? 0,
     };
 
@@ -115,7 +123,7 @@ export function medirGanho(setor: number, janela = 300, repeticoes = 3): GanhoDo
       xp: (estado.command.xp - antes.xp) / janela,
       sucata: (estado.resources.sucata - antes.sucata) / janela,
       nucleo: (estado.resources.nucleo - antes.nucleo) / janela,
-      setores: estado.run.sector - antes.setor,
+      setores: estado.run.cleared - antes.limpos,
       mortes: (estado.stats.deaths ?? 0) - antes.mortes,
       segundos,
     };

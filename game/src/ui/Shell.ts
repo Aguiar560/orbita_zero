@@ -336,6 +336,14 @@ export class Shell {
     });
 
     bus.on('sector:advanced', ({ sector }) => this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star'));
+    // O recuo é FATO, não conselho: o jogo moveu o setor do jogador, e ele
+    // precisa saber por que a fase mudou sozinha. A frase diz o que aconteceu
+    // e por quê, sem mandar ninguém fazer nada — a decisão de voltar a subir
+    // continua sendo dele, e o setor de origem segue liberado no mapa.
+    bus.on('sector:recuado', ({ de, para }) => this.pushToast(
+      `Recuando do setor ${de} para o ${para} — três quedas seguidas`,
+      'bad', 'ui/icon_star',
+    ));
     bus.on('boss:defeated', ({ name }) => this.pushToast(`${name} destruído`, 'epic', 'fx/blast_fire_3'));
     // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a
     // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
