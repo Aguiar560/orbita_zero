@@ -17,7 +17,8 @@
     "paths": {
       "@core/*": ["../src/core/*"],
       "@sim/*": ["../src/sim/*"],
-      "@data/*": ["../src/data/*"]
+      "@data/*": ["../src/data/*"],
+      "@app/*": ["../src/app/*"]
     }
   },
   "include": ["src"]

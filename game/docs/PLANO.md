@@ -798,10 +798,23 @@ atributos.
 
 **Os passos, em ordem**
 
-1. Alias `@app` no `tsconfig` do servidor, e trocar as três chamadas de
-   `localStorage` por uma porta injetada — não porque quebram, mas porque em
-   Worker elas registram um `console.error` a cada gravação, e log que sempre
-   aparece é log que ninguém lê.
+1. ✅ **Feito em 03/09.** Alias `@app` no `tsconfig` do servidor, e o
+   `localStorage` trocado por uma porta (`Cofre`) que se detecta sozinha. Com
+   isso o Worker importa `Sim` e os DOIS lados compilam limpos.
+
+   A detecção alcança `localStorage` por `globalThis`, e não pelo nome, para o
+   `lib` do Worker continuar SEM DOM — é essa checagem que vai avisar da
+   próxima vez que alguém puser navegador dentro de `sim/`.
+
+   Entrou junto um teste de guarda (`sim-sem-dom.test.ts`) que varre `sim/` e
+   `data/` atrás de globais de navegador e de import em valor vindo de `ui/`,
+   `render/` ou `modes/`. **Ele achou duas coisas que eu não tinha visto:** um
+   falso positivo meu (`sanear.ts` menciona `localStorage` num COMENTÁRIO — o
+   teste passou a ignorar comentários) e uma violação real, `data/clips.ts`
+   importando `@render/Anim`, que puxa `new Image()`. Esta última fica como
+   exceção declarada: medido, nada em `sim/` importa `clips.ts`, então ela
+   nunca entra no grafo do Worker — e há um teste separado que quebra no dia em
+   que entrar.
 2. `run`, `hull` e a postura da IA passam a subir junto do ciclo — são poucos
    campos e já viajam no save hoje.
 3. O servidor monta o `GameState`, roda `abstractTick` pelo tempo decorrido e

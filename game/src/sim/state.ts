@@ -394,23 +394,91 @@ export function migrate(raw: unknown): GameState | null {
  */
 let wiped = false;
 
+/**
+ * Onde o save é guardado.
+ *
+ * ## Por que uma porta, e não `localStorage` direto
+ *
+ * `sim/` não conhece navegador — é a regra de camada nº 1, e ela existe para
+ * o mesmo arquivo que o jogo usa poder rodar no Worker. Nomear `localStorage`
+ * aqui era a última coisa que a quebrava.
+ *
+ * Vale dizer que nunca foi um impedimento de EXECUÇÃO: as chamadas estavam em
+ * `try/catch` e degradavam sozinhas. O problema era outro e mais chato — em
+ * ambiente sem `localStorage`, cada gravação registrava um `console.error`, e
+ * o jogo grava a cada dez segundos. Log que sempre aparece é log que ninguém
+ * lê, e ele afogaria o erro de verdade quando houvesse um.
+ */
+export interface Cofre {
+  ler(chave: string): string | null;
+  gravar(chave: string, valor: string): void;
+  apagar(chave: string): void;
+}
+
+/** Cofre que não guarda nada. É o padrão fora do navegador. */
+export const COFRE_VAZIO: Cofre = {
+  ler: () => null,
+  gravar: () => {},
+  apagar: () => {},
+};
+
+/**
+ * O armazenamento do navegador, alcançado por `globalThis` e não pelo nome.
+ *
+ * Escrever `localStorage` direto funcionaria em execução — em ambiente sem ele,
+ * `typeof` devolve 'undefined' sem estourar. Mas não COMPILA no Worker, cujo
+ * `lib` não tem DOM, e essa é a checagem que a gente quer manter ligada: é ela
+ * que vai avisar da próxima vez que alguém puser DOM de verdade dentro de
+ * `sim/`. Silenciar o `lib` para acomodar estas seis linhas custaria a rede de
+ * proteção inteira.
+ */
+interface ArmazenamentoAmbiente {
+  getItem(chave: string): string | null;
+  setItem(chave: string, valor: string): void;
+  removeItem(chave: string): void;
+}
+
+const armazenamento = (): ArmazenamentoAmbiente | undefined =>
+  (globalThis as { localStorage?: ArmazenamentoAmbiente }).localStorage;
+
+function cofreDoNavegador(): Cofre | null {
+  const ls = armazenamento();
+  if (!ls) return null;
+  try {
+    const sonda = `${SAVE_KEY}:sonda`;
+    ls.setItem(sonda, '1');
+    ls.removeItem(sonda);
+  } catch {
+    // Existe e lança ao ser tocado: janela privada, ou cookies de terceiros
+    // bloqueados. Testar só a existência daria um cofre que estoura no
+    // primeiro uso de verdade.
+    return null;
+  }
+  return {
+    ler: (c) => { try { return ls.getItem(c); } catch { return null; } },
+    gravar: (c, v) => { try { ls.setItem(c, v); } catch { /* cheio ou bloqueado */ } },
+    apagar: (c) => { try { ls.removeItem(c); } catch { /* ignora */ } },
+  };
+}
+
+let cofre: Cofre = cofreDoNavegador() ?? COFRE_VAZIO;
+
+/** Troca o cofre. Para o Worker, e para testar sem tocar no navegador. */
+export function definirCofre(novo: Cofre): void {
+  cofre = novo;
+}
+
+/** Existe onde guardar? A tela de Ajustes usa para não prometer o que não há. */
+export const temCofre = (): boolean => cofre !== COFRE_VAZIO;
+
 export function saveToStorage(state: GameState): void {
   if (wiped) return;
   state.savedAt = Date.now();
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  } catch (err) {
-    console.error('[save] falha ao gravar:', err);
-  }
+  cofre.gravar(SAVE_KEY, JSON.stringify(state));
 }
 
 export function loadFromStorage(): { state: GameState; offlineSeconds: number } | null {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(SAVE_KEY);
-  } catch {
-    return null;
-  }
+  const raw = cofre.ler(SAVE_KEY);
   if (!raw) return null;
 
   try {
@@ -432,11 +500,7 @@ export function loadFromStorage(): { state: GameState; offlineSeconds: number } 
  */
 export function clearStorage(): void {
   wiped = true;
-  try {
-    localStorage.removeItem(SAVE_KEY);
-  } catch {
-    /* ignora */
-  }
+  cofre.apagar(SAVE_KEY);
 }
 
 /** Apenas para importar um save: reabilita a gravação. */
