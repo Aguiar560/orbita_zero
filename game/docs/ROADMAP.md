@@ -1291,6 +1291,144 @@ elementais. Relatório completo:
 
 ---
 
+## 04/09/2026 — coleta, vocabulário, tutoriais e o teto que mede
+
+Uma sessão longa, com duas correções de MEDIÇÃO que importam mais que o
+código: em duas ocasiões um número registrado como verdade estava errado, e
+nas duas o erro era a grandeza medida, não a conta.
+
+### Item que não cabe não é coletado
+
+`rollDrops` tirava a peça do lote e entregava; `stash` descobria que o
+Inventário estava cheio e a jogava fora. O lote tem cursor e não volta atrás,
+então o jogador GASTAVA uma peça para receber nada — e a única diferença
+visível era a cápsula que nunca apareceu.
+
+Agora `rollDrops` espia antes de consumir. Medido no navegador com o
+Inventário lotado: **0 entregues, 0 consumidos do lote, 0 comandos ao
+servidor**. Com espaço, 3 e 3. Entrou junto a mensagem "Inventário Cheio!" no
+meio da tela — vermelha, sem moldura e sem fundo, porque é um estado
+momentâneo e não uma decisão a tomar.
+
+### Coleta líquida no servidor
+
+A mesma economia do outro lado. Medido: caem ~186 itens por hora, ~8 por ciclo
+de 150 s, e o inventário NÃO cresce — o descarte automático some com quase
+todos. O servidor inseria 8 linhas e apagava 8 por ciclo para o inventário
+terminar igual: **~16 das ~33 escritas do ciclo**, metade do custo de D1 do
+jogo inteiro, gasta para não guardar nada.
+
+O servidor resolve sozinho porque já DERIVA o que a coleta produziu e já
+recebe a lista de descarte: a interseção é o que nasceu e morreu no mesmo
+lote. Protocolo e cliente não mudaram.
+
+### O Armazém passou a ser ilimitado
+
+Ele aceitava 15 TIPOS de material num catálogo de **70**, e o tipo que não
+coubesse era perdido em SILÊNCIO — `guardarMaterial` devolvia 0 e quase nenhum
+dos sete pontos que o chamam olhava o retorno. A decisão que o teto pretendia
+criar nem podia existir: não há como desistir de um tipo para abrir espaço a
+outro sem jogar fora o que já se tem.
+
+Saiu com ele o que o teto causava: desmontar podia devolver `null` sem
+explicação, e o descarte automático VENDIA em vez de desmontar "como
+proteção", ignorando o que o jogador escolheu. Medido: **70 de 70 tipos
+aceitos, zero recusados**. Quem limita é o Inventário.
+
+### Sem sessão não se entra
+
+`Login` resolvia com `null` quando o cadastro anônimo falhava, e deixava jogar
+só com o save do navegador. O argumento valia enquanto o loot rolava no
+cliente. Depois da Fase 3 o lote vem do servidor: **`garantirLote` desiste sem
+token e nenhum item cai, nunca** — enquanto abate, XP e recurso seguem
+entrando, então nada parece quebrado. A dívida de drop não cobre o caso: teto
+de 100, só em memória, morre com a aba.
+
+`mostrar` devolve `Promise<Sessao>`, sem `| null` — o tipo é a regra. Ninguém
+precisa dar e-mail: a conta anônima entra com um clique. O que a porta cobra é
+uma SESSÃO, não um cadastro.
+
+### O jogo não tem "fase": tem onda e setor
+
+A palavra estava na tela com TRÊS sentidos, dois no mesmo painel: "FASE
+CONCLUÍDA" para um setor, "fase N" para a posição do setor na galáxia, e
+"Próxima fase" para o setor seguinte. Mais treze comentários internos que
+diziam "trava de fase" quando queriam dizer setor.
+
+Três nomes de conteúdo ficam por decisão do Rafael — **Agulha de Fase**,
+**Salto de Fase** e **Barreira de Fase** —, onde a palavra é sabor de física e
+não unidade de progressão.
+
+### O painel de conclusão presta contas
+
+Era o mesmo painel para onda e setor: três linhas e uma contagem. Virou dois.
+A onda limpa é passagem, com trilha de seis marcas. O **setor concluído** é o
+único momento em que a carga retida vira saldo, e até aqui o número aparecia
+somado no HUD sem ninguém ver de onde veio — agora mostra tempo, XP, carga,
+materiais, itens, baús, abates, chefes e quedas, só o que não é zero. A espera
+do setor dobrou para 10 s; a da onda continua em 5 s.
+
+### Fase 5, passo 4 — o servidor MEDE, e não impede
+
+**A correção de medição que destravou o passo.** Estava registrado que "no
+setor 1 o teto fica três vezes ABAIXO do ganho honesto", e era esse número que
+travava tudo. Aquilo foi medido em **XP** — e o livro-caixa não registra XP,
+registra sucata, núcleo e cristal. Refeita em MOEDA:
+
+| setor | moeda/s honesta | teto de registro/s | uso |
+|---|---|---|---|
+| 1 | 1,83 | 24,8 | 7,4% |
+| 21 | 102,3 | 9.464,7 | 1,1% |
+| 85 | 20.004 | 1.198.203 | 1,7% |
+| 180 | 1.140.871 | 15.358.643 | **7,4%** |
+| 300 | 1.601.305 | 79.077.022 | 2,0% |
+
+Pior caso **7,4% em toda a faixa de 1 a 300** — folga de 13×. A fórmula nunca
+esteve errada; estava sendo comparada com a grandeza errada.
+
+Entrou `server/src/teto.ts` (importa `TAXA_DE_ENTRADA` e `sectorBounty` do
+próprio jogo, sem cópia) e a tabela `excedentes`. Só o excedente é gravado,
+com margem de 10×, então quem joga normal não gera uma linha. **A tabela ficar
+vazia é o resultado esperado.**
+
+### O teto do plano gratuito estava ~17× otimista
+
+O `PLANO` dizia "cerca de 170 jogadores com a aba aberta o dia inteiro". Isso
+supunha ~1 escrita por sincronização, verdade quando só o save subia. Com o
+livro-caixa, o inventário e a progressão escrevendo junto são ~33 por ciclo:
+**~5 jogadores**, não 170. Com a coleta líquida, ~10 em 24 h ou ~122 no perfil
+de 2 h/dia.
+
+### Um tutorial por tela
+
+Catorze telas ganharam guia próprio, no mesmo motor do passeio de entrada —
+furo no escuro, zoom no alvo, três a cinco passos. Abre na primeira vez que a
+tela é ABERTA (não ao ser liberada: a liberação acontece no meio de uma luta),
+e um "?" no cabeçalho comum da camada reabre.
+
+**Dois defeitos meus no caminho.** O tutorial do Hangar foi escrito sob a
+chave `hangar`, mas o id do painel é `frota` — o teste pegou na primeira
+execução. E o gatilho, posto em `abrirCamada`, disparava a cada REDESENHO:
+`renderPanel` roda no laço do jogo, então os balões empilhavam e fechar um
+deixava a camada escura dos outros. Duas guardas: o `Shell` só dispara na
+troca de tela, o `Game` recusa um segundo passeio.
+
+### O histórico de migrações do D1 estava perdido
+
+`d1_migrations` vazia com sete migrações já aplicadas. Sem histórico, o
+`migrations apply` tentava reaplicar desde a 0002 — que é `ALTER TABLE ADD
+COLUMN`, não é idempotente — falhava com "duplicate column name" e parava ali.
+Por isso `itens`, `progresso` e `excedentes` nunca nasceram, e `/inventario`
+respondia 500 (que o navegador relata como erro de CORS, porque resposta 500
+não carrega o cabeçalho).
+
+Reparado com `server/reparos/registrar-migracoes-ja-aplicadas.sql`. Verificado
+depois: 10 registradas, as cinco tabelas criadas, `lotes` com as colunas
+`usados_*`, e `/inventario`, `/progresso`, `/carteira` e `/lote` respondendo
+**200**.
+
+---
+
 ## Dívidas conhecidas
 
 Coisas medidas e registradas. **A lista viva, com as decisões pendentes do

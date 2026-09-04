@@ -46,6 +46,40 @@ nova — ela já é clara (luminância média 43 contra 16 do fundo da barra).
 
 ---
 
+## O tutorial de cada tela
+
+`src/data/tutoriais.ts` guarda um guia por tela; o motor é o mesmo do passeio
+de entrada (`src/ui/Tour.ts`): furo de `clip-path` no escuro, `transform:
+scale` no alvo, balão ao lado. Catorze telas têm o seu — todas menos **Ajustes**
+(a própria tela já é texto explicativo, e é de onde os guias se reabrem) e
+**Laboratório** (ferramenta interna, só para conta administrativa).
+
+| aspecto | regra |
+|---|---|
+| quando abre | na primeira vez que a tela é **aberta** |
+| onde se reabre | botão `?` no `.camada-topo`, ao lado do `✕` |
+| o que lembra | `settings.guiasVistos`, lista de ids de tela |
+| tamanho | 3 a 5 passos; o primeiro nunca tem alvo |
+
+**Abrir, e não liberar.** A liberação de uma tela acontece no meio de uma
+luta, e puxar o jogador para dentro de um painel que ele não pediu é pior do
+que esperar ele chegar lá — o aviso "tela liberada" já é o convite. A mesma
+regra cobre a tela que já nasce disponível: ela também é aberta pela primeira
+vez em algum momento. Uma regra, os dois casos.
+
+**O gatilho é na TROCA de tela, nunca no redesenho.** `renderPanel` roda no
+laço do jogo a cada quadro em que o estado mudou, e `abrirCamada` vem junto:
+disparar ali sem condição abria um `Tour` novo a cada redesenho, empilhando
+balões que deixavam a tela presa no escuro. Há duas guardas — o `Shell` compara
+com o `dataset.tela` anterior, e o `Game` recusa abrir com outro passeio em
+cena (esta também cobre o `?` clicado duas vezes).
+
+`tests/tutoriais.test.ts` quebra o build se uma tela nova ficar sem guia, ou
+se um guia apontar para um id que não existe — foi assim que se descobriu que
+o painel chamado "Hangar" tem id `frota`.
+
+---
+
 ## A gramática de painel
 
 Todas as camadas usam a MESMA moldura, o mesmo fundo e o mesmo título de seção,

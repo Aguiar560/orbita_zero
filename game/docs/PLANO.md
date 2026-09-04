@@ -407,20 +407,33 @@ tiro, acerto, morte, drop raro, especial de chefe carregando.
 
 ---
 
-### Passo 6 — Onboarding 🔴
+### Passo 6 — Onboarding 🟡
 
-Também não existe. Um jogador novo cai numa tela com 10 abas, 27 atributos e uma
-nave que voa sozinha, sem nada explicando por que ele importa.
+> **Metade feita em 04/09.** O passeio de entrada já existia (dez passos, onde
+> as coisas ficam) e agora **catorze telas têm guia próprio** — mesmo motor,
+> mesmo padrão, três a cinco passos, reabrível pelo `?` do cabeçalho. Ver
+> [`TELAS.md`](TELAS.md#o-tutorial-de-cada-tela).
+>
+> O que **falta** é a outra metade do critério, e ela é de RITMO, não de texto:
+> introduzir uma decisão por vez ao longo dos primeiros setores, e não mostrar
+> aba antes de existir motivo para ela. Hoje o jogador ainda vê treze abas de
+> uma vez — cinzas, mas visíveis.
+
+Um jogador novo cai numa tela com 10 abas, 27 atributos e uma nave que voa
+sozinha, sem nada explicando por que ele importa.
 
 **A pergunta que o onboarding precisa responder nos primeiros 60 segundos:** *"se
 a IA pilota, o que eu faço?"* A resposta é a tese do jogo — o jogador constrói, a
 IA executa — e ela precisa ser mostrada, não escrita.
 
 **Critério de aceite**
-- Os primeiros 5 setores introduzem uma decisão por vez: equipar, elemento,
+- ~~Pulável, e o estado de "já vi" no save.~~ ✅ `settings.guiaVisto` e
+  `settings.guiasVistos`.
+- ~~Cada tela explica o que faz.~~ ✅ 04/09 — catorze guias, guardados por
+  `tests/tutoriais.test.ts`.
+- 🔴 Os primeiros 5 setores introduzem uma decisão por vez: equipar, elemento,
   Matriz, postura.
-- Nenhuma aba aparece antes de existir motivo para ela.
-- Pulável, e o estado de "já vi" no save.
+- 🔴 Nenhuma aba aparece antes de existir motivo para ela.
 
 ---
 
@@ -1119,6 +1132,43 @@ alteração.** Não há fórmula para reescrever nem risco de o servidor e o cli
 discordarem de regra: é o mesmo arquivo.
 
 O que muda é onde ele roda e quem acredita no resultado.
+
+---
+
+## O chat promete um caminho que não existe (achado em 04/09)
+
+Auditado o chat implantado por outra IA (`6d541f9`, `0231865`). A
+implementação está sólida: nenhum `innerHTML` em lugar nenhum — tudo por
+`h(..., { text })`, então injeção por texto do jogador é impossível por
+construção —, limite de taxa por usuário e por ação, teto de 400 caracteres e
+1600 bytes, remoção de caracteres de controle e bidirecionais preservando o
+ZWJ dos emojis, bloqueio, denúncia com evidência e moderadores.
+
+**O problema não é do chat, é de encaixe.** Conta anônima **não pode enviar**
+mensagem — `podeEnviar = !u.anonima && !!apelido` —, e a interface avisa:
+
+> *"Leitura do global liberada. Vincule uma conta e escolha um apelido para
+> conversar."*
+
+A restrição é acertada (conta anônima é grátis de criar, e chat sem custo de
+entrada é campo aberto para abuso). O problema é que **vincular conta anônima
+a e-mail não existe** — está registrado como pendência desde a Fase 1. E desde
+04/09 a porta de entrada EXIGE sessão, e a conta anônima é o caminho de um
+clique: então o jogador padrão entra anônimo, lê o chat, e a tela lhe manda
+fazer algo que o jogo não oferece.
+
+São dois trabalhos, e o segundo é o que destrava:
+
+1. Trocar o texto por um que não prometa o que não há (barato, e para já).
+2. Implementar a vinculação (`POST /auth/v1/user` com e-mail e senha sobre a
+   sessão anônima, no Supabase). Ela já era necessária por outro motivo — sem
+   e-mail, limpar os dados do navegador perde a conta.
+
+**Custo de D1, para constar:** o chat grava em `orbita-zero-chat`, que é um
+segundo banco D1 — e o teto de 100 mil escritas/dia do plano gratuito é **por
+conta**, não por banco. Ele divide o mesmo orçamento medido acima. O impacto é
+pequeno (uma mensagem é uma linha, contra ~816 linhas/dia por jogador só de
+jogo), mas não é zero.
 
 ---
 
