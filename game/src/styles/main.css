@@ -8087,3 +8087,17 @@ select option:disabled { color: #667991; }
 @media (prefers-reduced-motion: reduce) {
   .inventario-cheio { animation: none; }
 }
+
+/* ── o "?" que reabre o tutorial da tela ────────────────────────────────────
+ *
+ * Mesmo tamanho e mesma casca do "✕": são vizinhos no cabeçalho, e um par
+ * desalinhado ali salta mais que qualquer coisa dentro do painel. */
+.camada-ajuda {
+  width: 32px; height: 32px; border-radius: 8px; font-size: 15px; font-weight: 700;
+  background: rgba(8, 14, 28, 0.9); border: 1px solid var(--line); color: var(--muted);
+}
+.camada-ajuda:hover { border-color: var(--accent); color: var(--accent); }
+
+/* O título empurra o resto para a direita. Sem isto o space-between espalharia
+ * os TRÊS filhos e o "?" pousaria no meio do cabeçalho. */
+.camada-topo h1 { margin-right: auto; }

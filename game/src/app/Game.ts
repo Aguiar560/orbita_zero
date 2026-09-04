@@ -9,6 +9,7 @@ import { allowSaving, loadFromStorage } from '@sim/state';
 import { bus, toast } from './Bus';
 import { Tour } from '@ui/Tour';
 import { passosDoOnboarding } from '@data/onboarding';
+import { TUTORIAIS } from '@data/tutoriais';
 import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
@@ -206,6 +207,7 @@ export class Game {
     // antes porque um relatório sobre um jogo que ele ainda não entende não diz
     // nada. Quem já viu não vê de novo.
     bus.on('guia:abrir', () => this.abrirGuia());
+    bus.on('guia:painel', ({ id }) => this.abrirTutorialDeTela(id));
     bus.on('preferencias:visuais', () => this.aplicarPreferenciasVisuais());
     if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
 
@@ -345,6 +347,35 @@ export class Game {
       aoFechar: () => {
         this.sim.state.settings.anatomiaAberta = anatomiaAntes;
         this.sim.state.settings.guiaVisto = true;
+        this.sim.touch();
+        this.sim.save();
+      },
+    });
+    tour.comecar(this.rootEl);
+  }
+
+  /**
+   * O tutorial de uma tela.
+   *
+   * Separado de `abrirGuia` porque as duas coisas fecham diferente: o passeio
+   * de entrada devolve a Anatomia ao estado anterior e marca `guiaVisto`; este
+   * não mexe em interface nenhuma — a tela já está aberta, foi abri-la que o
+   * chamou — e marca só o id desta tela.
+   *
+   * Marca ao FECHAR, completo ou pulado, pelo mesmo motivo do outro: marcar ao
+   * abrir perderia o tutorial de quem recarregou no meio, e marcar só ao
+   * completar traria o guia de volta toda vez para quem escolheu pular.
+   */
+  abrirTutorialDeTela(id: string): void {
+    const passos = TUTORIAIS[id];
+    if (!passos?.length) return;
+
+    const tour = new Tour({
+      passos,
+      aoAbrirPainel: (alvo) => bus.emit('panel:open', { id: alvo }),
+      aoFechar: () => {
+        const vistos = this.sim.state.settings.guiasVistos;
+        if (!vistos.includes(id)) vistos.push(id);
         this.sim.touch();
         this.sim.save();
       },

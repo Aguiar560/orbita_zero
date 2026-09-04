@@ -112,6 +112,7 @@ export function createState(
       controlMode: 'idle',
       testMode: false,
       guiaVisto: false,
+      guiasVistos: [],
       dicaDeEscudoVista: false,
       speed: 1,
       repetirSetor: false,
@@ -355,6 +356,11 @@ export function migrate(raw: unknown): GameState | null {
   // alguém que não está olhando. Perder progresso porque o jogo mudou por
   // baixo é pior do que voar conservador até ele reparar e escolher.
   if (!['agressivo', 'evasivo', 'coletor'].includes(state.settings.pilot)) state.settings.pilot = 'evasivo';
+  // Save antigo nao tem a lista, e um `undefined` aqui viraria `.includes` de
+  // undefined no primeiro painel aberto. Saneia para lista de strings.
+  state.settings.guiasVistos = Array.isArray(state.settings.guiasVistos)
+    ? state.settings.guiasVistos.filter((s): s is string => typeof s === 'string')
+    : [];
   for (const key of ['testMode', 'guiaVisto', 'dicaDeEscudoVista', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
   }

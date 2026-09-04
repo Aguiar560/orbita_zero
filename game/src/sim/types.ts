@@ -344,6 +344,14 @@ export interface Settings {
   /** O passeio guiado já foi visto? Fica em ajustes porque é preferência. */
   guiaVisto: boolean;
   /**
+   * Ids de tela cujo tutorial proprio ja foi visto.
+   *
+   * Lista e nao um booleano por tela: as telas nascem e somem durante o
+   * desenvolvimento, e um campo por tela obrigaria uma migracao a cada uma.
+   * Um id desconhecido aqui e inofensivo — so nao casa com nada.
+   */
+  guiasVistos: string[];
+  /**
    * A dica sobre a bolha de escudo já apareceu?
    *
    * No save, e não em memória: um aviso que volta a cada recarga vira ruído, e

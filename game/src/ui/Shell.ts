@@ -13,6 +13,7 @@ import { PerfilMenu } from './PerfilMenu';
 import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
 import { ELEMENTS, getElement } from '@data/elements';
 import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
+import { temTutorial } from '@data/tutoriais';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
@@ -715,16 +716,47 @@ export class Shell {
     // para o CSS aplicar o mesmo kit visual sem depender da estrutura interna
     // (a Matriz, por exemplo, nem usa `.panel-body`).
     this.camadaHost.dataset.tela = painel.id;
+    this.talvezAbrirTutorial(painel);
 
     clear(this.camadaHost).append(
       h('.camada-caixa', { role: 'dialog', 'aria-modal': 'true', 'aria-label': painel.title },
         h('.camada-topo', {},
           h('h1', { text: painel.title }),
+          // O "?" mora no cabeçalho COMUM, e não dentro de cada painel: assim
+          // ele fica no mesmo lugar em treze telas, e uma tela nova o ganha de
+          // graça ao registrar o tutorial. Só aparece onde há o que explicar.
+          temTutorial(painel.id)
+            ? h('button.camada-ajuda', {
+              text: '?',
+              title: 'Rever o tutorial desta tela',
+              'aria-label': `Rever o tutorial de ${painel.title}`,
+              onclick: () => bus.emit('guia:painel', { id: painel.id }),
+            })
+            : null,
           h('button.camada-x', { text: '✕', title: 'Fechar (Esc)', 'aria-label': 'Fechar', onclick: () => this.voltarDaCamada() }),
         ),
         painel.render(this.sim),
       ),
     );
+  }
+
+  /**
+   * Primeira vez nesta tela? Abre o tutorial dela.
+   *
+   * O gatilho é ABRIR, não liberar. A liberação acontece no meio de uma luta,
+   * e puxar o jogador para dentro de um painel que ele não pediu é pior do que
+   * esperar ele chegar lá — o aviso de "tela liberada" já é o convite.
+   *
+   * A mesma regra cobre a tela que já nasce disponível: ela também é aberta
+   * pela primeira vez em algum momento. Uma regra, os dois casos.
+   *
+   * O microtask existe porque o painel acabou de ser inserido: o `Tour` mede o
+   * alvo com `getBoundingClientRect`, e medir antes do layout dá zero em tudo.
+   */
+  private talvezAbrirTutorial(painel: Panel): void {
+    if (!temTutorial(painel.id)) return;
+    if (this.sim.state.settings.guiasVistos.includes(painel.id)) return;
+    queueMicrotask(() => bus.emit('guia:painel', { id: painel.id }));
   }
 
   private fecharCamada(): void {

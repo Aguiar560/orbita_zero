@@ -43,7 +43,7 @@ describe('o jogo não tem "fase"', () => {
     expect(s).not.toContain(String.fromCharCode(39) + 'FASE CONCLUÍDA' + String.fromCharCode(39));
     expect(s).not.toContain(String.fromCharCode(39) + 'Próxima fase' + String.fromCharCode(39));
     expect(s).toContain('SETOR CONCLUÍDO');
-    expect(s).toContain('Próximo setor');
+    expect(s).toContain('PRÓXIMO SETOR');
   });
 
   it('nem nos ajustes', () => {
@@ -143,5 +143,14 @@ describe('a pausa de conclusão', () => {
     // A barra tem de dividir pela espera DESTA vitória; fixá-la em
     // `VICTORY_HOLD` faria a de setor encher pela metade e parar.
     expect(s).toContain('this.victory / this.victoryHold');
+  });
+
+  it('usa a linguagem holográfica do cockpit, não uma caixa plana', () => {
+    const s = fonte('modes/vertical/VerticalMode.ts');
+    expect(s).toContain('drawMolduraDeConquista');
+    expect(s).toContain('PROTOCOLO DE COMBATE  //  CONCLUÍDO');
+    expect(s).toContain("const halo = ctx.createRadialGradient");
+    expect(s).toContain("ctx.rotate(Math.PI / 4)");
+    expect(s).toContain('PRÓXIMA ONDA');
   });
 });

@@ -51,6 +51,16 @@ export interface GameEvents {
   'panel:close': void;
   /** Pedido de reabrir o passeio guiado, vindo de Ajustes. */
   'guia:abrir': void;
+
+  /**
+   * Abre o tutorial de UMA tela.
+   *
+   * Evento e nao chamada direta porque quem sabe que a tela abriu e o `Shell`,
+   * e quem sabe montar um `Tour` e o `Game` — que tambem e quem devolve o
+   * estado da interface no fim. Ligar os dois pelo barramento evita o `Shell`
+   * passar a conhecer o passeio.
+   */
+  'guia:painel': { id: string };
   /**
    * Fecha o modal de Configurações de fora dele.
    *
