@@ -195,6 +195,40 @@ export async function subirSave(estado: GameState, saindo = false): Promise<Resu
   return { fase: 'subiu' };
 }
 
+/**
+ * Apaga o progresso NA NUVEM, para o "Apagar progresso" não ser meia-verdade.
+ *
+ * ## Por que isto precisou existir
+ *
+ * `clearStorage` limpa só o navegador. Para quem está com conta, o boot
+ * seguinte chama `reconciliar`, encontra a nuvem com 542 minutos contra os 0
+ * do save recém-nascido, e **baixa tudo de volta**. O botão parecia não fazer
+ * nada — e o aviso ao lado dele dizia "não há cópia em outro lugar", que
+ * deixou de ser verdade no dia em que a conta passou a existir.
+ *
+ * ## Por que subir um estado novo, e não um DELETE
+ *
+ * Não há rota de apagar no Worker, e criar uma para isto seria pior: uma rota
+ * que destrói o save de quem chama é a mais perigosa da API, e ela existiria
+ * para um botão que se usa uma vez na vida. Subir um estado zerado deixa a
+ * nuvem no mesmo ponto em que o navegador ficou, que é o que se quer dizer com
+ * "apagar", e passa pelas mesmas defesas de todas as outras gravações.
+ *
+ * O `baixarSave` antes NÃO é desperdício: ele carimba `versaoServidor`, e sem
+ * esse carimbo a subida bate na trava de conflito e volta 409.
+ *
+ * Devolve `false` quando a nuvem NÃO foi limpa — sem conta não é falha, mas
+ * limite de ritmo e rede fora são, e quem chama precisa poder contar isso em
+ * vez de apagar o local e deixar o jogador achar que acabou.
+ */
+export async function apagarNaNuvem(estadoNovo: GameState): Promise<boolean> {
+  if (!await tokenValido()) return true;
+
+  await baixarSave();
+  const r = await subirSave(estadoNovo);
+  return r.fase === 'subiu';
+}
+
 export type Reconciliacao =
   | { acao: 'sem-conta' }
   | { acao: 'subiu'; motivo: 'nuvem-vazia' | 'local-mais-adiantado' }

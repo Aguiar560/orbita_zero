@@ -1,8 +1,10 @@
 import { duration } from '@core/format';
 import { RARITIES } from '@data/rarity';
-import { allowSaving, clearStorage, exportSave, importSave } from '@sim/state';
+import { allowSaving, clearStorage, createState, exportSave, importSave } from '@sim/state';
 import { ehAdmin } from '@app/admin';
-import { bus } from '@app/Bus';
+import { apagarNaNuvem } from '@app/nuvem';
+import { sessaoGuardada } from '@app/conta';
+import { bus, toast } from '@app/Bus';
 import { MUSICAS } from '@data/musicas';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
@@ -366,17 +368,57 @@ export class SettingsPanel implements Panel {
         }, h('span', { text: 'Importar save' })),
       ),
 
+      ...this.zonaDePerigo(),
+    ];
+  }
+
+  /**
+   * Apagar o progresso, dos DOIS lados.
+   *
+   * Ficou em método próprio porque virou assíncrono, e um `onclick` que espera
+   * rede no meio de uma lista de elementos esconde o que mais importa aqui: a
+   * ordem. A nuvem é limpa PRIMEIRO. Ao contrário, um erro de rede deixaria o
+   * jogador sem o save local e com o antigo intacto no servidor, pronto para
+   * descer inteiro no próximo boot — o pior dos dois mundos.
+   */
+  private zonaDePerigo(): HTMLElement[] {
+    const comConta = sessaoGuardada() !== null;
+
+    const aviso = comConta
+      ? 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Apaga também a cópia da sua conta na nuvem. Não há como desfazer.'
+      : 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Não há como desfazer, e não há cópia em outro lugar.';
+
+    const botao = h('button.btn.danger', {},
+      h('span', { text: 'Apagar progresso' })) as HTMLButtonElement;
+
+    botao.onclick = () => {
+      if (!confirm('Apagar todo o progresso? Isso não tem volta.')) return;
+      botao.disabled = true;
+      botao.textContent = 'Apagando…';
+
+      void (async () => {
+        // O estado que sobe é um jogador novo de verdade: sem piloto escolhido,
+        // que é o que faz a tela de escolha voltar a aparecer no próximo boot.
+        const limpou = await apagarNaNuvem(createState());
+        if (!limpou) {
+          botao.disabled = false;
+          botao.textContent = 'Apagar progresso';
+          // Contar em vez de apagar assim mesmo: o save local sumiria e o da
+          // nuvem desceria de volta no boot seguinte, e o jogador teria feito
+          // uma coisa irreversível para ficar exatamente onde estava.
+          toast('Não deu para apagar na nuvem. O progresso continua intacto — tente de novo em um minuto.', 'bad');
+          return;
+        }
+
+        clearStorage();
+        location.reload();
+      })();
+    };
+
+    return [
       h('h3.section.perigo', { text: 'Zona de perigo' }),
-      h('p.muted.hint', { text: 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Não há como desfazer, e não há cópia em outro lugar.' }),
-      h('.setting-row', {},
-        h('button.btn.danger', {
-          onclick: () => {
-            if (!confirm('Apagar todo o progresso? Isso não tem volta.')) return;
-            clearStorage();
-            location.reload();
-          },
-        }, h('span', { text: 'Apagar progresso' })),
-      ),
+      h('p.muted.hint', { text: aviso }),
+      h('.setting-row', {}, botao),
     ];
   }
 
