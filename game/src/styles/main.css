@@ -8194,3 +8194,27 @@ select option:disabled { color: #667991; }
 .ajustes-faixa-nome { font-size: 13px; font-weight: 700; }
 .ajustes-faixa-artista { font-size: 11px; opacity: .75; }
 .ajustes-trilha-acoes { display: flex; gap: 6px; margin-bottom: 6px; }
+
+/* ── entrar com provedor ────────────────────────────────────────────────────
+ *
+ * Vêm abaixo do formulário, separados por um "ou": quem já tem conta no jogo
+ * chega para digitar e-mail e senha, e pôr Google no topo faria a ação mais
+ * comum ser a de baixo. */
+.login-ou {
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 0 10px; color: var(--muted); font-size: 11px; letter-spacing: .12em;
+}
+.login-ou::before, .login-ou::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
+.login-provedores { display: grid; gap: 7px; }
+.login-provedor {
+  min-height: 40px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .05); color: var(--text);
+}
+.login-provedor:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, .09); }
+/* Cor de marca só na borda: preencher o botão inteiro com o azul do Facebook
+ * brigaria com a paleta da tela e faria o provedor parecer o caminho principal. */
+.login-provedor.p-google:hover { border-color: #e9705f; }
+.login-provedor.p-facebook:hover { border-color: #4a7fd0; }
+.login-provedor[disabled] { opacity: .5; }

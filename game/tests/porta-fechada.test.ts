@@ -42,12 +42,36 @@ describe('a porta de entrada exige sessão', () => {
     expect(fonte('ui/Login.ts')).not.toContain('pronto(null)');
   });
 
-  it('a falha do cadastro anônimo mantém a tela aberta', () => {
-    // Falhar tem de virar recado + nova tentativa, não passagem livre.
-    const s = fonte('ui/Login.ts');
-    const trecho = s.slice(s.indexOf('const semCadastro'));
-    expect(trecho).toContain('this.recado =');
-    expect(trecho).toContain('this.render(pronto)');
+  it('e não existe mais caminho anônimo nenhum', () => {
+    /**
+     * A regra ficou MAIS forte em 04/09: a conta virou obrigatória.
+     *
+     * Antes havia `entrarAnonimo`, e este teste guardava que a falha dele
+     * mantinha a tela aberta em vez de deixar passar. Agora a função não
+     * existe: o progresso do jogador anônimo ficava amarrado ao
+     * `localStorage` daquele navegador, e limpar os dados do site apagava o
+     * ACESSO a um save que continuava vivo no servidor.
+     *
+     * Só coube tornar obrigatório porque ainda não havia ninguém jogando.
+     * Depois do primeiro jogador isso seria migração, não escolha.
+     */
+    // O SÍMBOLO, não a menção: os comentários citam `entrarAnonimo` para
+    // explicar por que ele saiu, e proibir a palavra apagaria a história —
+    // o mesmo cuidado que o teste do vocabulário onda/setor já exigiu.
+    expect(fonte('app/conta.ts')).not.toMatch(/export const entrarAnonimo/);
+    expect(fonte('ui/Login.ts')).not.toMatch(/entrarAnonimo\s*\(/);
+    expect(fonte('ui/Login.ts')).not.toContain("'Jogar agora'");
+  });
+
+  it('e há três formas de entrar, todas com dono', () => {
+    // E-mail, Google e Facebook. As três produzem conta com id no servidor e
+    // caminho de volta; era exatamente o que faltava.
+    const conta = fonte('app/conta.ts');
+    expect(conta).toContain('entrarComProvedor');
+    expect(conta).toContain('recolherSessaoDaUrl');
+    expect(conta).toContain("google: 'Google'");
+    expect(conta).toContain("facebook: 'Facebook'");
+    expect(fonte('ui/Login.ts')).toContain('login-provedor');
   });
 
   it('o Game não trata mais "entrou sem conta"', () => {

@@ -134,32 +134,106 @@ export const entrar = (email: string, senha: string): Promise<ResultadoDeConta> 
   chamar('token?grant_type=password', { email, password: senha });
 
 /**
- * Entra sem e-mail nem senha.
+ * A conta é OBRIGATÓRIA desde 04/09.
  *
- * ## Por que isto substituiu "jogar sem conta"
+ * Havia `entrarAnonimo`, que criava conta sem e-mail com um clique. Ele
+ * resolvia a fricção da porta e criava outra coisa pior: o progresso ficava
+ * amarrado ao `localStorage` daquele navegador, e limpar os dados do site
+ * apagava o ACESSO a um save que continuava vivo no servidor — sem caminho
+ * de volta, porque vincular a conta anônima a um e-mail nunca existiu.
  *
- * O botão antigo devolvia `null` e o jogo seguia só com o save do navegador.
- * Isso deixava de funcionar no momento em que recurso, item e nave passam a
- * morar no servidor: estado precisa de dono, e não havia dono.
- *
- * Obrigar a cadastrar resolveria — e cobraria um e-mail antes de a pessoa saber
- * se gosta do jogo, que é exatamente o que o botão de pular existia para
- * evitar. A conta anônima fica com as duas coisas: um id real do lado do
- * servidor, e nada pedido ao jogador.
- *
- * ## O que ela ainda não faz
- *
- * Vincular a um e-mail depois. O Supabase permite (é atualizar o usuário), mas
- * enquanto isso não existir, limpar o navegador perde a conta anônima — o
- * `refresh_token` mora no `localStorage` e não há outro caminho de volta.
- * Está registrado no PLANO como parte da Fase 2.
- *
- * ## Depende de uma chave no painel do Supabase
- *
- * "Allow anonymous sign-ins" precisa estar ligado. Desligado, esta chamada
- * responde erro — e quem chama trata como recusa, sem derrubar o jogo.
+ * A decisão de tornar obrigatório só coube porque ainda não há ninguém
+ * jogando: nenhuma conta anônima existente foi deixada órfã. Depois do
+ * primeiro jogador isso seria uma migração, não uma escolha.
  */
-export const entrarAnonimo = (): Promise<ResultadoDeConta> => chamar('signup', {});
+
+// ── contas de provedor: Google e Facebook ──────────────────────────────────
+
+/** Provedores aceitos. O id é o que o Supabase espera na URL. */
+export type Provedor = 'google' | 'facebook';
+
+export const NOME_DO_PROVEDOR: Record<Provedor, string> = {
+  google: 'Google',
+  facebook: 'Facebook',
+};
+
+/**
+ * Para onde o provedor devolve o jogador.
+ *
+ * A origem atual, sem caminho nem busca: o jogo é uma página só, e devolver
+ * numa URL com parâmetros deixaria lixo na barra de endereço do jogador.
+ *
+ * **Precisa estar na lista de Redirect URLs do painel do Supabase.** Fora
+ * dela o provedor recusa, e a recusa acontece no site DELE — o jogo nem fica
+ * sabendo. Ver `docs/SEGURANCA-E-CONTA.md`.
+ */
+const voltarPara = (): string => `${location.origin}${location.pathname}`;
+
+/**
+ * ENTRAR com um provedor. Cria conta nova, ou reabre a que já existe.
+ *
+ * ## O que isto NÃO faz
+ *
+ * Não junta contas. Quem já entrou por e-mail e depois vier por aqui recebe
+ * um id de usuário DIFERENTE, com progresso próprio — o Supabase trata as
+ * duas identidades como duas pessoas até alguém pedir o vínculo.
+ *
+ * Vincular exige `PUT /user/identities/authorize` com o token da sessão em
+ * mãos, e não existe aqui porque ninguém precisou ainda. O dia em que um
+ * jogador pedir "quero entrar pelo Google na minha conta de e-mail" é o dia
+ * de escrever — e não antes, para não ficar código que ninguém exercita.
+ */
+export function entrarComProvedor(provedor: Provedor): void {
+  const url = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
+  url.searchParams.set('provider', provedor);
+  url.searchParams.set('redirect_to', voltarPara());
+  location.href = url.toString();
+}
+
+
+
+/**
+ * Recolhe a sessão que o provedor devolveu no fragmento da URL.
+ *
+ * O Supabase volta com `#access_token=…&refresh_token=…&expires_in=…`. O
+ * fragmento NÃO vai ao servidor, que é o motivo de ele ser usado para isso —
+ * o token não aparece em log de acesso nenhum.
+ *
+ * Limpa a barra de endereço depois. Um token visível ali é o que o jogador
+ * copia sem pensar ao mandar o link do jogo para um amigo.
+ *
+ * Devolve `true` quando havia sessão para recolher — quem chama usa isso para
+ * saber que a página voltou de um login, e não de uma abertura comum.
+ */
+export function recolherSessaoDaUrl(): boolean {
+  const bruto = location.hash.startsWith('#') ? location.hash.slice(1) : '';
+  if (!bruto) return false;
+
+  const p = new URLSearchParams(bruto);
+  const access = p.get('access_token');
+  const refresh = p.get('refresh_token');
+  const limpar = (): void => {
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+  };
+
+  // O provedor também volta por aqui quando o jogador RECUSA a permissão.
+  // Limpar mesmo assim evita a barra ficar com um erro pendurado para sempre.
+  if (!access || !refresh) { if (p.has('error') || p.has('error_description')) limpar(); return false; }
+
+  const atual = sessaoGuardada();
+  guardar({
+    accessToken: access,
+    refreshToken: refresh,
+    expiraEm: Math.floor(Date.now() / 1000) + Number(p.get('expires_in') ?? 3600),
+    email: atual?.email ?? '',
+    usuarioId: atual?.usuarioId ?? '',
+    // O token novo é de conta com provedor; anônima ela não é mais. O e-mail e
+    // o id chegam certos na primeira renovação, que lê o usuário do servidor.
+    anonima: false,
+  });
+  limpar();
+  return true;
+}
 
 function guardar(sessao: Sessao): void {
   try {

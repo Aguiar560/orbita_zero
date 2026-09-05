@@ -1,4 +1,7 @@
-import { cadastrar, entrar, entrarAnonimo, sair, sessaoGuardada, tokenValido, type Sessao } from '@app/conta';
+import {
+  NOME_DO_PROVEDOR, cadastrar, entrar, entrarComProvedor, recolherSessaoDaUrl,
+  sair, sessaoGuardada, tokenValido, type Provedor, type Sessao,
+} from '@app/conta';
 import { clear, h } from './dom';
 
 /**
@@ -56,6 +59,11 @@ export class Login {
    * sozinho quando falta pouco, então quem já entrou não vê isto de novo.
    */
   async mostrar(host: HTMLElement): Promise<Sessao> {
+    // A volta do Google ou do Facebook chega como fragmento na URL. Recolher
+    // ANTES de olhar a sessão guardada é o que faz o jogador cair direto no
+    // jogo em vez de ver a tela de login de novo, logo depois de autorizar.
+    recolherSessaoDaUrl();
+
     const guardada = sessaoGuardada();
     if (guardada && (await tokenValido())) return sessaoGuardada()!;
     // Sessão que existia mas não renova é sessão morta: limpar aqui evita a
@@ -106,38 +114,19 @@ export class Login {
     };
 
     /**
-     * Entrar sem dar e-mail.
+     * Entrar com Google ou Facebook.
      *
-     * Cria uma conta anônima de verdade — id no servidor, nada pedido ao
-     * jogador. Falhando, a tela CONTINUA aberta: ver o motivo e poder tentar de
-     * novo é melhor que entrar num jogo onde item nenhum cai. Ver o comentário
-     * da classe para por que o recuo antigo deixou de servir.
+     * Navegação de página inteira, e não janela pop-up: pop-up é bloqueado por
+     * padrão em boa parte dos navegadores quando não nasce de um clique
+     * direto, e depurar "não abriu nada" no computador de outra pessoa é caro.
+     * A volta é tratada em `mostrar`, que recolhe a sessão do fragmento.
      */
-    const semCadastro = async (): Promise<void> => {
+    const comProvedor = (provedor: Provedor): void => {
       if (this.ocupado) return;
       this.ocupado = true;
-      this.recado = 'Preparando…';
+      this.recado = `Abrindo ${NOME_DO_PROVEDOR[provedor]}…`;
       this.render(pronto);
-
-      const r = await entrarAnonimo();
-      this.ocupado = false;
-      if (r.ok) return pronto(r.sessao);
-
-      // Barulhento para quem publica: esquecer "Allow anonymous sign-ins" no
-      // painel do Supabase derruba a conta anônima de todo mundo, e o console é
-      // onde isso fica legível para quem pode consertar.
-      console.warn(
-        '[conta] Cadastro anônimo indisponível.',
-        'Ligue "Allow anonymous sign-ins" no painel do Supabase.',
-        r.erro,
-      );
-
-      // E visível para o jogador, sem culpá-lo por uma configuração alheia. O
-      // texto não promete que tentar de novo resolve — se o painel estiver
-      // desligado, não resolve — mas tentar é a única coisa que ele pode fazer,
-      // e insistir custa uma requisição.
-      this.recado = 'Não foi possível preparar sua conta. Verifique a conexão e tente de novo.';
-      this.render(pronto);
+      entrarComProvedor(provedor);
     };
 
     const aoTeclar = (ev: KeyboardEvent): void => {
@@ -182,19 +171,25 @@ export class Login {
         // acabou de fechar removendo o sink do `h()`.
         h(`p.login-recado${this.recado ? '' : '.hidden'}`, { text: this.recado }),
 
-        h('button.login-pular', {
-          text: this.ocupado ? '…' : 'Jogar agora',
-          disabled: this.ocupado,
-          onclick: () => { void semCadastro(); },
-        }),
+        // Os provedores vêm DEPOIS do formulário, não antes. Quem já tem
+        // conta no jogo chega aqui para digitar e-mail e senha; pôr Google no
+        // topo faria a ação mais comum ser a de baixo.
+        h('.login-ou', {}, h('span', { text: 'ou' })),
+        h('.login-provedores', {},
+          ...(Object.keys(NOME_DO_PROVEDOR) as Provedor[]).map((p) =>
+            h(`button.login-provedor.p-${p}`, {
+              text: `Continuar com ${NOME_DO_PROVEDOR[p]}`,
+              disabled: this.ocupado,
+              onclick: () => { comProvedor(p); },
+            })),
+        ),
         h('p.login-nota.tiny.muted', {
-          // Dizia "o progresso fica preso a este navegador". Deixou de ser
-          // verdade quando o botão passou a criar uma conta anônima de verdade:
-          // o save fica no servidor, com dono. O que falta sem e-mail é a forma
-          // de RECUPERAR essa conta — e é isso que a frase precisa avisar, porque
-          // é o que se perde ao limpar os dados do site.
-          text: 'Sem e-mail seu progresso fica salvo, mas só dá para voltar a ele '
-            + 'neste navegador. Dá para vincular uma conta depois.',
+          // A frase anterior avisava o que se perdia jogando sem e-mail. Não
+          // existe mais esse caminho: a conta é a única porta, e o que a nota
+          // faz agora é dizer POR QUE ela é obrigatória — sem isso ela lê como
+          // burocracia, e o jogador desiste na primeira tela.
+          text: 'A conta guarda seu progresso no servidor e o devolve em qualquer '
+            + 'navegador ou computador. Sem ela, limpar os dados do site apagaria tudo.',
         }),
       ),
     );

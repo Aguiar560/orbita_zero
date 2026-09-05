@@ -4,9 +4,13 @@ O que o jogo é hoje, com nota por sistema, e o que falta para pôr jogadores
 dentro. Tudo abaixo foi **medido nesta data**, não lido de documento — quando um
 número vem de registro anterior, está dito.
 
-> **Veredito curto:** o jogo está pronto tecnicamente e **não está pronto
-> socialmente**. O que impede o alfa não é bug nem falta de conteúdo — é que o
-> jogador não consegue *guardar* a conta dele, e a curva o para no setor 4.
+> **Veredito, revisto ao fim de 04/09.** Os dois bloqueadores desta avaliação
+> caíram no mesmo dia: a conta virou obrigatória com três portas (e-mail,
+> Google, Facebook), e a dificuldade do setor 4 foi confirmada como
+> **deliberada** pelo Rafael — não era defeito de curva, era o jogo.
+>
+> **Está pronto para um alfa fechado.** O que resta é configuração de painel,
+> não engenharia: ligar os provedores OAuth no Supabase.
 
 ---
 
@@ -41,7 +45,7 @@ afirmar, com ferramenta própria (`npm run simular`). Comentários que explicam
 O que tira o ponto: 2.035 testes concentram-se em regra e dado; quase nada cobre
 render e interação, que é onde os defeitos desta semana apareceram.
 
-### Progressão e balanceamento — 4/10
+### Progressão e balanceamento — 6/10
 
 **O ponto mais fraco, e o que decide o alfa.** Medido hoje, uma hora por setor,
 build representativo:
@@ -71,6 +75,14 @@ Duas ressalvas honestas:
 Ou seja: a parede é atravessável, mas o jogo cobra do jogador uma leitura
 correta logo no primeiro obstáculo sério.
 
+> **A dificuldade é deliberada — confirmado pelo Rafael em 04/09.** A nota subiu
+> de 4 para 6 por isso: o que eu li como defeito de curva é a intenção do jogo,
+> e a oferta de recuo é o mecanismo que a torna atravessável.
+>
+> O que ainda tira pontos é a **não-monotonicidade**: o setor 2 render menos que
+> o 1 e que o 3 não serve a desenho nenhum, e atrapalha justamente a leitura de
+> "ficou difícil porque avancei" que uma dificuldade deliberada precisa passar.
+
 ### Conteúdo — 8/10
 
 Volume real e bem distribuído: 30 galáxias com elencos que não se repetem, 53
@@ -90,18 +102,25 @@ já **mede** (tabela `excedentes`, margem de 10× sobre o teto físico), mas nã
 recusa — e ligar a recusa depende de dados de jogadores reais, que só o alfa
 produz. É a ordem certa.
 
-### Conta e persistência — 3/10
+### Conta e persistência — 8/10
 
-**O bloqueador número um.** Entrar é um clique e cria conta anônima de verdade,
-com id no servidor. Mas **não existe forma de vincular essa conta a um e-mail**.
+> **Resolvido em 04/09.** A conta virou **obrigatória** e há três portas:
+> e-mail com senha, Google e Facebook. Não existe mais entrada anônima.
+>
+> A decisão de tornar obrigatório só coube porque **ainda não há ninguém
+> jogando** — nenhuma conta anônima ficou órfã. Depois do primeiro jogador isso
+> seria uma migração, não uma escolha.
 
-Consequência: limpar os dados do navegador, trocar de máquina ou perder o
-`localStorage` apaga o acesso a um progresso que continua existindo no servidor,
-sem caminho de volta. Num alfa você pede horas de investimento a alguém — e hoje
-não há como devolvê-las.
+O que havia antes, e por que era o bloqueador número um: entrar era um clique e
+criava conta anônima de verdade, com id no servidor — mas sem forma de
+vinculá-la a um e-mail. Limpar os dados do navegador apagava o ACESSO a um
+progresso que continuava existindo no D1, sem caminho de volta.
 
-Isso já causa um efeito colateral visível: o chat diz *"Vincule uma conta e
-escolha um apelido para conversar"*, prometendo um caminho que o jogo não tem.
+O que sobra hoje: **os provedores precisam ser ligados no painel do Supabase**
+(cliente OAuth no Google e no Facebook, chaves coladas no painel, URL de retorno
+autorizada). Sem isso os dois botões existem e falham — o e-mail funciona
+sozinho, e foi verificado ponta a ponta em 04/09: criar conta devolve token na
+hora, sem confirmação por e-mail no caminho.
 
 ### Onboarding — 6/10
 
@@ -150,23 +169,33 @@ reparado em 04/09 — vale saber que ele *pode* se perder.
 
 ## O que falta para o alfa
 
-### Bloqueadores — sem isto não convide ninguém
+### Bloqueadores — resolvidos em 04/09
 
-1. **Vincular a conta anônima a um e-mail.** Sem isso o alfa perde testador por
-   acidente de navegador, e não há como recuperar. É `POST /auth/v1/user` no
-   Supabase sobre a sessão anônima — pequeno em código, grande em consequência.
+1. ~~**Vincular a conta a um e-mail.**~~ ✅ Resolvido por decisão, e ela era
+   melhor que a solução: em vez de dar saída à conta anônima, a **conta virou
+   obrigatória**. Três portas — e-mail com senha, Google e Facebook — e nenhuma
+   entrada sem dono. Só coube porque ainda não há ninguém jogando.
 
-2. **Tornar a parede do setor 4 sobrevivível sem leitura perfeita.** A oferta de
-   recuo funciona, mas chega depois de três mortes e depende de o jogador aceitar.
-   Três saídas possíveis, em ordem de custo: afrouxar a curva entre os setores 3
-   e 6; oferecer o recuo mais cedo; ou explicar a parede no tutorial da Galáxia.
+2. ~~**A parede do setor 4.**~~ ✅ Não era bloqueador: **a dificuldade é
+   deliberada**. A oferta de recuo é o mecanismo previsto para atravessá-la.
 
-### Deveriam entrar junto
+### O que falta ANTES de convidar alguém
 
-3. **`slot_secundaria.webp` não existe** — o único dos dez soquetes sem arte.
+3. **Ligar Google e Facebook no painel do Supabase.** O código está pronto e os
+   botões existem; medido em 04/09, `/authorize?provider=google` responde **400**
+   porque o provedor está desligado. É trabalho de painel:
+
+   - criar cliente OAuth no Google Cloud Console e app no Facebook Developers;
+   - colar client id e secret em *Supabase → Authentication → Providers*;
+   - autorizar a URL de retorno em *URL Configuration* — a de produção **e** a
+     de desenvolvimento, senão só uma das duas funciona.
+
+   Enquanto isso não acontece, o e-mail sustenta o alfa sozinho: verificado
+   ponta a ponta, cria conta e devolve token na hora, sem confirmação no meio.
+
+4. **`slot_secundaria.webp` não existe** — o único dos dez soquetes sem arte.
    Responde 404 em produção, deixando um buraco na Anatomia.
-4. **O texto do chat promete o que não há** — trocar enquanto a vinculação não
-   existir.
+
 5. **Oito arquivos de `public/assets` não têm fonte** em `assets-static` (sete
    SVGs de elemento e o troféu do ranking). Somem no próximo `npm run assets` de
    quem for. Já sumiram uma vez em 04/09.
@@ -192,12 +221,15 @@ reparado em 04/09 — vale saber que ele *pode* se perder.
 
 ## Nota geral
 
-**6,5/10 como jogo · 8/10 como projeto.**
+**7,5/10 como jogo · 8,5/10 como projeto.**
 
-A distância entre os dois números é o resumo honesto: a engenharia está à frente
-do produto. Há um motor sólido, medido e documentado, servindo uma curva de
-dificuldade que ainda para o jogador no setor 4 e um sistema de contas que não
-sabe devolver o progresso a quem o perdeu.
+As notas subiram ao fim do dia porque os dois pontos baixos deixaram de ser
+problema: a conta virou obrigatória com três portas, e a dificuldade do setor 4
+foi confirmada como intenção, não como defeito.
 
-Nenhum dos dois é trabalho grande. São os dois únicos que precisam estar prontos
-antes de alguém de fora entrar.
+A distância que sobra entre os dois números continua sendo o resumo honesto: a
+engenharia está à frente do produto. O que separa o jogo de um beta não é
+código — são missões, ritmo de onboarding e uma passada de acessibilidade.
+
+Para o **alfa fechado**, falta ligar Google e Facebook no painel do Supabase e
+desenhar um ícone de soquete que nunca existiu.
