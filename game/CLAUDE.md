@@ -20,6 +20,7 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/SEGURANCA-E-CONTA.md`](docs/SEGURANCA-E-CONTA.md) | Auditoria de segurança e a arquitetura de login/servidor |
 | [`docs/CHAT-OPERACAO.md`](docs/CHAT-OPERACAO.md) | O chat em produção: Worker próprio, moderação, retenção |
 | [`docs/PLANO-CHAT.md`](docs/PLANO-CHAT.md) | O desenho do chat e o que falta nele |
+| [`docs/AVALIACAO-ALFA.md`](docs/AVALIACAO-ALFA.md) | Nota por sistema e o que bloqueia o alfa (04/09) |
 
 Registros de momento, que valem como história e **não** como estado atual:
 [`FASE-0-AUDITORIA`](docs/FASE-0-AUDITORIA.md) ·
