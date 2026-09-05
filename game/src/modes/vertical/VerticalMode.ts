@@ -14,6 +14,10 @@ import { duration, fmt } from '@core/format';
 import { focoDeEntrada } from '@app/focoDeEntrada';
 import { assets } from '@render/Assets';
 import { Particles } from '@render/Particles';
+import { bus } from '@app/Bus';
+import { AudioCombate } from '@render/AudioCombate';
+import { AtmosferaOceanica } from '@render/AtmosferaOceanica';
+import { atmosferaOceanicaAtiva } from '@data/atmosfera-oceanica';
 import type { Surface } from '@render/Surface';
 import { frameAt, getClip } from '@render/Anim';
 import { PLANET_KEYS, describeGalaxy, galaxyOfSector, galaxyPhases, phaseOfSector } from '@data/galaxies';
@@ -95,6 +99,8 @@ export class VerticalMode {
   private readonly ai = new PilotAI();
   private readonly director = new WaveDirector();
   private readonly particles = new Particles();
+  private readonly audio: AudioCombate;
+  private readonly atmosferaOceanica = new AtmosferaOceanica();
   private readonly rng = new Rng(0x51ce);
 
   private readonly bullets = createBulletPool();
@@ -215,6 +221,10 @@ export class VerticalMode {
     private readonly surface: Surface,
     private readonly sim: Sim,
   ) {
+    this.audio = new AudioCombate(() => this.sim.state.settings);
+    // `atualizar` só era chamado em `refreshPlayer` — isto é, ao trocar de
+    // equipamento ou de casco. Mexer no volume não chegava aqui.
+    bus.on('preferencias:audio', () => this.audio.atualizar());
     this.syncEncounter(true);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
@@ -264,6 +274,7 @@ export class VerticalMode {
 
   /** Recria o estado da nave a partir dos atributos atuais. */
   refreshPlayer(full = false): void {
+    this.audio.atualizar();
     const casco = this.sim.state.hull;
     const nivel = this.sim.state.naves[casco]?.nivel ?? 1;
     if (casco !== this.cascoDeNivelObservado) {
@@ -505,6 +516,9 @@ export class VerticalMode {
 
   update(dt: number): void {
     this.lastDt = dt;
+    if (this.temAtmosferaOceanica) this.atmosferaOceanica.atualizar(
+      dt, this.player.x / VIEW.w - .5, this.player.y / VIEW.h - .5,
+    );
     this.pulsoDeNivel = Math.max(0, this.pulsoDeNivel - dt);
     if (this.sim.laboratorio.active) {
       this.wasLabActive = true;
@@ -814,10 +828,12 @@ export class VerticalMode {
     const sprite = nativo ? style.sprite : info.bullet[0];
     const color = nativo ? style.color : info.color;
     const scale = nativo ? style.scale : 0.9;
+    let disparou = false;
 
     for (let i = 0; i < count; i++) {
       const b = this.bullets.spawn();
       if (!b) break;
+      disparou = true;
       // Leque simétrico: para 1 projétil o offset é 0, para 2 é ±0.5, etc.
       const offset = count === 1 ? 0 : i - (count - 1) / 2;
       const angle = -Math.PI / 2 + offset * style.spread;
@@ -856,6 +872,7 @@ export class VerticalMode {
     }
 
     this.particles.sparks(p.x, p.y - 20, 3, color, 90, 0.9, -Math.PI / 2);
+    if (disparou) this.audio.disparoDaNave(this.currentHull, element, stats.cadencia, p.x / VIEW.w * 2 - 1);
   }
 
   /**
@@ -1350,10 +1367,12 @@ export class VerticalMode {
     const p = this.player;
     const v = speed;
     const damage = e.damage;
+    let disparou = false;
 
     const emit = (angle: number, homing = 0): void => {
       const b = this.bullets.spawn();
       if (!b) return;
+      disparou = true;
       b.friendly = false;
       b.x = e.x;
       b.y = e.y + e.radius * e.scale * 0.5;
@@ -1408,6 +1427,11 @@ export class VerticalMode {
         }
         break;
     }
+    if (disparou) {
+      const pan = e.x / VIEW.w * 2 - 1;
+      if (e.boss) this.audio.disparoDeChefe(e.boss, e.phase, pan);
+      else this.audio.disparoInimigo(e.def, e.def.element, e.def.id, pan);
+    }
   }
 
   /**
@@ -1430,6 +1454,7 @@ export class VerticalMode {
 
   private killEnemy(e: Enemy, byPlayer: boolean): void {
     e.alive = false;
+    if (e.boss && !e.challengeClone) this.audio.explosaoDeChefe(e.boss.element, e.x / VIEW.w * 2 - 1);
     // A animação de destruição própria da nave vale mais que uma explosão
     // genérica: ela desmonta o casco daquele modelo específico.
     const own = e.def.deathClip && getClip(e.def.deathClip) ? e.def.deathClip : null;
@@ -2151,12 +2176,25 @@ export class VerticalMode {
 
   // ── desenho ───────────────────────────────────────────────────────────────
 
+  private get temAtmosferaOceanica(): boolean {
+    return atmosferaOceanicaAtiva(galaxyOfSector(this.sim.state.run.sector),
+      this.sim.desafio !== null, this.sim.laboratorio.active);
+  }
+
   draw(): void {
     const s = this.surface;
     s.begin(true);
     s.fill('#03040c');
 
     this.drawBackground(s);
+    const atmosfera = this.temAtmosferaOceanica;
+    const reduzido = this.sim.state.settings.reduceEffects;
+    if (atmosfera) {
+      this.atmosferaOceanica.fundo(s, this.elapsed, reduzido);
+      if (this.player.alive && !reduzido) this.atmosferaOceanica.esteira(
+        s, this.player.x, this.player.y, this.elapsed, this.currentHull.trail,
+      );
+    }
 
     const jitter = this.shake > 0.1 && this.sim.state.settings.tremorDeTela ? this.shake : 0;
     s.ctx.save();
@@ -2175,6 +2213,8 @@ export class VerticalMode {
     if (this.sim.laboratorio.active && this.sim.laboratorio.config.showHitboxes) this.drawHitboxes(s);
 
     s.ctx.restore();
+
+    if (atmosfera) this.atmosferaOceanica.frente(s, this.elapsed, reduzido);
 
     if (this.flash > 0.01) {
       s.ctx.fillStyle = `rgba(255,60,60,${this.flash * 0.4})`;
@@ -2275,6 +2315,12 @@ export class VerticalMode {
     // projéteis e telegráficos — terreno não pode competir com alvo.
     ctx.filter = bioma.filtro ?? CONFIG_BIOMA_ATMOSFERICO.filtro;
     ctx.drawImage(img, x, y, w, h);
+
+    // A atmosfera oceânica substitui a faixa horizontal pelas nuvens em camadas.
+    if (this.temAtmosferaOceanica) {
+      ctx.restore();
+      return true;
+    }
 
     // Camada atmosférica: faixas de luz difusa avançam mais rápido que o solo.
     // O gradiente evita uma "nuvem-retângulo" e dá profundidade sem esconder a
@@ -3220,6 +3266,7 @@ export class VerticalMode {
   }
 
   dispose(): void {
+    this.audio.dispose();
     this.bullets.clear();
     this.enemies.clear();
     this.pickups.clear();

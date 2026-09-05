@@ -3,6 +3,7 @@ import { RARITIES } from '@data/rarity';
 import { allowSaving, clearStorage, exportSave, importSave } from '@sim/state';
 import { ehAdmin } from '@app/admin';
 import { bus } from '@app/Bus';
+import { MUSICAS } from '@data/musicas';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
 import type { Rarity } from '@sim/types';
@@ -236,15 +237,7 @@ export class SettingsPanel implements Panel {
 
   // ── áudio ─────────────────────────────────────────────────────────────────
 
-  /**
-   * A aba diz que não funciona, e isso é deliberado.
-   *
-   * O jogo não tem som nenhum — nem `Audio`, nem `AudioContext`, nem arquivo.
-   * Havia duas saídas ruins: esconder a aba, e o jogador procurar volume onde
-   * não há; ou mostrar controles mudos, e ele mexer achando que ajustou. A
-   * terceira é dizer. Os valores são guardados no save para o dia em que o som
-   * existir — aí a aba perde o aviso e nada mais muda.
-   */
+  /** Volumes do mixer de combate; música aguarda trilha própria. */
   private audio(sim: Sim): HTMLElement[] {
     const s = sim.state.settings;
     const vol = (rotulo: string, valor: number, aplicar: (v: number) => void, dica?: string): HTMLElement =>
@@ -257,9 +250,17 @@ export class SettingsPanel implements Panel {
           h('input.ajustes-slider', {
             type: 'range', min: '0', max: '100', step: '5',
             value: String(Math.round(valor * 100)),
-            disabled: true,
+            // O de Música nascia `disabled`, de quando a trilha ainda não
+            // existia. Ela existe desde 04/09, e o controle desligado é a
+            // pior forma de dizer isso — parece defeito, não ausência.
             'aria-label': rotulo,
-            oninput: (e: Event) => { aplicar(Number((e.target as HTMLInputElement).value) / 100); sim.touch(); },
+            oninput: (e: Event) => {
+              aplicar(Number((e.target as HTMLInputElement).value) / 100);
+              // Sem isto o número na tela mudava e o som não: `atualizar` só
+              // roda quando alguém a chama.
+              bus.emit('preferencias:audio');
+              sim.touch();
+            },
           }),
           h('span.ajustes-volume-num.tiny', { text: `${Math.round(valor * 100)}%` }),
         ),
@@ -267,14 +268,55 @@ export class SettingsPanel implements Panel {
 
     return [
       h('.ajustes-aviso', {},
-        h('strong', { text: 'O jogo ainda não tem som.' }),
-        h('span.tiny', { text: 'Não existe trilha nem efeito sonoro no projeto — estes controles estão desligados de propósito, em vez de fingirem que ajustam alguma coisa. O que você escolher aqui fica guardado e passa a valer no dia em que o áudio existir.' }),
+        h('strong', { text: 'Áudio' }),
+        h('span.tiny', { text: 'O som começa após um clique ou toque — é exigência do navegador, não do jogo. Os efeitos de combate silenciam ao sair da aba; a trilha continua, porque ela acompanha quem deixou o jogo rodando noutra janela.' }),
       ),
+
+      h('h3.section', { text: 'Trilha' }),
+      ...this.trilha(sim),
+
       h('h3.section', { text: 'Volume' }),
       vol('Geral', s.volumeMestre, (v) => { s.volumeMestre = v; }),
       vol('Música', s.volumeMusica, (v) => { s.volumeMusica = v; }),
       vol('Efeitos', s.volumeEfeitos, (v) => { s.volumeEfeitos = v; }),
-      toggle('Silenciar tudo', s.muted, (v) => { s.muted = v; sim.touch(); }),
+      toggle('Silenciar tudo', s.muted, (v) => { s.muted = v; bus.emit('preferencias:audio'); sim.touch(); }),
+    ];
+  }
+
+  /**
+   * A lista de faixas, com a atual marcada.
+   *
+   * Lista e não `<select>`: são poucas e cada uma tem título E artista, que
+   * num seletor virariam uma linha só e truncada. A lista também deixa clicar
+   * direto na faixa desejada, em vez de obrigar a passar pelas do meio com
+   * "próxima".
+   *
+   * O botão de pular fica junto porque é o gesto de quem NÃO quer escolher —
+   * só quer ouvir outra coisa.
+   */
+  private trilha(sim: Sim): HTMLElement[] {
+    const atual = sim.state.settings.musicaAtual ?? MUSICAS[0]?.id;
+    return [
+      h('.ajustes-trilha', {}, ...MUSICAS.map((m) => h(
+        `button.ajustes-faixa${m.id === atual ? '.ativa' : ''}`,
+        {
+          onclick: () => { bus.emit('musica:trocar', { id: m.id }); sim.touch(); },
+          title: `${m.titulo} — ${m.artista}`,
+        },
+        h('span.ajustes-faixa-nome', { text: m.titulo }),
+        h('span.ajustes-faixa-artista', { text: m.artista }),
+      ))),
+      h('.ajustes-trilha-acoes', {},
+        h('button.mini', {
+          text: '‹ Anterior',
+          onclick: () => { bus.emit('musica:anterior'); sim.touch(); },
+        }),
+        h('button.mini', {
+          text: 'Próxima ›',
+          onclick: () => { bus.emit('musica:proxima'); sim.touch(); },
+        }),
+      ),
+      h('p.muted.hint', { text: 'A faixa escolhida fica salva, e ao terminar o jogo passa para a seguinte.' }),
     ];
   }
 

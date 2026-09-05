@@ -9,6 +9,26 @@ reproduzido com os comandos da seção 5 do mapa.
 
 ---
 
+## Atmosfera oceânica da galáxia 1 — 04/09/2026
+
+`data/atmosfera-oceanica.ts` define assets, posições e velocidades, além da
+condição `galaxia === 0 && !desafio && !laboratorio`, independente de teste.
+`render/AtmosferaOceanica.ts` é cenografia, sem entidades de combate.
+Ordem: superfície → sombras → nuvens baixas/médias → halo da nave →
+telegráficos/entidades/tiros → névoa periférica/aerossóis → HUD.
+
+Rolagem determinística independente do RNG, com retorno fora da tela.
+Parallax suavizado segue a posição do jogador. Uma imagem WebP com alpha
+sob demanda (sem download extra no boot); sombra preparada uma vez em canvas
+de 256 px, sem blur/filtro adicional por quadro. Cada camada restaura contexto.
+Efeitos reduzidos desativam parallax, sombras, nuvens médias/próximas, esteira
+e partículas; permanecem duas nuvens baixas atenuadas. Satélite removido:
+nenhuma referência no catálogo/carregamento/render da atmosfera.
+
+`tools/capture-atmosfera-oceanica.mjs` confere isolamento e gera capturas de
+desktop/mobile com combate real em contexto temporário sem serviços externos.
+`tests/atmosfera-oceanica.test.ts` cobre escopo, assets, rolagem e profundidade.
+
 ## 0. Sistemas transversais entregues em 24/08
 
 O registro completo das entregas de interface, calibração, arte e conteúdo

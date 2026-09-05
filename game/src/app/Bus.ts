@@ -77,6 +77,24 @@ export interface GameEvents {
    * entao ninguem as le durante o quadro: precisam ser empurradas quando mudam.
    */
   'preferencias:visuais': void;
+
+  /**
+   * Volume ou silêncio mudou nos Ajustes.
+   *
+   * Evento próprio, e não carona no de preferências VISUAIS: quem escuta é
+   * outro (o tocador de música e o áudio de combate), e um nome que mente
+   * sobre o assunto faz a próxima pessoa procurar o áudio no lugar errado.
+   *
+   * Ele existe porque nada avisava. `MusicaDeFundo.atualizar` e
+   * `AudioCombate.atualizar` liam as preferências, mas ninguém os chamava ao
+   * mexer nos controles — mover o volume ou silenciar não fazia efeito nenhum.
+   */
+  'preferencias:audio': void;
+
+  /** Trocar a faixa de fundo, pelo id de `data/musicas.ts`. */
+  'musica:trocar': { id: string };
+  'musica:proxima': void;
+  'musica:anterior': void;
   /**
    * Caiu item e o Inventário está cheio — ele NÃO foi coletado.
    *

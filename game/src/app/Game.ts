@@ -7,6 +7,9 @@ import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
 import { allowSaving, loadFromStorage } from '@sim/state';
 import { bus, toast } from './Bus';
+import { galaxyOfSector } from '@data/galaxies';
+import { musicaDaGalaxia } from '@data/musicas';
+import { MusicaDeFundo } from '@render/MusicaDeFundo';
 import { Tour } from '@ui/Tour';
 import { passosDoOnboarding } from '@data/onboarding';
 import { TUTORIAIS } from '@data/tutoriais';
@@ -87,6 +90,33 @@ export class Game {
 
   /** Segundos desde a última tentativa de subir o save. */
   private relogioDaNuvem = 0;
+
+  /**
+   * A trilha de fundo.
+   *
+   * Mora no `Game` e não no `Shell` porque ela não pertence a nenhuma tela: o
+   * jogador abre a Galáxia, o Hangar, os Ajustes, e a música não pode parar a
+   * cada troca de painel. O `Shell` é remontado; o `Game` não.
+   */
+  /**
+   * Galáxia cuja trilha já está tocando.
+   *
+   * Existe para a troca acontecer uma vez por galáxia e não a cada setor. É
+   * inicializada no boot com a galáxia atual, senão o primeiro `sector:advanced`
+   * dentro da MESMA galáxia trocaria a música sem motivo.
+   */
+  private galaxiaDaTrilha = -1;
+
+  private readonly musica = new MusicaDeFundo(
+    () => this.sim.state.settings,
+    (id) => {
+      // A faixa em cena é a que o save guarda. Sem isto, "próxima" ao fim de
+      // uma música seria esquecida no próximo boot.
+      if (this.sim.state.settings.musicaAtual === id) return;
+      this.sim.state.settings.musicaAtual = id;
+      this.sim.touch();
+    },
+  );
 
   async start(): Promise<void> {
     try {
@@ -209,6 +239,42 @@ export class Game {
     bus.on('guia:abrir', () => this.abrirGuia());
     bus.on('guia:painel', ({ id }) => this.abrirTutorialDeTela(id));
     bus.on('preferencias:visuais', () => this.aplicarPreferenciasVisuais());
+    bus.on('musica:trocar', ({ id }) => this.musica.tocar(id));
+
+    /**
+     * Cada galáxia começa com a sua faixa.
+     *
+     * Na MUDANÇA de galáxia, e não a cada setor: dentro da mesma galáxia a
+     * trilha não pode reiniciar a cada dez setores, e trocar de faixa por cima
+     * de uma escolha que o jogador acabou de fazer é pior que não deixá-lo
+     * escolher. Aqui a regra é clara — a galáxia define o INÍCIO, e a escolha
+     * manual vale até a próxima galáxia.
+     */
+    bus.on('sector:advanced', ({ sector }) => {
+      const galaxia = galaxyOfSector(sector);
+      if (galaxia === this.galaxiaDaTrilha) return;
+      this.galaxiaDaTrilha = galaxia;
+      this.musica.tocar(musicaDaGalaxia(galaxia).id);
+    });
+    bus.on('musica:proxima', () => this.musica.proxima());
+    bus.on('musica:anterior', () => this.musica.anterior());
+    bus.on('preferencias:audio', () => this.musica.atualizar());
+
+    /**
+     * No boot vale a faixa SALVA, não a da galáxia.
+     *
+     * Quem fechou o jogo ouvindo uma faixa espera reencontrá-la — a galáxia
+     * define o começo de cada galáxia, e voltar ao jogo não é começar uma.
+     * A galáxia atual fica marcada aqui mesmo para que o primeiro
+     * `sector:advanced` dentro dela não dispare uma troca.
+     *
+     * O navegador só solta o som depois de um gesto, e `MusicaDeFundo` se
+     * rearma sozinha no primeiro clique.
+     */
+    this.galaxiaDaTrilha = galaxyOfSector(this.sim.state.run.sector);
+    this.musica.tocar(
+      this.sim.state.settings.musicaAtual ?? musicaDaGalaxia(this.galaxiaDaTrilha).id,
+    );
     if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
 
     await this.creditarAusencia();

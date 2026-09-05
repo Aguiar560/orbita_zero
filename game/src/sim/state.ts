@@ -381,6 +381,10 @@ export function migrate(raw: unknown): GameState | null {
     const v = Number(state.settings[key]);
     state.settings[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8;
   }
+  // A faixa é só uma string de id. Não vale conferir contra o catálogo aqui:
+  // `data/` não deve ser importado pelo saneamento por uma preferência, e quem
+  // toca já trata id desconhecido caindo na primeira da lista.
+  if (typeof state.settings.musicaAtual !== 'string') delete state.settings.musicaAtual;
   for (const resource of ['sucata', 'nucleo', 'cristal'] as const) {
     state.resources[resource] = Math.max(0, Number.isFinite(state.resources[resource]) ? state.resources[resource] : 0);
     state.lifetime[resource] = Math.max(0, Number.isFinite(state.lifetime[resource]) ? state.lifetime[resource] : 0);

@@ -431,13 +431,18 @@ export interface Settings {
 
   // ── áudio ─────────────────────────────────────────────────────────────────
   //
-  // O jogo AINDA NÃO TEM SOM: não existe `Audio`, `AudioContext` nem arquivo
-  // de áudio no projeto. Estes campos são persistidos assim mesmo para o dia em
-  // que existir — e a aba de Áudio diz ao jogador, em letras, que eles não
-  // fazem nada hoje. Controle que finge funcionar é pior que controle ausente.
+  // Mestre, música e efeitos são multiplicadores; `muted` zera os três.
   /** Volume geral, 0..1. Multiplica os outros dois. */
   volumeMestre: number;
   volumeMusica: number;
+  /**
+   * Faixa de fundo escolhida, por id de `data/musicas.ts`.
+   *
+   * Ausente = a faixa da galáxia atual. Id desconhecido cai na primeira da
+   * lista e não trava: uma faixa retirada do catálogo não pode deixar o
+   * jogador sem música nenhuma, sem nada explicando por quê.
+   */
+  musicaAtual?: string;
   volumeEfeitos: number;
   muted: boolean;
 }

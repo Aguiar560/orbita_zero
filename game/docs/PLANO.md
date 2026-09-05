@@ -9,6 +9,15 @@ mas "a razão golpes/alvo fica entre 0,8 e 1,2 em todos os setores medidos".
 
 ---
 
+## Atmosfera — nuvens aprovadas para a campanha (04/09/2026)
+
+Galáxia 1 ganhou nuvens em profundidade, névoa e esteira da nave.
+Nuvens aprovadas; satélite retirado do render e do carregamento.
+Atmosfera liberada na campanha normal e no teste, apenas na galáxia 1.
+Próximo aceite: avaliar em celular físico de entrada (fluidez/GPU), ajustar
+densidade se necessário e obter aprovação antes de expandir os biomas.
+Teste de submissão de desenho em Chromium não equivale a medir FPS no celular.
+
 ## Chat — implementação e ativação concluídas (04/09/2026)
 
 Global, privadas com aceite, histórico, reconexão, não lidas, bloqueio, denúncias,

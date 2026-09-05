@@ -13,6 +13,22 @@ de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
+## 04/09/2026 — nuvens oceânicas aprovadas para a galáxia 1
+
+Atmosfera com nuvens originais transparentes, sombras no oceano,
+camadas com velocidades crescentes, parallax suave
+acompanhando a nave, névoa periférica, aerossóis e esteira luminosa de motor.
+Terreno original preservado. Não altera combate, colisões, RNG ou save.
+Ativa na galáxia 1 normal e no teste; outras galáxias, Provação e laboratório
+preservam o render anterior. Satélite reprovado e retirado do carregamento/render.
+
+Nuvem com alpha otimizada: 161.606 bytes de WebP, carregados sob demanda,
+com originais/prompts em `art-source/atmosfera-galaxia-1/`.
+Efeitos reduzidos mantêm apenas duas nuvens suaves.
+Capturas de combate em 1440×1000 e 390×844, sem erros de JavaScript.
+Cobertura: cinco testes específicos de escopo, assets, movimento e ausência
+do satélite. Publicação solicitada; não expandir para outras galáxias.
+
 ## 04/09/2026 — painel de conquista entre ondas
 
 A transição de onda deixou de ser uma caixa opaca com borda simples e passou a
