@@ -185,8 +185,49 @@ const AVISO = 'oz:login-pronto';
  * responde com `Cross-Origin-Opener-Policy`, que **corta a ligação** entre a
  * janela e quem a abriu: ao voltar para cá, `window.opener` é `null`. O nome
  * atravessa a navegação e sobrevive ao corte.
+ *
+ * Reabrir com o MESMO nome não abre uma segunda janela: aponta a que já
+ * existe. É isso que faz o segundo clique ser conserto, e não bagunça.
  */
 const NOME_DA_JANELA = 'oz-login';
+
+/**
+ * Onde o login em curso está acontecendo: em janela própria ou nesta página.
+ *
+ * Existe por desconfiança do `window.name`. O nome atravessa a navegação em
+ * tese, mas navegadores o limpam em salto entre origens por privacidade, e o
+ * salto para o Google é exatamente isso. Se o nome se perder, a janela do
+ * login não se reconheceria, carregaria o jogo inteiro e ficaria aberta.
+ *
+ * A marca não se perde: `localStorage` é da origem, e a origem é a mesma.
+ *
+ * O valor importa tanto quanto a presença. Quando o pop-up é bloqueado, o
+ * login acontece NESTA página — e a volta não pode tentar se fechar sozinha,
+ * porque `window.close()` numa aba comum não faz nada e o jogador ficaria
+ * olhando para uma tela que não abre.
+ *
+ * Sozinha ela nunca decide nada: só conta junto com um token ou um erro na
+ * URL. Uma marca esquecida por um login abandonado é, por isso, inofensiva.
+ */
+const EM_CURSO = 'oz:login-em-curso';
+
+function marcar(onde: 'janela' | 'pagina'): void {
+  try { localStorage.setItem(EM_CURSO, onde); } catch { /* segue sem marca. */ }
+}
+
+function estaNaJanelaDoLogin(): boolean {
+  if (window.name === NOME_DA_JANELA) return true;
+  try { return localStorage.getItem(EM_CURSO) === 'janela'; } catch { return false; }
+}
+
+/**
+ * A espera em curso, se houver.
+ *
+ * Um só login por vez. Sem isto, cada clique no botão criaria outro relógio e
+ * outro ouvinte para a mesma janela — e o botão AGORA aceita cliques repetidos
+ * de propósito, porque é o único jeito de sair de uma espera morta.
+ */
+let pendente: Promise<ResultadoDeConta> | null = null;
 
 /**
  * ENTRAR com um provedor, numa JANELA PRÓPRIA.
@@ -228,16 +269,24 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
     url.toString(), NOME_DA_JANELA, 'popup=yes,width=480,height=680',
   );
   if (!janela) {
-    // Bloqueado: cai no caminho antigo. A página é descarregada aqui.
+    // Bloqueado: cai no caminho antigo. A página é descarregada aqui, e a
+    // marca diz "pagina" para que a volta não tente se fechar sozinha.
+    marcar('pagina');
     location.href = url.toString();
     return Promise.resolve({ ok: false, erro: 'Redirecionando…' });
   }
+  marcar('janela');
 
-  return new Promise((resolve) => {
+  // Clicar de novo com uma espera em curso reaponta a janela — mesmo nome, e
+  // o `window.open` acima já a reaproveitou — e devolve a MESMA promessa.
+  if (pendente) return pendente;
+
+  const espera = new Promise<ResultadoDeConta>((resolve) => {
     let encerrado = false;
     const encerrar = (r: ResultadoDeConta): void => {
       if (encerrado) return;
       encerrado = true;
+      pendente = null;
       window.removeEventListener('storage', aoStorage);
       clearInterval(vigia);
       resolve(r);
@@ -255,45 +304,48 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
     window.addEventListener('storage', aoStorage);
 
     /**
-     * O relógio, e por que ele NÃO acredita em `janela.closed`.
+     * O relógio NÃO olha para `janela.closed`. Nenhuma vez.
      *
-     * O Google responde com `Cross-Origin-Opener-Policy: same-origin`, e isso
-     * corta a ligação entre as duas janelas. Do lado de cá o efeito é cruel: o
-     * handle passa a dizer `closed === true` **enquanto a janela está aberta**,
-     * com o jogador ainda escolhendo a conta. Foi o que produziu "Login
-     * cancelado" três segundos depois de clicar.
+     * O Google responde com `Cross-Origin-Opener-Policy: same-origin`, que
+     * corta a ligação entre as duas janelas. Do lado de cá o handle passa a
+     * dizer `closed === true` **com a janela aberta na frente do jogador**,
+     * escolhendo a conta. Era isso que produzia "Login cancelado" segundos
+     * depois do clique.
      *
-     * Então `closed` só vale como cancelamento se a janela já tiver sido vista
-     * ABERTA alguma vez. Se ela nasce "fechada", estamos no caso do corte:
-     * resta esperar o `localStorage`, que atravessa a política porque as duas
-     * janelas continuam sendo da mesma origem.
+     * A tentativa anterior foi só desconfiar: `closed` valeria como
+     * cancelamento apenas se a janela já tivesse sido vista aberta. Não
+     * adiantou, e o motivo é a ORDEM do caminho. A janela nasce no Supabase,
+     * que não tem COOP, e é vista aberta no primeiro tique; só então salta
+     * para o Google e o corte acontece. A ressalva nunca chegava a valer.
      *
-     * O teto de tempo existe para a promessa não viver para sempre quando o
-     * jogador simplesmente abandona a janela — e é generoso porque escolher
-     * conta, digitar senha e passar por dois fatores leva minutos.
+     * Não há remendo aqui: sob COOP, `closed` não responde a pergunta que se
+     * quer fazer. Então a pergunta muda. A única evidência confiável é a
+     * sessão aparecendo no armazenamento, que é da mesma origem nas duas
+     * janelas e por isso atravessa a política.
+     *
+     * O preço é real e está pago de propósito: fechar a janela no X não é mais
+     * percebido. Quem faz isso encontra a tela dizendo que ainda espera, e o
+     * botão continua clicável para recomeçar — combinado com `Login.ts`.
+     *
+     * O teto de tempo existe para a promessa não viver para sempre, e é
+     * generoso porque escolher conta, digitar senha e passar por dois fatores
+     * leva minutos.
      */
-    let vistaAberta = false;
     const limite = Date.now() + 5 * 60_000;
 
     const vigia = setInterval(() => {
-      // A sessão é a verdade: ela chega pelo armazenamento, que o COOP não
-      // atinge. Perguntar aqui cobre o `storage` que porventura se perca.
+      // A sessão é a verdade. Perguntar aqui cobre um `storage` que se perca.
       const sessao = sessaoGuardada();
       if (sessao) return encerrar({ ok: true, sessao });
 
-      let fechada = true;
-      try { fechada = janela.closed; } catch { fechada = true; }
-      if (!fechada) { vistaAberta = true; return; }
-
-      // Fechou DEPOIS de ter sido vista aberta: desistência de verdade.
-      if (vistaAberta) {
-        return encerrar({ ok: false, erro: 'Login cancelado.' });
-      }
       if (Date.now() > limite) {
         encerrar({ ok: false, erro: 'O login demorou demais. Tente de novo.' });
       }
     }, 400);
   });
+
+  pendente = espera;
+  return espera;
 }
 
 /**
@@ -309,12 +361,15 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
  * `null`. O resultado era a janelinha carregar o jogo inteiro e ficar aberta,
  * enquanto a página de trás dizia que o login tinha sido cancelado.
  *
- * O nome dado em `window.open` atravessa a navegação e sobrevive ao corte.
+ * O nome dado em `window.open` atravessa a navegação e sobrevive ao corte —
+ * em tese. Como navegadores limpam o nome em salto entre origens, e o salto
+ * para o Google é um, a marca em `localStorage` responde junto: basta uma das
+ * duas dizer que sim. Ver `EM_CURSO`.
  *
  * Devolve `true` quando fechou. Quem chama deve PARAR: não há mais página.
  */
 export function finalizarLoginEmPopup(): boolean {
-  if (window.name !== NOME_DA_JANELA) return false;
+  if (!estaNaJanelaDoLogin()) return false;
 
   const erro = erroDaUrl();
   const temSessao = recolherSessaoDaUrl();
@@ -382,6 +437,8 @@ export function recolherSessaoDaUrl(): boolean {
   const bruto = location.hash.startsWith('#') ? location.hash.slice(1) : '';
   const limpar = (): void => {
     history.replaceState(null, '', location.pathname);
+    // A volta foi consumida: o login deixou de estar em curso.
+    try { localStorage.removeItem(EM_CURSO); } catch { /* nada a fazer. */ }
   };
 
   // Erro na query: nada a recolher, mas a barra tem de ser limpa — senão o

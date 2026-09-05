@@ -46,6 +46,8 @@ export class Login {
   private readonly root = h('.login-tela');
   private modo: 'entrar' | 'criar' = 'entrar';
   private ocupado = false;
+  /** Espera de provedor em curso. Ver `comProvedor`: não trava o botão. */
+  private esperandoProvedor = false;
   private recado = '';
 
   /**
@@ -125,15 +127,29 @@ export class Login {
      * que um erro porque não diz o que fazer.
      */
     const comProvedor = async (provedor: Provedor): Promise<void> => {
-      if (this.ocupado) return;
       const promessa = entrarComProvedor(provedor);
 
-      this.ocupado = true;
-      this.recado = `Aguardando ${NOME_DO_PROVEDOR[provedor]}…`;
+      /**
+       * Já esperando: o clique só serve para trazer a janela de volta, e o
+       * `entrarComProvedor` acima já fez isso ao reusar o nome. Sair aqui
+       * evita dois `await` na mesma promessa entrarem no jogo duas vezes.
+       */
+      if (this.esperandoProvedor) return;
+
+      /**
+       * `ocupado` NÃO entra aqui, e isso é a metade visível do conserto.
+       *
+       * Sob COOP não há como saber que o jogador fechou a janela no X. Se o
+       * botão travasse durante a espera, fechar a janela deixaria a tela presa
+       * em "aguardando" até o teto de cinco minutos, sem nada a fazer. Clicar
+       * de novo é a saída, então o clique tem de ser aceito.
+       */
+      this.esperandoProvedor = true;
+      this.recado = `Aguardando ${NOME_DO_PROVEDOR[provedor]}… Se a janela fechou, clique de novo.`;
       this.render(pronto);
 
       const r = await promessa;
-      this.ocupado = false;
+      this.esperandoProvedor = false;
       if (r.ok) return pronto(r.sessao);
 
       this.recado = r.erro;
