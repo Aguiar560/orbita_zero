@@ -114,19 +114,30 @@ export class Login {
     };
 
     /**
-     * Entrar com Google ou Facebook.
+     * Entrar com um provedor, em janela própria.
      *
-     * Navegação de página inteira, e não janela pop-up: pop-up é bloqueado por
-     * padrão em boa parte dos navegadores quando não nasce de um clique
-     * direto, e depurar "não abriu nada" no computador de outra pessoa é caro.
-     * A volta é tratada em `mostrar`, que recolhe a sessão do fragmento.
+     * `window.open` precisa nascer do clique, então ele acontece ANTES do
+     * `render`: redesenhar primeiro empurraria a abertura para outro passo do
+     * laço de eventos, e aí o navegador a trataria como pop-up não pedido.
+     *
+     * O recado depois do `await` cobre o caso de fechar a janela no meio —
+     * sem ele a tela ficaria em "Abrindo Google…" para sempre, o que é pior
+     * que um erro porque não diz o que fazer.
      */
-    const comProvedor = (provedor: Provedor): void => {
+    const comProvedor = async (provedor: Provedor): Promise<void> => {
       if (this.ocupado) return;
+      const promessa = entrarComProvedor(provedor);
+
       this.ocupado = true;
-      this.recado = `Abrindo ${NOME_DO_PROVEDOR[provedor]}…`;
+      this.recado = `Aguardando ${NOME_DO_PROVEDOR[provedor]}…`;
       this.render(pronto);
-      entrarComProvedor(provedor);
+
+      const r = await promessa;
+      this.ocupado = false;
+      if (r.ok) return pronto(r.sessao);
+
+      this.recado = r.erro;
+      this.render(pronto);
     };
 
     const aoTeclar = (ev: KeyboardEvent): void => {
@@ -180,7 +191,7 @@ export class Login {
             h(`button.login-provedor.p-${p}`, {
               text: `Continuar com ${NOME_DO_PROVEDOR[p]}`,
               disabled: this.ocupado,
-              onclick: () => { comProvedor(p); },
+              onclick: () => { void comProvedor(p); },
             })),
         ),
         h('p.login-nota.tiny.muted', {

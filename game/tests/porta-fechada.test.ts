@@ -63,15 +63,40 @@ describe('a porta de entrada exige sessão', () => {
     expect(fonte('ui/Login.ts')).not.toContain("'Jogar agora'");
   });
 
-  it('e há três formas de entrar, todas com dono', () => {
-    // E-mail, Google e Facebook. As três produzem conta com id no servidor e
-    // caminho de volta; era exatamente o que faltava.
+  it('e há duas formas de entrar, ambas com dono', () => {
+    /**
+     * E-mail e Google. As duas produzem conta com id no servidor e caminho de
+     * volta — era exatamente o que faltava.
+     *
+     * O Facebook chegou a existir e saiu em 04/09: para aceitar qualquer
+     * pessoa o app precisa estar em modo Ativo, e isso exige URL de política
+     * de privacidade, que o jogo não tem. Botão que só funciona para quem está
+     * cadastrado como testador é pior que botão nenhum.
+     */
     const conta = fonte('app/conta.ts');
     expect(conta).toContain('entrarComProvedor');
     expect(conta).toContain('recolherSessaoDaUrl');
     expect(conta).toContain("google: 'Google'");
-    expect(conta).toContain("facebook: 'Facebook'");
     expect(fonte('ui/Login.ts')).toContain('login-provedor');
+  });
+
+  it('e o provedor abre em janela própria, sem descarregar o jogo', () => {
+    /**
+     * `window.open` e não `location.href`: navegar a própria página descarrega
+     * o jogo, e quem desiste no meio do Google volta para uma página que não é
+     * mais a dele.
+     *
+     * O recuo para `location.href` FICA, e é o que este teste também guarda:
+     * quando o navegador bloqueia a janela, perder o conforto é melhor que
+     * perder o login.
+     */
+    const conta = fonte('app/conta.ts');
+    expect(conta).toContain('window.open(');
+    expect(conta).toContain('finalizarLoginEmPopup');
+    // O recuo, para o caso de bloqueio.
+    expect(conta).toContain('location.href = url.toString();');
+    // E o boot fecha a janela antes de carregar o jogo dentro dela.
+    expect(fonte('main.ts')).toContain('finalizarLoginEmPopup()');
   });
 
   it('o Game não trata mais "entrou sem conta"', () => {

@@ -149,12 +149,18 @@ export const entrar = (email: string, senha: string): Promise<ResultadoDeConta> 
 
 // ── contas de provedor: Google e Facebook ──────────────────────────────────
 
-/** Provedores aceitos. O id é o que o Supabase espera na URL. */
-export type Provedor = 'google' | 'facebook';
+/**
+ * Provedores aceitos. O id é o que o Supabase espera na URL.
+ *
+ * O Facebook saiu em 04/09. Ele exigia app em modo Ativo para aceitar
+ * qualquer pessoa, e passar para Ativo pede URL de política de privacidade —
+ * que o jogo não tem. Um botão que só funciona para quem está cadastrado como
+ * testador do app é pior que botão nenhum.
+ */
+export type Provedor = 'google';
 
 export const NOME_DO_PROVEDOR: Record<Provedor, string> = {
   google: 'Google',
-  facebook: 'Facebook',
 };
 
 /**
@@ -169,25 +175,107 @@ export const NOME_DO_PROVEDOR: Record<Provedor, string> = {
  */
 const voltarPara = (): string => `${location.origin}${location.pathname}`;
 
+/** Chave de aviso entre a janela do login e a que a abriu. */
+const AVISO = 'oz:login-pronto';
+
 /**
- * ENTRAR com um provedor. Cria conta nova, ou reabre a que já existe.
+ * ENTRAR com um provedor, numa JANELA PRÓPRIA.
+ *
+ * ## Por que janela e não a mesma página
+ *
+ * Navegar a própria página descarrega o jogo: quem volta paga o boot inteiro
+ * de novo, e quem desiste no meio do Google fica numa página que não é mais a
+ * dele. Com janela, a página do jogo continua viva atrás e só recebe a
+ * sessão.
+ *
+ * O bloqueio de pop-up não se aplica aqui: navegador bloqueia `window.open`
+ * que NÃO nasce de um gesto do usuário, e este nasce do clique. Ainda assim,
+ * quando o retorno é `null` — extensão agressiva, política corporativa — o
+ * caminho antigo continua valendo, porque perder o login é pior que perder o
+ * conforto.
+ *
+ * ## Como a sessão volta
+ *
+ * A janela carrega o jogo com o token no fragmento, `finalizarLoginEmPopup`
+ * a grava e fecha. Como as duas janelas são da mesma origem, o
+ * `localStorage` é compartilhado e o evento `storage` avisa a de trás — é
+ * ele que dispensa ficar perguntando de tempos em tempos.
  *
  * ## O que isto NÃO faz
  *
  * Não junta contas. Quem já entrou por e-mail e depois vier por aqui recebe
  * um id de usuário DIFERENTE, com progresso próprio — o Supabase trata as
- * duas identidades como duas pessoas até alguém pedir o vínculo.
- *
- * Vincular exige `PUT /user/identities/authorize` com o token da sessão em
- * mãos, e não existe aqui porque ninguém precisou ainda. O dia em que um
- * jogador pedir "quero entrar pelo Google na minha conta de e-mail" é o dia
- * de escrever — e não antes, para não ficar código que ninguém exercita.
+ * duas identidades como duas pessoas até alguém pedir o vínculo. Vincular
+ * exige `PUT /user/identities/authorize`, e o dia de escrever isso é o dia em
+ * que um jogador pedir.
  */
-export function entrarComProvedor(provedor: Provedor): void {
+export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta> {
   const url = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
   url.searchParams.set('provider', provedor);
   url.searchParams.set('redirect_to', voltarPara());
-  location.href = url.toString();
+
+  const janela = window.open(
+    url.toString(), 'oz-login', 'popup=yes,width=480,height=680',
+  );
+  if (!janela) {
+    // Bloqueado: cai no caminho antigo. A página é descarregada aqui.
+    location.href = url.toString();
+    return Promise.resolve({ ok: false, erro: 'Redirecionando…' });
+  }
+
+  return new Promise((resolve) => {
+    let encerrado = false;
+    const encerrar = (r: ResultadoDeConta): void => {
+      if (encerrado) return;
+      encerrado = true;
+      window.removeEventListener('storage', aoStorage);
+      clearInterval(vigia);
+      resolve(r);
+    };
+
+    const aoStorage = (e: StorageEvent): void => {
+      if (e.key !== AVISO && e.key !== CHAVE) return;
+      const sessao = sessaoGuardada();
+      if (sessao) encerrar({ ok: true, sessao });
+    };
+    window.addEventListener('storage', aoStorage);
+
+    /**
+     * O relógio cobre o que o evento não cobre: janela fechada no X.
+     *
+     * Sem ele a promessa nunca resolveria, e a tela ficaria em "Abrindo
+     * Google…" para sempre — pior que um erro, porque não dá o que fazer.
+     */
+    const vigia = setInterval(() => {
+      if (!janela.closed) return;
+      const sessao = sessaoGuardada();
+      encerrar(sessao
+        ? { ok: true, sessao }
+        : { ok: false, erro: 'Login cancelado.' });
+    }, 400);
+  });
+}
+
+/**
+ * Roda no BOOT, antes de tudo: se esta janela é a do login, encerra o serviço.
+ *
+ * A janela do provedor volta para a própria URL do jogo. Sem isto ela
+ * carregaria o jogo inteiro — assets, som, cena — para ser fechada em seguida.
+ *
+ * Devolve `true` quando fechou. Quem chama deve PARAR: não há mais página.
+ */
+export function finalizarLoginEmPopup(): boolean {
+  if (!window.opener || window.opener === window) return false;
+  if (!recolherSessaoDaUrl()) return false;
+
+  try {
+    // Um valor sempre diferente: `storage` só dispara quando o valor MUDA, e
+    // dois logins seguidos gravariam o mesmo e o segundo passaria calado.
+    localStorage.setItem(AVISO, String(Date.now()));
+  } catch { /* A sessão já está guardada; o aviso é conveniência. */ }
+
+  window.close();
+  return true;
 }
 
 
