@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 04/09/2026 · 982 testes passando · registro consolidado
+**Última atualização:** 04/09/2026 · 1.011 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -27,7 +27,36 @@ com originais/prompts em `art-source/atmosfera-galaxia-1/`.
 Efeitos reduzidos mantêm apenas duas nuvens suaves.
 Capturas de combate em 1440×1000 e 390×844, sem erros de JavaScript.
 Cobertura: cinco testes específicos de escopo, assets, movimento e ausência
-do satélite. Publicação solicitada; não expandir para outras galáxias.
+do satélite. Snapshot isolado de publicação: 1.008 testes em 81 arquivos e
+build aprovados, sem incluir outras alterações locais. Não expandir para outras galáxias.
+
+## 04/09/2026 — conquista da Provação e áudio de combate
+
+Card da Provação redesenhado com troféu, moldura técnica, telemetria maior,
+recompensas nomeadas e próximo piso em destaque. Primeira vitória, marco,
+repetição e derrota verificados em 390×460; primeira vitória também em
+1280×900 e 390×844. Navegação por Tab/Escape e rolagem interna conferidas.
+
+Áudio próprio sintetizado para 53 cascos, inimigos que disparam e 130 chefes,
+com variação por estágio. Exportados 508 disparos e seis explosões elementais
+em WAV; catálogo completo em [CATALOGO-SONORO.md](CATALOGO-SONORO.md).
+Web Audio confirmado no navegador com sinal real, gesto inicial e mudo.
+Volumetria, limites de vozes e cache integrados; música continua pendente.
+
+Validados também os efeitos visuais da entrega anterior: impactos no ponto do
+tiro, brilho dourado de nível (sem repetir a cada atualização) e borda vermelha
+com casco em 10% ou menos. Capturas e teste comportamental no navegador.
+
+Verificação final: 1.007 testes (81 arquivos), typecheck e build aprovados.
+Sinal de áudio medido no mixer do Chromium; nenhum erro de JavaScript no QA.
+
+## 04/09/2026 — cadeados nos setores bloqueados
+
+Setores inalcançáveis no mapa agora exibem o cadeado sci-fi já usado pela
+Provação no lugar do planeta. Número, motivo do bloqueio e rótulo acessível
+continuam presentes; o estado liberado não mudou.
+
+Verificação: typecheck, build de produção e 1.000 testes passando.
 
 ## 04/09/2026 — painel de conquista entre ondas
 
@@ -1442,6 +1471,59 @@ Reparado com `server/reparos/registrar-migracoes-ja-aplicadas.sql`. Verificado
 depois: 10 registradas, as cinco tabelas criadas, `lotes` com as colunas
 `usados_*`, e `/inventario`, `/progresso`, `/carteira` e `/lote` respondendo
 **200**.
+
+---
+
+### O login pelo Google nunca funcionou, e o sintoma apontava para o lugar errado
+
+Três defeitos empilhados, encontrados em ordem inversa à da causa. Vale
+registrar a ordem, porque ela é a lição: **dois consertos foram feitos no
+mecanismo da janela antes de alguém olhar para o que estava sendo gravado.**
+
+**1. A sessão nascia ilegível.** `recolherSessaoDaUrl` guardava
+`usuarioId: atual?.usuarioId ?? ''`. Num login novo não existe sessão anterior,
+então o id saía vazio — e `sessaoGuardada` recusa sessão sem id. A sessão era
+gravada e nascia impossível de ler. O comentário no código dizia que o id
+chegaria na primeira renovação; não chegava, porque a renovação precisa de uma
+sessão legível, e essa era justamente a que não existia. Isto quebrava o login
+por provedor **em qualquer caminho** — janela ou redirecionamento de página
+inteira. Corrigido lendo `sub` e `email` de dentro do próprio JWT.
+
+**2. `janela.closed` mente sob COOP.** O `Cross-Origin-Opener-Policy:
+same-origin` do Google corta a ligação entre as duas janelas, e o handle passa
+a dizer `closed === true` com a janela aberta na frente do jogador. Daí o
+"Login cancelado" segundos depois do clique. A primeira correção — só aceitar
+`closed` se a janela já tivesse sido vista aberta — **não funcionou**, e o
+motivo é a ordem do caminho: a janela nasce no Supabase, que não tem COOP, e é
+vista aberta no primeiro tique de 400 ms; só então salta para o Google. A
+ressalva nunca chegava a valer. Não há remendo: `closed` foi removido da
+decisão, e a única evidência aceita passou a ser a sessão aparecendo no
+`localStorage`, que é da mesma origem nas duas janelas.
+
+**3. O topo continuava dizendo "Sem conta".** `PerfilMenu` lê a sessão uma vez,
+no boot — e a ordem do boot monta a barra antes de a tela de login aparecer por
+cima dela. O aviso `oz:conta` já era disparado por `guardar` e `sair`; só o
+chat o escutava.
+
+O preço aceito no item 2: fechar a janela no X deixou de ser percebido. Por
+isso o botão do provedor **continua clicável durante a espera** e o recado diz
+para clicar de novo — o mesmo nome de janela reaponta a que existe, e a
+promessa é reusada em vez de criar uma segunda espera.
+
+Duas defesas contra o silêncio, que foi o que custou os dois dias: token que
+chega sem virar sessão agora grava um recado antes de a janela fechar, e a
+marca `oz:login-em-curso` cobre o `window.name`, que navegadores limpam em
+salto entre origens.
+
+**Verificado** em `tests/sessao-do-provedor.test.ts` (4) e
+`tests/login-em-janela.test.ts` (3). Os testes montam uma janela que mente do
+jeito que o COOP faz mentir, e não perguntam se `recolherSessaoDaUrl` devolveu
+`true` — a versão quebrada também devolvia. Perguntam se a sessão pode ser
+**lida de volta**. Seis dos sete reprovam o código que estava no ar.
+
+Verificado também no site publicado, com um JWT no formato do Supabase: id e
+e-mail saíram do token, a barra foi limpa, o jogo entrou e o topo passou a
+mostrar o nome da conta.
 
 ---
 
