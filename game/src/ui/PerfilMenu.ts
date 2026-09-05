@@ -29,6 +29,24 @@ export class PerfilMenu {
     document.addEventListener('pointerdown', (e) => {
       if (this.aberto && !this.root.contains(e.target as Node)) this.fechar();
     });
+
+    /**
+     * A conta muda DEPOIS que esta barra já existe, sempre.
+     *
+     * A ordem do boot não deixa alternativa: a barra é montada, e só então a
+     * tela de login aparece por cima dela. Quando o jogador entra, este menu já
+     * leu `sessaoGuardada()` uma vez — e leu `null`.
+     *
+     * Sem escutar o aviso, entrar pelo Google guardava a sessão, abria o jogo e
+     * deixava "Sem conta" escrito no topo até a próxima recarga. O jogador que
+     * acabou de fazer login lendo "Sem conta" tem todo o direito de achar que
+     * não funcionou.
+     *
+     * `guardar` e `sair` disparam o aviso; o listener não é removido porque
+     * este menu vive enquanto a página viver.
+     */
+    window.addEventListener('oz:conta', () => { this.render(); });
+
     this.render();
   }
 
