@@ -179,6 +179,16 @@ const voltarPara = (): string => `${location.origin}${location.pathname}`;
 const AVISO = 'oz:login-pronto';
 
 /**
+ * Nome da janela do login.
+ *
+ * É por ele que a janela se reconhece, e não por `window.opener`. O Google
+ * responde com `Cross-Origin-Opener-Policy`, que **corta a ligação** entre a
+ * janela e quem a abriu: ao voltar para cá, `window.opener` é `null`. O nome
+ * atravessa a navegação e sobrevive ao corte.
+ */
+const NOME_DA_JANELA = 'oz-login';
+
+/**
  * ENTRAR com um provedor, numa JANELA PRÓPRIA.
  *
  * ## Por que janela e não a mesma página
@@ -215,7 +225,7 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
   url.searchParams.set('redirect_to', voltarPara());
 
   const janela = window.open(
-    url.toString(), 'oz-login', 'popup=yes,width=480,height=680',
+    url.toString(), NOME_DA_JANELA, 'popup=yes,width=480,height=680',
   );
   if (!janela) {
     // Bloqueado: cai no caminho antigo. A página é descarregada aqui.
@@ -245,17 +255,43 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
     window.addEventListener('storage', aoStorage);
 
     /**
-     * O relógio cobre o que o evento não cobre: janela fechada no X.
+     * O relógio, e por que ele NÃO acredita em `janela.closed`.
      *
-     * Sem ele a promessa nunca resolveria, e a tela ficaria em "Abrindo
-     * Google…" para sempre — pior que um erro, porque não dá o que fazer.
+     * O Google responde com `Cross-Origin-Opener-Policy: same-origin`, e isso
+     * corta a ligação entre as duas janelas. Do lado de cá o efeito é cruel: o
+     * handle passa a dizer `closed === true` **enquanto a janela está aberta**,
+     * com o jogador ainda escolhendo a conta. Foi o que produziu "Login
+     * cancelado" três segundos depois de clicar.
+     *
+     * Então `closed` só vale como cancelamento se a janela já tiver sido vista
+     * ABERTA alguma vez. Se ela nasce "fechada", estamos no caso do corte:
+     * resta esperar o `localStorage`, que atravessa a política porque as duas
+     * janelas continuam sendo da mesma origem.
+     *
+     * O teto de tempo existe para a promessa não viver para sempre quando o
+     * jogador simplesmente abandona a janela — e é generoso porque escolher
+     * conta, digitar senha e passar por dois fatores leva minutos.
      */
+    let vistaAberta = false;
+    const limite = Date.now() + 5 * 60_000;
+
     const vigia = setInterval(() => {
-      if (!janela.closed) return;
+      // A sessão é a verdade: ela chega pelo armazenamento, que o COOP não
+      // atinge. Perguntar aqui cobre o `storage` que porventura se perca.
       const sessao = sessaoGuardada();
-      encerrar(sessao
-        ? { ok: true, sessao }
-        : { ok: false, erro: 'Login cancelado.' });
+      if (sessao) return encerrar({ ok: true, sessao });
+
+      let fechada = true;
+      try { fechada = janela.closed; } catch { fechada = true; }
+      if (!fechada) { vistaAberta = true; return; }
+
+      // Fechou DEPOIS de ter sido vista aberta: desistência de verdade.
+      if (vistaAberta) {
+        return encerrar({ ok: false, erro: 'Login cancelado.' });
+      }
+      if (Date.now() > limite) {
+        encerrar({ ok: false, erro: 'O login demorou demais. Tente de novo.' });
+      }
     }, 400);
   });
 }
@@ -266,10 +302,19 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
  * A janela do provedor volta para a própria URL do jogo. Sem isto ela
  * carregaria o jogo inteiro — assets, som, cena — para ser fechada em seguida.
  *
+ * ## Reconhece a si mesma pelo NOME, não pelo `opener`
+ *
+ * A primeira versão exigia `window.opener`, e o Google o apaga: a política
+ * `Cross-Origin-Opener-Policy` corta a ligação, e ao voltar para cá o opener é
+ * `null`. O resultado era a janelinha carregar o jogo inteiro e ficar aberta,
+ * enquanto a página de trás dizia que o login tinha sido cancelado.
+ *
+ * O nome dado em `window.open` atravessa a navegação e sobrevive ao corte.
+ *
  * Devolve `true` quando fechou. Quem chama deve PARAR: não há mais página.
  */
 export function finalizarLoginEmPopup(): boolean {
-  if (!window.opener || window.opener === window) return false;
+  if (window.name !== NOME_DA_JANELA) return false;
 
   const erro = erroDaUrl();
   const temSessao = recolherSessaoDaUrl();
