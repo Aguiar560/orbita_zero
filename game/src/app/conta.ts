@@ -372,14 +372,25 @@ export function finalizarLoginEmPopup(): boolean {
   if (!estaNaJanelaDoLogin()) return false;
 
   const erro = erroDaUrl();
+  const tinhaToken = location.hash.includes('access_token=');
   const temSessao = recolherSessaoDaUrl();
+
   // Nem sessão nem erro: esta janela não veio de um login. Deixa o jogo abrir.
-  if (!temSessao && !erro) return false;
+  if (!temSessao && !erro && !tinhaToken) return false;
+
+  /**
+   * Veio token e não saiu sessão: alguma coisa quebrou no meio.
+   *
+   * Sem esta linha o caso vira silêncio — a janela fecha, nada é gravado, e a
+   * página de trás espera cinco minutos por algo que não vem. Foi assim que o
+   * id vazio passou despercebido. Dizer "não deu" é o mínimo.
+   */
+  const recado = erro ?? (temSessao ? null : 'O provedor respondeu, mas a sessão não pôde ser lida.');
 
   try {
     // Um valor sempre diferente: `storage` só dispara quando o valor MUDA, e
     // dois logins seguidos gravariam o mesmo e o segundo passaria calado.
-    localStorage.setItem(AVISO, erro ? `erro:${erro}` : String(Date.now()));
+    localStorage.setItem(AVISO, recado ? `erro:${recado}` : String(Date.now()));
   } catch { /* A sessão já está guardada; o aviso é conveniência. */ }
 
   window.close();
@@ -433,6 +444,40 @@ export function erroDaUrl(): string | null {
   return legivel ? `${legivel} (${detalhe ?? codigo})` : `Falha no login: ${detalhe ?? codigo}`;
 }
 
+/**
+ * Quem é o dono do token, lido de dentro do próprio token.
+ *
+ * O `access_token` do Supabase é um JWT, e o miolo dele traz `sub` (o id do
+ * usuário) e `email`. Ler daqui evita uma ida ao servidor no exato momento em
+ * que a janela do login precisa fechar — uma chamada assíncrona ali obrigaria
+ * a janela a ficar aberta esperando resposta para só então se fechar.
+ *
+ * ## Ler não é conferir, e está certo assim
+ *
+ * Isto NÃO valida assinatura, e não deve: o token não está sendo aceito como
+ * prova de nada aqui. Quem confere é o servidor, a cada requisição, com a
+ * chave que só ele tem. O id lido aqui serve para o jogo saber de quem é o
+ * save que está na mesa. Forjar um token para trocar o próprio id local só
+ * daria a alguém o direito de bagunçar o próprio jogo.
+ */
+function donoDoToken(jwt: string): { id: string; email: string } {
+  try {
+    const meio = jwt.split('.')[1];
+    if (!meio) return { id: '', email: '' };
+
+    // Base64 de URL: `-` e `_` no lugar de `+` e `/`, e sem o enchimento.
+    const base = meio.replace(/-/g, '+').replace(/_/g, '/');
+    const cru = atob(base.padEnd(Math.ceil(base.length / 4) * 4, '='));
+    const bytes = Uint8Array.from(cru, (c) => c.charCodeAt(0));
+    const carga = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
+
+    return {
+      id: typeof carga.sub === 'string' ? carga.sub : '',
+      email: typeof carga.email === 'string' ? carga.email : '',
+    };
+  } catch { return { id: '', email: '' }; }
+}
+
 export function recolherSessaoDaUrl(): boolean {
   const bruto = location.hash.startsWith('#') ? location.hash.slice(1) : '';
   const limpar = (): void => {
@@ -454,14 +499,30 @@ export function recolherSessaoDaUrl(): boolean {
   if (!access || !refresh) { if (p.has('error') || p.has('error_description')) limpar(); return false; }
 
   const atual = sessaoGuardada();
+  const dono = donoDoToken(access);
+
+  /**
+   * Sem id não há sessão, e é preciso dizer isso em voz alta.
+   *
+   * Aqui morava o bug que fez o login pelo Google nunca funcionar. A versão
+   * anterior guardava `usuarioId: atual?.usuarioId ?? ''` — e num login novo
+   * não existe sessão anterior, então o id saía vazio. Só que `sessaoGuardada`
+   * RECUSA sessão sem id. A sessão era gravada e nascia ilegível: a janela do
+   * login fechava certinho, o jogo lia `null`, e a tela esperava para sempre.
+   *
+   * O comentário que estava aqui dizia que o id chegaria na primeira renovação.
+   * Não chegava — a renovação precisa de uma sessão que possa ser lida, e essa
+   * era exatamente a que não existia. Falhar em silêncio custou dois dias.
+   */
+  if (!dono.id) { limpar(); return false; }
+
   guardar({
     accessToken: access,
     refreshToken: refresh,
     expiraEm: Math.floor(Date.now() / 1000) + Number(p.get('expires_in') ?? 3600),
-    email: atual?.email ?? '',
-    usuarioId: atual?.usuarioId ?? '',
-    // O token novo é de conta com provedor; anônima ela não é mais. O e-mail e
-    // o id chegam certos na primeira renovação, que lê o usuário do servidor.
+    email: dono.email || atual?.email || '',
+    usuarioId: dono.id,
+    // O token novo é de conta com provedor; anônima ela não é mais.
     anonima: false,
   });
   limpar();
