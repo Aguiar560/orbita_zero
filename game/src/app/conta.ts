@@ -236,7 +236,11 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
     const aoStorage = (e: StorageEvent): void => {
       if (e.key !== AVISO && e.key !== CHAVE) return;
       const sessao = sessaoGuardada();
-      if (sessao) encerrar({ ok: true, sessao });
+      if (sessao) return encerrar({ ok: true, sessao });
+      // A janela pode ter fechado com ERRO, e aí o recado dela é o que a tela
+      // mostra. Sem isto o jogador veria só "Login cancelado", que é mentira.
+      const aviso = e.key === AVISO ? e.newValue ?? '' : '';
+      if (aviso.startsWith('erro:')) encerrar({ ok: false, erro: aviso.slice(5) });
     };
     window.addEventListener('storage', aoStorage);
 
@@ -266,12 +270,16 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
  */
 export function finalizarLoginEmPopup(): boolean {
   if (!window.opener || window.opener === window) return false;
-  if (!recolherSessaoDaUrl()) return false;
+
+  const erro = erroDaUrl();
+  const temSessao = recolherSessaoDaUrl();
+  // Nem sessão nem erro: esta janela não veio de um login. Deixa o jogo abrir.
+  if (!temSessao && !erro) return false;
 
   try {
     // Um valor sempre diferente: `storage` só dispara quando o valor MUDA, e
     // dois logins seguidos gravariam o mesmo e o segundo passaria calado.
-    localStorage.setItem(AVISO, String(Date.now()));
+    localStorage.setItem(AVISO, erro ? `erro:${erro}` : String(Date.now()));
   } catch { /* A sessão já está guardada; o aviso é conveniência. */ }
 
   window.close();
@@ -293,16 +301,51 @@ export function finalizarLoginEmPopup(): boolean {
  * Devolve `true` quando havia sessão para recolher — quem chama usa isso para
  * saber que a página voltou de um login, e não de uma abertura comum.
  */
+/**
+ * O erro que veio na volta do provedor, se veio.
+ *
+ * **Ele chega na QUERY, não no fragmento.** O token vem em `#` porque
+ * fragmento não vai ao servidor; o erro vem em `?` porque não há segredo nele.
+ * Eu li só o fragmento na primeira versão, e o resultado foi a janela do login
+ * ficar aberta mostrando a tela de novo, calada, enquanto a página de trás
+ * esperava para sempre. Falhar em silêncio é o pior desfecho possível aqui.
+ */
+export function erroDaUrl(): string | null {
+  const daQuery = new URLSearchParams(location.search);
+  const doHash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const codigo = daQuery.get('error') ?? doHash.get('error');
+  if (!codigo) return null;
+
+  const descricao = daQuery.get('error_description') ?? doHash.get('error_description');
+  const detalhe = daQuery.get('error_code') ?? doHash.get('error_code');
+
+  // A descrição do provedor vem com `+` no lugar de espaço.
+  const legivel = descricao?.replace(/\+/g, ' ');
+
+  /**
+   * O código bruto ENTRA no texto, de propósito.
+   *
+   * `server_error` sozinho não diz nada ao jogador e diz tudo a quem publica —
+   * e é quem publica que precisa da informação, porque a causa mora no painel
+   * do Supabase ou do Google, não no jogo. Esconder o código faria o relato do
+   * testador ser "não entrou" e nada mais.
+   */
+  return legivel ? `${legivel} (${detalhe ?? codigo})` : `Falha no login: ${detalhe ?? codigo}`;
+}
+
 export function recolherSessaoDaUrl(): boolean {
   const bruto = location.hash.startsWith('#') ? location.hash.slice(1) : '';
-  if (!bruto) return false;
+  const limpar = (): void => {
+    history.replaceState(null, '', location.pathname);
+  };
+
+  // Erro na query: nada a recolher, mas a barra tem de ser limpa — senão o
+  // erro fica pendurado e reaparece a cada recarga da página.
+  if (!bruto) { if (new URLSearchParams(location.search).has('error')) limpar(); return false; }
 
   const p = new URLSearchParams(bruto);
   const access = p.get('access_token');
   const refresh = p.get('refresh_token');
-  const limpar = (): void => {
-    history.replaceState(null, '', `${location.pathname}${location.search}`);
-  };
 
   // O provedor também volta por aqui quando o jogador RECUSA a permissão.
   // Limpar mesmo assim evita a barra ficar com um erro pendurado para sempre.
