@@ -346,9 +346,7 @@ export class InventoryPanel implements Panel {
       }
       if (e.altKey) {
         e.preventDefault();
-        const valor = sim.sell(item.uid);
-        if (valor > 0) toast(`Vendido · +${fmt(valor)} sucata`, 'good', 'ui/icon_coin');
-        else toast('Item favorito: desmarque antes de vender.', 'bad');
+        this.vender(sim, item);
       } else if (e.shiftKey) {
         this.desmontar(sim, item);
       } else {
