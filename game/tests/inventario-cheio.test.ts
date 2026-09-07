@@ -52,11 +52,24 @@ describe('Inventário cheio', () => {
     expect(sim.state.comandosDeItem.length).toBe(antes);
   });
 
-  it('mas uma peça MELHOR que a pior guardada é coletada', () => {
-    // "Cheio" não é motivo por si: se a peça troca com a pior, trocar é coletar.
+  it('e nem uma peça MELHOR que tudo que está guardado', () => {
+    /**
+     * Aqui morava a exceção: se a peça que chegava fosse melhor que a pior
+     * guardada, o jogo vendia ou desmanchava a pior para caber a nova, e o
+     * teste chamava isso de "trocar é coletar".
+     *
+     * Era ganho de poder, e por isso passou despercebida — mas descartava uma
+     * peça do jogador, irreversível, sem ele pedir e com dois segundos de aviso
+     * no meio de uma onda. `autoSalvage` e `autoEquip` também descartam e
+     * continuam existindo: a diferença é que são interruptores que ele LIGOU.
+     *
+     * Cheio é cheio, melhor ou pior.
+     */
     const sim = lotado(13);
     sim.state.inventory = Array.from({ length: sim.cargoSlots }, (_, i) => peca(`ruim${i}`, 0));
-    expect(sim.rollDrops('chefe').length).toBeGreaterThan(0);
+    expect(sim.rollDrops('chefe').length).toBe(0);
+    // E nada do que estava guardado foi vendido para abrir espaço.
+    expect(sim.state.inventory.length).toBe(sim.cargoSlots);
   });
 
   it('e o desmanche automático continua consumindo', () => {
@@ -109,10 +122,27 @@ describe('os três desfechos do Inventário cheio', () => {
     expect(eventos(sim, () => { sim.acquire(peca('ruim', 0)); })).toContain('descartada');
   });
 
-  it('e a troca avisa que foi troca — ali o jogador GANHOU', () => {
-    // O contrapeso: pintar os três de vermelho ensinaria a ignorar a mensagem.
+  it('e desequipar com a bagagem cheia RECUSA, em vez de destruir a peça', () => {
+    /**
+     * O outro lado de tirar a troca. `unequip` mandava a peça para `stash`, e
+     * de bagagem cheia ela era desmanchada na hora: o jogador clicava para tirar
+     * uma peça e a perdia.
+     *
+     * Recusar é a única resposta honesta — desequipar é ação deliberada sobre
+     * algo que ele já tem, e destruir o objeto da ação é o oposto do pedido.
+     */
     const sim = lotado(23);
     sim.state.inventory = Array.from({ length: sim.cargoSlots }, (_, i) => peca(`ruim${i}`, 0));
-    expect(eventos(sim, () => { sim.acquire(peca('bom', 4)); })).toContain('trocada');
+
+    const arma = peca('equipada', 4);
+    sim.equipamentoDe()[arma.slot] = arma;
+
+    const avisos = eventos(sim, () => {
+      expect(sim.unequip(arma.slot)).toBe(false);
+    });
+
+    expect(avisos).toContain('nao-coletado');
+    // A peça continua no soquete: não foi para lugar nenhum.
+    expect(sim.equipamentoDe()[arma.slot]?.uid).toBe(arma.uid);
   });
 });

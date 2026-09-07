@@ -699,12 +699,17 @@ export class Shell {
    * o relógio REARMADO: a mensagem some quando o jogo para de tentar, e não N
    * segundos depois da primeira peça.
    */
-  private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada' | 'trocada'): void {
+  private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada'): void {
+    /**
+     * Sumiu daqui o terceiro texto, "a pior peça saiu no lugar".
+     *
+     * Ele anunciava uma troca automática que vendia ou desmanchava a pior peça
+     * guardada para caber uma melhor. A troca saiu do jogo — ver
+     * `seriaPerdidoPorFalta` —, e com ela o texto.
+     */
     const texto = motivo === 'nao-coletado'
       ? 'Inventário Cheio!'
-      : motivo === 'descartada'
-        ? 'Inventário cheio — peça desfeita ao coletar'
-        : 'Inventário cheio — a pior peça saiu no lugar';
+      : 'Inventário cheio — peça desfeita ao coletar';
 
     let aviso = this.root.querySelector<HTMLElement>('.inventario-cheio');
     if (!aviso) {

@@ -120,7 +120,7 @@ export interface GameEvents {
    * Os três precisam de textos diferentes porque só o primeiro é uma perda. O
    * silêncio anterior tratava os três como o mesmo nada.
    */
-  'inventario:cheio': { motivo: 'nao-coletado' | 'descartada' | 'trocada' };
+  'inventario:cheio': { motivo: 'nao-coletado' | 'descartada' };
 
   /** Caiu a primeira peça de escudo: oferece desligar a bolha. */
   'dica:escudo': void;

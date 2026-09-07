@@ -2068,35 +2068,42 @@ export class Sim {
     if (item.rarity < this.state.settings.autoSalvage) return false;
     if (this.vipAtivo && this.state.settings.autoEquip
       && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) return false;
-    if (this.state.inventory.length < this.cargoSlots) return false;
-
-    // Cheio: só se perde quando o que chegou é PIOR que o pior guardado. Se for
-    // melhor, `stash` troca — e trocar é coletar.
-    const pior = this.state.inventory
-      .filter((i) => !i.favorite)
-      .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl)[0];
-    return !pior || pior.rarity > item.rarity;
+    /**
+     * Cheio é cheio, melhor ou pior.
+     *
+     * Havia uma exceção aqui: se a peça que chegava fosse MELHOR que a pior
+     * guardada, o jogo vendia ou desmanchava a pior para caber a nova. Era
+     * ganho de poder, e por isso passou despercebida — mas descartava uma peça
+     * do jogador, de forma irreversível, sem ele pedir e com dois segundos de
+     * aviso no meio de uma onda.
+     *
+     * `autoSalvage` e `autoEquip` também descartam, e continuam existindo: a
+     * diferença é que são interruptores que o jogador LIGOU. Automação pedida
+     * é serviço; automação embutida é surpresa.
+     */
+    return this.state.inventory.length >= this.cargoSlots;
   }
 
+  /**
+   * Guarda a peça. Com a bagagem cheia, ela é desfeita — e isso é o ÚLTIMO
+   * recurso.
+   *
+   * Quem chega pelo chão nunca cai aqui de bagagem cheia: `seriaPerdidoPorFalta`
+   * impede a coleta antes, e a peça fica no lote. O que sobra são os caminhos
+   * em que a peça já está na mão do jogador e não há chão para devolvê-la —
+   * a que sai do soquete no auto-equipar, a de um baú, a de uma fusão.
+   *
+   * A TROCA saiu daqui. Ela vendia ou desmanchava a pior peça guardada para
+   * caber uma melhor, sem o jogador pedir. Ver `seriaPerdidoPorFalta`.
+   */
   private stash(item: Item): void {
     if (this.state.inventory.length >= this.cargoSlots) {
-      // Bagagem cheia: aplica o destino automático ao pior não-favorito.
-      const worst = this.state.inventory
-        .filter((i) => !i.favorite)
-        .sort((a, b) => a.rarity - b.rarity || a.ilvl - b.ilvl)[0];
-      if (!worst || worst.rarity > item.rarity) {
-        this.descartarAutomaticamente(item);
-        // A peça foi coletada e desfeita na hora. Sem este aviso o jogador via
-        // a cápsula sumir e o inventário não mudar, sem nada explicando —
-        // relatado em 04/09: "não sei o que está sendo feito com o item".
-        bus.emit('inventario:cheio', { motivo: 'descartada' });
-        return;
-      }
-      if (this.vipAtivo && this.state.settings.autoDispose === 'vender') this.sell(worst.uid);
-      else if (!this.salvage(worst.uid)) this.sell(worst.uid);
-      // Aqui o jogador GANHOU: a peça nova é melhor e a pior saiu. Merece texto
-      // próprio, e não o mesmo alarme do caso acima.
-      bus.emit('inventario:cheio', { motivo: 'trocada' });
+      this.descartarAutomaticamente(item);
+      // Sem este aviso o jogador via a cápsula sumir e o inventário não mudar,
+      // sem nada explicando — relatado em 04/09: "não sei o que está sendo
+      // feito com o item".
+      bus.emit('inventario:cheio', { motivo: 'descartada' });
+      return;
     }
     this.state.inventory.push(item);
   }
@@ -2138,14 +2145,31 @@ export class Sim {
     return true;
   }
 
-  unequip(slot: SlotId, hullId = this.state.hull): void {
+  /**
+   * Tira a peça do soquete. RECUSA quando não há espaço.
+   *
+   * Antes ela ia para `stash`, e com a bagagem cheia era desmanchada na hora:
+   * o jogador clicava para tirar uma peça e a perdia. Recusar é a única
+   * resposta honesta — desequipar é ação deliberada sobre algo que ele já tem,
+   * e destruir o objeto da ação é o oposto do que ele pediu.
+   *
+   * Devolve `false` quando não coube, para a tela poder dizer por quê.
+   */
+  unequip(slot: SlotId, hullId = this.state.hull): boolean {
     const item = this.equipamentoDe(hullId)[slot];
-    if (!item) return;
+    if (!item) return false;
+
+    if (this.state.inventory.length >= this.cargoSlots) {
+      bus.emit('inventario:cheio', { motivo: 'nao-coletado' });
+      return false;
+    }
+
     delete this.equipamentoDe(hullId)[slot];
     this.stash(item);
     this.state.comandosDeItem.push({ tipo: 'equipar', uid: item.uid, nave: null });
     bus.emit('itens:comando', {});
     this.touch();
+    return true;
   }
 
   /** Vende uma peça por Sucata. Nunca gera material ou outra moeda. */
