@@ -6044,6 +6044,27 @@ select option:disabled { color: #667991; }
 }
 .escolha-confirmar { min-width: 260px; }
 
+/* O nome no placar, pedido junto com o piloto.
+ *
+ * Fica ACIMA do botão e abaixo da nota, no fluxo da decisão: escolher quem
+ * comanda, dizer como se chama, partir. Centralizado como o resto do rodapé,
+ * e estreito de propósito — um campo largo pareceria obrigatório, e ele não é. */
+.escolha-apelido {
+  display: grid; gap: 6px; justify-items: center;
+  padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(3, 8, 16, .5);
+}
+.escolha-apelido-rotulo {
+  color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+}
+.escolha-apelido-campo {
+  width: 260px; max-width: 100%; padding: 8px 10px; text-align: center;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  background: rgba(3, 8, 16, .85); color: var(--text);
+  font: 600 13px/1 'Chakra Petch', sans-serif;
+}
+.escolha-apelido-campo:focus { outline: none; border-color: var(--accent); }
+
 
 /* ═══ Ajustes em abas ══════════════════════════════════════════════════════ */
 
