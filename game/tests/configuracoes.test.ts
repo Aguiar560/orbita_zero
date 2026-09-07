@@ -24,12 +24,10 @@ const PAINEL = fonte('src/ui/panels/SettingsPanel.ts');
 /**
  * Campos que NÃO são lidos por ninguém hoje, e por quê.
  *
- * O jogo não tem som: não existe `Audio`, `AudioContext` nem arquivo de áudio.
- * Os volumes são guardados para o dia em que existir, e a aba diz isso em
- * letras — controle que finge funcionar é pior que controle ausente.
+ * A trilha musical aguarda produção; o mixer de efeitos já está ativo.
  */
 const INERTES_COM_MOTIVO = new Set([
-  'volumeMestre', 'volumeMusica', 'volumeEfeitos', 'muted',
+  'volumeMusica',
 ]);
 
 /** Campos que são estado interno, não controle de tela. */
@@ -50,6 +48,7 @@ describe('configurações', () => {
       'src/ui/LeftRail.ts',
       'src/ui/Anatomia.ts',
       'src/render/Surface.ts',
+      'src/render/AudioCombate.ts',
       'src/sim/tree.ts',
       'src/app/admin.ts',
     ].map(fonte).join('\n');

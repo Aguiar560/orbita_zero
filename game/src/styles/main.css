@@ -8304,8 +8304,11 @@ select option:disabled { color: #667991; }
   /* Nenhuma tela de trabalho pode depender de uma altura desktop fixa no
      telefone. O contêiner comum acima é a única rolagem vertical da tela. */
   .camada[data-tela] :is(.panel-body, .galaxy-body, .ranking, .hangar, .evt, .lab, .tree-root),
-  .camada[data-tela] :is(.ranking-corpo, .ranking-lista, .hangar-corpo, .hangar-lista, .tree-stage) {
+  .camada[data-tela] :is(.ranking-corpo, .ranking-lista, .hangar-corpo, .hangar-lista) {
     height: auto !important; min-height: 0; max-height: none; overflow: visible;
+  }
+  .camada:has(.codex) :is(.codex, .codex-section) {
+    height: auto; min-height: 0; max-height: none; overflow: visible;
   }
 
   /* A central de Galáxia herdava alturas de desktop para as três colunas. Ao

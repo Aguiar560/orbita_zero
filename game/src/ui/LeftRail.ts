@@ -177,7 +177,7 @@ export class LeftRail {
           }),
         ),
         h('span.tiny.muted.rail-control-help', {
-          text: manualAtivo ? 'WASD / setas · disparo automático'
+            text: manualAtivo ? 'WASD / setas ou deslize no campo · disparo automático'
             : manualDisponivel ? 'IA no comando' : 'Manual requer VIP no nível 15+',
         }),
         h('.rail-pilots', {}, ...PILOTS.map((p) =>

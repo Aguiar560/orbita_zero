@@ -206,6 +206,8 @@ export class VerticalMode {
   private labHull: Hull | null = null;
   private labEnemy: EnemyDef | null = null;
   private readonly keys = new Set<string>();
+  /** Vetor do gesto no palco enquanto o controle manual está ativo. */
+  private toqueManual: { pointerId: number; origemX: number; origemY: number; dx: number; dy: number } | null = null;
   /** Zonas telegráficas da Provação; vivem na cena, nunca no save. */
   private readonly dangerZones: { x: number; y: number; radius: number; life: number; warmup: number; damage: number }[] = [];
 
@@ -231,6 +233,11 @@ export class VerticalMode {
     window.addEventListener('blur', this.limparTeclas);
     window.addEventListener('focusin', this.onFocusIn);
     window.addEventListener('oz:chat-foco', this.limparTeclas);
+    this.surface.canvas.addEventListener('pointerdown', this.onPointerDown, { passive: false });
+    this.surface.canvas.addEventListener('pointermove', this.onPointerMove, { passive: false });
+    this.surface.canvas.addEventListener('pointerup', this.onPointerEnd);
+    this.surface.canvas.addEventListener('pointercancel', this.onPointerEnd);
+    this.surface.canvas.addEventListener('lostpointercapture', this.onPointerEnd);
   }
 
   /** Executa o mesmo combate do jogo, sem desenho, para a bateria administrativa. */
@@ -260,8 +267,43 @@ export class VerticalMode {
   };
 
   private readonly onKeyUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
-  private readonly limparTeclas = (): void => { this.keys.clear(); };
+  private readonly limparTeclas = (): void => { this.keys.clear(); this.toqueManual = null; };
   private readonly onFocusIn = (e: FocusEvent): void => { if (focoDeEntrada(e.target)) this.keys.clear(); };
+
+  private controleManualEstaAtivo(): boolean {
+    return this.sim.laboratorio.active
+      ? this.sim.laboratorio.config.control === 'manual'
+      : controleManualAtivo(this.sim.state);
+  }
+
+  /**
+   * No telefone, a origem do gesto funciona como um manche virtual: deslizar a
+   * partir dela move a nave naquela direção. Usar a diferença desde o início do
+   * toque, em vez da posição absoluta do dedo, não faz a nave saltar para baixo
+   * do dedo ao começar a pilotar.
+   */
+  private readonly onPointerDown = (e: PointerEvent): void => {
+    if (e.pointerType === 'mouse' || !this.controleManualEstaAtivo()) return;
+    e.preventDefault();
+    this.toqueManual = { pointerId: e.pointerId, origemX: e.clientX, origemY: e.clientY, dx: 0, dy: 0 };
+    this.surface.canvas.setPointerCapture(e.pointerId);
+  };
+
+  private readonly onPointerMove = (e: PointerEvent): void => {
+    const toque = this.toqueManual;
+    if (!toque || toque.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    const dx = e.clientX - toque.origemX;
+    const dy = e.clientY - toque.origemY;
+    const comprimento = Math.hypot(dx, dy);
+    const escala = Math.min(1, comprimento / 52);
+    toque.dx = comprimento ? (dx / comprimento) * escala : 0;
+    toque.dy = comprimento ? (dy / comprimento) * escala : 0;
+  };
+
+  private readonly onPointerEnd = (e: PointerEvent): void => {
+    if (this.toqueManual?.pointerId === e.pointerId) this.toqueManual = null;
+  };
 
   private get currentStats(): Stats { return this.labStats ?? this.sim.stats; }
   private get currentHull(): Hull { return this.labHull ?? this.sim.hull; }
@@ -799,8 +841,8 @@ export class VerticalMode {
     const right = this.keys.has('ArrowRight') || this.keys.has('KeyD');
     const up = this.keys.has('ArrowUp') || this.keys.has('KeyW');
     const down = this.keys.has('ArrowDown') || this.keys.has('KeyS');
-    let dx = Number(right) - Number(left);
-    let dy = Number(down) - Number(up);
+    let dx = Number(right) - Number(left) + (this.toqueManual?.dx ?? 0);
+    let dy = Number(down) - Number(up) + (this.toqueManual?.dy ?? 0);
     const len = Math.hypot(dx, dy);
     if (len > 1) { dx /= len; dy /= len; }
     return {

@@ -31,13 +31,25 @@ export function montarResultadoDaProvacao(sim: Sim, r: ResultadoDaProvacao, fech
   const primeira = r.camadas.includes('primeira');
   const marco = r.camadas.includes('marco');
   const cam = camadaDoPiso(r.piso);
+  const focoAnterior = document.activeElement;
+  const concluir = (): void => {
+    window.removeEventListener('keydown', esc, true);
+    fechar();
+    if (focoAnterior instanceof HTMLElement && focoAnterior.isConnected) focoAnterior.focus();
+  };
 
-  const fundo = h('.prv-res', {
-    onclick: (e: Event) => { if (e.target === fundo) fechar(); },
+  const fundo = h(`.prv-res${sim.state.settings.reduceEffects ? '.efeitos-reduzidos' : ''}`, {
+    onclick: (e: Event) => { if (e.target === fundo) concluir(); },
   },
-    h(`.prv-res-caixa${r.venceu ? '.venceu' : '.perdeu'}${marco ? '.marco' : ''}`, {},
+    h(`.prv-res-caixa${r.venceu ? '.venceu' : '.perdeu'}${marco ? '.marco' : ''}`, {
+      role: 'dialog', 'aria-modal': 'true', 'aria-label': r.venceu ? `Piso ${r.piso} conquistado` : 'Resultado da Provação',
+    },
+      h('.prv-res-protocolo', {}, h('span', { text: 'NÚCLEO DE PROVAÇÃO' }), h('span', { text: r.venceu ? 'OPERAÇÃO CONCLUÍDA' : 'TELEMETRIA RECUPERADA' })),
       // ── faixa de título ───────────────────────────────────────────────────
       h('.prv-res-topo', {},
+        h('.prv-res-emblema', { 'aria-hidden': 'true' },
+          h('img', { src: r.venceu ? '/assets/ui/menu/ranking-trofeu.webp' : '/assets/ui/provacao/icons/prv_icone_chefe.png', alt: '' }),
+        ),
         h('span.prv-res-piso', { text: `PISO ${r.piso}` }),
         h('h2.prv-res-tit', {
           text: !r.venceu ? 'DESAFIO FRACASSADO'
@@ -45,7 +57,7 @@ export function montarResultadoDaProvacao(sim: Sim, r: ResultadoDaProvacao, fech
               : primeira ? 'PRIMEIRA CONCLUSÃO'
                 : 'PISO CONCLUÍDO',
         }),
-        h('span.muted.tiny', { text: r.chefe }),
+        h('span.prv-res-chefe', { text: r.chefe }),
         ...(marco ? [h('span.prv-res-camada', { text: cam.nome.toUpperCase(), style: { color: cam.cor } })] : []),
       ),
 
@@ -81,6 +93,7 @@ export function montarResultadoDaProvacao(sim: Sim, r: ResultadoDaProvacao, fech
               ? [h('.prv-res-liberado', {},
                   h('span.tiny', { text: 'LIBERADO' }),
                   h('strong', { text: `PISO ${r.proximoPiso}` }),
+                  h('span.prv-res-rota', { text: 'PRÓXIMO DESAFIO DISPONÍVEL' }),
                 )]
               : []),
           ]
@@ -94,19 +107,24 @@ export function montarResultadoDaProvacao(sim: Sim, r: ResultadoDaProvacao, fech
           ]),
 
       h('button.btn.prv-res-ok', {
-        onclick: fechar,
+        onclick: concluir,
       }, h('span', { text: r.venceu ? 'CONTINUAR' : 'VOLTAR' })),
     ),
   );
 
   // Esc fecha — a tela é informativa, não uma decisão.
   const esc = (e: KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      fundo.querySelector<HTMLButtonElement>('.prv-res-ok')?.focus();
+      return;
+    }
     if (e.key !== 'Escape') return;
     e.stopPropagation();
-    window.removeEventListener('keydown', esc, true);
-    fechar();
+    concluir();
   };
   window.addEventListener('keydown', esc, true);
+  queueMicrotask(() => { if (fundo.isConnected) fundo.querySelector<HTMLButtonElement>('.prv-res-ok')?.focus(); });
 
   return fundo;
 }
@@ -135,5 +153,7 @@ function premios(r: ResultadoDaProvacao): HTMLElement[] {
   }
   if (r.ganhos.itens > 0) out.push(ficha('item', String(r.ganhos.itens), 'itens'));
   if (r.ganhos.medalhas > 0) out.push(ficha('medalha', String(r.ganhos.medalhas), 'medalhas'));
-  return out;
+  return out.map((icone) => h('.prv-res-premio', {}, icone,
+    h('span.prv-res-premio-nome', { text: icone.title }),
+  ));
 }

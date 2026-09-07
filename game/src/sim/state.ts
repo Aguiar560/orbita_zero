@@ -9,7 +9,42 @@ import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capac
 import { RECURSO_POR_ID } from '@data/recursos';
 import { limiteDeMissoes } from './vip';
 
+/**
+ * A chave do save SEM CONTA. Cada conta tem a sua, derivada desta.
+ *
+ * Ver `usarSlot`: este valor sozinho é o do jogador que ainda não entrou.
+ */
 export const SAVE_KEY = 'orbita-zero:save';
+
+/**
+ * De quem é o save que está sendo lido e gravado agora.
+ *
+ * ## O problema que isto resolve
+ *
+ * Havia UMA chave para todo mundo. Duas pessoas no mesmo computador dividiam
+ * o mesmo save: quem entrasse depois encontrava a partida da outra, e quem
+ * gravasse por último apagava a do primeiro. Num alfa em que amigos testam na
+ * mesma máquina, isso não é caso raro — é o caso comum.
+ *
+ * ## Por que um setter, e não uma leitura da sessão aqui dentro
+ *
+ * Regra 1 do projeto: `sim/` não conhece DOM nem o resto do aplicativo. Ler a
+ * sessão aqui significaria `sim/` importar `app/`, e é essa ignorância que
+ * permite o balanceamento rodar em Node sem navegador. Quem sabe de conta é a
+ * camada `app/`, e ela avisa.
+ *
+ * ## Por que o vazio continua na chave antiga
+ *
+ * Para não perder o save de quem já jogava sem conta. Ele continua exatamente
+ * onde está, e é o mesmo que a conta nova pode ADOTAR uma vez — ver
+ * `lerSaveSemConta`.
+ */
+let slot = '';
+
+export function usarSlot(usuarioId: string): void { slot = usuarioId; }
+export const slotAtual = (): string => slot;
+
+const chaveDoSave = (): string => (slot ? `${SAVE_KEY}:${slot}` : SAVE_KEY);
 /**
  * v2 — 9 categorias de slot e a Matriz de Comando.
  * v3 — fim do prestígio: sem Éter, sem nós de ascensão, sem reset de universo.
@@ -484,11 +519,11 @@ export const temCofre = (): boolean => cofre !== COFRE_VAZIO;
 export function saveToStorage(state: GameState): void {
   if (wiped) return;
   state.savedAt = Date.now();
-  cofre.gravar(SAVE_KEY, JSON.stringify(state));
+  cofre.gravar(chaveDoSave(), JSON.stringify(state));
 }
 
 export function loadFromStorage(): { state: GameState; offlineSeconds: number } | null {
-  const raw = cofre.ler(SAVE_KEY);
+  const raw = cofre.ler(chaveDoSave());
   if (!raw) return null;
 
   try {
@@ -510,8 +545,35 @@ export function loadFromStorage(): { state: GameState; offlineSeconds: number } 
  */
 export function clearStorage(): void {
   wiped = true;
-  cofre.apagar(SAVE_KEY);
+  cofre.apagar(chaveDoSave());
 }
+
+/**
+ * O save de quem jogou SEM CONTA, se existir.
+ *
+ * Existe para o único caso legítimo de herança: a pessoa jogou sem entrar,
+ * gostou, e criou uma conta. Sem isto, criar a conta jogaria fora o que ela
+ * acabou de fazer.
+ *
+ * Devolve `null` quando não há nada, ou quando o slot atual JÁ É o sem conta
+ * — nesse caso o save já está carregado e não há o que adotar.
+ */
+export function lerSaveSemConta(): GameState | null {
+  if (!slot) return null;
+  const raw = cofre.ler(SAVE_KEY);
+  if (!raw) return null;
+  try { return migrate(JSON.parse(raw)); } catch { return null; }
+}
+
+/**
+ * Apaga o save sem conta.
+ *
+ * Chamado quando uma conta ADOTA aquela partida: a partir daí ela tem dono, e
+ * deixá-la para trás faria a próxima conta criada nesta máquina receber a
+ * oferta de novo — que é exatamente a confusão entre pessoas que este arquivo
+ * passou a evitar.
+ */
+export function apagarSaveSemConta(): void { cofre.apagar(SAVE_KEY); }
 
 /** Apenas para importar um save: reabilita a gravação. */
 export function allowSaving(): void {

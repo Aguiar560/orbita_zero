@@ -33,7 +33,7 @@ function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
 }
 
 import { h, spriteIcon } from '../dom';
-import { cascoEmMontagem, encerrarArraste, iniciarArraste } from '../montagem';
+import { cascoEmMontagem, encerrarArraste, iniciarArraste, itemArrastado } from '../montagem';
 import { buildItemCard } from '../ItemCard';
 import { encerrarSelecao, mirandoAlvo } from '../selecao';
 import type { Panel } from './types';
@@ -43,6 +43,11 @@ function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string 
     .filter(([, n]) => n > 0)
     .map(([id, n]) => `${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id}`)
     .join(' + ');
+}
+
+/** No toque, o primeiro gesto escolhe a peça; o segundo confirma o soquete. */
+function usaSelecaoPorToque(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
 }
 
 /**
@@ -206,10 +211,12 @@ export class InventoryPanel implements Panel {
         ),
       ),
 
-      h('p.muted.tiny.hint', { text: 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),
+      h('p.muted.tiny.hint', { text: usaSelecaoPorToque()
+        ? 'Toque em uma peça para ver seus atributos e selecioná-la; depois toque no soquete da Anatomia.'
+        : 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),
       h('.inv-wrap', {},
-        grade(colunasDaGrade(capacidade), cells),
-        this.tip),
+        this.tip,
+        grade(colunasDaGrade(capacidade), cells)),
     );
   }
 
@@ -259,7 +266,8 @@ export class InventoryPanel implements Panel {
     const mira = mirandoAlvo();
     const alvoValido = !!mira && (item.element ?? 'padrao') !== mira.elemento;
 
-    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}`, {
+    const selecionado = itemArrastado()?.uid === item.uid;
+    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}`, {
       style: { borderColor: info.color, boxShadow: `inset 0 0 16px ${info.glow}` },
     }, spriteIcon(item.icon, 40));
 
@@ -310,6 +318,17 @@ export class InventoryPanel implements Panel {
           encerrarSelecao();
           sim.touch();
         }
+        return;
+      }
+      if (usaSelecaoPorToque()) {
+        // Hover não existe no telefone e equipar já no primeiro toque escondia
+        // a ficha e impedia escolher o soquete. A seleção usa o mesmo estado do
+        // arraste para o destino continuar sendo a Anatomia, sem duplicar uma
+        // segunda máquina de estados só para a entrada por toque.
+        iniciarArraste(item);
+        cell.classList.add('selecionado');
+        this.showTip(sim, item, cell, gain);
+        sim.touch();
         return;
       }
       if (e.altKey) {

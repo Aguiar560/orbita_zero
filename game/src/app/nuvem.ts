@@ -1,5 +1,5 @@
 import { API_URL } from '@data/servidor';
-import { SAVE_VERSION, migrate } from '@sim/state';
+import { SAVE_VERSION, lerSaveSemConta, migrate } from '@sim/state';
 import type { GameState } from '@sim/types';
 import { tokenValido } from './conta';
 
@@ -255,7 +255,7 @@ export type Reconciliacao =
    * herdando o progresso de outra pessoa. E o contrário, apagar calado,
    * destruiria o progresso de quem jogou sem conta e acabou de criar uma.
    */
-  | { acao: 'perguntar'; local: GameState }
+  | { acao: 'perguntar' }
   | { acao: 'nada'; motivo: 'empate' | 'falhou' | 'cedo' };
 
 /**
@@ -290,7 +290,11 @@ export async function reconciliar(local: GameState): Promise<Reconciliacao> {
   if (daNuvem.tipo === 'vazio') {
     // Conta nova. Se este navegador guarda a partida de alguém, quem decide é
     // o jogador — ver `perguntar`.
-    if (temHistoria(local)) return { acao: 'perguntar', local };
+    // A pergunta e sobre a partida SEM CONTA, e so sobre ela. O save de outra
+    // conta vive em slot proprio e nao e alcancavel daqui -- era o vazamento
+    // que fazia duas pessoas na mesma maquina disputarem a mesma partida.
+    const semConta = lerSaveSemConta();
+    if (semConta && temHistoria(semConta)) return { acao: 'perguntar' };
 
     const r = await subirSave(local);
     if (r.fase === 'subiu') return { acao: 'subiu', motivo: 'nuvem-vazia' };

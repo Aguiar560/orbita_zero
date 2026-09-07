@@ -133,7 +133,7 @@ export class SettingsPanel implements Panel {
         s.controlMode = v as typeof s.controlMode;
         sim.touch();
       }, manualDisponivel
-        ? (s.controlMode === 'manual' ? 'WASD ou setas · tiro automático' : '')
+        ? (s.controlMode === 'manual' ? 'WASD, setas ou deslize no campo · tiro automático' : '')
         : 'A partir do nível 15, o controle manual requer VIP',
       manualDisponivel ? [] : ['manual']),
       escolha('Postura da IA', [

@@ -5,8 +5,8 @@ import { h } from '@ui/dom';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
-import { allowSaving, createState, loadFromStorage } from '@sim/state';
-import type { GameState } from '@sim/types';
+import { allowSaving, apagarSaveSemConta, createState, lerSaveSemConta, loadFromStorage, slotAtual, usarSlot } from '@sim/state';
+import { sessaoGuardada } from './conta';
 import { bus, toast } from './Bus';
 import { galaxyOfSector } from '@data/galaxies';
 import { musicaDaGalaxia } from '@data/musicas';
@@ -82,9 +82,20 @@ export class Game {
 
   constructor(root: HTMLElement) {
     this.rootEl = root;
+    /**
+     * De quem é o save que vamos abrir — decidido ANTES de ler qualquer coisa.
+     *
+     * Cada conta tem o próprio save neste navegador. Antes havia um só para
+     * todo mundo: duas pessoas no mesmo computador dividiam a mesma partida, e
+     * quem gravasse por último apagava a do outro. Num alfa em que amigos
+     * testam na mesma máquina, esse não é o caso raro — é o comum.
+     */
+    usarSlot(sessaoGuardada()?.usuarioId ?? '');
+
     const loaded = loadFromStorage();
     this.sim = new Sim(loaded?.state);
     this.shell = new Shell(root, this.sim);
+    this.vigiarTrocaDeConta();
     this.loop = new Loop(this.tick, this.draw);
   }
 
@@ -349,11 +360,35 @@ export class Game {
    * servidor fora, o save local vale e a partida começa igual. É a razão de
    * tudo estar dentro de um `try` que engole — a nuvem é cópia, não requisito.
    */
+  /**
+   * Entrar ou sair troca QUAL save está aberto, e por isso recarrega.
+   *
+   * O boot escolhe o slot e lê o save uma vez; quando a conta muda, o estado
+   * na memória passa a ser o de outra pessoa. Trocar isso a quente exigiria
+   * refazer `Sim`, `Shell`, cena, painéis e relógios no meio da partida — e a
+   * primeira coisa esquecida viraria um vazamento de progresso entre contas,
+   * que é justamente o que este trabalho fecha.
+   *
+   * Recarregar é honesto e barato: o boot já é rápido, e ele é o único lugar
+   * que sabe montar tudo na ordem certa.
+   */
+  private vigiarTrocaDeConta(): void {
+    window.addEventListener('oz:conta', () => {
+      const agora = sessaoGuardada()?.usuarioId ?? '';
+      if (agora === slotAtual()) return;
+
+      // Grava no slot de QUEM ESTAVA antes de virar a página: o `usarSlot`
+      // ainda não mudou, então isto vai para o dono certo.
+      this.sim.save();
+      location.reload();
+    });
+  }
+
   private async juntarComANuvem(): Promise<void> {
     try {
       const r = await reconciliar(this.sim.state);
 
-      if (r.acao === 'perguntar') { await this.decidirHeranca(r.local); return; }
+      if (r.acao === 'perguntar') { await this.decidirHeranca(); return; }
 
       if (r.acao === 'desceu') {
         // `allowSaving` porque o jogador pode ter apagado o save nesta mesma
@@ -398,18 +433,36 @@ export class Game {
    * montado, estilizado e desmontado numa fase em que a interface do jogo
    * ainda não está de pé, para uma pergunta que cada pessoa vê uma vez.
    */
-  private async decidirHeranca(local: GameState): Promise<void> {
-    const minutos = Math.round(progressoDe(local) / 60);
-    const setor = local.run?.sector ?? 1;
+  private async decidirHeranca(): Promise<void> {
+    /**
+     * A oferta é SEMPRE sobre a partida jogada sem conta — nunca sobre a de
+     * outra conta, que agora vive em slot próprio e não é alcançável daqui.
+     *
+     * Some depois de adotada, e é por isso que a pergunta acontece uma vez só:
+     * uma partida sem dono passa a ter um, e a próxima conta criada nesta
+     * máquina não recebe a oferta de novo.
+     */
+    const semConta = lerSaveSemConta();
+    if (!semConta) return;
+
+    const minutos = Math.round(progressoDe(semConta) / 60);
+    const setor = semConta.run?.sector ?? 1;
 
     const herdar = confirm(
-      'Este navegador tem uma partida com ' + minutos + ' min de jogo, no setor ' + setor + '.'
-      + '\n\nEla é sua? Toque OK para continuar de onde parou.'
-      + '\n\nCancelar começa uma partida nova nesta conta — a partida acima sai deste navegador.',
+      'Você jogou ' + minutos + ' min sem conta neste navegador, chegando ao setor ' + setor + '.'
+      + '\n\nTrazer essa partida para esta conta? Toque OK para trazer.'
+      + '\n\nCancelar começa do zero, e aquela partida é descartada.',
     );
 
+    apagarSaveSemConta();
+
     if (herdar) {
-      await subirSave(local);
+      allowSaving();
+      this.sim.state = semConta;
+      this.sim.touch();
+      this.sim.save();
+      await subirSave(this.sim.state);
+      location.reload();
       return;
     }
 

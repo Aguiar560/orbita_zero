@@ -6,6 +6,7 @@ import { equipamentoDe } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import type { SlotId } from '@sim/types';
 import { elementoDaNave } from '@sim/elemento-da-nave';
+import { itemName } from '@sim/loot';
 import { buildItemCard } from './ItemCard';
 import { elementoComNome } from './elementos';
 import { clear, h, spriteIcon } from './dom';
@@ -157,6 +158,9 @@ export class Anatomia {
     clear(this.corpo).append(
       h('.painel-secao', { text: 'ANATOMIA' }),
       this.seletor(),
+      ...(itemArrastado()
+        ? [h('.anat-selecao', { text: `PEÇA SELECIONADA · ${itemName(itemArrastado()!)}. Toque no soquete correspondente.` })]
+        : []),
       h(`.anat-quadro${emCampo ? '.em-campo' : ''}${itemArrastado() ? '.arrastando' : ''}`, {},
         h('.anat-coluna', {}, ...ESQUERDA.map((s) => this.soquete(s, 'esq'))),
         h('.anat-chassi', {},
@@ -250,12 +254,28 @@ export class Anatomia {
     if (item) {
       cel.addEventListener('mouseenter', () => this.mostrarFicha(item, cel));
       cel.addEventListener('mouseleave', () => this.esconderFicha());
-      cel.addEventListener('click', () => {
-        sim.unequip(slot, this.vendo);
+    }
+    cel.addEventListener('click', () => {
+      const peca = itemArrastado();
+      if (peca) {
+        if (peca.slot !== slot) {
+          toast(`A peça selecionada pertence ao soquete ${SLOT_BY_ID.get(peca.slot)?.name ?? peca.slot}`, 'bad');
+          return;
+        }
+        if (!sim.equip(peca.uid, this.vendo)) {
+          toast('Esta nave não aceita peça deste elemento', 'bad');
+          return;
+        }
+        encerrarArraste();
         this.esconderFicha();
         sim.touch();
-      });
-    }
+        return;
+      }
+      if (!item) return;
+      sim.unequip(slot, this.vendo);
+      this.esconderFicha();
+      sim.touch();
+    });
 
     // ── soltar uma peça aqui ────────────────────────────────────────────
     //

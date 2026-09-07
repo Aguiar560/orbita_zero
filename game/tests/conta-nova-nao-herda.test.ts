@@ -35,6 +35,13 @@ afterEach(() => {
   original.clear();
 });
 
+/** Cofre vazio por teste: sem isto o save sem conta vaza de um caso para o outro. */
+async function semCofre(): Promise<void> {
+  const { definirCofre, usarSlot } = await import('@sim/state');
+  definirCofre({ ler: () => null, gravar: () => {}, apagar: () => {} });
+  usarSlot('');
+}
+
 function comConta(): void {
   const armazem = new Map<string, string>([['oz.sessao.v1', JSON.stringify({
     accessToken: 'a', refreshToken: 'r',
@@ -63,18 +70,35 @@ function servidorResponde(corpo: unknown | null): string[] {
 
 /** Um save com história: piloto escolhido e tempo de jogo de verdade. */
 function partidaDeAlguem() {
-  const s = createState(7, 'vektor_9');
+  const s = createState(7, 'piloto_vektor');
   s.playtime = 35_340;
   return s;
 }
 
 describe('conta nova com partida no navegador', () => {
-  it('pergunta em vez de adotar o progresso alheio', async () => {
+  it('oferece a partida jogada SEM CONTA, em vez de adotá-la calada', async () => {
+    /**
+     * A pergunta e sobre o save sem dono, e so sobre ele. O save de outra conta
+     * vive em slot proprio desde `save-por-conta.test.ts` e nao e alcancavel
+     * daqui -- era esse vazamento que fazia duas pessoas na mesma maquina
+     * disputarem a mesma partida.
+     */
     comConta();
     const metodos = servidorResponde({ vazio: true, versaoServidor: 0 });
 
+    const { definirCofre, usarSlot, saveToStorage } = await import('@sim/state');
+    const mapa = new Map<string, string>();
+    definirCofre({
+      ler: (c: string) => mapa.get(c) ?? null,
+      gravar: (c: string, v: string) => { mapa.set(c, v); },
+      apagar: (c: string) => { mapa.delete(c); },
+    });
+    usarSlot('');
+    saveToStorage(partidaDeAlguem());
+    usarSlot('u-novo');
+
     const { reconciliar } = await import('@app/nuvem');
-    const r = await reconciliar(partidaDeAlguem());
+    const r = await reconciliar(createState(7));
 
     expect(r.acao).toBe('perguntar');
     // E nada foi subido antes de perguntar: a conta nova continua vazia.
@@ -87,6 +111,7 @@ describe('conta nova com partida no navegador', () => {
      * de qualquer jeito, e uma pergunta aqui seria ruído no primeiro minuto de
      * quem acabou de chegar.
      */
+    await semCofre();
     comConta();
     servidorResponde({ vazio: true, versaoServidor: 0 });
 
@@ -98,10 +123,11 @@ describe('conta nova com partida no navegador', () => {
 
   it('e não pergunta por causa de dez segundos de jogo', async () => {
     // O corte de tempo existe para quem abriu o jogo, olhou e foi criar conta.
+    await semCofre();
     comConta();
     servidorResponde({ vazio: true, versaoServidor: 0 });
 
-    const curta = createState(7, 'vektor_9');
+    const curta = createState(7, 'piloto_vektor');
     curta.playtime = 20;
 
     const { reconciliar } = await import('@app/nuvem');
@@ -114,6 +140,7 @@ describe('conta nova com partida no navegador', () => {
      * chegavam iguais aqui. Perguntar "quer recomeçar?" porque a rede caiu seria
      * oferecer destruir um save por causa de um problema passageiro.
      */
+    await semCofre();
     comConta();
     servidorResponde(null);
 
@@ -127,7 +154,7 @@ describe('conta nova com partida no navegador', () => {
   it('e a conta com save na nuvem segue pelo caminho de sempre', async () => {
     // Regressão: a mudança não pode afetar quem já tem save do lado de lá.
     comConta();
-    const daNuvem = { ...createState(9, 'vektor_9'), playtime: 99_000 };
+    const daNuvem = { ...createState(9, 'piloto_vektor'), playtime: 99_000 };
     servidorResponde({ estado: daNuvem, atualizadoEm: 1, versaoServidor: 3 });
 
     const { reconciliar } = await import('@app/nuvem');
