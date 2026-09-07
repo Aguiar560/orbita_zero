@@ -189,11 +189,14 @@ export class AffixCraftPanel implements Panel {
     const candidates = item && current ? recalibrationCandidates(item, this.selectedAffix) : [];
     const def = current ? AFFIXES.find((candidate) => candidate.id === current.id) : null;
     const tipo = def ? tipoDoAfixo(def) : null;
-    const cost = item ? sim.modulationCost(item.uid, operation.id) : null;
+    // A linha selecionada entra no preco: uma T10 custa 2,08x uma T1.
+    const cost = item ? sim.modulationCost(item.uid, operation.id, this.selectedAffix) : null;
+    const minerio = cost?.minerio ? RECURSO_POR_ID.get(cost.minerio) : null;
     const essence = RECURSO_POR_ID.get(operation.essencia);
     const can = !!item && !!cost
       && sim.can('nucleo', cost.nucleos)
       && sim.materialDisponivel(cost.essencia) >= cost.quantidade
+      && (!cost.minerio || sim.materialDisponivel(cost.minerio) >= cost.quantidadeDeMinerio)
       && this.operationAllowed(item, current, candidates.length);
 
     return h('.afx-panel.afx-operation', {},
@@ -248,11 +251,27 @@ export class AffixCraftPanel implements Panel {
             style: { color: cost && sim.materialDisponivel(cost.essencia) >= cost.quantidade ? '#7fd8ed' : '#ff667d' },
           }),
         ),
+        /**
+         * O terceiro ingrediente: o minerio do ELEMENTO da peca.
+         *
+         * Fica ao lado dos outros dois e nao numa linha propria porque e custo,
+         * nao novidade -- o jogador le os tres juntos ou nao le nenhum. Some
+         * quando a peca nao tem minerio conhecido, em vez de mostrar zero.
+         */
+        minerio && cost ? h('.afx-cost', {},
+          h('span', {}, spriteIcon(iconeDeRecurso(minerio), 24), h('small', { text: minerio.nome.toUpperCase() })),
+          h('strong', {
+            text: `${cost.quantidadeDeMinerio} / ${fmt(sim.materialDisponivel(minerio.id))}`,
+            style: { color: sim.materialDisponivel(minerio.id) >= cost.quantidadeDeMinerio ? '#7fd8ed' : '#ff667d' },
+          }),
+        ) : null,
         h('button.afx-execute', {
           disabled: !can,
           onclick: () => {
             if (!item || !cost) return;
-            if (!confirm(`${operation.nome} por ${fmt(cost.nucleos)} núcleos e ${cost.quantidade}× ${essence?.nome ?? operation.essencia}?`)) return;
+            const partes = [`${fmt(cost.nucleos)} núcleos`, `${cost.quantidade}× ${essence?.nome ?? operation.essencia}`];
+            if (minerio) partes.push(`${cost.quantidadeDeMinerio}× ${minerio.nome}`);
+            if (!confirm(`${operation.nome} por ${partes.join(', ')}?`)) return;
             const outcome = sim.modulateItem(item.uid, operation.id, this.selectedAffix);
             if (!outcome) { this.feedback = 'OPERAÇÃO RECUSADA — VERIFIQUE O ITEM'; return; }
             this.result = { uid: item.uid, before: outcome.antes, after: outcome.depois, operation: operation.nome };

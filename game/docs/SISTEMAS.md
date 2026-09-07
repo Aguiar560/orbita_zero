@@ -29,6 +29,30 @@ nenhuma referência no catálogo/carregamento/render da atmosfera.
 desktop/mobile com combate real em contexto temporário sem serviços externos.
 `tests/atmosfera-oceanica.test.ts` cobre escopo, assets, rolagem e profundidade.
 
+## Áudio do combate — 04/09/2026
+
+`render/SinteseSonora.ts` cria PCM determinístico original a partir de casco,
+arma, elemento e cadência. A semente é própria: gerar áudio não consome RNG da
+simulação. Os 53 cascos e os inimigos que atiram têm perfil próprio. Os 130
+chefes usam a cadência do estágio ativo, incluindo os modificadores da Provação.
+Seis explosões elementais combinam ruptura, subgrave e destroços com eco.
+
+`render/AudioCombate.ts` abre Web Audio após gesto, guarda até 160 buffers e
+limita o mix a 20 vozes. Uma voz representa a salva inteira. Disparos do jogador
+recebem prioridade de volume; inimigos têm limite global de dez eventos/s e o
+jogador de aproximadamente 22/s. A explosão do chefe reduz a intensidade dos
+novos disparos por 1,2 s. O compressor protege a soma das vozes.
+
+`VerticalMode` dispara áudio no ponto em que cria projéteis e destrói o chefe;
+ecos da Provação não disparam uma explosão de chefe. Laboratório usa os mesmos
+sons após gesto. `volumeMestre × volumeEfeitos` e `muted` respondem aos Ajustes.
+Aba oculta interrompe vozes e suspende o contexto, sem fila de sons ao retornar.
+Música ainda não foi produzida.
+
+O exportador `tools/exportar-audio.ts` gera matrizes WAV em
+`art-source/audio-combate` e [CATALOGO-SONORO.md](CATALOGO-SONORO.md). Esses arquivos
+servem à edição/audição; o runtime gera buffers sem baixá-los no boot.
+
 ## 0. Sistemas transversais entregues em 24/08
 
 O registro completo das entregas de interface, calibração, arte e conteúdo

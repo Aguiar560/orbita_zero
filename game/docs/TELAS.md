@@ -237,6 +237,11 @@ Grade de peças com filtro por raridade (7 botões), filtro por elemento, cinco
 ordens (poder, raridade, slot, nível, melhor tier), favoritos, venda e
 desmontagem em lote. A ficha antecipa os dois retornos e vem de `ui/ItemCard.ts`.
 
+No celular, toque substitui hover: o primeiro toque abre a ficha completa e
+seleciona a peça; o jogador então abre **Anatomia** pelo dock e toca no soquete
+do mesmo tipo para equipar. Assim os atributos continuam visíveis antes da ação
+e a montagem não depende de arrastar.
+
 - **Lê:** `sim.state.inventory`, `sim.state.equipped`, `sim.stats`
 - **Escreve:** equipar/desequipar, favoritar, vender por Sucata, desmontar por materiais
 - **Capacidade:** 15 espaços no começo, até 70 por conquista (`cargaLiberada`)
@@ -282,6 +287,11 @@ Agora:
 O chefe também mostra o número. Ele já se distingue por três outras marcas —
 arte maior, borda na cor da galáxia e o nome embaixo —, e trocar o número por
 "CHEFE" custava a única informação que a célula não repete em outro lugar.
+
+Setor ainda inalcançável troca a arte do planeta por um cadeado sci-fi, mantém
+o número e informa no rótulo acessível qual setor anterior precisa ser vencido.
+O cadeado reutiliza a arte da Provação: é um sinal global de bloqueio, não uma
+segunda linguagem visual só para o mapa.
 
 ### Escolher a fase fecha o mapa
 
@@ -438,8 +448,18 @@ recuperadas pelo relógio e não por tique).
   morrer ou fechar o modal não pode pagar a recompensa de primeira conclusão de
   novo (§74).
 
-**`ui/ProvacaoResultado.ts`** (139 linhas) é a tela de vitória — o "sentimento de
+**`ui/ProvacaoResultado.ts`** é a tela de vitória — o "sentimento de
 vitória ao derrotar cada andar" que o pedido exige.
+
+O resultado usa troféu central, vidro com linhas sutis, moldura técnica e
+telemetria em três colunas. Recompensas têm ícone e nome; o próximo piso recebe
+faixa própria. Marco fica dourado, derrota preserva a dica e a vida restante.
+O card rola em telas baixas, mantém o foco no botão e fecha com Escape; animações
+respeitam a preferência de efeitos reduzidos e a do sistema operacional.
+
+Em Ajustes → Áudio, volumes Geral/Efeitos e Silenciar tudo já controlam o mixer.
+O som exige um primeiro clique/toque e pausa quando a aba fica oculta. Música
+segue desativada até a produção da trilha.
 
 - **Lê:** `sim.pisosDaProvacao`, `sim.estadoDoPisoDaProvacao()`, `sim.provacaoTentativas`
 - **Escreve:** `sim.iniciarPisoDaProvacao()`, `concluir…`, `falhar…`
@@ -824,7 +844,9 @@ motor e utilitários na popa. É o que faz achar o slot sem ler o rótulo.
 `naves[id].equipped`). Sem ele não haveria onde montar o conjunto de uma nave
 fora de campo. O rótulo mostra a lotação: `Aurora Mk I · 1/10`.
 
-Passar o mouse num soquete cheio abre a ficha do item; clicar desequipa.
+Passar o mouse num soquete cheio abre a ficha do item; clicar desequipa. No
+celular, a Anatomia é uma superfície própria no dock: uma peça selecionada no
+Inventário é colocada ao tocar no soquete correspondente.
 
 ### Sobreposta, e não uma trilha
 

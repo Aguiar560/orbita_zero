@@ -8,8 +8,26 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 04/09/2026 · 1.011 testes passando · registro consolidado
+**Última atualização:** 07/09/2026 · 1.011 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 07/09/2026 — fluxo móvel de equipamento e telas roláveis
+
+O dock do celular agora inclui **Anatomia**. No inventário, tocar uma peça abre
+sua ficha com atributos e a deixa selecionada; tocar no soquete correspondente
+confirma o equipamento. O mesmo estado serve ao arrastar no desktop, sem criar
+uma segunda regra para montagem.
+
+Controle manual no canvas ganhou manche virtual: deslizar o dedo define a
+direção enquanto o toque estiver pressionado; teclado e toque continuam podendo
+ser usados juntos. As telas em camada passaram a rolar pelo contêiner externo
+no celular, e a Central de Galáxia mede os cards pela altura de conteúdo ao
+virar uma coluna, removendo a sobreposição.
+
+Verificação: typecheck e build de produção aprovados. QA estrutural em 390×844:
+quatro destinos no dock, sem rolagem horizontal e canvas com `touch-action: none`.
 
 ---
 

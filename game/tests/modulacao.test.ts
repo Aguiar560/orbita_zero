@@ -20,14 +20,23 @@ describe('Bancada de Modulação', () => {
     const item = rollItem(new Rng(220), 80, 0, 0, { exata: 3, slot: 'principal' });
     sim.state.inventory.push(item);
     const op = OPERACOES_DE_MODULACAO[0]!;
-    const custo = custoDeModulacao(item, op);
+    // O custo consulta a MESMA linha que a operação vai transformar: o tier
+    // dela pesa no preço, e sem o índice o teste mediria outra conta.
+    const custo = custoDeModulacao(item, op, 0);
     sim.guardarMaterial(op.essencia, 20);
+    // O terceiro ingrediente: o minério do elemento da peça. Sem ele a operação
+    // é recusada — e recusar por falta é o comportamento certo.
+    if (custo.minerio) sim.guardarMaterial(custo.minerio, custo.quantidadeDeMinerio + 10);
     const nucleos = sim.state.resources.nucleo;
     const essencias = sim.materialDisponivel(op.essencia);
+    const minerios = custo.minerio ? sim.materialDisponivel(custo.minerio) : 0;
 
     expect(sim.modulateItem(item.uid, op.id, 0)).not.toBeNull();
     expect(sim.state.resources.nucleo).toBe(nucleos - custo.nucleos);
     expect(sim.materialDisponivel(op.essencia)).toBe(essencias - custo.quantidade);
+    if (custo.minerio) {
+      expect(sim.materialDisponivel(custo.minerio)).toBe(minerios - custo.quantidadeDeMinerio);
+    }
 
     const depois = sim.materialDisponivel(op.essencia);
     expect(sim.modulateItem(item.uid, 'dissolver', 999)).toBeNull();

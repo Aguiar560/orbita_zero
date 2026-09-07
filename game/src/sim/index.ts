@@ -97,7 +97,6 @@ import {
 import {
   SHOP_BY_ID, SHOP_CARGO_IDS, shopCost, shopLimit,
 } from '@data/shop';
-import { recalibrationCost } from '@data/balance/recalibracao';
 import {
   OPERACAO_DE_MODULACAO_POR_ID, custoDeModulacao,
   type CustoDeModulacao, type OperacaoDeModulacaoId,
@@ -128,7 +127,7 @@ export const XP_GANHO_GLOBAL = 24;
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
-import { dropChance, openChest, recalibrateAffix, rollItem, scoreItem } from './loot';
+import { dropChance, openChest, rollItem, scoreItem } from './loot';
 import { createState, saveToStorage } from './state';
 import {
   allocate, allocatePath, canAllocate, canDeallocate, deallocate,
@@ -2398,34 +2397,28 @@ export class Sim {
     return true;
   }
 
-  /** Preço em núcleos para recalibrar uma linha do item. */
-  recalibrationPrice(uid: string): number | null {
-    const item = this.state.inventory.find((i) => i.uid === uid);
-    return item ? recalibrationCost(item) : null;
-  }
-
   /**
-   * Substitui uma linha por outra naturalmente possível naquele item.
-   * Raridade, nível, elemento, conjunto e tier da linha ficam intactos.
+   * ► A RECALIBRAÇÃO ANTIGA SAIU DAQUI.
+   *
+   * `recalibrateItemAffix` e `recalibrationCost` faziam exatamente o que o
+   * protocolo "Remoldar linha" da Engenharia faz — substituir uma linha por
+   * outra naturalmente possível, no mesmo tier —, mas por outra porta e com
+   * outra moeda. Nenhuma tela chamava a versão daqui: ela ficou para trás
+   * quando a Bancada de Modulação nasceu, e sobreviveu com teste próprio, o que
+   * a fazia parecer viva para quem lesse o arquivo.
+   *
+   * Duas implementações da mesma regra é o começo de duas regras diferentes.
    */
-  recalibrateItemAffix(uid: string, index: number): Item['affixes'][number] | null {
-    const item = this.state.inventory.find((i) => i.uid === uid);
-    if (!item || !item.affixes[index]) return null;
-    const cost = recalibrationCost(item);
-    if (!this.can('nucleo', cost)) return null;
-    const rolled = recalibrateAffix(this.rng, item, index);
-    if (!rolled || !this.spend('nucleo', cost)) return null;
-    item.affixes[index] = rolled;
-    toast(`Afixo recalibrado · T${rolled.tier ?? 1}`, 'epic', item.icon);
-    this.touch();
-    return rolled;
-  }
 
   /** Receita concreta exibida pela Bancada de Modulação. */
-  modulationCost(uid: string, operacaoId: OperacaoDeModulacaoId): CustoDeModulacao | null {
+  modulationCost(
+    uid: string,
+    operacaoId: OperacaoDeModulacaoId,
+    linha = -1,
+  ): CustoDeModulacao | null {
     const item = this.state.inventory.find((i) => i.uid === uid);
     const operacao = OPERACAO_DE_MODULACAO_POR_ID.get(operacaoId);
-    return item && operacao ? custoDeModulacao(item, operacao) : null;
+    return item && operacao ? custoDeModulacao(item, operacao, linha) : null;
   }
 
   /**
@@ -2441,17 +2434,22 @@ export class Sim {
     const operacao = OPERACAO_DE_MODULACAO_POR_ID.get(operacaoId);
     if (!item || !operacao) return null;
 
-    const custo = custoDeModulacao(item, operacao);
+    // O custo consulta a MESMA linha que a operação vai transformar: sem o
+    // índice, remoldar a melhor linha de uma peça custava o mesmo que remoldar
+    // a pior.
+    const custo = custoDeModulacao(item, operacao, index);
     if (!this.can('nucleo', custo.nucleos)) return null;
     if (this.materialDisponivel(custo.essencia) < custo.quantidade) return null;
+    if (custo.minerio && this.materialDisponivel(custo.minerio) < custo.quantidadeDeMinerio) return null;
 
     const resultado = aplicarModulacao(this.rng, item, operacaoId, index);
     if (!resultado) return null;
 
-    // As duas verificações acima tornam estes descontos infalíveis no mesmo
+    // As TRÊS verificações acima tornam estes descontos infalíveis no mesmo
     // turno. Se isso mudar no futuro, a mutação deverá ganhar rollback.
     this.spend('nucleo', custo.nucleos);
     this.gastarMaterial(custo.essencia, custo.quantidade);
+    if (custo.minerio) this.gastarMaterial(custo.minerio, custo.quantidadeDeMinerio);
     toast(`${operacao.nome} concluída`, 'epic', item.icon);
     this.touch();
     return resultado;

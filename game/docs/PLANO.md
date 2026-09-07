@@ -83,7 +83,7 @@ editáveis pelo console, e um pódio premiado em cima disso não se sustenta.
 | **Acessibilidade** | 🟡 base pronta; falta auditoria fluxo a fluxo | `ui/Shell.ts`, `ui/panels/SettingsPanel.ts` |
 | **Personagens jogáveis** | ✅ quatro, com nave própria e 1,58% de dispersão de poder | `data/pilotos.ts`, `ui/EscolhaDePiloto.ts` |
 | **Equipamento por nave** | ✅ cada casco com o próprio conjunto | `sim/stats.ts`, `ui/Anatomia.ts` |
-| **Ajustes** | ✅ cinco abas; áudio declarado inerte | `ui/panels/SettingsPanel.ts` |
+| **Ajustes** | ✅ abas; volume geral/efeitos e mudo ativos | `ui/panels/SettingsPanel.ts` |
 | **Densidade das ondas** | ✅ 10× no começo, XP invariante | `data/balance/curvas.ts`, `sim/progression.ts` |
 | **Posturas de IA** | ✅ três, sem meio-termo | `modes/vertical/PilotAI.ts` |
 | Migração de save | ✅ v9 normalizada | `sim/state.ts` (`SAVE_VERSION = 9`) |
@@ -399,10 +399,16 @@ que as 30 galáxias da campanha usam 30 arquivos distintos.
 
 ---
 
-### Passo 5 — Som 🔴
+### Passo 5 — Som 🟡
 
-**Não existe nenhum áudio no projeto.** Zero referências a `Audio`,
-`AudioContext` ou arquivo de som.
+**Disparos e explosões de chefes implementados em 04/09.** Mixer Web Audio com
+gesto inicial, volume/mudo, pausa ao ocultar a aba e limites para enxames.
+Catálogo completo em [CATALOGO-SONORO.md](CATALOGO-SONORO.md): 53 cascos, 68
+inimigos e 130 chefes identificados, com variantes por estágio e elemento.
+Matrizes WAV exportáveis pelo mesmo sintetizador utilizado em jogo.
+
+Ainda faltam sons próprios de impacto, morte comum, drop raro, especiais
+carregando e trilha musical. O controle de música continua desativado.
 
 Num jogo em que a IA pilota, o som é boa parte do retorno sensorial que sobra:
 tiro, acerto, morte, drop raro, especial de chefe carregando.

@@ -24,6 +24,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { existsSync } from 'node:fs';
 
 /** Arquivos versionados, do ponto de vista do git. */
 function versionados(): Set<string> | null {
@@ -56,7 +57,16 @@ describe('nada importado fica de fora do git', () => {
     const raiz = new URL('..', import.meta.url);
 
     for (const fonte of fontes) {
-      const texto = readTexto(new URL(fonte, raiz));
+      /**
+       * Arquivo rastreado que NAO esta no disco e estado transitorio: alguem
+       * apagou e ainda nao encenou a remocao. Pular e o certo -- este teste
+       * pergunta se todo import aponta para arquivo versionado, nao se a arvore
+       * de trabalho esta limpa. Antes ele estourava com ENOENT, e um teste que
+       * quebra por ENOENT nao diz a ninguem o que fazer.
+       */
+      const caminho = new URL(fonte, raiz);
+      if (!existsSync(caminho)) continue;
+      const texto = readTexto(caminho);
       // `from '@alias/caminho'` e `import('@alias/caminho')`.
       for (const m of texto.matchAll(/['"]@(core|render|sim|data|ui|modes|app)\/([A-Za-z0-9/_.-]+)['"]/g)) {
         const base = `${ALIASES[m[1]!]}/${m[2]!}`;

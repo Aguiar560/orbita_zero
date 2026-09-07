@@ -1,4 +1,5 @@
-import type { Item } from '@sim/types';
+import type { ElementId, Item } from '@sim/types';
+import { minerioParaItem } from './minerio-elemental';
 
 export type OperacaoDeModulacaoId =
   | 'remoldar'
@@ -100,14 +101,88 @@ export interface CustoDeModulacao {
   nucleos: number;
   essencia: string;
   quantidade: number;
+  /**
+   * O minerio do ELEMENTO da peca, e quanto dele.
+   *
+   * `null` quando a peca nao tem elemento com minerio conhecido. A Engenharia
+   * trata isso como "esta operacao nao pede minerio" em vez de travar: dado
+   * ausente nao pode fechar uma tela inteira.
+   */
+  minerio: string | null;
+  quantidadeDeMinerio: number;
 }
 
-export function custoDeModulacao(item: Item, operacao: OperacaoDeModulacao): CustoDeModulacao {
+/**
+ * O TIER da linha pesa no preco.
+ *
+ * Uma linha T10 e o topo do que aquela propriedade pode ser; uma T1 e o piso.
+ * Sem este fator, remoldar a melhor linha de uma peca custava o mesmo que
+ * remoldar a pior -- e o jogador que ja chegou ao topo pagava o preco de quem
+ * esta comecando.
+ *
+ * 12% por degrau: a T10 sai 2,08x mais cara que a T1, o suficiente para pesar
+ * na decisao sem transformar a ferramenta em proibicao.
+ *
+ * Operacoes que NAO agem sobre uma linha -- imprimir, eco temporal, aperfeicoar
+ * -- nao tem tier a consultar, e usam o do item mais alto: mexer numa peca de
+ * linhas T10 e mais caro que numa de T1, que e a mesma ideia aplicada ao item.
+ */
+const fatorDeTier = (tier: number): number => 1 + Math.max(0, Math.min(10, tier) - 1) * 0.12;
+
+const tierDeReferencia = (item: Item, linha: number): number => {
+  const escolhida = item.affixes[linha]?.tier;
+  if (typeof escolhida === 'number') return escolhida;
+  return item.affixes.reduce((m, a) => Math.max(m, a.tier ?? 1), 1);
+};
+
+/**
+ * Tres ingredientes: nucleos, essencia e o MINERIO DO ELEMENTO da peca.
+ *
+ * O minerio e o que fecha o buraco de 27 materiais que caiam sem destino -- ver
+ * `minerio-elemental.ts`. Ele nao substitui a essencia: a essencia continua
+ * sendo o material raro da Provacao que define QUAL ferramenta, e o minerio e o
+ * insumo comum que define QUANTO custa usa-la naquela peca.
+ *
+ * As tres quantidades crescem com raridade, nivel e tier -- `linha` diz qual
+ * linha esta selecionada, e -1 quer dizer "o item inteiro".
+ */
+export function custoDeModulacao(
+  item: Item,
+  operacao: OperacaoDeModulacao,
+  linha = -1,
+): CustoDeModulacao {
   const raridade = 1 + item.rarity * 0.42;
   const nivel = 1 + Math.max(0, item.ilvl - 1) / 180;
-  const nucleos = Math.ceil((operacao.custoNucleos * raridade * nivel) / 50) * 50;
+  const tier = fatorDeTier(tierDeReferencia(item, linha));
+
+  const nucleos = Math.ceil((operacao.custoNucleos * raridade * nivel * tier) / 50) * 50;
+
   // As ferramentas finais já são muito raras. Somente as essências das faixas
   // iniciais crescem para 2/3 unidades em itens Épicos/Divinos.
   const escala = operacao.custoEssencia >= 6 || item.rarity < 3 ? 0 : Math.floor(item.rarity / 3);
-  return { nucleos, essencia: operacao.essencia, quantidade: operacao.custoEssencia + escala };
+
+  /**
+   * O minerio e o ingrediente que mais escala, e de proposito.
+   *
+   * A essencia sobe pouco porque vem da Provacao, que e conteudo de fim de
+   * campanha e ja e escasso por natureza. O minerio vem do chao da galaxia: o
+   * jogador junta 6 a 12 por setor, e e ele que pode absorver a diferenca entre
+   * ajustar uma peca comum T1 e uma divina T10 sem virar proibicao.
+   *
+   * O peso da operacao entra por `custoEssencia`, que ja e a medida de quao
+   * poderosa cada uma das dez e.
+   */
+  const minerio = minerioParaItem((item.element ?? 'padrao') as ElementId, item.ilvl);
+  const quantidadeDeMinerio = Math.max(
+    1,
+    Math.round(operacao.custoEssencia * 1.5 * raridade * tier),
+  );
+
+  return {
+    nucleos,
+    essencia: operacao.essencia,
+    quantidade: operacao.custoEssencia + escala,
+    minerio,
+    quantidadeDeMinerio: minerio ? quantidadeDeMinerio : 0,
+  };
 }

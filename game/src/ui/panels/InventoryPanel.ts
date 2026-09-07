@@ -91,7 +91,12 @@ export class InventoryPanel implements Panel {
   /** Só favoritos — o inventário nasce com 15 espaços, então marcar importa. */
   private soFavoritos = false;
   private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
-  private readonly tip = h('.inv-tip.hidden');
+  /** Pequeno atraso para o cursor conseguir sair da célula e entrar na ficha. */
+  private relogioDoTip = 0;
+  private readonly tip = h('.inv-tip.hidden', {
+    onmouseenter: () => window.clearTimeout(this.relogioDoTip),
+    onmouseleave: () => this.tip.classList.add('hidden'),
+  });
 
   badge(sim: Sim): number {
     return sim.state.inventory.length;
@@ -300,8 +305,16 @@ export class InventoryPanel implements Panel {
     });
     cell.addEventListener('dragend', () => encerrarArraste());
 
-    cell.addEventListener('mouseenter', () => this.showTip(sim, item, cell, gain));
-    cell.addEventListener('mouseleave', () => this.tip.classList.add('hidden'));
+    cell.addEventListener('mouseenter', () => {
+      window.clearTimeout(this.relogioDoTip);
+      this.showTip(sim, item, cell, gain);
+    });
+    cell.addEventListener('mouseleave', () => {
+      window.clearTimeout(this.relogioDoTip);
+      this.relogioDoTip = window.setTimeout(() => {
+        if (!this.tip.matches(':hover')) this.tip.classList.add('hidden');
+      }, 140);
+    });
     cell.addEventListener('click', (e) => {
       // Modo de seleção intercepta TUDO: enquanto a carga está ativa, clicar
       // não equipa nem vende. Uma grade que faz duas coisas diferentes conforme
@@ -337,11 +350,7 @@ export class InventoryPanel implements Panel {
         if (valor > 0) toast(`Vendido · +${fmt(valor)} sucata`, 'good', 'ui/icon_coin');
         else toast('Item favorito: desmarque antes de vender.', 'bad');
       } else if (e.shiftKey) {
-        const retorno = sim.salvage(item.uid);
-        if (retorno) toast(`Desmontado · ${resumoDeMateriais(retorno.materiais)}`, 'good', 'recurso/ferrita');
-        else toast(item.favorite
-          ? 'Item favorito: desmarque antes de desmontar.'
-          : 'Sem espaço para os novos materiais no Armazém.', 'bad');
+        this.desmontar(sim, item);
       } else {
         // Na nave que a Anatomia está mostrando, não na que está voando.
         // Eram sempre a mesma até a coluna ganhar seletor; desde então o
@@ -372,6 +381,20 @@ export class InventoryPanel implements Panel {
           style: { color: gain > 0 ? '#7ed957' : '#7f93b3' },
         }),
       ),
+      h('.inv-item-actions', { 'aria-label': `Ações para o item selecionado` },
+        h('button.inv-item-action.vender', {
+          type: 'button',
+          disabled: item.favorite,
+          title: item.favorite ? 'Desmarque o favorito antes de vender' : 'Vender este item por sucata',
+          onclick: () => this.vender(sim, item),
+        }, spriteIcon('ui/icon_coin', 16), h('span', { text: 'VENDER' })),
+        h('button.inv-item-action.desmontar', {
+          type: 'button',
+          disabled: item.favorite,
+          title: item.favorite ? 'Desmarque o favorito antes de desmontar' : 'Desmontar este item em materiais',
+          onclick: () => this.desmontar(sim, item),
+        }, spriteIcon('recurso/ferrita', 16), h('span', { text: 'DESMONTAR' })),
+      ),
     );
 
     // Ancora o cartão à célula, mantendo-o dentro do painel.
@@ -383,5 +406,35 @@ export class InventoryPanel implements Panel {
     const tipH = this.tip.offsetHeight || 200;
     this.tip.style.left = `${clamp(spot.left - box.left + spot.width + 8, 0, Math.max(0, box.width - 236))}px`;
     this.tip.style.top = `${clamp(spot.top - box.top - 10, 0, Math.max(0, box.height - tipH))}px`;
+  }
+
+  private vender(sim: Sim, item: Item): void {
+    const valor = sim.sell(item.uid);
+    if (valor <= 0) {
+      toast(item.favorite
+        ? 'Item favorito: desmarque antes de vender.'
+        : 'Este item não está mais no inventário.', 'bad');
+      return;
+    }
+    toast(`Vendido · +${fmt(valor)} sucata`, 'good', 'ui/icon_coin');
+    this.concluirDescarte(sim, item.uid);
+  }
+
+  private desmontar(sim: Sim, item: Item): void {
+    const retorno = sim.salvage(item.uid);
+    if (!retorno) {
+      toast(item.favorite
+        ? 'Item favorito: desmarque antes de desmontar.'
+        : 'Este item não está mais no inventário.', 'bad');
+      return;
+    }
+    toast(`Desmontado · ${resumoDeMateriais(retorno.materiais)}`, 'good', 'recurso/ferrita');
+    this.concluirDescarte(sim, item.uid);
+  }
+
+  private concluirDescarte(sim: Sim, uid: string): void {
+    if (itemArrastado()?.uid === uid) encerrarArraste();
+    this.tip.classList.add('hidden');
+    sim.touch();
   }
 }
