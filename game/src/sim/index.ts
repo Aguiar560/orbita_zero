@@ -1,6 +1,7 @@
 ﻿import { Rng, clamp } from '@core/math';
 import { bus, toast } from '@app/Bus';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
+import { multiplicadorDoTier, raridadeExclusivaDoTier, tierDoContatoPorId } from '@data/balance/contatos';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
@@ -829,9 +830,27 @@ export class Sim {
     this.state.settings.pinnedMissions = this.state.settings.pinnedMissions.filter((id) => id !== def.id);
 
     const r = def.recompensa;
-    for (const [moeda, n] of Object.entries(r.moedas ?? {})) this.grant(moeda as ResourceId, n);
-    for (const [rec, n] of Object.entries(r.materiais ?? {})) this.guardarMaterial(rec, n);
-    if (r.xp) this.grantXp(r.xp);
+
+    /**
+     * O TIER do contato multiplica moeda, material e XP.
+     *
+     * Escondido do jogador: ele não escolhe contato por número, e mostrar o
+     * tier trocaria "com quem eu quero trabalhar" por "qual dá mais" — a barra
+     * de confiança perderia o sentido junto, porque ela mede vínculo.
+     *
+     * O ITEM fica de fora: item é poder, e poder tem orçamento próprio. O tier
+     * mexe nele por outra porta, mais legível — a raridade da peça exclusiva.
+     */
+    const tier = def.giverId ? tierDoContatoPorId(def.giverId) : 1;
+    const fator = multiplicadorDoTier(tier);
+
+    for (const [moeda, n] of Object.entries(r.moedas ?? {})) {
+      this.grant(moeda as ResourceId, Math.round(n * fator));
+    }
+    for (const [rec, n] of Object.entries(r.materiais ?? {})) {
+      this.guardarMaterial(rec, Math.max(1, Math.round(n * fator)));
+    }
+    if (r.xp) this.grantXp(Math.round(r.xp * fator));
     if (r.medalhas) this.state.medalhas += r.medalhas;
     for (const [tier, n] of Object.entries(r.baus ?? {})) this.grantChest(tier, n, def.nome);
     /**
@@ -843,10 +862,18 @@ export class Sim {
      */
     if (def.recompensaExclusiva) {
       const ex = def.recompensaExclusiva!;
+      /**
+       * A raridade escrita na missão vence; sem ela, o TIER decide.
+       *
+       * Épico nos tiers baixos, Lendário nos altos. Deixar o padrão vir do tier
+       * é o que permite cadastrar missão nova sem escolher raridade a cada uma
+       * — e sem que um esquecimento produza uma peça Comum no fim de uma cadeia
+       * de quinze missões.
+       */
       this.acquire(this.rolarExclusivo(
         this.encounter.ilvl + (r.itens?.ilvlBonus ?? 0),
         { nome: ex.nome, de: ex.de ?? def.nome },
-        { raridadeMin: ex.raridadeMin, slot: ex.slot },
+        { raridadeMin: ex.raridadeMin ?? raridadeExclusivaDoTier(tier), slot: ex.slot },
       ));
     }
 

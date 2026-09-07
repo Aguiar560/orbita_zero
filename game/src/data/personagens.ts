@@ -52,6 +52,15 @@ export interface PersonagemDef {
   requerChefe?: string;
   /** Texto da silhueta, quando ainda bloqueado. */
   dicaDeDesbloqueio?: string;
+  /**
+   * Tier do contato, 1 a 5. ESCONDIDO do jogador.
+   *
+   * Opcional porque o padrão é DERIVADO da galáxia — ver
+   * `balance/contatos.ts`. Escrever aqui só quando a história pedir um contato
+   * pequeno numa galáxia grande, ou o contrário; fora disso, deixar em branco
+   * mantém o tier e a dificuldade contando a mesma história.
+   */
+  tier?: number;
 }
 
 /** Quantos degraus tem a escada de confiança. */
