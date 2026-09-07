@@ -72,6 +72,46 @@ async function chamar(rota: string, metodo: 'GET' | 'PUT', corpo?: unknown): Pro
  * as duas divergirem, o pior caso é o cliente deixar tentar algo que o servidor
  * recusa, que é a direção segura da divergência.
  */
+/**
+ * Quantos jogadores estão online, para quem administra.
+ *
+ * ## O que o número significa
+ *
+ * Contas cujo save subiu nos últimos cinco minutos. Quem está jogando aparece
+ * mesmo sem o chat aberto — e o chat só conecta depois de escolher apelido, o
+ * que deixaria de fora justamente o jogador novo, que é quem mais interessa
+ * acompanhar num alfa.
+ *
+ * ## Por que guardar a resposta
+ *
+ * O selo fica na barra de cima, visível o tempo todo, e sem esta memória cada
+ * redesenho da barra viraria uma requisição. O servidor tem balde de leitura;
+ * estourá-lo faria o selo alternar entre número e nada.
+ *
+ * Devolve `null` enquanto não houver resposta — a barra some com o selo em vez
+ * de mostrar zero, que seria uma informação errada e não uma ausência.
+ */
+let onlineConhecido: number | null = null;
+let onlinePerguntadoEm = 0;
+const INTERVALO_ONLINE = 60_000;
+
+export const onlineAtual = (): number | null => onlineConhecido;
+
+export async function buscarOnline(): Promise<number | null> {
+  const agora = Date.now();
+  if (agora - onlinePerguntadoEm < INTERVALO_ONLINE) return onlineConhecido;
+  onlinePerguntadoEm = agora;
+
+  const r = await chamar('/online', 'GET');
+  if (!r?.ok) return onlineConhecido;
+
+  try {
+    const d = await r.json() as { online?: number };
+    if (typeof d.online === 'number') onlineConhecido = d.online;
+  } catch { /* mantém o último número conhecido. */ }
+  return onlineConhecido;
+}
+
 const APELIDO_OK = /^[\p{L}\p{N}][\p{L}\p{N} _-]{1,14}[\p{L}\p{N}]$/u;
 
 export function apelidoValido(bruto: string): string | null {

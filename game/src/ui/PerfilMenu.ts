@@ -1,5 +1,7 @@
 import { sair, sessaoGuardada } from '@app/conta';
+import { ehAdmin } from '@app/admin';
 import { nuvem } from '@app/nuvem';
+import { buscarOnline, onlineAtual } from '@app/placar';
 import { toast } from '@app/Bus';
 import { fmt } from '@core/format';
 import type { Sim } from '@sim/index';
@@ -47,6 +49,25 @@ export class PerfilMenu {
      */
     window.addEventListener('oz:conta', () => { this.render(); });
 
+    /**
+     * O selo de quem está online, só para quem administra.
+     *
+     * Um relógio próprio, e não um pedido a cada `render`: a barra é
+     * redesenhada a cada abertura do menu e a cada troca de conta, e amarrar a
+     * requisição ao desenho faria o número virar tráfego. O `buscarOnline`
+     * ainda tem a própria trava de um minuto — este intervalo é o do relógio,
+     * aquele é a garantia.
+     *
+     * Roda para todo mundo? Não: `ehAdmin` é conferido antes de perguntar.
+     * Jogador comum não gasta requisição com um número que não vai ver.
+     */
+    const olharOnline = (): void => {
+      if (!ehAdmin()) return;
+      void buscarOnline().then((n) => { if (n !== null) this.render(); });
+    };
+    olharOnline();
+    setInterval(olharOnline, 60_000);
+
     this.render();
   }
 
@@ -72,6 +93,24 @@ export class PerfilMenu {
         // usa o tempo todo do que se abre de vez em quando. Conta é a segunda
         // coisa.
         h(`span.perfil-nome${sessao ? '' : '.sem-conta'}`, { text: nome }),
+        /**
+         * Quantos estão online. Só admin vê, por enquanto.
+         *
+         * É um portão de INTERFACE, como o do modo de teste: a lista de admins
+         * vai no pacote e a conferência roda no navegador. O que ele promete é
+         * tirar do caminho do jogador comum um número que é de operação, não
+         * de jogo — e não esconder um segredo, porque não há segredo num
+         * agregado sem identidade nenhuma.
+         *
+         * Sai da tela enquanto a resposta não chega: mostrar zero seria dizer
+         * "não tem ninguém", que é diferente de "ainda não sei".
+         */
+        ...(ehAdmin() && onlineAtual() !== null
+          ? [h('span.perfil-online', {
+              title: `${onlineAtual()} com o jogo aberto nos últimos 5 minutos`,
+              text: `${onlineAtual()} on`,
+            })]
+          : []),
         h('span.perfil-seta', { text: this.aberto ? '▴' : '▾' }),
       ),
       ...(this.aberto ? [this.gaveta(sessao)] : []),

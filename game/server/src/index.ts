@@ -275,6 +275,40 @@ export default {
       return json(dados, 200, origem);
     }
 
+    if (url.pathname === '/online' && req.method === 'GET') {
+      /**
+       * Quantos jogadores falaram com o servidor há pouco.
+       *
+       * ## O que este número É, exatamente
+       *
+       * Contagem de contas cujo save subiu nos últimos cinco minutos. Não é
+       * "sockets abertos": o jogo sobe sozinho a cada poucos minutos, então
+       * quem está jogando aparece aqui mesmo sem o chat aberto — e o chat só
+       * conecta para quem já escolheu apelido, o que deixaria de fora
+       * justamente o jogador novo.
+       *
+       * A janela é maior que o intervalo de subida de propósito. Menor que
+       * ele, alguém jogando sem parar piscaria entre dentro e fora da conta.
+       *
+       * ## Por que a rota não confere se quem pergunta é admin
+       *
+       * Porque a lista de admins mora no pacote do cliente, e duplicá-la aqui
+       * criaria duas verdades que se desencontram na primeira mudança. O que
+       * sai daqui é um NÚMERO agregado, sem identidade de ninguém — e a rota
+       * já exige sessão válida. Esconder o selo de quem não é admin é decisão
+       * de interface, e é onde ela está.
+       */
+      if (!podeLer(usuario.id, Math.floor(Date.now() / 1000))) {
+        return json({ erro: 'rapido_demais' }, 429, origem);
+      }
+      const desde = Math.floor(Date.now() / 1000) - 300;
+      const r = await env.DB
+        .prepare('SELECT COUNT(*) AS n FROM saves WHERE atualizado_em > ?')
+        .bind(desde)
+        .first<{ n: number }>();
+      return json({ online: r?.n ?? 0, janelaSegundos: 300 }, 200, origem);
+    }
+
     if (url.pathname === '/carteira' && req.method === 'GET') {
       // Mesma defesa do placar: leitura barata, mas perguntada com frequência
       // pela tela da Loja. Balde em memória, não linha no banco.

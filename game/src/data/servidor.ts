@@ -50,7 +50,17 @@ export const API_URL = 'https://orbita-zero-api.orbitazero.workers.dev';
  * Para descobrir o seu: entre na conta e abra o menu de perfil — o id aparece
  * embaixo do e-mail, pronto para copiar.
  */
+/**
+ * Uma pessoa pode ter mais de um id.
+ *
+ * Entrar por um provedor cria uma identidade NOVA quando a anterior não tinha
+ * e-mail para casar — foi o que aconteceu com a conta anônima de maio quando o
+ * Google entrou. Os dois ids abaixo são do Rafael, e o de baixo continua aqui
+ * porque o save antigo ainda mora nele.
+ */
 export const ADMINS: readonly string[] = [
-  // Rafael
+  // Rafael — conta do Google, em uso
+  '0a069f4f-254d-49a8-b4df-dd4a9881c591',
+  // Rafael — conta anônima de maio, onde está o progresso antigo
   '8d4be4e6-52d6-437c-ad4e-556cca3aa43b',
 ];

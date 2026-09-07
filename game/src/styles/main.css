@@ -7042,6 +7042,16 @@ select option:disabled { color: #667991; }
 .perfil-nome { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Sem conta fica apagado: a cor da marca significaria "identificado". */
 .perfil-nome.sem-conta { color: var(--muted); font-weight: 400; }
+/* Quantos estao online, so para admin.
+ *
+ * Discreto de proposito: e informacao de OPERACAO ao lado de um nome, e um
+ * numero com peso de aviso na barra de cima competiria com o jogo. A cor da
+ * marca diz que e um dado vivo, e o tamanho diz que nao e urgente. */
+.perfil-online {
+  padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--line); background: rgba(3, 8, 16, .6);
+  color: var(--accent); font-size: 10px; font-weight: 600; letter-spacing: .04em;
+}
 .perfil-seta { font-size: 9px; opacity: .6; }
 
 .perfil-gaveta {
@@ -8239,3 +8249,74 @@ select option:disabled { color: #667991; }
 .login-provedor.p-google:hover { border-color: #e9705f; }
 .login-provedor.p-facebook:hover { border-color: #4a7fd0; }
 .login-provedor[disabled] { opacity: .5; }
+
+/* ── acabamento móvel: telas de trabalho, anatomia e toque ──────────────── */
+@media (max-width: 820px) {
+  /* O documento fica fixo para o palco não deslocar; cada superfície que pode
+     exceder a altura rola por conta própria. `overscroll-behavior` impede que
+     uma lista no fim transfira o gesto para o campo de combate atrás dela. */
+  .camada-caixa { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+
+  .layout > .anatomia {
+    position: absolute; inset: 0 0 var(--mobile-dock); z-index: 8;
+    width: 100% !important; margin: 0; min-width: 0; min-height: 0;
+    display: none !important; pointer-events: auto;
+    background: linear-gradient(180deg, rgba(7, 14, 27, .985), rgba(3, 8, 16, .99));
+  }
+  .layout[data-mobile-view='anatomia'] > .anatomia { display: grid !important; }
+  .layout > .anatomia .anat-alca { display: none; }
+  .layout > .anatomia .anat-janela { width: 100%; overflow-y: auto; overscroll-behavior-y: contain; }
+  .layout > .anatomia .anat-corpo {
+    width: 100%; min-height: 100%; max-height: none; padding: 14px;
+    align-content: start; overflow: visible; background: transparent; border: 0; border-radius: 0;
+    box-shadow: none; backdrop-filter: none;
+  }
+  .layout > .anatomia .anat-quadro { width: min(100%, 440px); justify-self: center; }
+  .layout > .anatomia .anat-seletor,
+  .layout > .anatomia .anat-elemento,
+  .layout > .anatomia .anat-ir,
+  .layout > .anatomia .painel-secao { width: min(100%, 440px); justify-self: center; }
+  .anat-selecao {
+    width: min(100%, 440px); justify-self: center; padding: 8px 10px;
+    border: 1px solid rgba(89, 207, 242, .45); border-radius: 6px;
+    background: rgba(24, 87, 116, .2); color: #bfeeff;
+    font: 700 10px/1.35 'Chakra Petch', sans-serif; letter-spacing: .04em;
+  }
+
+  .mobile-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mobile-dock-btn { font-size: 8.5px; letter-spacing: .08em; }
+  .stage-wrap > canvas { touch-action: none; }
+
+  /* Em tela tátil, o cartão ocupa fluxo próprio antes da grade. Assim o toque
+     revela atributos, afixos e comparação sem depender de hover. */
+  .inv-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .inv-wrap .inv-grid { width: 100%; }
+  .inv-tip:not(.hidden) {
+    position: static; order: -1; width: 100%; box-sizing: border-box;
+    pointer-events: none;
+  }
+  .inv-cell.selecionado {
+    border-color: #70dcff !important;
+    box-shadow: inset 0 0 18px rgba(69, 202, 248, .34), 0 0 12px rgba(69, 202, 248, .35) !important;
+    filter: brightness(1.18) saturate(1.12);
+  }
+
+  /* Nenhuma tela de trabalho pode depender de uma altura desktop fixa no
+     telefone. O contêiner comum acima é a única rolagem vertical da tela. */
+  .camada[data-tela] :is(.panel-body, .galaxy-body, .ranking, .hangar, .evt, .lab, .tree-root),
+  .camada[data-tela] :is(.ranking-corpo, .ranking-lista, .hangar-corpo, .hangar-lista, .tree-stage) {
+    height: auto !important; min-height: 0; max-height: none; overflow: visible;
+  }
+
+  /* A central de Galáxia herdava alturas de desktop para as três colunas. Ao
+     virar uma coluna, cada bloco precisa voltar a medir seu próprio conteúdo;
+     caso contrário o próximo card começava antes do anterior terminar. */
+  .camada[data-tela='galaxia'] .galaxy-command {
+    grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; overflow: visible;
+  }
+  .galaxy-command > :is(.galaxy-command-col, .galaxy-command-center) { height: auto; }
+  .galaxy-command-center { grid-template-rows: auto auto auto; }
+  .galaxy-command-sidebar { overflow: visible; }
+  .galaxy-command-sector-detail,
+  .galaxy-command-detail-content { min-height: 0; height: auto; }
+}
