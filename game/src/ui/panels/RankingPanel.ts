@@ -289,28 +289,41 @@ export class RankingPanel implements Panel {
         h('.ranking-vazio', {}, h('span.tiny.muted', { text: 'Buscando o placar…' })));
     }
 
-    // Sem apelido não dá para aparecer: a lista mostra nomes, e o servidor
-    // recusa marca de quem não tem um. Pedir aqui, e não numa tela de entrada,
-    // é o que evita cobrar um nome de quem nunca vai abrir o placar.
-    if (!estado.dados.meuApelido) return h('.ranking-lista', {}, cabecalho, this.pedirApelido(sim));
-
     const { linhas, minhaPosicao, total } = estado.dados;
 
+    /**
+     * Sem apelido o jogador não APARECE, mas continua podendo VER.
+     *
+     * O pedido de nome ficava no lugar da lista, e o efeito era o pior
+     * possível para quem acabou de chegar: um placar aparentemente vazio, num
+     * jogo que parece não ter ninguém. Justamente quem ainda não se nomeou é
+     * quem mais precisa ver que há gente marcando ali.
+     *
+     * Pedir aqui, e não numa tela de entrada, continua certo — não se cobra um
+     * nome de quem nunca vai abrir o placar. O que muda é que o pedido passa a
+     * ser um convite EM CIMA da lista, e não uma porta na frente dela.
+     */
+    const semNome = !estado.dados.meuApelido;
+    const convite = semNome ? [this.pedirApelido(sim)] : [];
+
     if (!linhas.length) {
-      return h('.ranking-lista', {}, cabecalho, this.aviso(
+      return h('.ranking-lista', {}, cabecalho, ...convite, this.aviso(
         'Ninguém marcou ainda neste placar.',
-        'Você pode ser o primeiro — a sua marca sobe sozinha nos próximos minutos.',
+        semNome
+          ? 'Escolha um nome acima e a sua marca sobe sozinha nos próximos minutos.'
+          : 'Você pode ser o primeiro — a sua marca sobe sozinha nos próximos minutos.',
       ));
     }
 
     const estouNoTopo = linhas.some((l) => l.voce);
 
-    return h('.ranking-lista', {}, cabecalho,
+    return h('.ranking-lista', {}, cabecalho, ...convite,
       h('.ranking-linhas', {}, ...linhas.map((l) => this.linha(l))),
       // A linha do jogador fica FORA da rolagem quando ele não está no topo.
       // Ela é a que ele abriu a tela para ver, e dentro do container nasce
       // abaixo da dobra.
-      ...(!estouNoTopo && minhaPosicao
+      // A linha "você" pressupõe marca no servidor, e marca pressupõe apelido.
+      ...(estado.dados.meuApelido && !estouNoTopo && minhaPosicao
         ? [h('.ranking-eu', {},
             h('.ranking-quebra', {}, h('span.tiny', {
               text: `${Math.max(0, minhaPosicao - linhas.length - 1)} pilotos entre você e o topo`,
