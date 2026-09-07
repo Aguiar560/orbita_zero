@@ -860,6 +860,39 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   display: grid; place-items: center;
 }
 
+/* A tela liberou e o jogador ainda nao entrou.
+ *
+ * Ocupa o mesmo canto do contador de propósito: as duas coisas dizem "olhe
+ * aqui", e nunca aparecem juntas — o contador vence, e a marca volta quando ele
+ * zera.
+ *
+ * O texto e "novo" e nao um ponto: um ponto colorido numa barra que ja tem
+ * cadeados e contadores nao se distingue de enfeite, e nao ha como adivinhar o
+ * que ele quer dizer. */
+.tab-nova {
+  position: absolute; top: 2px; right: 3px;
+  padding: 1px 5px; border-radius: 8px;
+  background: var(--accent); color: #04121c;
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* A aba inteira se acende de leve. A marca sozinha e pequena demais para pegar
+ * o olho de quem esta olhando a nave no meio da tela. */
+.tab.nova {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: tab-nova-pulso 2.4s ease-in-out infinite;
+}
+
+@keyframes tab-nova-pulso {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  50% { box-shadow: 0 0 10px 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+}
+
+/* Pulso e reforco, nunca o recado. Sem ele a marca e a borda continuam la. */
+@media (prefers-reduced-motion: reduce) {
+  .tab.nova { animation: none; }
+}
+
 .panel-host { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 14px; scrollbar-width: thin; }
 /* A matriz precisa da altura toda do painel; os outros painéis rolam normalmente. */
 .panel-host:has(.tree-root) { overflow: hidden; }

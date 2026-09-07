@@ -111,6 +111,8 @@ export class Shell {
   private faixaSelecao: HTMLElement | null = null;
   private resultadoHost: HTMLElement | null = null;
   private aoTeclar: ((e: KeyboardEvent) => void) | null = null;
+  /** Quais telas a barra mostra como novas agora. Ver `anunciarNovosMarcos`. */
+  private telasNovasNaBarra = '';
   /** Marcos já vistos no save atual: evita repetir o anúncio a cada re-render. */
   private readonly unlocksAnunciados = new Set<string>();
 
@@ -287,8 +289,11 @@ export class Shell {
       const unlock = this.unlockDaTela(panel);
       const locked = !!unlock && !this.temAcessoAoPainel(panel, unlock);
       const badge = panel.badge?.(this.sim) ?? 0;
-      const tab = h(`button.tab${panel === this.active ? '.active' : ''}${locked ? '.locked' : ''}`, {
-        title: locked ? `${panel.title} · libera na patente ${unlock!.level}` : panel.title,
+      const nova = this.telaNova(panel);
+      const tab = h(`button.tab${panel === this.active ? '.active' : ''}${locked ? '.locked' : ''}${nova ? '.nova' : ''}`, {
+        title: locked
+          ? `${panel.title} · libera na patente ${unlock!.level}`
+          : nova ? `${panel.title} · liberada agora, você ainda não entrou` : panel.title,
         'aria-label': panel.title,
         'aria-current': panel === this.active ? 'page' : undefined,
         'aria-disabled': locked ? 'true' : undefined,
@@ -305,7 +310,10 @@ export class Shell {
           : spriteIcon(panel.icon, 22),
         h('span.tab-label', { text: panel.title }),
         locked ? h('span.tab-lock', { text: `Nv ${unlock!.level}`, 'aria-hidden': true })
-          : badge > 0 ? h('span.badge', { text: badge > 99 ? '99+' : String(badge) }) : null,
+          : badge > 0 ? h('span.badge', { text: badge > 99 ? '99+' : String(badge) })
+            // A marca de nova perde para o contador: um número ali é
+            // informação de agora, e a marca volta assim que ele zerar.
+            : nova ? h('span.tab-nova', { text: 'novo', 'aria-hidden': true }) : null,
       );
       this.tabBar.append(tab);
     }
@@ -319,6 +327,34 @@ export class Shell {
         : (current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
       tabs[next]?.focus();
     };
+  }
+
+  /**
+   * A tela foi liberada e o jogador ainda NÃO entrou nela?
+   *
+   * ## Por que isto faltava
+   *
+   * O anúncio de desbloqueio era só um toast, e toast dura segundos. Num jogo
+   * idle o jogador costuma estar longe da tela: sobe de patente durante a
+   * ausência, volta, e o aviso já passou — ou nunca aconteceu, porque
+   * `registrarMarcosAtuais` silencia no boot tudo que já estava liberado. A
+   * Fabricação abria na patente 10 e ficava lá, muda, esperando ser
+   * descoberta por acaso.
+   *
+   * A marca fica até a visita. É o que transforma "aconteceu" em "há algo a
+   * fazer".
+   *
+   * ## Por que `guiasVistos`, e não um campo novo
+   *
+   * Porque ele já responde exatamente esta pergunta. As cinco telas que
+   * desbloqueiam — Baús, Fabricação, Loja, Modulação e Provação — têm tutorial
+   * próprio, e o id entra em `guiasVistos` ao fechá-lo. Um campo paralelo
+   * significaria duas listas dizendo a mesma coisa, livres para discordar.
+   */
+  private telaNova(panel: Panel): boolean {
+    const unlock = this.unlockDaTela(panel);
+    if (!unlock || !this.temAcessoAoPainel(panel, unlock)) return false;
+    return !this.sim.state.settings.guiasVistos.includes(panel.id);
   }
 
   private unlockDaTela(panel: Panel): ScreenUnlock | undefined {
@@ -342,11 +378,31 @@ export class Shell {
   }
 
   private anunciarNovosMarcos(): void {
+    let mudou = false;
     for (const panel of this.panels) {
       const unlock = this.unlockDaTela(panel);
       if (!unlock || !this.temAcessoAoPainel(panel, unlock) || this.unlocksAnunciados.has(panel.id)) continue;
       this.unlocksAnunciados.add(panel.id);
+      mudou = true;
       bus.emit('toast', { text: `${panel.title} liberada · Patente ${unlock.level}`, kind: 'epic', icon: panel.icon });
+    }
+
+    /**
+     * A barra é redesenhada quando o CONJUNTO de telas novas muda.
+     *
+     * Nos dois sentidos, e é por isso que a comparação é por assinatura em vez
+     * de um `if (mudou)`: liberar uma tela ACRESCENTA a marca, e fechar o
+     * tutorial dela — que é o que põe o id em `guiasVistos` — a TIRA. Sem o
+     * segundo caso a marca ficaria na aba depois de o jogador ter entrado e
+     * lido, e marca que não some ensina a ignorar marca.
+     *
+     * Assinatura, e não redesenho a cada `state:changed`: este método roda no
+     * laço do jogo, e reconstruir doze abas por quadro para nada é caro.
+     */
+    const agora = this.panels.filter((p) => this.telaNova(p)).map((p) => p.id).join(',');
+    if (mudou || agora !== this.telasNovasNaBarra) {
+      this.telasNovasNaBarra = agora;
+      this.buildTabs();
     }
   }
 
@@ -855,6 +911,7 @@ export class Shell {
     if (this.sim.state.settings.guiasVistos.includes(painel.id)) return;
     queueMicrotask(() => bus.emit('guia:painel', { id: painel.id }));
   }
+
 
   private fecharCamada(): void {
     if (!this.camadaHost) return;
