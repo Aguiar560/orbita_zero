@@ -3004,9 +3004,43 @@ export class VerticalMode {
 
     if (this.bannerTime > 0) {
       const a = clamp01(this.bannerTime / 0.6);
+      const y = VIEW.h * 0.34;
+      const pulso = 0.82 + Math.sin(this.elapsed * 18) * 0.06;
+      const largura = Math.min(VIEW.w - 38, Math.max(250, this.banner.length * 18));
+
+      // Placa de fósforo translúcida, inspirada nos HUDs de ficção científica
+      // dos anos 90. O pulso é pequeno para parecer eletrônico sem piscar.
+      s.ctx.save();
       s.ctx.globalAlpha = a;
-      s.text(this.banner, VIEW.w / 2, VIEW.h * 0.34, { size: 30, color: '#ffe08a', align: 'center', shadow: 'rgba(0,0,0,.9)' });
-      s.ctx.globalAlpha = 1;
+      const placa = s.ctx.createLinearGradient(VIEW.w / 2 - largura / 2, 0, VIEW.w / 2 + largura / 2, 0);
+      placa.addColorStop(0, 'rgba(5, 8, 18, 0)');
+      placa.addColorStop(0.16, 'rgba(14, 12, 12, 0.34)');
+      placa.addColorStop(0.84, 'rgba(14, 12, 12, 0.34)');
+      placa.addColorStop(1, 'rgba(5, 8, 18, 0)');
+      s.ctx.fillStyle = placa;
+      s.ctx.fillRect(VIEW.w / 2 - largura / 2, y - 25, largura, 50);
+      s.ctx.strokeStyle = `rgba(255, 207, 64, ${0.18 * pulso})`;
+      s.ctx.lineWidth = 1;
+      s.ctx.beginPath();
+      s.ctx.moveTo(VIEW.w / 2 - largura * 0.42, y - 22);
+      s.ctx.lineTo(VIEW.w / 2 + largura * 0.42, y - 22);
+      s.ctx.moveTo(VIEW.w / 2 - largura * 0.42, y + 22);
+      s.ctx.lineTo(VIEW.w / 2 + largura * 0.42, y + 22);
+      s.ctx.stroke();
+      s.text(this.banner, VIEW.w / 2, y, {
+        size: 30,
+        color: `rgba(255, 218, 92, ${pulso})`,
+        align: 'center',
+        shadow: 'rgba(5, 2, 0, .95)',
+        family: '"Oxanium", "Rajdhani", "Segoe UI", sans-serif',
+        glow: 'rgba(255, 70, 24, .72)',
+        glowBlur: 13,
+      });
+      // Uma linha fina atravessa o letreiro como varredura de monitor CRT.
+      s.ctx.globalAlpha = a * 0.2;
+      s.ctx.fillStyle = '#fff2a8';
+      s.ctx.fillRect(VIEW.w / 2 - largura * 0.4, y + Math.sin(this.elapsed * 7) * 13, largura * 0.8, 1);
+      s.ctx.restore();
     }
 
     if (!p.alive) {

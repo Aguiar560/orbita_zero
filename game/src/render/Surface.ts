@@ -234,17 +234,36 @@ export class Surface {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  text(str: string, x: number, y: number, opts: { size?: number; color?: string; align?: CanvasTextAlign; weight?: number; shadow?: string } = {}): void {
+  text(str: string, x: number, y: number, opts: {
+    size?: number;
+    color?: string;
+    align?: CanvasTextAlign;
+    weight?: number;
+    shadow?: string;
+    family?: string;
+    glow?: string;
+    glowBlur?: number;
+  } = {}): void {
     const { ctx } = this;
-    const { size = 12, color = '#fff', align = 'left', weight = 700, shadow } = opts;
-    ctx.font = `${weight} ${size}px "Rajdhani", "Segoe UI", system-ui, sans-serif`;
+    const {
+      size = 12, color = '#fff', align = 'left', weight = 700, shadow,
+      family = '"Rajdhani", "Segoe UI", system-ui, sans-serif',
+      glow, glowBlur = 0,
+    } = opts;
+    ctx.save();
+    ctx.font = `${weight} ${size}px ${family}`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
     if (shadow) {
       ctx.fillStyle = shadow;
       ctx.fillText(str, x + 1, y + 1);
     }
+    if (glow && glowBlur > 0) {
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = glowBlur;
+    }
     ctx.fillStyle = color;
     ctx.fillText(str, x, y);
+    ctx.restore();
   }
 }

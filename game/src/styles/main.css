@@ -1501,14 +1501,31 @@ select option:disabled { color: #667991; }
 /* ── toasts ──────────────────────────────────────────────────────────────── */
 .toasts { position: fixed; right: 390px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 40; pointer-events: none; }
 .toast {
-  display: flex; align-items: center; gap: 9px; padding: 8px 13px;
-  background: rgba(10, 16, 32, 0.94); border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--accent); border-radius: 8px; font-size: 13px;
-  animation: slide-in 0.24s ease-out; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --aviso-rgb: 255, 208, 66;
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; align-items: center; gap: 9px; padding: 9px 14px;
+  background: linear-gradient(90deg, rgba(var(--aviso-rgb), .1), rgba(6, 10, 21, .76) 28%, rgba(6, 10, 21, .68));
+  border: 1px solid rgba(var(--aviso-rgb), .38);
+  border-left: 3px solid rgba(var(--aviso-rgb), .9); border-radius: 5px;
+  color: rgba(var(--aviso-rgb), .88);
+  font: 600 13px/1.25 'Oxanium', 'Rajdhani', sans-serif;
+  letter-spacing: .035em;
+  text-shadow: 0 0 5px rgba(var(--aviso-rgb), .78), 0 0 14px rgba(var(--aviso-rgb), .28);
+  -webkit-backdrop-filter: blur(7px) saturate(1.15);
+  backdrop-filter: blur(7px) saturate(1.15);
+  animation: slide-in 0.24s ease-out;
+  box-shadow: inset 0 0 18px rgba(var(--aviso-rgb), .055), 0 8px 24px rgba(0, 0, 0, .52), 0 0 13px rgba(var(--aviso-rgb), .12);
 }
-.toast.good { border-left-color: var(--good); }
-.toast.bad { border-left-color: var(--bad); }
-.toast.epic { border-left-color: var(--epic); }
+.toast::after {
+  content: '';
+  position: absolute; z-index: 0; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(var(--aviso-rgb), .055) 3px 4px);
+  opacity: .72;
+}
+.toast.good, .toast.epic { --aviso-rgb: 255, 208, 66; }
+.toast.bad { --aviso-rgb: 255, 66, 72; }
+.toast > * { position: relative; z-index: 1; }
+.toast > span { opacity: .92; }
 .toast.out { animation: fade-out 0.4s forwards; }
 @keyframes slide-in { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
 @keyframes fade-out { to { opacity: 0; transform: translateX(30px); } }
@@ -8124,6 +8141,7 @@ select option:disabled { color: #667991; }
  * some em galáxias claras, e o contorno escuro segura a leitura sem introduzir
  * o fundo que o pedido excluiu. */
 .inventario-cheio {
+  --aviso-rgb: 255, 66, 72;
   /* `fixed` e nao `absolute`: "no meio da tela" nao pode depender de qual
    * ancestral por acaso esta posicionado — `#app` nao esta, e a mensagem
    * acabaria centrada no bloco inicial por coincidencia. E a mesma escolha da
@@ -8144,13 +8162,37 @@ select option:disabled { color: #667991; }
    * espaço lógico que ele mesmo escala, e a mensagem vive no DOM, onde 30px
    * são 30px de verdade em qualquer janela.
    */
-  font-family: "Rajdhani", "Segoe UI", system-ui, sans-serif;
-  color: #ff3b3b;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  font-family: "Oxanium", "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  color: rgba(var(--aviso-rgb), .86);
   font-weight: 700;
   font-size: clamp(22px, 3.2vw, 34px);
-  letter-spacing: 0.04em;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .9), 0 2px 12px rgba(0, 0, 0, .85);
-  animation: inventario-cheio-entra .14s ease-out;
+  line-height: 1.18;
+  letter-spacing: 0.055em;
+  text-align: center;
+  text-shadow:
+    1px 1px 0 rgba(0, 0, 0, .92),
+    0 0 5px rgba(var(--aviso-rgb), .92),
+    0 0 18px rgba(var(--aviso-rgb), .52),
+    0 0 34px rgba(var(--aviso-rgb), .22);
+  filter: saturate(1.12);
+  animation: inventario-cheio-entra .14s ease-out, aviso-holograma 2.4s steps(1, end) infinite;
+}
+
+.inventario-cheio[data-motivo='descartada'] { --aviso-rgb: 255, 208, 66; }
+
+/* Reflexo deslocado em poucas faixas: dá o pequeno defeito de sincronismo do
+ * VHS sem duplicar o texto inteiro nem sacrificar a leitura. */
+.inventario-cheio::before {
+  content: attr(data-texto);
+  position: absolute;
+  inset: 0;
+  color: rgba(var(--aviso-rgb), .34);
+  text-shadow: 2px 0 7px rgba(var(--aviso-rgb), .54);
+  clip-path: polygon(0 14%, 100% 14%, 100% 24%, 0 24%, 0 63%, 100% 63%, 100% 70%, 0 70%);
+  transform: translateX(1px);
+  animation: aviso-glitch 1.9s steps(2, end) infinite;
 }
 
 @keyframes inventario-cheio-entra {
@@ -8158,9 +8200,21 @@ select option:disabled { color: #667991; }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+@keyframes aviso-holograma {
+  0%, 91%, 100% { opacity: .9; }
+  92% { opacity: .72; }
+  94% { opacity: .86; }
+}
+
+@keyframes aviso-glitch {
+  0%, 86%, 100% { transform: translateX(1px); opacity: .2; }
+  88% { transform: translateX(-2px); opacity: .42; }
+  91% { transform: translateX(2px); opacity: .28; }
+}
+
 /* Quem pediu menos movimento não recebe o pulso de entrada. */
 @media (prefers-reduced-motion: reduce) {
-  .inventario-cheio { animation: none; }
+  .inventario-cheio, .inventario-cheio::before { animation: none; }
 }
 
 /* ── o "?" que reabre o tutorial da tela ────────────────────────────────────
