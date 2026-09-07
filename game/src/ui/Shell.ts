@@ -729,17 +729,11 @@ export class Shell {
   /**
    * O aviso de Inventário cheio, no meio da tela.
    *
-   * ## Três desfechos, três textos — e só um é perda
+   * ## Uma mensagem curta para todos os desfechos
    *
-   * Antes ele dizia "Inventário Cheio!" e nada mais, e só aparecia quando a
-   * peça NÃO era coletada. Nos outros dois casos o jogador via a cápsula sumir
-   * sem o inventário mudar, e sem nada explicando: relatado em 04/09 como
-   * "não sei o que está sendo feito com o item".
-   *
-   * A cor segue o SENTIDO, não o evento: vermelho quando se deixa peça para
-   * trás, âmbar quando a automação que o jogador ligou desfez a peça, verde
-   * quando foi troca — nesse último ele ganhou, e o mesmo alarme dos outros
-   * dois ensinaria a ignorar a mensagem inteira.
+   * O motivo continua no `data-motivo` para diagnóstico, mas na cena a leitura
+   * precisa ser instantânea. Se não há espaço, o aviso é sempre o mesmo e não
+   * compete com o combate explicando a automação que acabou de acontecer.
    *
    * ## Sem moldura, sem fundo, sem botão
    *
@@ -756,16 +750,7 @@ export class Shell {
    * segundos depois da primeira peça.
    */
   private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada'): void {
-    /**
-     * Sumiu daqui o terceiro texto, "a pior peça saiu no lugar".
-     *
-     * Ele anunciava uma troca automática que vendia ou desmanchava a pior peça
-     * guardada para caber uma melhor. A troca saiu do jogo — ver
-     * `seriaPerdidoPorFalta` —, e com ela o texto.
-     */
-    const texto = motivo === 'nao-coletado'
-      ? 'Inventário Cheio!'
-      : 'Inventário cheio — peça desfeita ao coletar';
+    const texto = 'Inventario Cheio';
 
     let aviso = this.root.querySelector<HTMLElement>('.inventario-cheio');
     if (!aviso) {

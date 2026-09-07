@@ -3005,7 +3005,7 @@ export class VerticalMode {
     if (this.bannerTime > 0) {
       const a = clamp01(this.bannerTime / 0.6);
       const y = VIEW.h * 0.34;
-      const pulso = 0.82 + Math.sin(this.elapsed * 18) * 0.06;
+      const pulso = 0.9 + Math.sin(this.elapsed * 9) * 0.08;
       const largura = Math.min(VIEW.w - 38, Math.max(250, this.banner.length * 18));
 
       // Placa de fósforo translúcida, inspirada nos HUDs de ficção científica
@@ -3019,7 +3019,7 @@ export class VerticalMode {
       placa.addColorStop(1, 'rgba(5, 8, 18, 0)');
       s.ctx.fillStyle = placa;
       s.ctx.fillRect(VIEW.w / 2 - largura / 2, y - 25, largura, 50);
-      s.ctx.strokeStyle = `rgba(255, 207, 64, ${0.18 * pulso})`;
+      s.ctx.strokeStyle = `rgba(255, 207, 36, ${0.5 * pulso})`;
       s.ctx.lineWidth = 1;
       s.ctx.beginPath();
       s.ctx.moveTo(VIEW.w / 2 - largura * 0.42, y - 22);
@@ -3029,16 +3029,16 @@ export class VerticalMode {
       s.ctx.stroke();
       s.text(this.banner, VIEW.w / 2, y, {
         size: 30,
-        color: `rgba(255, 218, 92, ${pulso})`,
+        color: '#fff7c2',
         align: 'center',
         shadow: 'rgba(5, 2, 0, .95)',
         family: '"Oxanium", "Rajdhani", "Segoe UI", sans-serif',
-        glow: 'rgba(255, 70, 24, .72)',
-        glowBlur: 13,
+        glow: `rgba(255, 198, 12, ${pulso})`,
+        glowBlur: 18,
       });
       // Uma linha fina atravessa o letreiro como varredura de monitor CRT.
-      s.ctx.globalAlpha = a * 0.2;
-      s.ctx.fillStyle = '#fff2a8';
+      s.ctx.globalAlpha = a * 0.42;
+      s.ctx.fillStyle = '#fff7bd';
       s.ctx.fillRect(VIEW.w / 2 - largura * 0.4, y + Math.sin(this.elapsed * 7) * 13, largura * 0.8, 1);
       s.ctx.restore();
     }

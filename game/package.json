@@ -23,7 +23,8 @@
     "simular": "node tools/run-ts.mjs tools/simular.ts",
     "simular:descarte": "node tools/run-ts.mjs tools/auditar-descarte.ts",
     "cascos:listar": "node tools/run-ts.mjs tools/listar-cascos.ts",
-    "assets:mapa": "node tools/run-ts.mjs tools/gerar-mapa-de-sprites.ts"
+    "assets:mapa": "node tools/run-ts.mjs tools/gerar-mapa-de-sprites.ts",
+    "recursos": "node tools/run-ts.mjs tools/levantar-recursos.ts"
   },
   "devDependencies": {
     "sharp": "^0.35.4",
