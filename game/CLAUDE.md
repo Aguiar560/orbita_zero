@@ -21,6 +21,7 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/CHAT-OPERACAO.md`](docs/CHAT-OPERACAO.md) | O chat em produção: Worker próprio, moderação, retenção |
 | [`docs/PLANO-CHAT.md`](docs/PLANO-CHAT.md) | O desenho do chat e o que falta nele |
 | [`docs/AVALIACAO-ALFA.md`](docs/AVALIACAO-ALFA.md) | Nota por sistema e o que bloqueia o alfa (04/09) |
+| [`docs/ECONOMIA-DOS-RECURSOS.md`](docs/ECONOMIA-DOS-RECURSOS.md) | Os 49 recursos sem uso, os sumidouros propostos e a cadência de eventos (07/09) |
 | [`docs/LOGIN-PROVEDORES.md`](docs/LOGIN-PROVEDORES.md) | Passo a passo para ligar Google e Facebook no Supabase |
 
 Registros de momento, que valem como história e **não** como estado atual:
