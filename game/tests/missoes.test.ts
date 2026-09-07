@@ -24,6 +24,32 @@ const abate = (over: Partial<Extract<FatoDeJogo, { tipo: 'abate' }>> = {}): Fato
   tipo: 'abate', inimigo: 'x', elemento: 'padrao', chefe: false, setor: 1, ...over,
 });
 
+/**
+ * Aceita a missao antes de dirigir fatos nela.
+ *
+ * So a missao ACEITA progride desde 07/09 -- antes toda missao liberada
+ * avancava ao mesmo tempo, e a escada de confianca perdia o sentido. Estes
+ * testes nasceram sob a regra antiga; o aceite e o passo que faltava neles, e
+ * nao uma concessao para faze-los passar.
+ */
+function aceitar(state: { settings: { pinnedMissions: string[] } }, ...ids: string[]): void {
+  for (const id of ids) if (!state.settings.pinnedMissions.includes(id)) {
+    state.settings.pinnedMissions.push(id);
+  }
+}
+
+/**
+ * Aceita TODAS as missoes do catalogo.
+ *
+ * O limite de quatro vagas e cobrado em `alternarRastreioDeMissao`, que e o
+ * caminho do jogador. `aplicarFato` so pergunta se a missao esta na lista --
+ * entao um teste que exercita o funil pode aceitar tudo sem mentir sobre a
+ * regra, e continua medindo o que media antes do aceite existir.
+ */
+function aceitarTudo(state: { settings: { pinnedMissions: string[] } }): void {
+  aceitar(state, ...MISSOES.map((m) => m.id));
+}
+
 describe('o catálogo', () => {
   it('não tem id repetido', () => {
     expect(new Set(MISSOES.map((m) => m.id)).size).toBe(MISSOES.length);
@@ -135,6 +161,7 @@ describe('o casamento entre fato e objetivo', () => {
 describe('o progresso', () => {
   it('não passa do alvo', () => {
     const state = createState(1);
+    aceitarTudo(state);
     const def = MISSAO_POR_ID.get('elim_primeiros')!;
     for (let i = 0; i < 250; i++) aplicarFato(state, abate(), 300);
     expect(progressoDe(state, def).passos[0]).toBe(def.objetivos[0]!.alvo);
@@ -148,6 +175,7 @@ describe('o progresso', () => {
    */
   it('missão ainda travada não acumula', () => {
     const state = createState(2);
+    aceitarTudo(state);
     const def = MISSOES.find((m) =>
       m.requisitos?.some((r) => r.tipo === 'setorAlcancado' && r.valor === 10))!;
     for (let i = 0; i < 200; i++) aplicarFato(state, abate({ elemento: 'fogo' }), 1);
@@ -166,6 +194,7 @@ describe('o progresso', () => {
 
   it('avisa a conclusão UMA vez', () => {
     const state = createState(3);
+    aceitarTudo(state);
     const def = MISSAO_POR_ID.get('elim_primeiros')!;
     let avisos = 0;
     for (let i = 0; i < 150; i++) {
@@ -179,6 +208,7 @@ describe('o progresso', () => {
 describe('o resgate', () => {
   it('paga, concede carga e não paga duas vezes', () => {
     const sim = new Sim(createState(4));
+    aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
     const espacosAntes = sim.cargoSlots;
 
@@ -199,6 +229,7 @@ describe('o resgate', () => {
 
   it('não resgata missão incompleta', () => {
     const sim = new Sim(createState(5));
+    aceitarTudo(sim.state);
     expect(sim.resgatarMissao('elim_primeiros')).toBe(false);
   });
 
@@ -210,6 +241,7 @@ describe('o resgate', () => {
    */
   it('entrega sem material não cobra nada', () => {
     const sim = new Sim(createState(6));
+    aceitarTudo(sim.state);
     const def = MISSOES.find((m) => m.consomeNaEntrega)!;
     const rec = Object.keys(def.consomeNaEntrega!)[0]!;
     const pede = def.consomeNaEntrega![rec]!;
@@ -231,15 +263,21 @@ describe('o resgate', () => {
 describe('o rastreador', () => {
   it('descarta vagas antigas e permite acompanhar até quatro missões válidas', () => {
     const sim = new Sim(createState(14));
+    aceitarTudo(sim.state);
     const primeira = MISSAO_POR_ID.get('elim_primeiros')!;
     sim.setTestMode(true);
     sim.state.codex.push(...BOSSES.map((boss) => boss.id));
     progressoDe(sim.state, primeira).entregue = true;
     sim.state.settings.pinnedMissions = [primeira.id];
 
+    /**
+     * Candidata e a que PODE ocupar vaga: aceita ('ativa'), pronta para
+     * entrega, ou ainda por aceitar ('disponivel'). Antes do aceite existir
+     * bastavam as duas primeiras, porque toda missao liberada ja nascia ativa.
+     */
     const candidatas = MISSOES.filter((missao) => {
       const situacao = situacaoDe(sim.state, missao, sim.alcanceLiberado);
-      return situacao === 'ativa' || situacao === 'pronta';
+      return situacao === 'ativa' || situacao === 'pronta' || situacao === 'disponivel';
     }).slice(0, LIMITE_MISSOES_RASTREADAS + 1);
     expect(candidatas).toHaveLength(LIMITE_MISSOES_RASTREADAS + 1);
 
@@ -256,6 +294,7 @@ describe('o rastreador', () => {
 
   it('libera a vaga assim que a missão rastreada é entregue', () => {
     const sim = new Sim(createState(15));
+    aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
     sim.state.settings.pinnedMissions = [def.id];
     sim.guardarMaterial('ferrita', 500);
@@ -283,6 +322,7 @@ describe('o save', () => {
    */
   it('progresso salvo com menos passos que a missão é completado, não zerado', () => {
     const state = createState(8);
+    aceitarTudo(state);
     const def = MISSOES.find((m) => m.objetivos.length >= 1)!;
     state.missoes[def.id] = { passos: [7], entregue: false };
 

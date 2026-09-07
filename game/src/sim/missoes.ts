@@ -24,7 +24,23 @@ export interface ProgressoDeMissao {
 
 export type EstadoDeMissoes = Record<string, ProgressoDeMissao>;
 
-export type SituacaoDeMissao = 'oculta' | 'ativa' | 'pronta' | 'entregue';
+export type SituacaoDeMissao = 'oculta' | 'disponivel' | 'ativa' | 'pronta' | 'entregue';
+
+/**
+ * Missoes que o jogador ACEITOU. So elas progridem.
+ *
+ * A lista mora em `settings.pinnedMissions`, que ate aqui era rastreio
+ * decorativo: ela decidia o que aparecia no HUD, e TODA missao liberada
+ * progredia de qualquer forma. Reusar o campo em vez de criar outro evita duas
+ * listas dizendo coisas parecidas e livres para discordar -- e o limite de
+ * quatro (cinco no VIP) ja estava escrito em `limiteDeMissoes`.
+ */
+export function missoesAceitas(state: GameState): readonly string[] {
+  return state.settings.pinnedMissions;
+}
+
+export const missaoAceita = (state: GameState, id: string): boolean =>
+  state.settings.pinnedMissions.includes(id);
 
 export const LIMITE_MISSOES_RASTREADAS = 4;
 
@@ -167,7 +183,10 @@ export function estaCompleta(state: GameState, def: MissaoDef): boolean {
 export function situacaoDe(state: GameState, def: MissaoDef, alcance: number): SituacaoDeMissao {
   if (progressoDe(state, def).entregue) return 'entregue';
   if (!estaLiberada(state, def, alcance)) return 'oculta';
-  return estaCompleta(state, def) ? 'pronta' : 'ativa';
+  // Pronta vence "nao aceita": uma missao que ja bateu os objetivos -- por ter
+  // sido aceita antes e abandonada depois -- deve poder ser entregue.
+  if (estaCompleta(state, def)) return 'pronta';
+  return missaoAceita(state, def.id) ? 'ativa' : 'disponivel';
 }
 
 /**
@@ -191,8 +210,13 @@ export function missoesRastreadas(
     vistos.add(id);
     const def = MISSAO_POR_ID.get(id);
     if (!def) continue;
-    const situacao = situacaoDe(state, def, alcance);
-    if (situacao !== 'ativa' && situacao !== 'pronta') continue;
+    /**
+     * A situacao aqui NAO pode consultar o aceite: `situacaoDe` pergunta a esta
+     * mesma lista se a missao foi aceita, e o resultado seria circular. O que
+     * importa e se a missao continua valendo -- nao entregue e nao oculta.
+     */
+    if (progressoDe(state, def).entregue) continue;
+    if (!estaLiberada(state, def, alcance)) continue;
     rastreadas.push(def);
     if (rastreadas.length === limite) break;
   }
@@ -209,7 +233,13 @@ export function alternarRastreioDeMissao(
   const ids = missoesRastreadas(state, alcance).map((missao) => missao.id);
   const limite = limiteDeMissoes(state);
   const situacao = situacaoDe(state, def, alcance);
-  if (situacao !== 'ativa' && situacao !== 'pronta') {
+  /**
+   * `disponivel` PRECISA passar: e a missao que ainda nao foi aceita, e aceitar
+   * e exatamente o que este metodo faz. Sem ela na lista, nada poderia ser
+   * aceito -- so `oculta` e `entregue` ficam de fora, que sao as duas em que
+   * nao ha o que decidir.
+   */
+  if (situacao === 'oculta' || situacao === 'entregue') {
     state.settings.pinnedMissions = ids;
     return;
   }
@@ -241,6 +271,16 @@ export function aplicarFato(
     const p = progressoDe(state, def);
     if (p.entregue) continue;
     if (!estaLiberada(state, def, alcance)) continue;
+    /**
+     * So a missao ACEITA progride.
+     *
+     * Antes toda missao liberada avancava ao mesmo tempo, e o efeito era a
+     * escada de confianca perder o sentido: Kael Voss soma 8 de confianca para
+     * um teto de 5, entao a barra enchia na quarta missao e as tres ultimas nao
+     * valiam nada. Com quatro vagas, escolher QUAL caminho seguir volta a ser
+     * decisao -- que e o que a barra existe para medir.
+     */
+    if (!missaoAceita(state, def.id)) continue;
 
     const eraCompleta = estaCompleta(state, def);
     let mexeu = false;

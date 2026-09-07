@@ -19,6 +19,32 @@ import {
  * novo, e que a confiança seja do relacionamento e não da missão.
  */
 
+/**
+ * Aceita a missao antes de dirigir fatos nela.
+ *
+ * So a missao ACEITA progride desde 07/09 -- antes toda missao liberada
+ * avancava ao mesmo tempo, e a escada de confianca perdia o sentido. Estes
+ * testes nasceram sob a regra antiga; o aceite e o passo que faltava neles, e
+ * nao uma concessao para faze-los passar.
+ */
+function aceitar(state: { settings: { pinnedMissions: string[] } }, ...ids: string[]): void {
+  for (const id of ids) if (!state.settings.pinnedMissions.includes(id)) {
+    state.settings.pinnedMissions.push(id);
+  }
+}
+
+/**
+ * Aceita TODAS as missoes do catalogo.
+ *
+ * O limite de quatro vagas e cobrado em `alternarRastreioDeMissao`, que e o
+ * caminho do jogador. `aplicarFato` so pergunta se a missao esta na lista --
+ * entao um teste que exercita o funil pode aceitar tudo sem mentir sobre a
+ * regra, e continua medindo o que media antes do aceite existir.
+ */
+function aceitarTudo(state: { settings: { pinnedMissions: string[] } }): void {
+  aceitar(state, ...MISSOES.map((m) => m.id));
+}
+
 describe('o elenco', () => {
   it('não tem id repetido e todo id é estável', () => {
     expect(new Set(PERSONAGENS.map((p) => p.id)).size).toBe(PERSONAGENS.length);
@@ -89,6 +115,7 @@ describe('a conversão de chefe em aliado', () => {
    */
   it('o ex-chefe aparece assim que o códex registra a vitória', () => {
     const sim = new Sim(createState(1));
+    aceitarTudo(sim.state);
     const c = contatoDoChefe(BOSSES[0]!.id)!;
 
     expect(contatoDesbloqueado(sim.state, c)).toBe(false);
@@ -109,6 +136,7 @@ describe('a conversão de chefe em aliado', () => {
 
   it('contato bloqueado aparece na lista, mas por último', () => {
     const sim = new Sim(createState(3));
+    aceitarTudo(sim.state);
     const lista = sim.contatos;
     // Some seria pior que silhueta: ver que há alguém a descobrir é metade da
     // razão de a coluna existir (§8).
@@ -120,6 +148,7 @@ describe('a conversão de chefe em aliado', () => {
 
   it('não anuncia entrega de missão cujo contato ainda está bloqueado', () => {
     const sim = new Sim(createState(31));
+    aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('elim_fogo')!;
     const contato = PERSONAGEM_POR_ID.get(def.giverId!)!;
 
@@ -138,6 +167,7 @@ describe('a conversão de chefe em aliado', () => {
 describe('os requisitos declarativos (§17)', () => {
   it('cada tipo resolve contra o estado certo', () => {
     const sim = new Sim(createState(4));
+    aceitarTudo(sim.state);
     const s = sim.state;
 
     s.command.nivel = 30;
@@ -173,6 +203,7 @@ describe('os requisitos declarativos (§17)', () => {
 
   it('mostra só os requisitos que ainda faltam', () => {
     const sim = new Sim(createState(5));
+    aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('esp_coracao_ferrugem')!;
     expect(requisitosPendentes(sim.state, def, 1).length).toBe(2);
 
@@ -186,6 +217,7 @@ describe('os requisitos declarativos (§17)', () => {
 describe('a confiança', () => {
   it('sobe ao entregar e fica no teto', () => {
     const sim = new Sim(createState(6));
+    aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
     expect(confiancaDe(sim.state, def.giverId!)).toBe(0);
 
@@ -203,6 +235,7 @@ describe('a confiança', () => {
    */
   it('sobrevive à missão que a gerou', () => {
     const sim = new Sim(createState(7));
+    aceitarTudo(sim.state);
     sim.state.confianca.char_zyrak = 3;
     delete sim.state.missoes.entrega_titanio;
     expect(confiancaDe(sim.state, 'char_zyrak')).toBe(3);
@@ -212,6 +245,7 @@ describe('a confiança', () => {
 describe('o sinal do contato (§8)', () => {
   it('pronta ganha de nova — entregar é o que dá para fazer agora', () => {
     const sim = new Sim(createState(8));
+    aceitarTudo(sim.state);
     const p = PERSONAGEM_POR_ID.get('char_kael_voss')!;
 
     // Nada feito ainda: há missões no zero, então "nova".
@@ -224,6 +258,7 @@ describe('o sinal do contato (§8)', () => {
 
   it('contato travado sinaliza bloqueio', () => {
     const sim = new Sim(createState(9));
+    aceitarTudo(sim.state);
     const travado = PERSONAGENS.find((x) => x.requerChefe)!;
     expect(sinalDoContato(sim.state, travado, sim.alcanceLiberado)).toBe('bloqueado');
   });
@@ -239,6 +274,7 @@ describe('entregar tudo (§20)', () => {
    */
   it('não varre o contrato especial junto', () => {
     const sim = new Sim(createState(10));
+    aceitarTudo(sim.state);
     sim.setTestMode(true);
     sim.state.codex.push('nucleo_ferrugem');
     sim.state.confianca.char_nucleo_ferrugem = 1;

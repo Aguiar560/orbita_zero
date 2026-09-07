@@ -54,9 +54,12 @@ describe('Passe VIP', () => {
     sim.setTestMode(true);
     sim.state.vip.expiresAt = Date.now() + 60_000;
     sim.state.codex.push(...BOSSES.map((boss) => boss.id));
+    // Candidata e a que PODE ocupar vaga: ainda por aceitar ('disponivel'),
+    // aceita ('ativa') ou pronta. Antes do aceite existir, toda missao liberada
+    // ja nascia ativa e as duas ultimas bastavam.
     const candidatas = MISSOES.filter((missao) => {
       const situacao = situacaoDe(sim.state, missao, sim.alcanceLiberado);
-      return situacao === 'ativa' || situacao === 'pronta';
+      return situacao === 'ativa' || situacao === 'pronta' || situacao === 'disponivel';
     }).slice(0, 5);
     expect(candidatas).toHaveLength(5);
     for (const missao of candidatas) alternarRastreioDeMissao(sim.state, missao, sim.alcanceLiberado);

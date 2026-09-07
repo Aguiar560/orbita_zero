@@ -357,17 +357,35 @@ export class MissoesPanel implements Panel {
     );
   }
 
-  /** Escolha explícita: quatro atalhos, ou cinco enquanto o VIP estiver ativo. */
+  /**
+   * ACEITAR a missão. Quatro vagas, ou cinco enquanto o VIP estiver ativo.
+   *
+   * Este botão era só um pino de rastreio: decidia o que aparecia no HUD, e
+   * TODA missão liberada progredia de qualquer jeito. O efeito era a escada de
+   * confiança perder o sentido — Kael Voss soma 8 de confiança para um teto de
+   * 5, então a barra enchia na quarta missão e as três últimas não valiam nada.
+   *
+   * Agora só a missão aceita progride, e as vagas fazem "qual caminho seguir"
+   * voltar a ser decisão — que é o que a barra existe para medir.
+   *
+   * Abandonar NÃO zera o progresso. Retomar depois de ter avançado metade e
+   * encontrar tudo zerado seria uma punição que ninguém avisou; a vaga é o
+   * recurso escasso aqui, não o trabalho já feito.
+   */
   private botaoRastrear(sim: Sim, def: MissaoDef): HTMLElement {
-    const rastreadas = missoesRastreadas(sim.state, sim.alcanceLiberado);
-    const pinned = rastreadas.some((missao) => missao.id === def.id);
+    const aceitas = missoesRastreadas(sim.state, sim.alcanceLiberado);
+    const aceita = aceitas.some((missao) => missao.id === def.id);
     const maximo = limiteDeMissoes(sim.state);
-    const limite = rastreadas.length >= maximo;
-    return h(`button.mis-rastrear${pinned ? '.ativo' : ''}`, {
-      text: pinned ? '★ RASTREANDO' : '☆ RASTREAR',
-      title: pinned ? 'Remover da tela principal' : limite ? `Você já rastreia ${maximo} missões` : 'Mostrar na tela principal',
-      'aria-pressed': String(pinned),
-      disabled: !pinned && limite,
+    const lotado = aceitas.length >= maximo;
+    return h(`button.mis-rastrear${aceita ? '.ativo' : ''}`, {
+      text: aceita ? '★ ACEITA · ABANDONAR' : `☆ ACEITAR · ${aceitas.length}/${maximo}`,
+      title: aceita
+        ? 'Libera a vaga. O progresso já feito continua guardado.'
+        : lotado
+          ? `As ${maximo} vagas estão ocupadas — abandone uma para aceitar esta`
+          : 'Só missões aceitas progridem',
+      'aria-pressed': String(aceita),
+      disabled: !aceita && lotado,
       onclick: () => {
         alternarRastreioDeMissao(sim.state, def, sim.alcanceLiberado);
         sim.touch();
@@ -540,7 +558,9 @@ export class MissoesPanel implements Panel {
 
 /** Prontas primeiro, travadas por último. */
 const ORDEM: Record<SituacaoDeMissao, number> = {
-  pronta: 0, ativa: 1, oculta: 2, entregue: 3,
+  // Disponivel vem logo depois de ativa: e a decisao que o jogador tem a tomar
+  // quando sobra vaga, e esconde-la no fim seria pedir que ele procurasse.
+  pronta: 0, ativa: 1, disponivel: 2, oculta: 3, entregue: 4,
 };
 
 /** O ícone de cada sinal de contato (§8). Glifo E cor, nunca só cor (§39). */
