@@ -12,11 +12,15 @@
  * peça FICA no lote, e que a automação que o jogador pediu continua valendo.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { bus } from '@app/Bus';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
+
+const shell = readFileSync(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8');
 
 const peca = (uid: string, rarity: number) => ({
   uid, baseId: 'b', slot: 'principal', rarity, ilvl: 90,
@@ -36,6 +40,12 @@ function lotado(semente: number): Sim {
 }
 
 describe('Inventário cheio', () => {
+  it('usa a mensagem curta definida para o combate', () => {
+    expect(shell).toContain("const texto = 'Inventario Cheio';");
+    expect(shell).not.toContain("'Inventário Cheio!'");
+    expect(shell).not.toContain("'Inventário cheio — peça desfeita ao coletar'");
+  });
+
   it('a peça continua no lote', () => {
     const sim = lotado(11);
     const antes = sim.pote!.chefe.length;

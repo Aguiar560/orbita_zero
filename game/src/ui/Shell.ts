@@ -96,7 +96,7 @@ export class Shell {
   private active: Panel = this.painelFixo;
   private panelTimer = 0;
   private dirty = true;
-  /** Some com o "Inventário Cheio!" quando o jogo para de tentar. */
+  /** Some com o "Inventario Cheio" quando o jogo para de tentar. */
   private relogioDoInventarioCheio = 0;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
@@ -759,9 +759,6 @@ export class Shell {
     }
     aviso.textContent = texto;
     aviso.dataset.motivo = motivo;
-    // A cópia alimenta somente a camada holográfica recortada do CSS. O texto
-    // real continua no DOM para leitor de tela e para o fallback sem efeitos.
-    aviso.dataset.texto = texto;
 
     window.clearTimeout(this.relogioDoInventarioCheio);
     this.relogioDoInventarioCheio = window.setTimeout(() => aviso?.remove(), 2000);

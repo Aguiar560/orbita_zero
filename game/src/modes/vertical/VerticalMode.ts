@@ -3029,6 +3029,7 @@ export class VerticalMode {
       s.ctx.stroke();
       s.text(this.banner, VIEW.w / 2, y, {
         size: 30,
+        weight: 500,
         color: '#fff7c2',
         align: 'center',
         shadow: 'rgba(5, 2, 0, .95)',

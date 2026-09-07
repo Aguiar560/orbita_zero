@@ -1542,7 +1542,7 @@ select option:disabled { color: #667991; }
   border: 1px solid rgba(var(--aviso-rgb), .38);
   border-left: 3px solid rgba(var(--aviso-rgb), .9); border-radius: 5px;
   color: var(--aviso-nucleo);
-  font: 600 13px/1.25 'Oxanium', 'Rajdhani', sans-serif;
+  font: 500 13px/1.25 'Oxanium', 'Rajdhani', sans-serif;
   letter-spacing: .035em;
   -webkit-text-stroke: .2px rgba(var(--aviso-rgb), .9);
   text-shadow:
@@ -8176,9 +8176,9 @@ select option:disabled { color: #667991; }
  * `pointer-events: none` porque não há nada para clicar, e sem isso o texto
  * roubaria o clique da nave bem no meio do campo de combate.
  *
- * A sombra é de TEXTO, não de caixa: o vermelho puro sobre o fundo estrelado
- * some em galáxias claras, e o contorno escuro segura a leitura sem introduzir
- * o fundo que o pedido excluiu. */
+ * O núcleo quase branco e as sucessivas sombras vermelhas reproduzem a luz de
+ * um tubo de neon: perto da lâmpada a luz estoura, e o vermelho aparece no halo
+ * que se espalha pelo cenário. */
 .inventario-cheio {
   --aviso-rgb: 255, 42, 26;
   /* `fixed` e nao `absolute`: "no meio da tela" nao pode depender de qual
@@ -8258,15 +8258,9 @@ select option:disabled { color: #667991; }
 }
 
 /*
- * Os três avisos de Inventário cheio são VERMELHOS, decidido em 04/09.
- *
- * Eu os tinha pintado de três cores — vermelho, âmbar e verde — para separar
- * perda de automação e de troca. A instrução foi outra: um só padrão, igual ao
- * da mensagem de casco perdido.
- *
- * A distinção não se perdeu, ela mudou de canal: os três TEXTOS continuam
- * diferentes e dizem o que aconteceu com a peça. Cor separava de relance, mas
- * ao custo de três aparências para o mesmo aviso no mesmo lugar da tela.
+ * Todo aviso de Inventário cheio usa o mesmo texto e o mesmo vermelho. O motivo
+ * técnico continua no evento e no `data-motivo`, sem alongar a mensagem que o
+ * jogador precisa ler no meio do combate.
  */
 
 /* O aviso de espaço na cápsula: aparece SÓ quando o baú não cabe, então pode
