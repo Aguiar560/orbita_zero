@@ -46,6 +46,14 @@ export interface GameEvents {
   'universe:ascended': { from: number; to: number; aether: number };
 
   'toast': { text: string; kind?: 'info' | 'good' | 'bad' | 'epic'; icon?: string };
+  /**
+   * Um comando de item entrou na fila: equipar, desequipar ou descartar.
+   *
+   * Existe porque a fila subia no relógio de 150 s junto com o resto, e
+   * equipar não é ganho contínuo que pode esperar — é ação deliberada, e o
+   * jogador recarrega a página muito antes disso.
+   */
+  'itens:comando': Record<string, never>;
   /** `galaxy` leva o contexto do mapa para o placar sem persistir uma escolha de UI. */
   'panel:open': { id: string; galaxy?: number };
   'panel:close': void;

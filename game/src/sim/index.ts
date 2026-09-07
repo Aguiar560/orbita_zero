@@ -2133,6 +2133,7 @@ export class Sim {
     this.equipamentoDe(hullId)[item.slot] = item;
     if (previous) this.state.inventory.push(previous);
     this.state.comandosDeItem.push({ tipo: 'equipar', uid, nave: hullId });
+    bus.emit('itens:comando', {});
     this.touch();
     return true;
   }
@@ -2143,6 +2144,7 @@ export class Sim {
     delete this.equipamentoDe(hullId)[slot];
     this.stash(item);
     this.state.comandosDeItem.push({ tipo: 'equipar', uid: item.uid, nave: null });
+    bus.emit('itens:comando', {});
     this.touch();
   }
 

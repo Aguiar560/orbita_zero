@@ -24,7 +24,7 @@ import { progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
-import { drenarInventario, sincronizarFrota, sincronizarInventario } from './inventario';
+import { drenarInventario, sincronizarFrota } from './inventario';
 import { drenarProgresso, sincronizarProgresso } from './progresso';
 import { creditarAusencia } from './ausencia';
 
@@ -96,6 +96,7 @@ export class Game {
     this.sim = new Sim(loaded?.state);
     this.shell = new Shell(root, this.sim);
     this.vigiarTrocaDeConta();
+    this.vigiarComandosDeItem();
     this.loop = new Loop(this.tick, this.draw);
   }
 
@@ -221,7 +222,15 @@ export class Game {
     // O inventário vem antes do primeiro quadro: os atributos da nave saem do
     // que está equipado, e desenhar com o equipamento local para trocá-lo um
     // segundo depois é uma piscada de números errados na primeira tela.
-    await sincronizarInventario(this.sim);
+    /**
+     * `drenar` e não `sincronizar`: ENVIA a fila antes de adotar a resposta.
+     *
+     * `sincronizarInventario` só busca, e `adotar` apaga todo o equipado para
+     * reconstruí-lo pelo que veio do servidor. Com um `equipar` ainda na fila,
+     * o boot desequipava a peça na tela — e o jogador via o item sumir ao
+     * atualizar a página. Enviar primeiro faz a resposta já vir com ele posto.
+     */
+    await drenarInventario(this.sim);
     // A frota vem junto: quais cascos existem decide o que o Hangar mostra e o
     // que o jogador pode levar a campo.
     await sincronizarFrota(this.sim);
@@ -328,7 +337,7 @@ export class Game {
 
     await Promise.all([
       sincronizarCarteira(),
-      sincronizarInventario(this.sim),
+      drenarInventario(this.sim),
       sincronizarProgresso(this.sim),
     ]);
 
@@ -381,6 +390,32 @@ export class Game {
       // ainda não mudou, então isto vai para o dono certo.
       this.sim.save();
       location.reload();
+    });
+  }
+
+  /**
+   * Equipar chega ao servidor em segundos, e não no relógio de 150 s.
+   *
+   * ## Por que não podia esperar o ciclo
+   *
+   * O relógio grande existe para ganho CONTÍNUO — XP, moeda, marcas —, onde
+   * atrasar dois minutos não muda nada porque o delta acumula. Equipar não é
+   * assim: é uma ação deliberada, o jogador vê o efeito na hora e espera que
+   * ele fique. Recarregar a página antes do ciclo fazia a peça voltar para o
+   * inventário, porque o servidor nunca soube.
+   *
+   * ## Por que esperar um pouco, e não enviar no ato
+   *
+   * Montar uma nave é uma rajada: trocar seis slots seguidos viraria seis
+   * requisições, e o D1 tem cota de escrita por dia. A espera curta junta a
+   * rajada num envio só e ainda assim chega muito antes de qualquer recarga
+   * humana.
+   */
+  private vigiarComandosDeItem(): void {
+    let relogio = 0;
+    bus.on('itens:comando', () => {
+      clearTimeout(relogio);
+      relogio = setTimeout(() => { void drenarInventario(this.sim); }, 2000) as unknown as number;
     });
   }
 

@@ -86,6 +86,16 @@ function adotar(sim: Sim, linhas: LinhaRemota[]): void {
 }
 
 /** Busca o inventário do servidor. Chamado no boot. */
+/**
+ * Busca a lista e adota. NÃO envia a fila — e é por isso que ninguém a chama.
+ *
+ * Ficou sem uso quando o boot passou a usar `drenarInventario`: adotar sem
+ * enviar apaga da tela um `equipar` que ainda está na fila, e foi assim que
+ * peças recém-equipadas voltavam para o inventário ao atualizar a página.
+ *
+ * Fica exportada porque `drenar` faz um GET puro quando a fila está vazia, e
+ * um dia alguém vai querer só olhar. Se esse dia não chegar, apague.
+ */
 export async function sincronizarInventario(sim: Sim): Promise<boolean> {
   const linhas = await chamar('GET');
   if (!linhas) return false;
