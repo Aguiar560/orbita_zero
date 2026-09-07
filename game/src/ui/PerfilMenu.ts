@@ -47,7 +47,6 @@ export class PerfilMenu {
      * `guardar` e `sair` disparam o aviso; o listener não é removido porque
      * este menu vive enquanto a página viver.
      */
-    window.addEventListener('oz:conta', () => { this.render(); });
 
     /**
      * O selo de quem está online, só para quem administra.
@@ -67,6 +66,12 @@ export class PerfilMenu {
     };
     olharOnline();
     setInterval(olharOnline, 60_000);
+
+    // O `olharOnline` entra aqui tambem, e nao so no relogio: entrar numa
+    // conta de admin com a barra ja montada esperaria o minuto inteiro para o
+    // selo aparecer, e um minuto olhando para uma barra sem numero e
+    // indistinguivel de um numero que nao funciona.
+    window.addEventListener('oz:conta', () => { this.render(); olharOnline(); });
 
     this.render();
   }

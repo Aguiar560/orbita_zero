@@ -53,7 +53,7 @@ export class Shell {
    * Abas do painel direito. Ajustes NÃO está aqui: virou engrenagem no topo,
    * porque é configuração do jogo e não um lugar onde se joga.
    */
-  private readonly panels: Panel[] = [
+  private panels: Panel[] = [
     new GalaxyPanel(),
     new InventoryPanel(),
     new ArmazemPanel(),
@@ -72,6 +72,11 @@ export class Shell {
     // build da Vercel é o que todo mundo usa — inclusive quem administra — e
     // `import.meta.env.DEV` deixaria a bancada de medição fora justamente do
     // lugar onde ela precisa rodar.
+    //
+    // A lista NÃO é mais definitiva: no boot ainda não há sessão, porque a
+    // tela de login aparece depois desta barra ser montada. Quem administra
+    // nunca via o Laboratório por isso — a conta chegava tarde demais. Ver
+    // `ajustarPaineisDeAdmin`.
     ...(ehAdmin() ? [new LaboratorioPanel()] : []),
   ];
 
@@ -189,11 +194,12 @@ export class Shell {
       h('aside.rail-right', {}, this.panelHost),
     );
 
-    // Em uma tela estreita não há largura honesta para cockpit, combate e
-    // inventário ao mesmo tempo. A barra troca entre três superfícies de tela
-    // inteira; no desktop ela não ocupa espaço e a grade continua idêntica.
+    // Em uma tela estreita não há largura honesta para cockpit, combate,
+    // anatomia e inventário ao mesmo tempo. A barra troca entre quatro
+    // superfícies de tela inteira; no desktop ela não ocupa espaço e a grade
+    // continua idêntica.
     const mobileButtons: HTMLButtonElement[] = [];
-    const setMobileView = (view: 'piloto' | 'combate' | 'inventario'): void => {
+    const setMobileView = (view: 'piloto' | 'anatomia' | 'combate' | 'inventario'): void => {
       layout.dataset.mobileView = view;
       for (const button of mobileButtons) {
         const active = button.dataset.view === view;
@@ -207,6 +213,7 @@ export class Shell {
     const mobileDock = h('nav.mobile-dock', { 'aria-label': 'Áreas do jogo' },
       ...([
         ['piloto', 'NAVE', 'Dados da nave e pilotagem'],
+        ['anatomia', 'ANATOMIA', 'Equipar e desequipar itens'],
         ['combate', 'COMBATE', 'Campo de combate'],
         ['inventario', 'CARGA', 'Inventário'],
       ] as const).map(([view, label, title]) => {
@@ -241,6 +248,30 @@ export class Shell {
     if (calibrationNotice) queueMicrotask(() => bus.emit('toast', { text: calibrationNotice, kind: 'good' }));
 
     return { stage, stageWrap };
+  }
+
+  /**
+   * Põe ou tira o Laboratório conforme quem está logado.
+   *
+   * Tirar importa tanto quanto pôr: sair da conta de admin numa aba que
+   * continua aberta deixaria a bancada de medição na mão de quem entrar
+   * depois. E se ela estiver ABERTA na hora, a tela volta para a principal —
+   * sem isso o painel some da barra mas continua desenhado, sem aba que o
+   * feche.
+   */
+  private ajustarPaineisDeAdmin(): void {
+    const atual = this.panels.find((p) => p.id === 'laboratorio');
+    const deveTer = ehAdmin();
+    if (deveTer === !!atual) return;
+
+    if (deveTer) {
+      this.panels = [...this.panels, new LaboratorioPanel()];
+    } else {
+      if (this.active === atual) this.voltarDaCamada();
+      this.panels = this.panels.filter((p) => p !== atual);
+    }
+
+    this.buildTabs();
   }
 
   private buildTabs(): void {
@@ -315,6 +346,18 @@ export class Shell {
   }
 
   private wireEvents(): void {
+    /**
+     * A conta muda DEPOIS que esta barra existe, sempre.
+     *
+     * O boot monta o Shell e só então a tela de login aparece por cima dele.
+     * Quem administra entrava com a barra já montada sem o Laboratório, e
+     * ficava sem ele até recarregar a página — sem nenhum sinal de por quê.
+     *
+     * É o mesmo defeito que deixava "Sem conta" escrito no topo depois do
+     * login: estado lido uma vez, numa ordem em que ele ainda não existe.
+     */
+    window.addEventListener('oz:conta', () => { this.ajustarPaineisDeAdmin(); });
+
     bus.on('state:changed', () => { this.dirty = true; this.anunciarNovosMarcos(); });
     bus.on('resources:changed', () => this.updateResources());
 
