@@ -3,6 +3,7 @@
  *
  *     npm run recursos            # a tabela inteira
  *     npm run recursos -- orfaos  # só o que está quebrado
+ *     npm run recursos -- drops   # o que missão e Provação entregam
  *
  * ## Por que uma ferramenta e não um documento
  *
@@ -37,6 +38,7 @@ import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 import { MISSOES } from '@data/missoes';
 import { EVENTOS } from '@data/eventos';
 import { BOSSES } from '@data/bosses';
+import { PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
 import { describeGalaxy } from '@data/galaxies';
 
 type Lado = Map<string, string[]>;
@@ -160,3 +162,47 @@ console.log(`  usoEstado  discorda do código em ${mentemUso.length} recursos`);
 if (mentemDrop.length) console.log('    drop: ' + mentemDrop.map((l) => `${l.id}(${l.declarado})`).join(', '));
 if (mentemUso.length) console.log('    uso:  ' + mentemUso.map((l) => `${l.id}(${l.declarado})`).join(', '));
 console.log('');
+
+// ── missões e Provação ──────────────────────────────────────────────────────
+if (modo === 'drops') {
+  /**
+   * O que missão e Provação REALMENTE entregam.
+   *
+   * Separado do levantamento de recursos porque a pergunta é outra: lá é "este
+   * material tem destino"; aqui é "este conteúdo paga o que promete". As duas
+   * se cruzam num ponto — a escada de essências da Provação é o único sistema
+   * do jogo que fecha o ciclo de uma família inteira, e por isso vale como
+   * modelo para os outros.
+   */
+  console.log('\n══ MISSÕES ══════════════════════════════════════════════════');
+  const comItem = MISSOES.filter((m) => m.recompensa?.itens);
+  const contar = (f: (m: typeof MISSOES[number]) => boolean): number => MISSOES.filter(f).length;
+  console.log(
+    `  ${MISSOES.length} missões`
+    + ` · com item: ${comItem.length}`
+    + ` · com material: ${contar((m) => !!Object.keys(m.recompensa?.materiais ?? {}).length)}`
+    + ` · com baú: ${contar((m) => !!Object.keys(m.recompensa?.baus ?? {}).length)}`
+    + ` · com medalha: ${contar((m) => !!m.recompensa?.medalhas)}`,
+  );
+  for (const m of comItem) {
+    const i = m.recompensa!.itens!;
+    console.log(`    ${m.nome.slice(0, 38).padEnd(40)} ${i.quantidade}× raridadeMin=${i.raridadeMin ?? '—'} ilvlBonus=${i.ilvlBonus ?? 0}`);
+  }
+
+  console.log('\n══ PROVAÇÃO ═════════════════════════════════════════════════');
+  console.log('  piso  itens  raridadeMin  medalhas  cristais  exclusivo  materiais');
+  for (let p = 10; p <= PROVACAO_PISOS; p += 10) {
+    const r = pisoDaProvacao(p).recompensa;
+    const mats = Object.entries(r.materiais)
+      .map(([id, n]) => `${n}× ${RECURSO_POR_ID.get(id)?.nome ?? id}`).join(', ');
+    console.log(
+      String(p).padStart(6) + String(r.itens.quantidade).padStart(7)
+      + String(r.itens.raridadeMin).padStart(13) + String(r.medalhas).padStart(10)
+      + String(r.cristais).padStart(10) + `${(r.chanceExclusivo * 100).toFixed(1)}%`.padStart(11)
+      + '  ' + mats,
+    );
+  }
+
+  console.log('\n  ⚠ `chanceExclusivo` é CALCULADO e nunca lido: nenhum código entrega');
+  console.log('    item exclusivo. O mesmo vale para `exclusivos` em balance/drops.ts.');
+}
