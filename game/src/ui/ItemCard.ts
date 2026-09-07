@@ -5,7 +5,7 @@ import { rarityInfo } from '@data/rarity';
 import { TIERS } from '@data/balance/tiers';
 import { retornoDeDesmanche, valorDeVenda } from '@data/balance/descarte';
 import { RECURSO_POR_ID } from '@data/recursos';
-import { affixText, itemName, itemStats } from '@sim/loot';
+import { affixText, itemName, itemStats, classeDeExclusivo } from '@sim/loot';
 import { equipamentoDe, setCounts } from '@sim/stats';
 import { ELEMENTOS_RESISTIVEIS, ELEMENTS, getElement } from '@data/elements';
 import { DANO_STAT, RES_STAT, STAT_IDS, type Affix, type Item, type StatId, type Stats } from '@sim/types';
@@ -62,7 +62,7 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
   const comparing = opts.compare !== false && !!equipped && equipped.uid !== item.uid;
 
   frag.append(
-    h('.tip-head', {},
+    h(`.tip-head${classeDeExclusivo(item)}`, {},
       spriteIcon(item.icon, 34),
       h('.tip-title', {},
         h('strong', { text: itemName(item), style: { color: info.color } }),

@@ -869,6 +869,31 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * O texto e "novo" e nao um ponto: um ponto colorido numa barra que ja tem
  * cadeados e contadores nao se distingue de enfeite, e nao ha como adivinhar o
  * que ele quer dizer. */
+/* ══ A PECA EXCLUSIVA ═══════════════════════════════════════════════════════
+ *
+ * UM lugar decide como toda peca exclusiva aparece. Toda tela que desenha item
+ * acrescenta a classe pela mesma funcao (`classeDeExclusivo`, em sim/loot.ts),
+ * entao mudar a moldura, o brilho ou o selo aqui vale para o inventario, o
+ * cartao, a Anatomia, os baus e a Fabricacao de uma vez.
+ *
+ * O que esta aqui hoje e o MINIMO honesto: a peca se distingue sem gritar. O
+ * tratamento forte -- o "algo mais notavel" -- entra nesta mesma regra quando a
+ * arte existir, sem tocar em painel nenhum. */
+.exclusivo {
+  position: relative;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 70%, transparent);
+}
+
+/* O selo. Um canto dourado, nao um icone novo: a grade ja e densa, e mais um
+ * simbolo competiria com a raridade e com o contador. */
+.inv-cell.exclusivo::after {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  border-width: 0 9px 9px 0;
+  border-style: solid;
+  border-color: transparent var(--accent-2) transparent transparent;
+}
+
 .tab-nova {
   position: absolute; top: 2px; right: 3px;
   padding: 1px 5px; border-radius: 8px;

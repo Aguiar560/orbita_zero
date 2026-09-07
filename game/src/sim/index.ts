@@ -90,7 +90,7 @@ import {
 } from '@data/hitbox-calibrations';
 import {
   RESOURCE_IDS,
-  type ElementId, type GameState, type Item, type ResourceId, type Resources,
+  type ElementId, type GameState, type Item, type Rarity, type ResourceId, type Resources,
   type NaveProgresso, type NivelProgresso, type SlotId, type Stats,
   type MovimentoPendente, type MarcoDeSetor, type ResumoDeIncursao,
 } from './types';
@@ -834,6 +834,22 @@ export class Sim {
     if (r.xp) this.grantXp(r.xp);
     if (r.medalhas) this.state.medalhas += r.medalhas;
     for (const [tier, n] of Object.entries(r.baus ?? {})) this.grantChest(tier, n, def.nome);
+    /**
+     * A peca EXCLUSIVA do contrato.
+     *
+     * `recompensaExclusiva` existia no dado e o painel ja a desenhava grande,
+     * com nome e dono -- e nada a entregava. O jogador via a peca prometida na
+     * tela, cumpria o contrato e recebia o resto da recompensa sem ela.
+     */
+    if (def.recompensaExclusiva) {
+      const ex = def.recompensaExclusiva!;
+      this.acquire(this.rolarExclusivo(
+        this.encounter.ilvl + (r.itens?.ilvlBonus ?? 0),
+        { nome: ex.nome, de: ex.de ?? def.nome },
+        { raridadeMin: ex.raridadeMin, slot: ex.slot },
+      ));
+    }
+
     if (r.itens) {
       for (let i = 0; i < r.itens.quantidade; i++) {
         this.acquire(rollItem(
@@ -1025,6 +1041,25 @@ export class Sim {
     // pode ser a melhor fonte de equipamento do jogo (§22, §67).
     if (camadas.includes('primeira') || camadas.includes('marco')) {
       if (rec.medalhas) this.state.medalhas += rec.medalhas;
+
+      /**
+       * A peca do piso, com a chance que `recompensaDoPiso` ja calculava.
+       *
+       * `chanceExclusivo` sobe de 0% no piso 20 ate 32% no piso 100, com curva
+       * e teto proprios -- e NUNCA era lida. Quem lesse `provacao.ts`
+       * concluiria que estava implementado.
+       *
+       * So na primeira conclusao e no marco, como o item comum: repetir um piso
+       * nao pode virar a melhor fonte de equipamento do jogo.
+       */
+      if (rec.chanceExclusivo > 0 && this.rng.chance(rec.chanceExclusivo)) {
+        this.acquire(this.rolarExclusivo(
+          this.encounter.ilvl,
+          { nome: `RELIQUIA DO PISO ${piso}`, de: chefeDoPiso(piso).nome },
+          { raridadeMin: rec.itens.raridadeMin },
+        ));
+      }
+
       for (let i = 0; i < rec.itens.quantidade; i++) {
         this.acquire(rollItem(
           this.rng, this.encounter.ilvl, this.stats.sorte,
@@ -1755,6 +1790,30 @@ export class Sim {
   }
 
   // ── itens ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Rola uma peca EXCLUSIVA: mesmo motor, piso garantido, nome proprio.
+   *
+   * Uma so fabrica para os dois caminhos que a entregam -- a missao e a
+   * Provacao. Duas implementacoes divergiriam na primeira mudanca de piso, e o
+   * jogador veria a mesma promessa pagar coisas diferentes.
+   *
+   * O SLOT e opcional porque a missao escolhe (a peca tem razao de ser aquela)
+   * e a Provacao nao (o premio do piso e o que vier). Quando nao vem, o motor
+   * sorteia como em qualquer drop.
+   */
+  private rolarExclusivo(
+    ilvl: number,
+    assinatura: { nome: string; de: string },
+    opts: { raridadeMin?: Rarity; slot?: SlotId } = {},
+  ): Item {
+    const item = rollItem(this.rng, ilvl, this.stats.sorte, this.state.universe.index, {
+      ...(opts.raridadeMin !== undefined ? { floor: opts.raridadeMin } : {}),
+      ...(opts.slot ? { slot: opts.slot } : {}),
+    });
+    item.exclusivo = assinatura;
+    return item;
+  }
 
   dropItem(ilvl: number, count = 1): void {
     for (let i = 0; i < count; i++) {

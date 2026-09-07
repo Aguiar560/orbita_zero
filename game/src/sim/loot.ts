@@ -368,7 +368,29 @@ export function affixText(affix: Affix): string {
   return `+${affix.value < 10 ? affix.value.toFixed(1) : Math.round(affix.value)} ${label}`;
 }
 
+/**
+ * A MARCA da peca exclusiva, para a aparencia dela ser decidida num lugar so.
+ *
+ * Toda tela que desenha item pergunta aqui e acrescenta a classe `exclusivo`
+ * ao elemento. Mudar como o exclusivo aparece -- moldura, brilho, selo, o que
+ * for -- passa a ser uma regra de CSS em `.exclusivo`, e vale para todos de
+ * uma vez.
+ *
+ * A alternativa seria cada painel decidir sozinho o que faz com `item.exclusivo`
+ * -- e e assim que nascem metade das telas certas e metade erradas.
+ */
+export const MARCA_DE_EXCLUSIVO = 'exclusivo';
+
+export const ehExclusivo = (item: Item): boolean => !!item.exclusivo;
+
+/** Sufixo de classe para `h()`: `.exclusivo` quando for, vazio quando nao. */
+export const classeDeExclusivo = (item: Item): string =>
+  item.exclusivo ? `.${MARCA_DE_EXCLUSIVO}` : '';
+
 export function itemName(item: Item): string {
+  // A assinatura vence a base: a peca exclusiva se chama pelo nome proprio em
+  // toda tela, sem cada uma precisar lembrar de perguntar.
+  if (item.exclusivo) return item.exclusivo.nome;
   return BASE_BY_ID.get(item.baseId)?.name ?? 'Componente';
 }
 

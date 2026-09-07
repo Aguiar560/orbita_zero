@@ -175,6 +175,24 @@ export interface Item {
   favorite?: boolean;
   /** Estado anterior da Bancada; permite o Eco Temporal sem um histórico infinito. */
   modulationSnapshot?: Affix[];
+  /**
+   * A ASSINATURA de uma peça exclusiva.
+   *
+   * ## Por que a peça exclusiva é um item comum com nome próprio
+   *
+   * A alternativa seria um catálogo de peças únicas, com afixos escritos à mão.
+   * Ela some com tudo que o motor de itens já sabe fazer — escalar por nível,
+   * respeitar slot e elemento, aceitar modulação — e obriga a manter uma
+   * segunda tabela em paralelo, que envelhece na primeira mudança de fórmula.
+   *
+   * Aqui o exclusivo é rolado pelo mesmo motor, com piso de raridade garantido,
+   * e ganha NOME e DONO. O que o torna exclusivo é de onde ele veio e quem o
+   * assina — não uma regra de dano que ninguém mais tem.
+   *
+   * `de` é quem assina: um contato, ou o piso da Provação. É o que faz o
+   * jogador lembrar de onde a peça saiu meses depois.
+   */
+  exclusivo?: { nome: string; de: string };
 }
 
 // ── Progressão ──────────────────────────────────────────────────────────────

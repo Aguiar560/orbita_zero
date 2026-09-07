@@ -15,7 +15,7 @@ function melhorTier(item: Item): number {
   return item.affixes.reduce((m, a) => Math.max(m, a.tier ?? 1), 0);
 }
 
-import { scoreItem } from '@sim/loot';
+import { scoreItem, classeDeExclusivo } from '@sim/loot';
 import type { Item, Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 
@@ -272,7 +272,7 @@ export class InventoryPanel implements Panel {
     const alvoValido = !!mira && (item.element ?? 'padrao') !== mira.elemento;
 
     const selecionado = itemArrastado()?.uid === item.uid;
-    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}`, {
+    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}${classeDeExclusivo(item)}`, {
       style: { borderColor: info.color, boxShadow: `inset 0 0 16px ${info.glow}` },
     }, spriteIcon(item.icon, 40));
 
