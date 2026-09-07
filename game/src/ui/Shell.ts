@@ -200,6 +200,11 @@ export class Shell {
     // continua idêntica.
     const mobileButtons: HTMLButtonElement[] = [];
     const setMobileView = (view: 'piloto' | 'anatomia' | 'combate' | 'inventario'): void => {
+      // No desktop a Anatomia pode ficar recolhida pela alça e essa preferência
+      // é salva. No telefone não há alça: a aba inferior é o único caminho para
+      // a tela. Portanto selecionar a aba também precisa abrir o painel, senão
+      // o botão fica aceso sobre o combate e o conteúdo continua vazio.
+      if (view === 'anatomia' && !this.anatomia.aberta) this.anatomia.alternar();
       layout.dataset.mobileView = view;
       for (const button of mobileButtons) {
         const active = button.dataset.view === view;

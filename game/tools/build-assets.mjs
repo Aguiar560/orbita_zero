@@ -35,7 +35,7 @@ import {
   SPRITES_SHEET, PAINEL_PASSO, PAINEIS, SPRITE_FILEIRAS,
   TIRO_FILEIRAS, TIRO_BLOCO, TIRO_DESSATURA,
 } from './sprites.slices.mjs';
-import { CATEGORIAS, COLUNAS, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
+import { ALFA_A_MAO, CATEGORIAS, COLUNAS, FAIXAS_A_MAO, MEIA_CELULA, ROTULOS_ATE } from './tiros.slices.mjs';
 import { extrairCelula, segmentarPorComponentes } from './lib/elemental.mjs';
 import { celulas as celulasDeItem } from './novos-itens.slices.mjs';
 import { RECURSOS_SHEET, celulas as celulasDeRecurso } from './recursos.slices.mjs';
@@ -1488,9 +1488,16 @@ async function buildTiros(manifest) {
 
     for (const col of celulas) {
       const { x0, w } = col;
-      const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0]);
+      // Duas células têm fundo largo demais para o piso padrão e saíam como
+      // retângulos opacos da cor do elemento — ver `ALFA_A_MAO`.
+      const chave = `${cat.id}/${col.elemento}`;
+      const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0], ALFA_A_MAO[chave] ?? {});
 
-      const faixas = segmentarPorComponentes(celula, cat.vao ? { vaoFracao: cat.vao } : {});
+      // A tabela à mão vence a segmentação nas células que ela não separa —
+      // ver `FAIXAS_A_MAO`. São duas, e as duas produziam a célula inteira
+      // como um sprite só.
+      const faixas = FAIXAS_A_MAO[chave]
+        ?? segmentarPorComponentes(celula, cat.vao ? { vaoFracao: cat.vao } : {});
       if (!faixas.length) { vazias++; continue; }
 
       faixas.forEach(([a, z], i) => {

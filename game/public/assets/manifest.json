@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-08-28T01:22:09.999Z",
+  "generated": "2026-09-07T19:51:20.195Z",
   "atlases": [
     {
       "name": "espaco",
@@ -81,7 +81,7 @@
       "data": "atlas/elemental.json",
       "w": 1024,
       "h": 1024,
-      "count": 117
+      "count": 121
     },
     {
       "name": "itens-novos",

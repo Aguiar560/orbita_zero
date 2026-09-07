@@ -24,7 +24,7 @@ export const CONTAGENS: Record<CategoriaElemental, Record<ElementId, number>> = 
   feixe: { padrao: 1, fogo: 1, gelo: 1, cosmico: 1, raio: 2, quimico: 3 },
   fogacho: { padrao: 2, fogo: 3, gelo: 3, cosmico: 4, raio: 3, quimico: 4 },
   estouro: { padrao: 2, fogo: 2, gelo: 2, cosmico: 2, raio: 2, quimico: 2 },
-  faisca: { padrao: 3, fogo: 3, gelo: 1, cosmico: 2, raio: 4, quimico: 1 },
+  faisca: { padrao: 3, fogo: 3, gelo: 4, cosmico: 2, raio: 4, quimico: 2 },
 };
 
 /**

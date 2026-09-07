@@ -207,7 +207,7 @@ export class VerticalMode {
   private labEnemy: EnemyDef | null = null;
   private readonly keys = new Set<string>();
   /** Vetor do gesto no palco enquanto o controle manual está ativo. */
-  private toqueManual: { pointerId: number; origemX: number; origemY: number; dx: number; dy: number } | null = null;
+  private toqueManual: { tipo: 'pointer' | 'touch'; id: number; origemX: number; origemY: number; dx: number; dy: number } | null = null;
   /** Zonas telegráficas da Provação; vivem na cena, nunca no save. */
   private readonly dangerZones: { x: number; y: number; radius: number; life: number; warmup: number; damage: number }[] = [];
 
@@ -238,6 +238,13 @@ export class VerticalMode {
     this.surface.canvas.addEventListener('pointerup', this.onPointerEnd);
     this.surface.canvas.addEventListener('pointercancel', this.onPointerEnd);
     this.surface.canvas.addEventListener('lostpointercapture', this.onPointerEnd);
+    // O Safari do iPhone ainda pode cancelar a sequência de Pointer Events ao
+    // decidir que o gesto pertence à página. Touch Events são a entrada nativa
+    // e previsível nesse aparelho. Pointer fica para caneta; mouse usa teclado.
+    this.surface.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    this.surface.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    this.surface.canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
+    this.surface.canvas.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
   }
 
   /** Executa o mesmo combate do jogo, sem desenho, para a bateria administrativa. */
@@ -283,26 +290,57 @@ export class VerticalMode {
    * do dedo ao começar a pilotar.
    */
   private readonly onPointerDown = (e: PointerEvent): void => {
-    if (e.pointerType === 'mouse' || !this.controleManualEstaAtivo()) return;
+    // Toque usa Touch Events abaixo. Processar os dois fluxos para o mesmo dedo
+    // troca o identificador no meio do gesto e produz exatamente o “não anda”.
+    if (e.pointerType === 'mouse' || e.pointerType === 'touch' || !this.controleManualEstaAtivo()) return;
     e.preventDefault();
-    this.toqueManual = { pointerId: e.pointerId, origemX: e.clientX, origemY: e.clientY, dx: 0, dy: 0 };
+    this.toqueManual = { tipo: 'pointer', id: e.pointerId, origemX: e.clientX, origemY: e.clientY, dx: 0, dy: 0 };
     this.surface.canvas.setPointerCapture(e.pointerId);
   };
 
   private readonly onPointerMove = (e: PointerEvent): void => {
     const toque = this.toqueManual;
-    if (!toque || toque.pointerId !== e.pointerId) return;
+    if (!toque || toque.tipo !== 'pointer' || toque.id !== e.pointerId) return;
     e.preventDefault();
-    const dx = e.clientX - toque.origemX;
-    const dy = e.clientY - toque.origemY;
-    const comprimento = Math.hypot(dx, dy);
-    const escala = Math.min(1, comprimento / 52);
-    toque.dx = comprimento ? (dx / comprimento) * escala : 0;
-    toque.dy = comprimento ? (dy / comprimento) * escala : 0;
+    this.atualizarToque(e.clientX, e.clientY);
   };
 
   private readonly onPointerEnd = (e: PointerEvent): void => {
-    if (this.toqueManual?.pointerId === e.pointerId) this.toqueManual = null;
+    if (this.toqueManual?.tipo === 'pointer' && this.toqueManual.id === e.pointerId) this.toqueManual = null;
+  };
+
+  private readonly onTouchStart = (e: TouchEvent): void => {
+    if (!this.controleManualEstaAtivo() || this.toqueManual) return;
+    const dedo = e.changedTouches[0];
+    if (!dedo) return;
+    e.preventDefault();
+    this.toqueManual = {
+      tipo: 'touch', id: dedo.identifier,
+      origemX: dedo.clientX, origemY: dedo.clientY, dx: 0, dy: 0,
+    };
+  };
+
+  private readonly onTouchMove = (e: TouchEvent): void => {
+    const toque = this.toqueManual;
+    if (!toque || toque.tipo !== 'touch') return;
+    const dedo = Array.from(e.touches).find((t) => t.identifier === toque.id);
+    if (!dedo) return;
+    e.preventDefault();
+    this.atualizarToque(dedo.clientX, dedo.clientY);
+  };
+
+  private readonly onTouchEnd = (e: TouchEvent): void => {
+    const toque = this.toqueManual;
+    if (!toque || toque.tipo !== 'touch') return;
+    if (Array.from(e.changedTouches).some((t) => t.identifier === toque.id)) this.toqueManual = null;
+  };
+
+  private atualizarToque(clientX: number, clientY: number): void {
+    const toque = this.toqueManual;
+    if (!toque) return;
+    const vetor = vetorDoManche(toque.origemX, toque.origemY, clientX, clientY);
+    toque.dx = vetor.dx;
+    toque.dy = vetor.dy;
   };
 
   private get currentStats(): Stats { return this.labStats ?? this.sim.stats; }
@@ -3318,7 +3356,28 @@ export class VerticalMode {
     window.removeEventListener('blur', this.limparTeclas);
     window.removeEventListener('focusin', this.onFocusIn);
     window.removeEventListener('oz:chat-foco', this.limparTeclas);
+    this.surface.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.surface.canvas.removeEventListener('pointermove', this.onPointerMove);
+    this.surface.canvas.removeEventListener('pointerup', this.onPointerEnd);
+    this.surface.canvas.removeEventListener('pointercancel', this.onPointerEnd);
+    this.surface.canvas.removeEventListener('lostpointercapture', this.onPointerEnd);
+    this.surface.canvas.removeEventListener('touchstart', this.onTouchStart);
+    this.surface.canvas.removeEventListener('touchmove', this.onTouchMove);
+    this.surface.canvas.removeEventListener('touchend', this.onTouchEnd);
+    this.surface.canvas.removeEventListener('touchcancel', this.onTouchEnd);
   }
+}
+
+/** Converte o deslocamento do dedo em um manche analógico normalizado. */
+export function vetorDoManche(origemX: number, origemY: number, atualX: number, atualY: number): { dx: number; dy: number } {
+  const dx = atualX - origemX;
+  const dy = atualY - origemY;
+  const comprimento = Math.hypot(dx, dy);
+  const escala = Math.min(1, comprimento / 52);
+  return {
+    dx: comprimento ? (dx / comprimento) * escala : 0,
+    dy: comprimento ? (dy / comprimento) * escala : 0,
+  };
 }
 
 /** Preenchido em `bootVertical()` para evitar ciclo de import com os dados. */

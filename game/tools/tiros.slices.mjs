@@ -103,3 +103,69 @@ export const MEIA_CELULA = 112;
  * por CROMA e não por luminância, ou uma subtração do gradiente de fundo por
  * célula antes de inundar. `alphaOverDark` pressupõe fundo neutro.
  */
+
+/**
+ * Faixas MEDIDAS À MÃO, para as células que a segmentação não separa.
+ *
+ * ## Por que existe
+ *
+ * O aviso de resíduo acima terminava com "não fiz porque exige medir seis
+ * larguras à mão e o jogo ainda não consome o atlas". O jogo passou a consumir,
+ * e o resíduo virou defeito visível: `faisca/quimico_0` saía com 224×100 — a
+ * célula INTEIRA —, e desenhado em modo aditivo no impacto contra a nave virava
+ * um quadrado verde ao lado dela. `faisca/gelo_0`, com 209 de largura, tem o
+ * mesmo defeito na cor do gelo.
+ *
+ * ## Por que não deu para consertar por parâmetro
+ *
+ * Nessas duas células o borrão de fundo é OPACO de ponta a ponta, então subir
+ * `alphaNucleo` não separa nada: medido em 170, 200, 220, 235 e 245, as duas
+ * continuam devolvendo uma faixa de 224.
+ *
+ * Exigir núcleo CLARO além de opaco separa as duas — o borrão é opaco e escuro,
+ * a faísca é clara —, mas foi medido em todas as 36 células e não serve como
+ * regra geral: zera `faisca/raio` e `faisca/cosmico`, e transforma três `feixe`
+ * em blocos de 224. Trocar dois defeitos por cinco não é conserto.
+ *
+ * ## De onde saíram os números
+ *
+ * Do perfil de núcleo claro (alfa > 200 e luminância > 190) por coluna, com as
+ * fronteiras no meio do vão entre aglomerados:
+ *
+ * - gelo: aglomerados em 16–29, 61–79, 112–135 e 182–195 → quatro faíscas.
+ * - quimico: 44–73 e 108–116. O aglomerado em 0–9 é fragmento do vizinho, que a
+ *   célula morde por ser recortada com meia-largura fixa, e o de 168–169 tem uma
+ *   coluna só de núcleo: ruído, não sprite.
+ *
+ * Se a folha crua mudar, estes números mentem. `tests/arte-elemental.test.ts`
+ * confere as contagens contra o atlas e quebra antes de o jogo pedir um sprite
+ * que não existe.
+ */
+export const FAIXAS_A_MAO = {
+  'faisca/gelo': [[0, 45], [45, 95], [95, 158], [158, 224]],
+  'faisca/quimico': [[30, 90], [90, 140]],
+};
+
+/**
+ * Parâmetros de ALFA à mão, para as células de fundo largo.
+ *
+ * `extrairCelula` estima o fundo no percentil `piso` (20% por padrão) e satura
+ * a alfa `margem` acima dele. Funciona quando o fundo é estreito — em
+ * `faisca/raio` ele vai de 75 a 103, e os 46 de margem cobrem a folga.
+ *
+ * Em `faisca/quimico` o fundo vai de 64 a 124: mais largo que a margem, então o
+ * borrão inteiro satura e o sprite sai como um retângulo opaco da cor do
+ * elemento. Desenhado com mistura aditiva no impacto contra a nave, é o quadrado
+ * verde que o jogador viu. `faisca/gelo` tem o mesmo perfil, de 86 a 133.
+ *
+ * Subir o `piso` para 95% põe a base no TOPO do borrão: o fundo vira alfa zero
+ * e só as faíscas — que passam de 199 nas duas células — sobram.
+ *
+ * Percentis medidos na folha crua, e é por isso que são dois números e não uma
+ * regra: as outras 34 células não têm esse perfil, e mexer no padrão para
+ * atender a duas quebraria as que já estão certas.
+ */
+export const ALFA_A_MAO = {
+  'faisca/gelo': { piso: 0.95 },
+  'faisca/quimico': { piso: 0.95 },
+};

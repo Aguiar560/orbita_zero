@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="metal" x1="18" y1="8" x2="46" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/><stop offset=".48" stop-color="#cbd7e8"/><stop offset="1" stop-color="#71839a"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <path d="M32 5 39 24 59 32 39 40 32 59 25 40 5 32 25 24 32 5Z" fill="#9fb0c5" opacity=".18"/>
+  <path d="M32 10 37 27 54 32 37 37 32 54 27 37 10 32 27 27 32 10Z" fill="url(#metal)" stroke="#f4f8ff" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="m32 20 3.4 8.6L44 32l-8.6 3.4L32 44l-3.4-8.6L20 32l8.6-3.4L32 20Z" fill="#f9fdff" filter="url(#glow)"/>
+</svg>

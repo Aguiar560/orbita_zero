@@ -8255,15 +8255,31 @@ select option:disabled { color: #667991; }
   /* O documento fica fixo para o palco não deslocar; cada superfície que pode
      exceder a altura rola por conta própria. `overscroll-behavior` impede que
      uma lista no fim transfira o gesto para o campo de combate atrás dela. */
-  .camada-caixa { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .camada-caixa {
+    /* O grid desktop mantém a segunda linha presa em `1fr`. Quando o painel
+       mobile vira uma coluna comprida, o conteúdo transborda visualmente sem
+       aumentar o scrollHeight e começa por cima do card seguinte. Fluxo normal
+       faz cada tela medir o conteúdo real e deixa esta caixa ser o único scroll. */
+    display: block !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  .camada-caixa > .camada-topo { margin-bottom: 8px; }
 
   .layout > .anatomia {
     position: absolute; inset: 0 0 var(--mobile-dock); z-index: 8;
+    grid-area: auto !important; justify-self: stretch; align-self: stretch;
     width: 100% !important; margin: 0; min-width: 0; min-height: 0;
     display: none !important; pointer-events: auto;
     background: linear-gradient(180deg, rgba(7, 14, 27, .985), rgba(3, 8, 16, .99));
   }
   .layout[data-mobile-view='anatomia'] > .anatomia { display: grid !important; }
+  .layout[data-mobile-view='piloto'] > .center,
+  .layout[data-mobile-view='anatomia'] > .center,
+  .layout[data-mobile-view='inventario'] > .center { display: none; }
   .layout > .anatomia .anat-alca { display: none; }
   .layout > .anatomia .anat-janela { width: 100%; overflow-y: auto; overscroll-behavior-y: contain; }
   .layout > .anatomia .anat-corpo {
@@ -8322,4 +8338,20 @@ select option:disabled { color: #667991; }
   .galaxy-command-sidebar { overflow: visible; }
   .galaxy-command-sector-detail,
   .galaxy-command-detail-content { min-height: 0; height: auto; }
+
+  /* Modais menores (Ajustes, relatórios e confirmações) também precisam usar
+     a altura visual do iPhone e conservar uma região rolável própria. */
+  .modal-backdrop { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
+  .modal {
+    max-height: calc(100dvh - max(20px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom))));
+    min-height: 0;
+    overflow: hidden;
+  }
+  .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
 }

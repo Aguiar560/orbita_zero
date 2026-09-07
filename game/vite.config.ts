@@ -168,6 +168,21 @@ export default defineConfig({
   test: {
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    /**
+     * `.snapshots/` guarda CÓPIAS INTEIRAS do projeto, tiradas em releases
+     * passadas — e o Vitest estava rodando os testes de dentro delas: 81
+     * arquivos de uma versão antiga, misturados aos de verdade.
+     *
+     * Passavam por coincidência, enquanto a cópia e o projeto concordavam. No
+     * dia em que o recorte do atlas elemental mudou, a cópia começou a acusar
+     * ids que não existem NELA — lendo o `public/assets` dela mas importando o
+     * `@data` de verdade pelo alias, que aponta para a raiz. Meia hora de
+     * investigação para um teste que não é do projeto.
+     *
+     * A lista repete os padrões que o Vitest já exclui por padrão, porque
+     * declarar `exclude` SUBSTITUI o padrão em vez de somar.
+     */
+    exclude: ['**/node_modules/**', '**/dist/**', '.snapshots/**'],
   },
 
   build: {
