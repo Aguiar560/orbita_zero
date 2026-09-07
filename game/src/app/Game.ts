@@ -5,7 +5,8 @@ import { h } from '@ui/dom';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
-import { allowSaving, loadFromStorage } from '@sim/state';
+import { allowSaving, createState, loadFromStorage } from '@sim/state';
+import type { GameState } from '@sim/types';
 import { bus, toast } from './Bus';
 import { galaxyOfSector } from '@data/galaxies';
 import { musicaDaGalaxia } from '@data/musicas';
@@ -351,6 +352,9 @@ export class Game {
   private async juntarComANuvem(): Promise<void> {
     try {
       const r = await reconciliar(this.sim.state);
+
+      if (r.acao === 'perguntar') { await this.decidirHeranca(r.local); return; }
+
       if (r.acao === 'desceu') {
         // `allowSaving` porque o jogador pode ter apagado o save nesta mesma
         // sessão: a trava de gravação ainda estaria de pé, e o save que acabou
@@ -363,6 +367,65 @@ export class Game {
     } catch {
       // Ver acima: a nuvem é cópia.
     }
+  }
+
+  /**
+   * Conta nova, e este navegador já tem a partida de alguém. De quem é?
+   *
+   * ## O defeito que isto fecha
+   *
+   * A conta recém-criada adotava o save do navegador em silêncio. Criar conta
+   * numa máquina onde alguém já jogou entrava DIRETO no jogo com o progresso
+   * da outra pessoa — setor 201, 589 minutos —, sem escolha de piloto, sem
+   * nome e sem tutorial. Não era só herança indevida: era o caminho de entrada
+   * do jogador novo desaparecendo.
+   *
+   * ## Por que perguntar, e não decidir
+   *
+   * Porque os dois casos são indistinguíveis daqui e os dois são comuns:
+   *
+   * - joguei sem conta e acabei de criar uma → herdar é o certo, e apagar
+   *   destruiria o que a pessoa fez;
+   * - é a máquina de outro, ou eu quero recomeçar → herdar é o errado.
+   *
+   * Só quem está na frente da tela sabe. Adotar calado foi o defeito; apagar
+   * calado seria um pior.
+   *
+   * ## Por que `confirm` do navegador
+   *
+   * Isto roda no BOOT, antes de a partida começar, e a resposta decide qual
+   * estado o jogo carrega — precisa bloquear. Um diálogo próprio teria de ser
+   * montado, estilizado e desmontado numa fase em que a interface do jogo
+   * ainda não está de pé, para uma pergunta que cada pessoa vê uma vez.
+   */
+  private async decidirHeranca(local: GameState): Promise<void> {
+    const minutos = Math.round(progressoDe(local) / 60);
+    const setor = local.run?.sector ?? 1;
+
+    const herdar = confirm(
+      'Este navegador tem uma partida com ' + minutos + ' min de jogo, no setor ' + setor + '.'
+      + '\n\nEla é sua? Toque OK para continuar de onde parou.'
+      + '\n\nCancelar começa uma partida nova nesta conta — a partida acima sai deste navegador.',
+    );
+
+    if (herdar) {
+      await subirSave(local);
+      return;
+    }
+
+    /**
+     * Recomeçar: estado novo, com piloto VAZIO.
+     *
+     * É o piloto vazio que faz a tela de escolha aparecer — o mesmo critério
+     * do "Apagar progresso". Sem ele o jogador cairia num jogo zerado sem
+     * nunca ver o começo dele.
+     */
+    allowSaving();
+    this.sim.state = createState();
+    this.sim.touch();
+    this.sim.save();
+    await subirSave(this.sim.state);
+    location.reload();
   }
 
   /**

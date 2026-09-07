@@ -110,11 +110,24 @@ export const progressoDe = (s: GameState): number => s.playtime ?? 0;
  * saneamento. O que ele NÃO faz é marcar `contaminado`: isto é o progresso do
  * próprio jogador voltando, não um save colado de fora.
  */
-export async function baixarSave(): Promise<{ estado: GameState; atualizadoEm: number } | null> {
+/**
+ * O que a nuvem tinha — e a diferença entre NÃO TER e NÃO RESPONDER.
+ *
+ * Os dois voltavam como `null`, e essa mistura produziu um defeito caro:
+ * conta recém-criada e servidor fora do ar eram o mesmo caso para quem
+ * chamava. O servidor sempre soube responder `vazio: true`; era aqui que a
+ * informação se perdia.
+ */
+export type DaNuvem =
+  | { tipo: 'save'; estado: GameState; atualizadoEm: number }
+  | { tipo: 'vazio' }
+  | { tipo: 'falhou' };
+
+export async function baixarSave(): Promise<DaNuvem> {
   const r = await chamar('GET');
   if (!r || !r.ok) {
     if (r) nuvem.ultimoErro = `servidor respondeu ${r.status}`;
-    return null;
+    return { tipo: 'falhou' };
   }
 
   try {
@@ -124,17 +137,17 @@ export async function baixarSave(): Promise<{ estado: GameState; atualizadoEm: n
     // A versão vem mesmo quando não há save: é ela que o primeiro PUT usa como
     // base, e sem guardá-la a primeira gravação bateria em conflito.
     nuvem.versaoServidor = dados.versaoServidor ?? 0;
-    if (dados.vazio || !dados.estado) return null;
+    if (dados.vazio || !dados.estado) return { tipo: 'vazio' };
 
     const estado = migrate(dados.estado);
     if (!estado) {
       nuvem.ultimoErro = 'save da nuvem ilegível';
-      return null;
+      return { tipo: 'falhou' };
     }
-    return { estado, atualizadoEm: dados.atualizadoEm ?? 0 };
+    return { tipo: 'save', estado, atualizadoEm: dados.atualizadoEm ?? 0 };
   } catch {
     nuvem.ultimoErro = 'resposta da nuvem ilegível';
-    return null;
+    return { tipo: 'falhou' };
   }
 }
 
@@ -233,7 +246,27 @@ export type Reconciliacao =
   | { acao: 'sem-conta' }
   | { acao: 'subiu'; motivo: 'nuvem-vazia' | 'local-mais-adiantado' }
   | { acao: 'desceu'; estado: GameState; motivo: 'nuvem-mais-adiantada' }
+  /**
+   * Conta NOVA, e este navegador tem progresso de alguém.
+   *
+   * Só quem está na frente do computador sabe se aquele save é dele. Adotar
+   * calado foi o que fez uma conta recém-criada entrar direto no jogo com
+   * setor 201 e 589 minutos — sem escolha de piloto, sem nome, sem tutorial,
+   * herdando o progresso de outra pessoa. E o contrário, apagar calado,
+   * destruiria o progresso de quem jogou sem conta e acabou de criar uma.
+   */
+  | { acao: 'perguntar'; local: GameState }
   | { acao: 'nada'; motivo: 'empate' | 'falhou' | 'cedo' };
+
+/**
+ * Este save tem história suficiente para valer uma pergunta?
+ *
+ * Piloto escolhido é o corte principal: sem ele não há nada a herdar, e a
+ * tela de escolha aparece de qualquer jeito. O minuto de jogo evita perguntar
+ * a quem abriu o jogo, olhou dez segundos e foi criar a conta.
+ */
+const temHistoria = (s: GameState): boolean =>
+  (s.piloto ?? '') !== '' && progressoDe(s) > 60;
 
 /**
  * Junta o save local e o da nuvem, e diz o que fazer.
@@ -246,9 +279,19 @@ export async function reconciliar(local: GameState): Promise<Reconciliacao> {
   if (!await tokenValido()) return { acao: 'sem-conta' };
 
   const daNuvem = await baixarSave();
-  if (!daNuvem) {
-    // Nuvem vazia (conta nova) ou falha de rede. Nos dois casos tentar subir é
-    // o certo: se foi falha, a subida também falha e nada se perde.
+
+  if (daNuvem.tipo === 'falhou') {
+    // Sem resposta não se decide nada. Subir aqui era o comportamento antigo,
+    // e ele estava certo — a subida também falharia e nada se perderia —, mas
+    // agora falha e vazio são casos diferentes e o vazio é o que decide.
+    return { acao: 'nada', motivo: 'falhou' };
+  }
+
+  if (daNuvem.tipo === 'vazio') {
+    // Conta nova. Se este navegador guarda a partida de alguém, quem decide é
+    // o jogador — ver `perguntar`.
+    if (temHistoria(local)) return { acao: 'perguntar', local };
+
     const r = await subirSave(local);
     if (r.fase === 'subiu') return { acao: 'subiu', motivo: 'nuvem-vazia' };
     return { acao: 'nada', motivo: r.fase === 'cedo' ? 'cedo' : 'falhou' };
