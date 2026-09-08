@@ -8,7 +8,17 @@ const css = readFileSync(new URL('../src/styles/main.css', import.meta.url), 'ut
 describe('ações em lote abaixo do inventário', () => {
   it('permite marcar vários itens sem confundir com a seleção da Anatomia', () => {
     expect(painel).toContain('private readonly selecionados = new Set<string>()');
-    expect(painel).toContain('button.inv-lote-toggle');
+    expect(painel).toContain('this.alternarMarcacao(sim, item)');
+    expect(painel).toContain("'aria-selected': String(marcado)");
+    expect(painel).not.toContain('button.inv-lote-toggle');
+  });
+
+  it('separa seleção em um clique de equipamento em clique duplo', () => {
+    expect(painel).toContain('private tratarClique(sim: Sim, item: Item');
+    expect(painel).toContain('if (anterior?.uid === item.uid)');
+    expect(painel).toContain('this.equipar(sim, item)');
+    expect(painel).toContain('timer: window.setTimeout(executar, 300)');
+    expect(css).toContain('touch-action: manipulation');
   });
 
   it('oferece venda e desmontagem na barra depois da grade', () => {
@@ -25,8 +35,9 @@ describe('ações em lote abaixo do inventário', () => {
     expect(painel.match(/Esta ação não pode ser desfeita\./g)).toHaveLength(2);
   });
 
-  it('mantém seleção e ações tocáveis no celular', () => {
-    expect(css).toMatch(/\.inv-lote-toggle \{ width: 24px; height: 24px/);
+  it('usa apenas o amarelo da célula e mantém as ações tocáveis no celular', () => {
+    expect(css).toMatch(/\.inv-cell\.marcado \{[\s\S]*?border-color: #ffd65c !important/);
+    expect(css).not.toContain('.inv-lote-toggle');
     expect(css).toMatch(/\.inv-lote-acao \{ min-height: 44px/);
   });
 });

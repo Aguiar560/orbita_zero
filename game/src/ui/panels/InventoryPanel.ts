@@ -28,7 +28,7 @@ import type { Sim } from '@sim/index';
  * razão: `style['--x']` é ignorado silenciosamente em runtime.
  */
 function grade(colunas: number, cells: HTMLElement[]): HTMLElement {
-  const el = h('.inv-grid', {}, ...cells);
+  const el = h('.inv-grid', { role: 'listbox', 'aria-multiselectable': 'true' }, ...cells);
   el.style.setProperty('--inv-colunas', String(colunas));
   return el;
 }
@@ -94,6 +94,8 @@ export class InventoryPanel implements Panel {
   private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
   /** Seleção exclusiva das ações em lote; não interfere na peça da Anatomia. */
   private readonly selecionados = new Set<string>();
+  /** Aguarda o segundo clique para separar seleção de equipamento. */
+  private cliquePendente: { uid: string; timer: number; executar: () => void } | null = null;
   private readonly tip = h('.inv-tip.hidden');
 
   badge(sim: Sim): number {
@@ -212,8 +214,8 @@ export class InventoryPanel implements Panel {
       ),
 
       h('p.muted.tiny.hint', { text: usaSelecaoPorToque()
-        ? 'Toque na peça para ver atributos. Use a marca no canto para selecionar várias.'
-        : 'Clique equipa · marque no canto para vender ou desmontar várias · botão direito favorita.' }),
+        ? 'Um toque seleciona (amarelo) · toque duplo equipa · toque também mostra os atributos.'
+        : 'Clique seleciona · duplo clique equipa · arraste para a Anatomia · botão direito favorita.' }),
       h('.inv-wrap', {},
         this.tip,
         grade(colunasDaGrade(capacidade), cells)),
@@ -271,27 +273,9 @@ export class InventoryPanel implements Panel {
     const marcado = this.selecionados.has(item.uid);
     const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}${marcado ? '.marcado' : ''}${classeDeExclusivo(item)}`, {
       style: { borderColor: info.color, boxShadow: `inset 0 0 16px ${info.glow}` },
+      role: 'option', tabindex: 0, 'aria-selected': String(marcado),
+      'aria-disabled': String(item.favorite),
     }, spriteIcon(item.icon, 40));
-
-    if (!mira) {
-      cell.append(h(`button.inv-lote-toggle${marcado ? '.ativo' : ''}`, {
-        type: 'button',
-        text: marcado ? '✓' : '',
-        disabled: item.favorite,
-        'aria-label': item.favorite
-          ? 'Item favorito protegido'
-          : `${marcado ? 'Remover' : 'Adicionar'} item da seleção`,
-        'aria-pressed': String(marcado),
-        title: item.favorite ? 'Desmarque o favorito para selecionar' : 'Selecionar para vender ou desmontar',
-        onclick: (e: Event) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (marcado) this.selecionados.delete(item.uid);
-          else this.selecionados.add(item.uid);
-          sim.touch();
-        },
-      }));
-    }
 
     // Elemento no canto inferior esquerdo: numa grade de setenta ícones, é o
     // que permite achar "o canhão de gelo" sem passar o mouse em cada célula.
@@ -310,9 +294,8 @@ export class InventoryPanel implements Panel {
     if (item.set) cell.append(h('i.pip.set'));
     if (item.favorite) cell.append(h('i.pip.fav', { text: '★' }));
 
-    // Arrastável para os soquetes da Anatomia. O clique continua existindo e
-    // faz a mesma coisa — arrastar é o gesto que DIZ para onde vai, e é o que
-    // faltava para montar uma nave guardada sem adivinhar.
+    // Arrastar continua sendo o gesto de equipar. O clique agora marca a peça
+    // para a barra em lote: o amarelo na célula substitui qualquer checkbox.
     cell.setAttribute('draggable', 'true');
     cell.addEventListener('dragstart', (e) => {
       iniciarArraste(item);
@@ -342,37 +325,25 @@ export class InventoryPanel implements Panel {
         }
         return;
       }
-      if (usaSelecaoPorToque()) {
-        // Hover não existe no telefone e equipar já no primeiro toque escondia
-        // a ficha e impedia escolher o soquete. A seleção usa o mesmo estado do
-        // arraste para o destino continuar sendo a Anatomia, sem duplicar uma
-        // segunda máquina de estados só para a entrada por toque.
-        iniciarArraste(item);
-        cell.classList.add('selecionado');
-        this.showTip(sim, item, cell, gain);
-        sim.touch();
-        return;
-      }
       if (e.altKey) {
         e.preventDefault();
+        this.cancelarCliquePendente();
         this.selecionados.clear();
         this.selecionados.add(item.uid);
         this.confirmarVenda(sim);
       } else if (e.shiftKey) {
+        this.cancelarCliquePendente();
         this.selecionados.clear();
         this.selecionados.add(item.uid);
         this.confirmarDesmonte(sim);
       } else {
-        // Na nave que a Anatomia está mostrando, não na que está voando.
-        // Eram sempre a mesma até a coluna ganhar seletor; desde então o
-        // jogador podia montar uma nave guardada e ver a peça ir para outra.
-        const casco = cascoEmMontagem() || sim.state.hull;
-        if (!sim.equip(item.uid, casco)) {
-          toast('Esta nave não aceita peça deste elemento', 'bad');
-        }
+        this.tratarClique(sim, item, cell, gain);
       }
-      this.tip.classList.add('hidden');
-      sim.touch();
+    });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      this.alternarMarcacao(sim, item);
     });
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -412,6 +383,66 @@ export class InventoryPanel implements Panel {
       if (!item || item.favorite) this.selecionados.delete(uid);
     }
     return [...this.selecionados].map((uid) => porId.get(uid)!).filter(Boolean);
+  }
+
+  private tratarClique(sim: Sim, item: Item, cell: HTMLElement, gain: number): void {
+    const anterior = this.cliquePendente;
+    if (anterior?.uid === item.uid) {
+      window.clearTimeout(anterior.timer);
+      this.cliquePendente = null;
+      this.equipar(sim, item);
+      return;
+    }
+
+    // Se o primeiro clique foi em outra peça, ele é uma seleção legítima e não
+    // deve desaparecer só porque o jogador clicou rapidamente na vizinha.
+    if (anterior) {
+      window.clearTimeout(anterior.timer);
+      anterior.executar();
+    }
+
+    this.showTip(sim, item, cell, gain);
+    const executar = () => {
+      if (this.cliquePendente?.uid === item.uid) this.cliquePendente = null;
+      this.alternarMarcacao(sim, item);
+    };
+    this.cliquePendente = {
+      uid: item.uid,
+      timer: window.setTimeout(executar, 300),
+      executar,
+    };
+  }
+
+  private cancelarCliquePendente(): void {
+    if (!this.cliquePendente) return;
+    window.clearTimeout(this.cliquePendente.timer);
+    this.cliquePendente = null;
+  }
+
+  private equipar(sim: Sim, item: Item): void {
+    this.cancelarCliquePendente();
+    const casco = cascoEmMontagem() || sim.state.hull;
+    if (!sim.equip(item.uid, casco)) {
+      toast('Esta nave não aceita peça deste elemento', 'bad');
+      return;
+    }
+    this.selecionados.delete(item.uid);
+    this.tip.classList.add('hidden');
+    sim.touch();
+  }
+
+  private alternarMarcacao(sim: Sim, item: Item): void {
+    if (item.favorite) {
+      toast('Item favorito: desmarque antes de selecionar.', 'bad');
+      return;
+    }
+    if (this.selecionados.has(item.uid)) {
+      this.selecionados.delete(item.uid);
+      if (itemArrastado()?.uid === item.uid) encerrarArraste();
+    } else {
+      this.selecionados.add(item.uid);
+    }
+    sim.touch();
   }
 
   private barraDeLote(sim: Sim, lote: Item[]): HTMLElement {

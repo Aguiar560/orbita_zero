@@ -1091,6 +1091,7 @@ select option:disabled { color: #667991; }
 .inv-grid { display: grid; grid-template-columns: repeat(var(--inv-colunas, 5), 1fr); gap: 4px; }
 .inv-cell {
   position: relative; aspect-ratio: 1; display: grid; place-items: center; cursor: pointer;
+  touch-action: manipulation;
   background: rgba(10, 16, 30, 0.8); border: 1px solid var(--line); border-radius: 6px;
   transition: transform 0.08s, filter 0.12s;
 }
@@ -1128,19 +1129,6 @@ select option:disabled { color: #667991; }
 .inv-tip .tip-disposal, .item-card-float .tip-disposal { flex-direction: column; align-items: stretch; gap: 3px; }
 .tip-disposal-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .tip-disposal-row strong { color: var(--text); text-align: right; font-size: 10px; }
-.inv-lote-toggle {
-  position: absolute; z-index: 5; top: 3px; left: 3px;
-  width: 20px; height: 20px; display: grid; place-items: center; padding: 0;
-  border: 1px solid rgba(157, 194, 216, .72); border-radius: 3px;
-  background: rgba(3, 9, 17, .92); color: #071018; font: 800 14px/1 sans-serif;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, .72);
-}
-.inv-lote-toggle.ativo {
-  border-color: #ffd65c; background: #ffd65c;
-  box-shadow: 0 0 5px #ffd65c, 0 0 12px rgba(255, 204, 55, .62);
-}
-.inv-lote-toggle:disabled { cursor: not-allowed; opacity: .28; }
-.inv-cell .pip.up { top: 8px; left: 27px; }
 .inv-cell.marcado {
   border-color: #ffd65c !important;
   box-shadow: inset 0 0 20px rgba(255, 203, 55, .28), 0 0 11px rgba(255, 203, 55, .38) !important;
@@ -8467,8 +8455,6 @@ select option:disabled { color: #667991; }
     position: static; order: -1; width: 100%; box-sizing: border-box;
     pointer-events: none;
   }
-  .inv-lote-toggle { width: 24px; height: 24px; font-size: 16px; }
-  .inv-cell .pip.up { left: 31px; }
   .inv-lote-bar { position: static; padding: 9px 8px; }
   .inv-lote-status { align-items: flex-start; flex-direction: column; gap: 3px; }
   .inv-lote-status span { text-align: left; }
@@ -8477,6 +8463,11 @@ select option:disabled { color: #667991; }
     border-color: #70dcff !important;
     box-shadow: inset 0 0 18px rgba(69, 202, 248, .34), 0 0 12px rgba(69, 202, 248, .35) !important;
     filter: brightness(1.18) saturate(1.12);
+  }
+  .inv-cell.marcado,
+  .inv-cell.marcado.selecionado {
+    border-color: #ffd65c !important;
+    box-shadow: inset 0 0 20px rgba(255, 203, 55, .28), 0 0 11px rgba(255, 203, 55, .38) !important;
   }
 
   /* Nenhuma tela de trabalho pode depender de uma altura desktop fixa no
