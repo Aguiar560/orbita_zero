@@ -1002,6 +1002,57 @@ não existe: o ganho é dominado por passar ou não do chefe, e no build
 representativo ele não passa em lugar nenhum. Calibrar um teto sobre isso
 produziria o mesmo erro das duas tentativas anteriores, com mais trabalho.
 
+#### Tentativa 3 — não estimar, REPLICAR (medido em 09/09)
+
+As duas tentativas anteriores erraram na mesma coisa: as duas **estimavam**
+quanto o jogador deveria ganhar. A estimativa é instável porque o ganho depende
+de passar do chefe, e isso não é propriedade do setor.
+
+A saída é trocar a grandeza. O servidor não precisa estimar nada: ele tem
+`buildEncounter` e a semente, então pode **calcular o que a onda vale** — a
+mesma função, o mesmo `bounty`, o mesmo número de unidades que a cena usa.
+Não é fórmula nova para calibrar; é o próprio jogo respondendo.
+
+E o RITMO tem um piso físico que também não depende do jogador: a onda leva
+tempo para ENTRAR em campo. `TAXA_DE_ENTRADA` (3,43 inimigos/s) sai de
+`LEVA_MIN/MAX` e `LEVA_INTERVALO_MIN/MAX` — as MESMAS constantes que o
+`WaveDirector` da cena usa para agendar as levas. Não é constante do modelo
+abstrato: é do agendamento real.
+
+**Medido em 09/09**, comparando o piso `unidades ÷ TAXA_DE_ENTRADA` com o
+instante em que a última leva de fato entra, somando as dez ondas do setor:
+
+| setor | unidades | piso | última leva (real) | folga |
+|---|---|---|---|---|
+| 1 | 243 | 70,9 s | 86,1 s | 1,22× |
+| 3 | 309 | 90,1 s | 94,5 s | 1,05× |
+| 15 | 272 | 79,3 s | 82,2 s | 1,04× |
+| 40 | 462 | 134,8 s | 134,3 s | **1,00×** |
+| 85 | 661 | 192,8 s | 194,1 s | 1,01× |
+| 300 | 481 | 140,3 s | 149,5 s | 1,07× |
+
+**Dispersão de 1,00× a 1,22× em toda a faixa de 1 a 300** — contra 0,3× a 9,9×
+da tentativa 2. É a diferença entre uma grandeza estável e uma instável, e é o
+que faltava.
+
+**O desenho que sai disso:**
+
+1. O cliente declara PROGRESSO ("limpei o setor S, onda W"), não valor.
+2. O servidor **precifica** com `buildEncounter(S, W)` — o mesmo `bounty` e o
+   mesmo multiplicador que `completeEncounter` aplica.
+3. O ritmo é limitado pelo piso de entrada contra o carimbo do próprio
+   servidor. Com margem: o setor 40 está em 1,00×, então exigir o piso cheio
+   recusaria jogo honesto. Uma folga de 25% cobre a variação medida.
+
+O que isto fecha: inflar o VALOR (o servidor calcula) e reivindicar ondas mais
+rápido do que o jogo consegue soltá-las (o piso). O que NÃO fecha: um cliente
+que declare progresso no ritmo exato do piso — mas aí ele está limitado ao que
+um jogador perfeito faria, que é o teto que se queria.
+
+**Por que isto não repete o erro das outras duas:** elas comparavam o declarado
+com uma expectativa; esta compara com o que o próprio jogo produz, chamando o
+próprio jogo. Não há número para calibrar — há uma função para executar.
+
 **A decisão nº 2 foi tomada em 03/09: o jogo AVISA, o jogador recua.**
 
 A medição abaixo é do que aconteceria COM o recuo, e ela vale como estimativa
