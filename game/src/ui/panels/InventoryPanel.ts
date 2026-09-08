@@ -211,8 +211,10 @@ export class InventoryPanel implements Panel {
       ),
 
       this.botaoSelecionarTodos(sim, items),
+      // Fora de `.inv-wrap`: o rack usa `clip-path`, que cria um contexto de
+      // empilhamento próprio e prendia a ficha atrás da barra de ações.
+      this.tip,
       h('.inv-wrap', {},
-        this.tip,
         grade(colunasDaGrade(capacidade), cells)),
       this.barraDeLote(sim, lote),
     );
@@ -361,13 +363,14 @@ export class InventoryPanel implements Panel {
     );
 
     // Ancora o cartão à célula, mantendo-o dentro do painel.
-    const wrap = cell.closest('.inv-wrap') as HTMLElement | null;
-    if (!wrap) return;
-    const box = wrap.getBoundingClientRect();
+    const body = cell.closest('.inv-body') as HTMLElement | null;
+    if (!body) return;
+    const box = body.getBoundingClientRect();
     const spot = cell.getBoundingClientRect();
     this.tip.classList.remove('hidden');
     const tipH = this.tip.offsetHeight || 200;
-    this.tip.style.left = `${clamp(spot.left - box.left + spot.width + 8, 0, Math.max(0, box.width - 236))}px`;
+    const tipW = this.tip.offsetWidth || 252;
+    this.tip.style.left = `${clamp(spot.left - box.left + spot.width + 8, 0, Math.max(0, box.width - tipW))}px`;
     this.tip.style.top = `${clamp(spot.top - box.top - 10, 0, Math.max(0, box.height - tipH))}px`;
   }
 

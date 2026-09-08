@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const painel = readFileSync(new URL('../src/ui/panels/InventoryPanel.ts', import.meta.url), 'utf8');
+const ficha = readFileSync(new URL('../src/ui/ItemCard.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles/main.css', import.meta.url), 'utf8');
 
 describe('ações em lote abaixo do inventário', () => {
@@ -63,5 +64,16 @@ describe('ações em lote abaixo do inventário', () => {
     expect(css).toMatch(/\.inv-cell\.marcado \{[\s\S]*?border-color: #ffd65c !important/);
     expect(css).not.toContain('.inv-lote-toggle');
     expect(css).toMatch(/\.inv-lote-acao,\s*\.inv-selecionar-todos \{ min-height: 44px/);
+  });
+
+  it('mantém a ficha acima das ações e separa suas três seções', () => {
+    expect(painel).toMatch(/this\.botaoSelecionarTodos\(sim, items\),[\s\S]*?this\.tip,[\s\S]*?h\('\.inv-wrap'/);
+    expect(painel).toContain("cell.closest('.inv-body')");
+    expect(css).toMatch(/\.inv-tip \{\s*position: absolute; z-index: 30/);
+    expect(css).toMatch(/\.inv-lote-bar \{[\s\S]*?position: sticky; z-index: 12/);
+    expect(css).toMatch(/\.tip-vs \{[^}]*margin-top: 12px; padding-top: 9px/);
+    expect(css).toMatch(/\.inv-tip \.tip-foot[^}]*margin-top: 12px; padding-top: 9px/);
+    expect(ficha).not.toContain('contra o equipado');
+    expect(ficha).toContain("h('.tip-vs.comparando'");
   });
 });

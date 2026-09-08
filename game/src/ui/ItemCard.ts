@@ -129,8 +129,7 @@ export function buildItemCard(sim: Sim, item: Item, opts: { compare?: boolean } 
 
   if (comparing && equipped) {
     frag.append(
-      h('.tip-vs', {},
-        h('span.muted.tiny', { text: 'contra o equipado' }),
+      h('.tip-vs.comparando', {},
         h('span.tiny', { text: itemName(equipped), style: { color: rarityInfo(equipped.rarity).color } }),
       ),
       buildDeltas(item, equipped),
