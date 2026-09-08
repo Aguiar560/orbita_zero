@@ -3,6 +3,10 @@ import { camadaDoPiso } from '@data/provacao-chefes';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import type { ResultadoDaProvacao, Sim } from '@sim/index';
 import { h, spriteIcon } from './dom';
+import { ligarFicha } from './FichaDeItem';
+import { buildItemCard } from './ItemCard';
+import { classeDeExclusivo, itemName } from '@sim/loot';
+import { rarityInfo } from '@data/rarity';
 
 /**
  * As telas de vitória e derrota da Provação (§30–§33).
@@ -88,6 +92,7 @@ export function montarResultadoDaProvacao(sim: Sim, r: ResultadoDaProvacao, fech
                 })]),
 
             h('.prv-res-premios', {}, ...premios(r)),
+            pecasGanhas(sim, r),
 
             ...(r.proximoPiso
               ? [h('.prv-res-liberado', {},
@@ -137,6 +142,35 @@ function linha(rotulo: string, valor: string, cor?: string): HTMLElement {
 }
 
 /** O que a vitória rendeu, com ícone. */
+/**
+ * As PECAS ganhas, cada uma com a ficha completa ao passar o mouse.
+ *
+ * A tela mostrava "3 itens" e mais nada: o jogador vencia um piso, lia um
+ * numero, e so descobria o que tinha caido indo ao inventario procurar entre
+ * trinta pecas parecidas. Numa Provacao de cem pisos, isso e a diferenca entre
+ * comemorar e conferir planilha.
+ *
+ * A ficha e a MESMA do inventario -- inclusive a comparacao com o que esta
+ * equipado, que e a pergunta real de quem acabou de ganhar uma peca.
+ */
+function pecasGanhas(sim: Sim, r: ResultadoDaProvacao): HTMLElement | null {
+  if (!r.ganhos.pecas.length) return null;
+
+  return h('.prv-res-pecas', {},
+    h('span.tiny.muted', { text: r.ganhos.pecas.length === 1 ? 'PEÇA GANHA' : 'PEÇAS GANHAS' }),
+    h('.prv-res-pecas-grade', {}, ...r.ganhos.pecas.map((peca) => {
+      const cor = rarityInfo(peca.rarity).color;
+      const cela = h(`button.prv-res-peca${classeDeExclusivo(peca)}`, {
+        type: 'button',
+        title: itemName(peca),
+        style: { '--rarity': cor } as Partial<CSSStyleDeclaration>,
+      }, spriteIcon(peca.icon, 34));
+      ligarFicha(cela, () => buildItemCard(sim, peca));
+      return cela;
+    })),
+  );
+}
+
 function premios(r: ResultadoDaProvacao): HTMLElement[] {
   const out: HTMLElement[] = [];
   const ficha = (classe: string, valor: string, titulo: string) =>
@@ -151,7 +185,11 @@ function premios(r: ResultadoDaProvacao): HTMLElement[] {
       h('span.mis-premio-n', { text: fmt(n) }),
     ));
   }
-  if (r.ganhos.itens > 0) out.push(ficha('item', String(r.ganhos.itens), 'itens'));
+  // A contagem so aparece quando as PECAS nao vieram -- resultado de um save
+  // antigo, ou a repeticao que nao paga item. Ver `pecasGanhas`.
+  if (r.ganhos.itens > 0 && !r.ganhos.pecas.length) {
+    out.push(ficha('item', String(r.ganhos.itens), 'itens'));
+  }
   if (r.ganhos.medalhas > 0) out.push(ficha('medalha', String(r.ganhos.medalhas), 'medalhas'));
   return out.map((icone) => h('.prv-res-premio', {}, icone,
     h('span.prv-res-premio-nome', { text: icone.title }),

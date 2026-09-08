@@ -11,16 +11,18 @@ import {
 import { CONCESSAO_POR_ID } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
 import { rarityInfo } from '@data/rarity';
-import { iconeDeItem } from '@data/items';
+import { SLOT_LABEL, iconeDeItem } from '@data/items';
 import {
   alternarRastreioDeMissao, confiancaDe,
   missoesRastreadas, progressoDe, requisitosPendentes, situacaoDe, textoDoRequisito,
   type SinalDeContato, type SituacaoDeMissao,
 } from '@sim/missoes';
 import { limiteDeMissoes } from '@sim/vip';
-import type { Rarity, SlotId } from '@sim/types';
+import type { Item, Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, portraitIcon, spriteIcon, progressBar } from '../dom';
+import { ligarFicha } from '../FichaDeItem';
+import { affixCandidates } from '@sim/loot';
 import type { Panel } from './types';
 
 /**
@@ -320,7 +322,7 @@ export class MissoesPanel implements Panel {
         ? [h('.mis-esp-dir', {},
             h('span.muted.tiny', { text: 'RECOMPENSA EXCLUSIVA' }),
             h('.mis-esp-item', {},
-              h('.mis-esp-arte', {}, spriteIcon(iconeExclusivo(ex), 44)),
+              this.arteDoExclusivo(sim, def, ex),
               h('.mis-esp-info', {},
                 h('strong', { text: ex.nome, style: { color: t.cor } }),
                 ...(ex.de ? [h('span.mis-esp-dono', { text: `★ ITEM EXCLUSIVO DE ${ex.de}` })] : []),
@@ -339,6 +341,87 @@ export class MissoesPanel implements Panel {
           }, h('span', { text: 'RECLAMAR CONTRATO' }))
         : h('span'),
     );
+  }
+
+  /**
+   * A arte da peça prometida, com a PRÉVIA ao passar o mouse.
+   *
+   * O contrato mostrava o nome da peça e o dono, e mais nada. O jogador via
+   * "REATOR DO NÚCLEO FERRUGEM" e não fazia ideia se valia as quinze missões —
+   * nem que tipo de propriedade aquilo poderia ter.
+   *
+   * A prévia mostra o que dá para saber ANTES de a peça existir: slot, piso de
+   * raridade, e as identidades que ela pode rolar. Os valores não: eles saem do
+   * dado na hora da entrega, e prometer número seria mentir.
+   */
+  private arteDoExclusivo(
+    sim: Sim,
+    def: MissaoDef,
+    ex: NonNullable<MissaoDef['recompensaExclusiva']>,
+  ): HTMLElement {
+    const arte = h('.mis-esp-arte', { tabindex: '0' }, spriteIcon(iconeExclusivo(ex), 44));
+    ligarFicha(arte, () => this.previaDoExclusivo(sim, def, ex));
+    return arte;
+  }
+
+  private previaDoExclusivo(
+    sim: Sim,
+    def: MissaoDef,
+    ex: NonNullable<MissaoDef['recompensaExclusiva']>,
+  ): Node {
+    // Quem decide a raridade é o `sim`: o tier do contato é escondido, e a
+    // interface não o lê. Ver `raridadePrometida`.
+    const raridade = sim.raridadePrometida(def);
+    const info = rarityInfo(raridade);
+    const slot = ex.slot ?? 'principal';
+    const ilvl = sim.encounter.ilvl;
+
+    /**
+     * Um MOLDE, não um item de verdade.
+     *
+     * `affixCandidates` responde "o que esta peça poderia rolar", e para isso
+     * precisa de slot, nível e elemento. Rolar um item real aqui gastaria o RNG
+     * e mostraria UMA possibilidade como se fosse a promessa.
+     */
+    const molde = {
+      uid: 'previa', baseId: '', slot, rarity: raridade, ilvl,
+      affixes: [], icon: '', origin: 0,
+    } as unknown as Item;
+
+    const lista = (tipo: 'prefixo' | 'sufixo'): HTMLElement => {
+      const candidatos = affixCandidates(molde, tipo);
+      return h('.previa-linhas', {},
+        h('.previa-linhas-cab', {},
+          h('span', { text: tipo === 'prefixo' ? 'PREFIXOS POSSÍVEIS' : 'SUFIXOS POSSÍVEIS' }),
+          h('strong', { text: String(candidatos.length) }),
+        ),
+        ...candidatos.slice(0, 6).map((c) => h('span.previa-linha', {
+          text: `${c.kind === 'mul' ? '%' : '+'} ${c.label}`,
+        })),
+        ...(candidatos.length > 6
+          ? [h('small.muted', { text: `+ ${candidatos.length - 6} outras identidades` })]
+          : []),
+      );
+    };
+
+    const frag = document.createDocumentFragment();
+    frag.append(
+      h('.tip-head', {},
+        spriteIcon(iconeExclusivo(ex), 34),
+        h('.tip-title', {},
+          h('strong', { text: ex.nome, style: { color: info.color } }),
+          h('span.muted.tiny', { text: `${SLOT_LABEL[slot]} · ${info.name} ou melhor · nv ~${ilvl}` }),
+        ),
+      ),
+      lista('prefixo'),
+      lista('sufixo'),
+      // O aviso existe porque a prévia mostra IDENTIDADES, e o jogador tende a
+      // ler lista como promessa. Os valores e quais linhas saem são do dado.
+      h('small.muted.previa-nota', {
+        text: 'A peça rola na entrega: estas são as propriedades possíveis, não as garantidas.',
+      }),
+    );
+    return frag;
   }
 
   /** Missão travada: escurecida, com cadeado e o requisito legível (§16). */

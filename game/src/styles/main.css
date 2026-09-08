@@ -869,6 +869,33 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
  * O texto e "novo" e nao um ponto: um ponto colorido numa barra que ja tem
  * cadeados e contadores nao se distingue de enfeite, e nao ha como adivinhar o
  * que ele quer dizer. */
+/* As pecas ganhas num piso da Provacao, e a previa do item prometido.
+ *
+ * As duas usam a mesma ficha flutuante (`ui/FichaDeItem.ts`), entao o que fica
+ * aqui e so a celula e a lista -- o cartao ja tem estilo proprio. */
+.prv-res-pecas { display: grid; gap: 6px; justify-items: center; margin-top: 10px; }
+.prv-res-pecas-grade { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.prv-res-peca {
+  display: grid; place-items: center;
+  width: 46px; height: 46px; padding: 0;
+  border: 1px solid var(--rarity, var(--line-strong)); border-radius: 8px;
+  background: rgba(3, 8, 16, .7); cursor: pointer;
+}
+.prv-res-peca:hover, .prv-res-peca:focus-visible {
+  outline: none; box-shadow: 0 0 10px 1px var(--rarity, transparent);
+}
+
+/* A previa do exclusivo: identidades possiveis, nunca valores. */
+.previa-linhas { display: grid; gap: 3px; padding: 8px 10px; border-top: 1px solid var(--line); }
+.previa-linhas-cab {
+  display: flex; justify-content: space-between; align-items: baseline;
+  color: var(--muted); font-size: 10px; letter-spacing: .07em;
+}
+.previa-linha { font-size: 11.5px; color: var(--text); }
+/* O aviso e o unico texto do cartao que fala do FUTURO, e precisa se separar
+ * das listas -- senao ele se le como mais uma linha possivel. */
+.previa-nota { display: block; padding: 8px 10px 2px; line-height: 1.4; font-style: italic; }
+
 /* ══ A PECA EXCLUSIVA ═══════════════════════════════════════════════════════
  *
  * UM lugar decide como toda peca exclusiva aparece. Toda tela que desenha item

@@ -33,6 +33,15 @@ export interface ResultadoDaProvacao {
   ganhos: {
     sucata: number; nucleos: number; itens: number; medalhas: number;
     materiais: Record<string, number>;
+    /**
+     * As PECAS ganhas, e nao so quantas.
+     *
+     * A tela mostrava "3 itens" e nada mais: o jogador vencia um piso, lia um
+     * numero, e so descobria o que tinha caido indo ao inventario procurar
+     * entre trinta pecas parecidas. Guardar as pecas aqui e o que permite o
+     * cartao completo ao passar o mouse.
+     */
+    pecas: Item[];
   };
   /** Piso liberado por esta vitória. Zero quando não liberou nada novo. */
   proximoPiso: number;
@@ -1064,6 +1073,9 @@ export class Sim {
       this.guardarMaterial(id, Math.max(1, Math.round(n * fator)));
     }
 
+    // As pecas ganhas viajam ate a tela de resultado. Ver `ganhos.pecas`.
+    const pecas: Item[] = [];
+
     // Item e medalha SÓ na primeira conclusão e no marco: repetir um piso não
     // pode ser a melhor fonte de equipamento do jogo (§22, §67).
     if (camadas.includes('primeira') || camadas.includes('marco')) {
@@ -1080,18 +1092,22 @@ export class Sim {
        * nao pode virar a melhor fonte de equipamento do jogo.
        */
       if (rec.chanceExclusivo > 0 && this.rng.chance(rec.chanceExclusivo)) {
-        this.acquire(this.rolarExclusivo(
+        const reliquia = this.rolarExclusivo(
           this.encounter.ilvl,
           { nome: `RELIQUIA DO PISO ${piso}`, de: chefeDoPiso(piso).nome },
           { raridadeMin: rec.itens.raridadeMin },
-        ));
+        );
+        pecas.push(reliquia);
+        this.acquire(reliquia);
       }
 
       for (let i = 0; i < rec.itens.quantidade; i++) {
-        this.acquire(rollItem(
+        const peca = rollItem(
           this.rng, this.encounter.ilvl, this.stats.sorte,
           this.state.universe.index, { floor: rec.itens.raridadeMin },
-        ));
+        );
+        pecas.push(peca);
+        this.acquire(peca);
       }
     }
 
@@ -1115,6 +1131,7 @@ export class Sim {
         itens: this.state.stats.itemsFound - itensAntes,
         medalhas: camadas.includes('primeira') || camadas.includes('marco') ? (def.recompensa.medalhas ?? 0) : 0,
         materiais: def.recompensa.materiais,
+        pecas,
       },
       // Só anuncia liberação quando o piso era NOVO. Repetir não libera nada.
       proximoPiso: piso > pisoMaxAntes ? Math.min(PROVACAO_PISOS, piso + 1) : 0,
@@ -1155,7 +1172,8 @@ export class Sim {
       danoRecebido: r.danoRecebido,
       recorde: false,
       recordeAnterior: 0,
-      ganhos: { sucata: 0, nucleos: 0, itens: 0, medalhas: 0, materiais: {} },
+      // Derrota nao paga nada, e por isso a lista de pecas nasce vazia.
+      ganhos: { sucata: 0, nucleos: 0, itens: 0, medalhas: 0, materiais: {}, pecas: [] },
       proximoPiso: 0,
       vidaRestanteDoChefe: vidaRestante,
       // A dica sai da RESISTÊNCIA real do chefe contra o elemento em uso. O §30
@@ -2497,6 +2515,23 @@ export class Sim {
    */
 
   /** Receita concreta exibida pela Bancada de Modulação. */
+  /**
+   * A raridade da peça prometida por um contrato.
+   *
+   * Existe para a tela poder desenhar a prévia SEM ler o tier do contato. O
+   * tier é escondido por decisão de design — mostrá-lo trocaria "com quem eu
+   * quero trabalhar" por "qual dá mais" —, e um teste varre `src/ui/` inteira
+   * para garantir que nenhum painel o leia.
+   *
+   * A raridade, essa, o jogador VÊ: é a peça que ele vai receber.
+   */
+  raridadePrometida(def: MissaoDef): Rarity {
+    const ex = def.recompensaExclusiva;
+    if (!ex) return 0 as Rarity;
+    if (ex.raridadeMin !== undefined) return ex.raridadeMin;
+    return raridadeExclusivaDoTier(def.giverId ? tierDoContatoPorId(def.giverId) : 1);
+  }
+
   modulationCost(
     uid: string,
     operacaoId: OperacaoDeModulacaoId,

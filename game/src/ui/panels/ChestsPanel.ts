@@ -5,7 +5,7 @@ import { itemName } from '@sim/loot';
 import type { Item, Rarity } from '@sim/types';
 import type { Sim } from '@sim/index';
 import { h, spriteIcon } from '../dom';
-import { buildItemCard } from '../ItemCard';
+import { esconderFicha, mostrarFichaDeItem } from '../FichaDeItem';
 import { RESOURCE_META } from '../recursos';
 import type { Panel } from './types';
 
@@ -54,44 +54,19 @@ export class ChestsPanel implements Panel {
   private lastOpen: { tier: string; items: Item[]; best: Rarity } | null = null;
 
   /**
-   * Ficha do item sob o cursor.
+   * A ficha do item mora em `ui/FichaDeItem.ts`.
    *
-   * Mora no `body`, e não dentro do painel, porque `.bau-col` é `overflow:
-   * hidden` — um cartão ancorado lá dentro seria cortado pela própria coluna
-   * assim que passasse da borda. É o mesmo caminho que o trilho já usa.
-   *
-   * Criado sob demanda: a maioria das aberturas de painel nunca chega a passar
-   * o mouse por um item, e um nó a mais no `body` por painel construído seria
-   * lixo acumulado a cada troca de aba.
+   * Ela nasceu AQUI, e saiu quando a Provação e as Missões passaram a mostrar
+   * itens também: copiá-la daria três posicionadoras, e a terceira já nasceria
+   * diferente das duas primeiras porque ninguém revisa os três lugares ao
+   * ajustar um deles.
    */
-  private ficha: HTMLElement | null = null;
-
-  private fichaDoItem(): HTMLElement {
-    if (!this.ficha) {
-      this.ficha = h('.item-card-float.hidden');
-      document.body.append(this.ficha);
-    }
-    return this.ficha;
-  }
-
   private mostrarFicha(sim: Sim, item: Item, alvo: HTMLElement): void {
-    const ficha = this.fichaDoItem();
-    ficha.replaceChildren(buildItemCard(sim, item));
-    ficha.classList.remove('hidden');
-
-    // Abre à direita do item; vira para a esquerda quando não couber, e nunca
-    // passa da borda de baixo da janela.
-    const spot = alvo.getBoundingClientRect();
-    const largura = ficha.offsetWidth || 236;
-    const altura = ficha.offsetHeight || 220;
-    const direita = spot.right + 10;
-    const cabe = direita + largura <= window.innerWidth - 8;
-    ficha.style.left = `${cabe ? direita : Math.max(8, spot.left - largura - 10)}px`;
-    ficha.style.top = `${Math.min(Math.max(8, spot.top - 12), Math.max(8, window.innerHeight - altura - 8))}px`;
+    mostrarFichaDeItem(sim, item, alvo);
   }
 
   private esconderFicha(): void {
-    this.ficha?.classList.add('hidden');
+    esconderFicha();
   }
 
   badge(sim: Sim): number {
