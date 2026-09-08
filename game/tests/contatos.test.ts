@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState, migrate } from '@sim/state';
+import type { GameState } from '@sim/types';
 import { BOSSES } from '@data/bosses';
 import { MISSOES, MISSAO_POR_ID, TIPO_DE_MISSAO } from '@data/missoes';
 import {
@@ -9,8 +10,7 @@ import {
 import { confiancaDaMissao } from '@data/balance/confianca';
 import {
   confiancaDe, contatoDesbloqueado, requisitoSatisfeito, requisitosPendentes,
-  sinalDoContato, situacaoDe, textoDoRequisito,
-} from '@sim/missoes';
+  sinalDoContato, situacaoDe, textoDoRequisito, progressoDe } from '@sim/missoes';
 
 /**
  * Contatos, confiança e requisitos declarativos.
@@ -44,6 +44,28 @@ function aceitar(state: { settings: { pinnedMissions: string[] } }, ...ids: stri
  */
 function aceitarTudo(state: { settings: { pinnedMissions: string[] } }): void {
   aceitar(state, ...MISSOES.map((m) => m.id));
+}
+
+/**
+ * Marca como entregue tudo que a missao pedida exige, recursivamente.
+ *
+ * As cadeias de contato passaram a ser ESTRITAS em 07/09: cada missao exige a
+ * anterior, o que e o ponto do desenho. Antes varias flutuavam soltas, e um
+ * teste podia saltar direto para o meio da cadeia. Este ajudante devolve esse
+ * salto sem afrouxar a regra.
+ */
+function liberarCadeia(state: GameState, id: string, vistos = new Set<string>()): void {
+  if (vistos.has(id)) return;
+  vistos.add(id);
+  const def = MISSAO_POR_ID.get(id);
+  if (!def) return;
+  for (const r of def.requisitos ?? []) {
+    if (r.tipo !== 'missaoConcluida') continue;
+    const anterior = MISSAO_POR_ID.get(r.missaoId);
+    if (!anterior) continue;
+    liberarCadeia(state, r.missaoId, vistos);
+    progressoDe(state, anterior).entregue = true;
+  }
 }
 
 describe('o elenco', () => {
@@ -220,6 +242,7 @@ describe('a confiança', () => {
     const sim = new Sim(createState(6));
     aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
+    liberarCadeia(sim.state, def.id);
     expect(confiancaDe(sim.state, def.giverId!)).toBe(0);
 
     sim.guardarMaterial('ferrita', 500);
@@ -255,6 +278,9 @@ describe('o sinal do contato (§8)', () => {
     expect(sinalDoContato(sim.state, p, sim.alcanceLiberado)).toBe('nova');
 
     // Completa uma: passa a "pronta", mesmo com outras ainda no zero.
+    // A cadeia de Kael e ESTRITA desde 07/09 -- `coleta_ferrita` exige as duas
+    // anteriores, entao libera-las e o que torna o objetivo alcancavel.
+    liberarCadeia(sim.state, 'coleta_ferrita');
     sim.guardarMaterial('ferrita', 500);
     expect(sinalDoContato(sim.state, p, sim.alcanceLiberado)).toBe('pronta');
   });
@@ -283,6 +309,9 @@ describe('entregar tudo (§20)', () => {
     sim.state.confianca.char_nucleo_ferrugem = 1;
 
     // Deixa duas prontas: uma comum e o especial.
+    // A cadeia de Kael e estrita desde 07/09, entao a comum precisa das
+    // anteriores entregues para chegar a "pronta".
+    liberarCadeia(sim.state, 'coleta_ferrita');
     sim.guardarMaterial('ferrita', 500);
     sim.registrar({ tipo: 'chefe', chefeId: 'nucleo_ferrugem', setor: 10 });
 

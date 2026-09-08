@@ -43,14 +43,55 @@ const INCLINACAO = 0.15;
 const peso = (posicao: number): number => 1 + Math.max(0, posicao) * INCLINACAO;
 
 /**
- * As missões de um contato, na ORDEM em que foram cadastradas.
+ * As missões de um contato, na ordem em que se DESTRAVAM.
  *
- * A ordem de declaração é a ordem da cadeia — é assim que as cadeias existentes
- * já são escritas, e um campo `ordem` à parte seria um segundo lugar para a
- * mesma informação, livre para discordar do primeiro.
+ * ## Por que não a ordem de declaração
+ *
+ * Foi a primeira tentativa, e ela estava errada. As missões de um contato não
+ * são escritas em sequência no arquivo — as sete antigas de Kael Voss estavam
+ * espalhadas entre missões de outros contatos, e as novas entraram no fim. O
+ * peso saía embaralhado: "Fronteira Interior", que vem logo depois de "Batismo
+ * de Fogo" na história, aparecia em quarto lugar.
+ *
+ * A ordem verdadeira já existe e está escrita nos REQUISITOS: cada missão
+ * declara qual ela exige. Derivar dali é o que garante que o peso siga a
+ * narrativa sem ninguém ter de manter uma segunda lista — e faz uma missão
+ * inserida no meio da cadeia acertar o lugar só por declarar o elo.
+ *
+ * ## O que acontece com o que não está ligado
+ *
+ * Missão sem elo vem primeiro, na ordem de declaração. É o caso das raízes de
+ * cadeia e de contatos que ainda não foram organizados; ordenar o resto em
+ * volta delas é melhor que recusar a lista inteira.
+ *
+ * Ciclo não trava: quem já saiu não volta, e o que sobrar entra no fim. Uma
+ * cadeia circular é erro de conteúdo, e o lugar de gritar sobre ela é um teste
+ * — não uma função que o jogo chama a cada entrega.
  */
 export function cadeiaDoContato(giverId: string): readonly MissaoDef[] {
-  return MISSOES.filter((m) => m.giverId === giverId);
+  const minhas = MISSOES.filter((m) => m.giverId === giverId);
+  const porId = new Map(minhas.map((m) => [m.id, m]));
+
+  /** De quem esta missão depende, dentro da MESMA cadeia. */
+  const exige = (m: MissaoDef): string[] =>
+    (m.requisitos ?? [])
+      .filter((r): r is Extract<typeof r, { tipo: 'missaoConcluida' }> => r.tipo === 'missaoConcluida')
+      .map((r) => r.missaoId)
+      .filter((id) => porId.has(id));
+
+  const ordenada: MissaoDef[] = [];
+  const dentro = new Set<string>();
+  let restam = [...minhas];
+
+  while (restam.length) {
+    const prontas = restam.filter((m) => exige(m).every((id) => dentro.has(id)));
+    // Ciclo: nada ficou pronto. Despeja o resto na ordem de declaração.
+    if (!prontas.length) { ordenada.push(...restam); break; }
+    for (const m of prontas) { ordenada.push(m); dentro.add(m.id); }
+    restam = restam.filter((m) => !dentro.has(m.id));
+  }
+
+  return ordenada;
 }
 
 /**

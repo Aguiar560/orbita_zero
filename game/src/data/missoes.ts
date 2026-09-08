@@ -297,7 +297,7 @@ export const MISSOES: readonly MissaoDef[] = [
     categoria: 'eliminacao', ritmo: 'campanha',
     objetivos: [{ fato: 'chefe', alvo: 3, texto: 'Derrotar 3 chefes' }],
     recompensa: { moedas: { cristal: 40 }, medalhas: 1, baus: { ouro: 1 } },
-    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'elim_primeiros' }],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_04_manifesto' }, { tipo: 'missaoConcluida', missaoId: 'elim_primeiros' }],
   },
   {
     id: 'elim_fogo',
@@ -326,6 +326,7 @@ export const MISSOES: readonly MissaoDef[] = [
       filtro: { recurso: 'ferrita' },
       texto: 'Coletar 500 de Ferrita',
     }],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'prog_setor_10' }],
     recompensa: { moedas: { sucata: 5_000 }, concessao: 'missao_carga_1' },
   },
   {
@@ -385,6 +386,7 @@ export const MISSOES: readonly MissaoDef[] = [
       filtro: { setorMin: 10 },
       texto: 'Concluir o setor 10',
     }],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'elim_primeiros' }],
     recompensa: { baus: { prata: 2 }, xp: 800 },
   },
   {
@@ -399,7 +401,7 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Alcançar a galáxia 2',
     }],
     recompensa: { medalhas: 2, baus: { ouro: 1 }, concessao: 'missao_carga_3' },
-    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'prog_setor_10' }],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'elim_chefes' }, { tipo: 'missaoConcluida', missaoId: 'prog_setor_10' }],
   },
   {
     id: 'prog_nivel_25',
@@ -503,7 +505,7 @@ export const MISSOES: readonly MissaoDef[] = [
     categoria: 'eliminacao', ritmo: 'campanha',
     objetivos: [{ fato: 'abate', alvo: 180, filtro: { elemento: 'cosmico', setorMin: 80 }, texto: 'Abater 180 inimigos cósmicos no setor 80+' }],
     recompensa: { materiais: { essencia_xeno: 40 }, xp: 4_000 },
-    proximas: ['org_xeno_2'], requisitos: [{ tipo: 'setorAlcancado', valor: 80 }],
+    proximas: ['org_xeno_2'], requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_11_silencio' }, { tipo: 'setorAlcancado', valor: 80 }],
   },
   {
     id: 'org_xeno_2', giverId: 'char_kael_voss', tipo: 'especial',
@@ -516,7 +518,7 @@ export const MISSOES: readonly MissaoDef[] = [
     ],
     consomeNaEntrega: { essencia_xeno: 25 },
     recompensa: { materiais: { cristal_vivo: 20 }, medalhas: 2, baus: { singularidade: 1 } },
-    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_xeno_1' }],
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_xeno_1' }, { tipo: 'missaoConcluida', missaoId: 'org_xeno_1' }],
   },
 
   // ── contrato especial e cadeia bloqueada (§4.4, §16) ──────────────────────
@@ -565,6 +567,141 @@ export const MISSOES: readonly MissaoDef[] = [
     objetivos: [{ fato: 'abate', alvo: 300, filtro: { elemento: 'fogo' }, texto: 'Abater 300 inimigos de fogo' }],
     requisitos: [{ tipo: 'confianca', personagem: 'char_nucleo_ferrugem', valor: 4 }],
     recompensa: { medalhas: 5, baus: { singularidade: 1 } },
+  },
+
+  // ══ A CADEIA DE KAEL VOSS ═══════════════════════════════════════════════
+  //
+  // Quinze missões ligadas, da primeira salva até a peça que leva o nome dele.
+  // O arco é o da própria partida: um piloto que ninguém conhece vira a razão
+  // de a frota conseguir sair — e descobre, no caminho, por que ela precisava
+  // sair com tanta pressa.
+  //
+  // A ORDEM aqui é a ordem da cadeia: `balance/confianca.ts` deriva dela
+  // quanta confiança cada missão entrega, e as quinze somam exatamente o teto.
+  // Mover um bloco de lugar muda o valor das quinze — de propósito, porque a
+  // posição É o peso.
+  {
+    id: 'kael_04_manifesto',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 0,
+    nome: 'Manifesto de Carga',
+    descricao: 'Kael precisa saber o que a doca consegue mover em uma volta. Encha o porão e volte inteiro.',
+    categoria: 'coleta', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'item', alvo: 12, texto: 'Recolher 12 peças em campo' },
+      { fato: 'setor', alvo: 3, texto: 'Concluir 3 setores' },
+    ],
+    recompensa: { moedas: { sucata: 3_200 }, materiais: { ferrita: 40 }, xp: 600 },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'coleta_ferrita' }],
+  },
+  {
+    id: 'kael_07_arqueiro',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 1,
+    nome: 'Arqueiro de Popa',
+    descricao: 'A escolta da frota atira para trás enquanto foge. Kael quer saber se você aguenta o contrário.',
+    categoria: 'eliminacao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'abate', alvo: 250, filtro: { setorMin: 11 }, texto: 'Abater 250 inimigos no setor 11 ou além' },
+    ],
+    recompensa: { moedas: { sucata: 5_000, nucleo: 900 }, xp: 1_100, baus: { prata: 1 } },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'prog_galaxia_2' }],
+  },
+  {
+    id: 'kael_08_lastro',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 1,
+    nome: 'Lastro de Pirita',
+    descricao: 'A doca de partida corrói por dentro. Pirita segura a corrosão por mais uma temporada.',
+    categoria: 'entrega', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'recurso', alvo: 180, filtro: { recurso: 'pirita' }, somaQuantidade: true, texto: 'Reunir 180 de pirita' },
+    ],
+    consomeNaEntrega: { pirita: 180 },
+    recompensa: { moedas: { cristal: 30 }, materiais: { ferrita: 90 }, xp: 1_400 },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_07_arqueiro' }],
+  },
+  {
+    id: 'kael_09_cabecas',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 2,
+    nome: 'Três Cabeças',
+    descricao: 'Quem manda nas rotas de saída não usa uniforme. Kael marcou os três que usam.',
+    categoria: 'eliminacao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'chefe', alvo: 6, filtro: { setorMin: 11 }, texto: 'Derrotar 6 chefes no setor 11 ou além' },
+    ],
+    recompensa: { moedas: { cristal: 60 }, medalhas: 1, baus: { ouro: 1 }, xp: 2_000 },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_08_lastro' }],
+  },
+  {
+    id: 'kael_10_bancada',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 2,
+    nome: 'Bancada Improvisada',
+    descricao: 'Sem oficina, a frota conserta o que tem com o que sobra. Mostre que dá para melhorar uma peça no caminho.',
+    categoria: 'progressao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'fusao', alvo: 3, filtro: { subiu: true }, texto: 'Subir 3 peças de raridade na Fabricação' },
+    ],
+    recompensa: { moedas: { nucleo: 2_500 }, materiais: { diamantita: 60 }, xp: 2_600, concessao: 'chefe_g1' },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_09_cabecas' }],
+  },
+  {
+    id: 'kael_11_silencio',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 3,
+    nome: 'O Silêncio de Titânio',
+    descricao: 'As docas da quarta galáxia pararam de responder há dois ciclos. Kael não diz o que espera encontrar.',
+    categoria: 'progressao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'galaxia', alvo: 1, filtro: { galaxiaMin: 3 }, texto: 'Concluir a galáxia 4' },
+      { fato: 'recurso', alvo: 220, filtro: { recurso: 'titanio' }, somaQuantidade: true, texto: 'Reunir 220 de titânio' },
+    ],
+    recompensa: { moedas: { sucata: 22_000, cristal: 45 }, xp: 4_000, baus: { ouro: 2 } },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_10_bancada' }],
+  },
+  {
+    id: 'kael_13_conta',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 8,
+    nome: 'A Conta da Partida',
+    descricao: 'Kael abre o registro: a frota não fugia de uma guerra. Fugia de uma dívida — e ela cobra juros em cada setor.',
+    categoria: 'eliminacao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'abate', alvo: 900, filtro: { setorMin: 81 }, texto: 'Abater 900 inimigos no setor 81 ou além' },
+      { fato: 'chefe', alvo: 10, filtro: { setorMin: 81 }, texto: 'Derrotar 10 chefes no setor 81 ou além' },
+    ],
+    recompensa: { moedas: { cristal: 120 }, medalhas: 2, xp: 12_000, baus: { ouro: 3 } },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_xeno_2' }],
+  },
+  {
+    id: 'kael_14_ultima_doca',
+    giverId: 'char_kael_voss', tipo: 'principal', galaxiaId: 9,
+    nome: 'A Última Doca',
+    descricao: 'A frota de partida vai parar de partir. Kael quer que a última saída seja a que ninguém consiga fechar atrás.',
+    categoria: 'progressao', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'galaxia', alvo: 1, filtro: { galaxiaMin: 9 }, texto: 'Concluir a galáxia 10' },
+      { fato: 'item', alvo: 6, filtro: { raridadeMin: 3 }, texto: 'Recolher 6 peças Épicas ou melhores' },
+    ],
+    recompensa: { moedas: { sucata: 80_000, cristal: 90 }, materiais: { obsidiana: 120 }, xp: 20_000 },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_13_conta' }],
+  },
+  {
+    id: 'kael_15_assinatura',
+    giverId: 'char_kael_voss', tipo: 'especial', galaxiaId: 9,
+    nome: 'Assinatura de Voss',
+    descricao: 'Kael desmonta o próprio painel de coordenação e entrega as peças. "A frota já sabe o caminho. Você vai precisar mais que eu."',
+    categoria: 'entrega', ritmo: 'campanha',
+    objetivos: [
+      { fato: 'chefe', alvo: 15, filtro: { setorMin: 91 }, texto: 'Derrotar 15 chefes no setor 91 ou além' },
+    ],
+    recompensa: { moedas: { cristal: 200 }, medalhas: 3, xp: 30_000, baus: { singularidade: 1 } },
+    recompensaExclusiva: {
+      nome: 'PAINEL DE VOSS',
+      de: 'KAEL VOSS',
+      // O SLOT é o suporte: a peça é um painel de coordenação, não uma arma.
+      // Um contato que passou quinze missões organizando a frota não entrega um
+      // canhão no fim — entrega o instrumento com que ele fazia o trabalho.
+      slot: 'suporte',
+      // Sem `raridadeMin`: o TIER do contato decide. Kael é tier 1, então sai
+      // Épico — e o dia em que ele mudar de tier, a peça acompanha sozinha.
+    },
+    requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_14_ultima_doca' }],
   },
 ];
 

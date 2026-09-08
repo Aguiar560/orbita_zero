@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState, migrate } from '@sim/state';
+import type { GameState } from '@sim/types';
 import {
   MISSOES, MISSAO_POR_ID, quantoConta,
   type FatoDeJogo, type Objetivo,
@@ -48,6 +49,26 @@ function aceitar(state: { settings: { pinnedMissions: string[] } }, ...ids: stri
  */
 function aceitarTudo(state: { settings: { pinnedMissions: string[] } }): void {
   aceitar(state, ...MISSOES.map((m) => m.id));
+}
+
+/**
+ * Marca como entregue tudo que a missao pedida exige, recursivamente.
+ *
+ * As cadeias de contato passaram a ser ESTRITAS em 07/09: cada missao exige a
+ * anterior, o que e o ponto do desenho. Antes varias flutuavam soltas, e um
+ * teste podia saltar direto para o meio da cadeia. Este ajudante devolve esse
+ * salto sem afrouxar a regra.
+ */
+function liberarCadeia(state: GameState, id: string, vistos = new Set<string>()): void {
+  if (vistos.has(id)) return;
+  vistos.add(id);
+  const def = MISSAO_POR_ID.get(id);
+  if (!def) return;
+  for (const r of def.requisitos ?? []) {
+    if (r.tipo !== 'missaoConcluida') continue;
+    liberarCadeia(state, r.missaoId, vistos);
+    progressoDe(state, MISSAO_POR_ID.get(r.missaoId)!).entregue = true;
+  }
 }
 
 describe('o catálogo', () => {
@@ -210,6 +231,8 @@ describe('o resgate', () => {
     const sim = new Sim(createState(4));
     aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
+    // A cadeia de Kael e ESTRITA desde 07/09: cada missao exige a anterior.
+    liberarCadeia(sim.state, def.id);
     const espacosAntes = sim.cargoSlots;
 
     // Completa pela porta da frente: guardar ferrita dispara o fato sozinho.
@@ -296,6 +319,8 @@ describe('o rastreador', () => {
     const sim = new Sim(createState(15));
     aceitarTudo(sim.state);
     const def = MISSAO_POR_ID.get('coleta_ferrita')!;
+    // A cadeia de Kael e ESTRITA desde 07/09: cada missao exige a anterior.
+    liberarCadeia(sim.state, def.id);
     sim.state.settings.pinnedMissions = [def.id];
     sim.guardarMaterial('ferrita', 500);
 
