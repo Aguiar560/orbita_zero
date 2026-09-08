@@ -1121,10 +1121,36 @@ A constante morava em `sim/index.ts`, o que criava ciclo e impedia
 da curva com que foi calibrada em conjunto — que é onde a regra do projeto diz
 que balanceamento mora.
 
-**Falta para o servidor PAGAR:** o cliente declarar os encontros (setor, onda,
-abates) em vez do XP. O cálculo já está provado; o que resta é a contabilidade
-do cliente — e ela precisa ser completa, senão o jogador perde o XP das fontes
-que ficarem de fora (missões, que ainda não têm preço no servidor).
+#### Passo 7 ✅ — o cliente DECLARA os encontros (09/09)
+
+`state.encontros` guarda, por `setor:onda`, quantos inimigos morreram desde a
+última drenagem. É o que substitui a declaração de XP: o cliente passa a dizer
+"enfrentei a onda 3 do setor 40 e matei 51", e o servidor calcula o preço
+sozinho com `precoDoEncontro` e a semente que ele guarda.
+
+Três decisões, cada uma com teste:
+
+- **Anotado em `premiarAbates`, e só ali.** É o funil único do abate — a cena e
+  o `abstractTick` passam pelos dois. Anotar em outro lugar deixaria um dos
+  caminhos de fora, e quem jogasse com a aba fechada perderia o XP dele quando
+  o servidor virasse pagador.
+- **No SAVE, não em memória.** Fechar a aba entre duas drenagens é o caso comum
+  num jogo idle; em memória, esse trecho sumiria.
+- **Um mapa, não uma lista.** Abater é contínuo: a mesma onda recebe dezenas de
+  chamadas, e é a SOMA que o preço precisa.
+
+**O invariante que autoriza virar a chave**, e o teste mais importante da fase:
+
+> a soma de `precoDoEncontro` sobre os encontros declarados é igual ao XP que o
+> jogo creditou por combate.
+
+Vale nos setores 1, 8 e 40, percorrendo o setor inteiro onda a onda. Se não
+valesse, a diferença seria exatamente o que o jogador perderia.
+
+**Falta só virar a chave:** `gravarProgresso` montar o `GameState` (como
+`/ausencia` já faz) para ter o equipamento, precificar os `encontros` e pagar
+isso em vez do XP declarado. As missões continuam declarando XP até terem preço
+próprio, então o pagamento é `preço dos encontros + XP das outras fontes`.
 
 **O desenho que sai disso:**
 

@@ -638,6 +638,27 @@ export interface GameState {
   universe: UniverseState;
 
   chests: Record<string, number>;
+
+  /**
+   * Os encontros enfrentados desde a última drenagem, por `setor:onda`.
+   *
+   * O valor é quantos inimigos daquele encontro morreram. É o que o cliente
+   * DECLARA para o servidor precificar — ele não manda mais "ganhei X de XP",
+   * manda "enfrentei a onda 3 do setor 40 e matei 51".
+   *
+   * ## Por que no save, e não em memória
+   *
+   * Fechar a aba entre duas drenagens é o caso comum num jogo idle. Se a
+   * declaração vivesse em memória, esse trecho de jogo sumiria — e o jogador
+   * perderia o XP dele, que é exatamente o erro que esta fase existe para não
+   * cometer.
+   *
+   * ## Por que é um mapa, e não uma lista
+   *
+   * Abater é contínuo: a mesma onda recebe dezenas de chamadas. Uma lista teria
+   * uma entrada por chamada; o mapa soma. E a soma é o que o preço precisa.
+   */
+  encontros: Record<string, number>;
   /** Chefes já derrotados alguma vez — alimenta o códex. */
   codex: string[];
 

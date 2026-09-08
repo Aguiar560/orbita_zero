@@ -1349,8 +1349,37 @@ export class Sim {
     // perfil.
     this.grantXp((2 + e.bounty * 0.25) * (e.abatesDeReferencia / Math.max(1, e.unidades)) * abates);
     this.state.stats.kills += abates;
+    this.declararEncontro(abates);
   }
 
+
+  /**
+   * Anota que este encontro rendeu mais alguns abates.
+   *
+   * ## O que ela substitui
+   *
+   * A declaração de XP. Até aqui o cliente dizia ao servidor "ganhei X", e o
+   * servidor acreditava — era o buraco que sobrava depois da Fase 4. Agora ele
+   * diz "enfrentei a onda 3 do setor 40 e matei 51", e o servidor calcula o
+   * preço sozinho, com `precoDoEncontro` e a semente que ele guarda.
+   *
+   * ## Por que aqui, e só aqui
+   *
+   * `premiarAbates` é o funil único do abate — tanto a cena quanto o caminho
+   * abstrato passam por ele. Anotar em qualquer outro lugar deixaria de fora
+   * um dos dois, e o jogador perderia o XP daquele caminho quando o servidor
+   * passar a pagar. É o mesmo motivo de `grantXp` ser o funil único do XP.
+   *
+   * O teto por encontro é `unidades`: declarar mais do que a onda tem não paga
+   * mais. O servidor apara de novo, mas aparar aqui mantém o save honesto.
+   */
+  private declararEncontro(abates: number): void {
+    if (!(abates > 0)) return;
+    const e = this.encounter;
+    const chave = `${e.sector}:${e.wave}`;
+    const atual = this.state.encontros[chave] ?? 0;
+    this.state.encontros[chave] = Math.min(atual + abates, Math.max(1, e.unidades));
+  }
   /**
    * Recompensa de um abate individual — o caminho DA CENA.
    *

@@ -126,6 +126,7 @@ export function createState(
     universe: { index: 0, seed, modifiers: [], bestSector: 1, bestSectorEver: 1 },
 
     chests: {},
+    encontros: {},
     codex: [],
     missoes: {},
     eventos: {},
@@ -278,6 +279,9 @@ export function migrate(raw: unknown): GameState | null {
       ...(piloto ? [pilotoDe(piloto).casco] : []),
     ])],
     codex: Array.isArray(data.codex) ? data.codex : [],
+    // Save de antes da Fase 5 não tem: nasce vazio, e o jogo segue.
+    encontros: (data.encontros && typeof data.encontros === 'object')
+      ? data.encontros as Record<string, number> : {},
     // Save anterior ao §27 não tem nem um nem outro. Ambos nascem vazios em vez
     // de travar o boot — a regra que não se negocia é "save malformado não
     // impede jogar".
