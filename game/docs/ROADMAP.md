@@ -80,15 +80,26 @@ de cósmico. O teto do peso elemental existe justamente para não transformar
 isso na mesma silhueta repetida a onda inteira. **Duas ou três naves regulares
 de gelo resolvem, e nada em código resolve.**
 
-### Achado de lado, não corrigido
+### Achado de lado, e uma medição minha que estava errada
 
 O teste `offline-online` exigia que `applyOffline` e o laço de `abstractTick`
-ficassem a menos de 10% um do outro. Medido sobre 120 combinações de semente e
-setor, a diferença real vai de **−13% a +750%**, com média +85% — e é
-**idêntica antes desta mudança**, então não é regressão. O limite de 10% valia
-para uma semente num setor, e mais nada. A asserção passou a cobrar o
-invariante de verdade (o offline não pode render MENOS), e a divergência dos
-setores fundos ficou registrada como assunto próprio.
+ficassem a menos de 10% um do outro, e quebrou com a nova composição de ondas.
+
+Publiquei primeiro que a diferença real ia de −13% a **+750%**, com média +85%.
+**Estava errado.** A conta dividia por um XP quase nulo nos setores onde o
+jogador não progride, e a razão ali mede ruído. Refeita sobre as 71
+combinações em que há progresso, a diferença é de **0,87× a 1,27×, mediana
+0,99×** — ou seja, praticamente nenhuma. Com o mesmo passo dos dois lados a
+razão dá 1,00 exato: `applyOffline` não é um caminho separado, é o mesmo
+`abstractTick` andando de 2 em 2 segundos.
+
+A folga passou para 30%, com o intervalo medido escrito no teste.
+
+O que os setores descartados escondiam é um defeito de verdade, ainda **não**
+**corrigido**: a **morte conta por PASSO e não por segundo**. No setor 90 a nave
+morre 300 vezes com passo de 2 s e **1.200 vezes** com passo de 0,5 s, no mesmo
+tempo de relógio — quem deixa a aba aberta num setor alto demais morre quatro
+vezes mais que quem a fecha.
 
 1.169 testes passando.
 

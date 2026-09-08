@@ -98,24 +98,33 @@ describe('o ganho é o mesmo nos dois modos', () => {
 
     expect(r.seconds).toBe(600);
     /**
-     * A asserção é de UM LADO só, e o motivo é medido.
+     * A folga é de 30%, e o número é medido — não escolhido.
      *
-     * Ela era `|razão − 1| < 10%`, com a explicação de que a diferença vinha do
-     * grão (`applyOffline` anda de 2 em 2 s; o laço acima, de 0,5 em 0,5 s).
-     * Medido em 07/09 sobre 120 combinações de semente e setor, a diferença
-     * NÃO cabe em 10%: ela vai de −13% a +750%, e a média é +85%. O limite de
-     * 10% valia para esta semente neste setor, e mais nada — foi coincidência,
-     * e ela quebrou quando a composição das ondas mudou.
+     * `applyOffline` NÃO é um caminho separado: ele chama o mesmo
+     * `abstractTick` deste laço, só que de 2 em 2 segundos em vez de 0,5 em
+     * 0,5. Com o mesmo passo dos dois lados a razão dá 1,00 exato em todo
+     * setor testado — o que sobra é puro efeito do grão.
      *
-     * O que este teste existe para impedir é o DESCONTO: `OFFLINE_EFFICIENCY`
-     * era 0,6, e ficar ausente rendia menos. Então o que se cobra é que o
-     * offline não fique abaixo do direto — o pior caso medido é −13%, e 0,8 dá
-     * margem sem deixar passar um 0,6 de volta.
+     * Medido em 07/09, 71 combinações de semente e setor em que o jogador de
+     * fato progride: a razão vai de 0,87× a 1,27×, com mediana 0,99×. A folga
+     * de 10% que estava aqui era apertada demais para isso e vivia de sorte —
+     * quebrou assim que a composição das ondas mudou.
      *
-     * A divergência de +750% em setores fundos é outro assunto, e está
-     * registrada: os dois caminhos precisam de uma medição própria.
+     * O que este teste impede é o DESCONTO: `OFFLINE_EFFICIENCY` era 0,6, e
+     * ficar ausente rendia menos. 0,7 no piso deixa a variação do grão passar
+     * e não deixa um 0,6 voltar.
+     *
+     * As combinações descartadas da medição são as do jogador parado num setor
+     * alto demais, que ganha quase nada em dez minutos: ali a razão divide por
+     * quase zero e vira ruído. Foi o que me fez publicar um "+750%" que não
+     * existia. O que existe naqueles setores é outra coisa, e está registrada:
+     * a MORTE conta por passo e não por segundo — no setor 90 a nave morre 300
+     * vezes com passo de 2 s e 1.200 com passo de 0,5 s, no mesmo tempo de
+     * relógio.
      */
-    expect(a.state.command.xp / Math.max(1, direto)).toBeGreaterThan(0.8);
+    const razao = a.state.command.xp / Math.max(1, direto);
+    expect(razao, `offline rendeu ${razao.toFixed(2)}x o direto`).toBeGreaterThan(0.7);
+    expect(razao, `offline rendeu ${razao.toFixed(2)}x o direto`).toBeLessThan(1.4);
   });
 });
 
