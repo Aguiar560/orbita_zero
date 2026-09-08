@@ -8,8 +8,67 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.197 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.201 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — auditoria: o que mais se perdia ao atualizar a página
+
+Pedido do Rafael depois do defeito da nave: "verifique se outras coisas estão
+assim também, pois ao atualizar a página nada pode ser perdido".
+
+A auditoria percorreu os **30 campos** do save e cruzou dois critérios: o campo
+sobe para a nuvem? o servidor o devolve no boot? Um campo que `semODinheiro`
+arranca e que ninguém devolve morre quando o save da nuvem vence.
+
+### Achado 1 — as filas de saída eram zeradas
+
+Dos dez campos arrancados por `semODinheiro`, oito voltam de alguma tabela
+(carteira, itens, frota, progresso, naves_progresso). Dois não voltavam de
+lugar nenhum: **`pendentes` e `comandosDeItem`**.
+
+Eles são arrancados de propósito — são fila de SAÍDA, e subi-las faria o outro
+aparelho baixar movimentos que este ainda vai enviar. Só que adotar o save da
+nuvem então ZERAVA as duas: tudo que o jogador fez e o servidor ainda não
+confirmou — coletar, equipar, descartar, um ganho de sucata com a rede fora —
+sumia na recarga, sem sintoma nenhum.
+
+Agora `comAsFilasDaqui` preserva as duas ao adotar. É seguro porque a fila só
+é esvaziada quando o servidor CONFIRMA: o que está nela, por construção, ainda
+não foi aplicado em lugar nenhum.
+
+### Achado 2 — a Matriz podia ser desfeita por uma aba velha
+
+Mesma classe do casco em campo. A Matriz sobe **inteira** (é escolha, não
+acúmulo: o servidor grava a lista que chega por cima da que tinha), e ela subia
+em toda drenagem. Qualquer aba virava uma ordem — inclusive uma com o pacote
+antigo em cache, que desfaria a alocação feita na outra.
+
+Agora ela só sobe quando difere da última confirmada pelo servidor. Encontrado
+antes de alguém perder uma Matriz por causa disso.
+
+### O que a auditoria declarou SEGURO
+
+| campo | por quê |
+|---|---|
+| `resources`, `vip` | voltam da carteira |
+| `inventory`, `naves[].equipped` | voltam da tabela `itens` |
+| `fleet` | volta da tabela `frota` |
+| `command` (xp, nível, Matriz) | volta de `progresso` |
+| `armazem` | volta de `progresso` (materiais) |
+| `universe.bestSectorEver` | volta de `progresso` (monotônico) |
+| `naves[].xp` e `.nivel` | voltam de `naves_progresso` |
+| `hull` | volta de `progresso.casco_em_campo` |
+
+Os demais — `missoes`, `eventos`, `chests`, `codex`, `confianca`, `provacao`,
+`stats`, `settings`, `shop`, `servicos`, `run`, `medalhas`, `playtime`,
+`lifetime`, `piloto`, `cargaLiberada` — **sobem inteiros no save da nuvem**,
+então uma recarga não os toca. Eles não têm cópia em tabela: some o save local
+E o da nuvem, some o progresso. É dívida conhecida, e de outra natureza —
+nenhum deles se perde ao atualizar a página, que era a pergunta.
+
+1.201 testes passando.
 
 ---
 

@@ -340,6 +340,33 @@ export async function reconciliar(local: GameState): Promise<Reconciliacao> {
  * outro dispositivo baixar movimentos que este ainda vai enviar — e o mesmo
  * ganho entraria duas vezes no livro.
  */
+/**
+ * O save da nuvem, com as FILAS DE SAÍDA deste aparelho preservadas.
+ *
+ * `semODinheiro` arranca `pendentes` e `comandosDeItem` de propósito: são fila
+ * de saída, não progresso, e subir a fila faria o outro aparelho baixar
+ * movimentos que este ainda vai enviar — o mesmo ganho entraria duas vezes no
+ * livro.
+ *
+ * A consequência era que adotar o save da nuvem ZERAVA as duas filas. Tudo que
+ * o jogador fez e ainda não foi confirmado — coletar, equipar, descartar, um
+ * ganho de sucata com a rede fora — sumia na recarga, sem sintoma.
+ *
+ * Preservar é seguro porque a fila só é esvaziada quando o servidor CONFIRMA:
+ * o que está nela, por construção, ainda não foi aplicado em lugar nenhum.
+ *
+ * Levantado em 08/09, na auditoria do "ao atualizar a página nada pode ser
+ * perdido": destes campos, `pendentes` e `comandosDeItem` eram os únicos
+ * arrancados que ninguém devolvia.
+ */
+export function comAsFilasDaqui(daNuvem: GameState, local: GameState): GameState {
+  return {
+    ...daNuvem,
+    pendentes: [...local.pendentes, ...daNuvem.pendentes],
+    comandosDeItem: [...local.comandosDeItem, ...daNuvem.comandosDeItem],
+  };
+}
+
 function semODinheiro(estado: GameState): GameState {
   // Cópia rasa e sobrescrita dos três campos: clonar fundo o save inteiro a
   // cada subida custaria mais que a requisição, e nada aqui muda em

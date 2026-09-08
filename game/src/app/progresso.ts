@@ -75,7 +75,7 @@ let cascoEscolhido: string | null = null;
  * espelho tinha o XP do servidor e o marco tinha zero. O primeiro dreno mandava
  * o total como se fosse ganho e DOBRAVA o XP do jogador, em silêncio.
  */
-let marco = { xp: 0, naves: {} as Record<string, number> };
+let marco = { xp: 0, naves: {} as Record<string, number>, matriz: [] as string[] };
 
 export const progressoPronto = (): boolean => sincronizado;
 
@@ -120,6 +120,10 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
  * continua limitando cada envio. O que muda é que uma leitura não destrói o
  * que ainda não subiu.
  */
+/** Duas alocações são a mesma? A ordem importa: ela é o caminho até a raiz. */
+const mesmaMatriz = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((no, i) => no === b[i]);
+
 function adotar(sim: Sim, r: Remoto): void {
   const piloto = nivelPorXpAcumulado(
     Math.max(r.xp, xpAcumuladoDe(sim.state.command, curvaXpPersonagem)),
@@ -157,7 +161,7 @@ function adotar(sim: Sim, r: Remoto): void {
     sim.state.hull = r.cascoEmCampo;
   }
 
-  marco = { xp: r.xp, naves: { ...r.naves } };
+  marco = { xp: r.xp, naves: { ...r.naves }, matriz: [...r.matriz] };
   sincronizado = true;
   sim.touch();
 }
@@ -217,7 +221,16 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
   const corpo = {
     xp: dXp,
     setor: s.universe.bestSectorEver,
-    matriz: s.command.allocated,
+    /**
+     * A Matriz sobe INTEIRA, então só sobe quando MUDOU.
+     *
+     * É escolha, não acúmulo: o servidor grava a lista que chega por cima da
+     * que tinha. Mandá-la em toda drenagem fazia de qualquer aba uma ordem — e
+     * uma aba com o pacote antigo em cache desfazia a alocação feita na outra.
+     * É a mesma classe de defeito do casco em campo, encontrada na auditoria
+     * de 08/09 antes de alguém perder uma Matriz por causa dela.
+     */
+    matriz: mesmaMatriz(s.command.allocated, marco.matriz) ? undefined : s.command.allocated,
     naves: dNaves,
     /**
      * Só a ESCOLHA sobe, e só quando é DA PESSOA.
@@ -246,5 +259,8 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
 /** Esquece o espelho ao trocar de conta. */
 export function esquecerProgresso(): void {
   sincronizado = false;
-  marco = { xp: 0, naves: {} };
+  marco = { xp: 0, naves: {}, matriz: [] };
+  // A escolha de nave tambem e por conta: uma pendencia da conta anterior
+  // gravaria o casco dela na conta que acabou de entrar.
+  cascoEscolhido = null;
 }

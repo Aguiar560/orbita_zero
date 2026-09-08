@@ -20,7 +20,7 @@ import { Shell } from '@ui/Shell';
 import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
 import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
-import { progressoDe, reconciliar, subirSave } from './nuvem';
+import { comAsFilasDaqui, progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
 import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
@@ -435,7 +435,9 @@ export class Game {
         // sessão: a trava de gravação ainda estaria de pé, e o save que acabou
         // de descer nunca chegaria ao disco.
         allowSaving();
-        this.sim.state = r.estado;
+        // As filas de saída DESTE aparelho não vão embora com o save antigo:
+        // elas são o que o jogador fez e o servidor ainda não confirmou.
+        this.sim.state = comAsFilasDaqui(r.estado, this.sim.state);
         this.sim.touch();
         this.sim.save();
       }
