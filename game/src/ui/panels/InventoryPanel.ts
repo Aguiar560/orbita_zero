@@ -7,6 +7,7 @@ import { getElement } from '@data/elements';
 import { colunasDaGrade } from '@data/balance/capacidade';
 import { ELEMENTS } from '@data/elements';
 import { SLOTS } from '@data/items';
+import { retornoDeDesmanche, valorDeVenda } from '@data/balance/descarte';
 import { RECURSO_POR_ID } from '@data/recursos';
 import type { ElementId } from '@sim/types';
 
@@ -91,12 +92,9 @@ export class InventoryPanel implements Panel {
   /** Só favoritos — o inventário nasce com 15 espaços, então marcar importa. */
   private soFavoritos = false;
   private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
-  /** Pequeno atraso para o cursor conseguir sair da célula e entrar na ficha. */
-  private relogioDoTip = 0;
-  private readonly tip = h('.inv-tip.hidden', {
-    onmouseenter: () => window.clearTimeout(this.relogioDoTip),
-    onmouseleave: () => this.tip.classList.add('hidden'),
-  });
+  /** Seleção exclusiva das ações em lote; não interfere na peça da Anatomia. */
+  private readonly selecionados = new Set<string>();
+  private readonly tip = h('.inv-tip.hidden');
 
   badge(sim: Sim): number {
     return sim.state.inventory.length;
@@ -104,6 +102,7 @@ export class InventoryPanel implements Panel {
 
   render(sim: Sim): HTMLElement {
     const items = this.sorted(sim);
+    const lote = this.itensSelecionados(sim);
     // A grade tem exatamente os espaços que o jogador LIBEROU (§28), não um
     // número fixo. Desenhar 70 células com capacidade 15 mostrava 55 espaços
     // que não existem — o oposto do que um inventário apertado deve comunicar.
@@ -209,19 +208,16 @@ export class InventoryPanel implements Panel {
             h('span.muted.tiny', { text: 'OCUPAÇÃO' }),
             h('strong.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
           ),
-          // Os botões de VENDER e DESMONTAR em lote saíram: vão voltar como
-          // funcionalidade premium. A venda e o desmonte peça a peça continuam,
-          // por Alt+clique e Shift+clique — o que saiu é fazer os dois de uma vez
-          // na barra inteira, não a ação.
         ),
       ),
 
       h('p.muted.tiny.hint', { text: usaSelecaoPorToque()
-        ? 'Toque em uma peça para ver seus atributos e selecioná-la; depois toque no soquete da Anatomia.'
-        : 'Clique equipa · Shift+clique desmonta · Alt+clique vende · botão direito favorita.' }),
+        ? 'Toque na peça para ver atributos. Use a marca no canto para selecionar várias.'
+        : 'Clique equipa · marque no canto para vender ou desmontar várias · botão direito favorita.' }),
       h('.inv-wrap', {},
         this.tip,
         grade(colunasDaGrade(capacidade), cells)),
+      this.barraDeLote(sim, lote),
     );
   }
 
@@ -272,9 +268,30 @@ export class InventoryPanel implements Panel {
     const alvoValido = !!mira && (item.element ?? 'padrao') !== mira.elemento;
 
     const selecionado = itemArrastado()?.uid === item.uid;
-    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}${classeDeExclusivo(item)}`, {
+    const marcado = this.selecionados.has(item.uid);
+    const cell = h(`.inv-cell${mira ? (alvoValido ? '.mirado' : '.fora-de-mira') : ''}${selecionado ? '.selecionado' : ''}${marcado ? '.marcado' : ''}${classeDeExclusivo(item)}`, {
       style: { borderColor: info.color, boxShadow: `inset 0 0 16px ${info.glow}` },
     }, spriteIcon(item.icon, 40));
+
+    if (!mira) {
+      cell.append(h(`button.inv-lote-toggle${marcado ? '.ativo' : ''}`, {
+        type: 'button',
+        text: marcado ? '✓' : '',
+        disabled: item.favorite,
+        'aria-label': item.favorite
+          ? 'Item favorito protegido'
+          : `${marcado ? 'Remover' : 'Adicionar'} item da seleção`,
+        'aria-pressed': String(marcado),
+        title: item.favorite ? 'Desmarque o favorito para selecionar' : 'Selecionar para vender ou desmontar',
+        onclick: (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (marcado) this.selecionados.delete(item.uid);
+          else this.selecionados.add(item.uid);
+          sim.touch();
+        },
+      }));
+    }
 
     // Elemento no canto inferior esquerdo: numa grade de setenta ícones, é o
     // que permite achar "o canhão de gelo" sem passar o mouse em cada célula.
@@ -305,16 +322,8 @@ export class InventoryPanel implements Panel {
     });
     cell.addEventListener('dragend', () => encerrarArraste());
 
-    cell.addEventListener('mouseenter', () => {
-      window.clearTimeout(this.relogioDoTip);
-      this.showTip(sim, item, cell, gain);
-    });
-    cell.addEventListener('mouseleave', () => {
-      window.clearTimeout(this.relogioDoTip);
-      this.relogioDoTip = window.setTimeout(() => {
-        if (!this.tip.matches(':hover')) this.tip.classList.add('hidden');
-      }, 140);
-    });
+    cell.addEventListener('mouseenter', () => this.showTip(sim, item, cell, gain));
+    cell.addEventListener('mouseleave', () => this.tip.classList.add('hidden'));
     cell.addEventListener('click', (e) => {
       // Modo de seleção intercepta TUDO: enquanto a carga está ativa, clicar
       // não equipa nem vende. Uma grade que faz duas coisas diferentes conforme
@@ -346,9 +355,13 @@ export class InventoryPanel implements Panel {
       }
       if (e.altKey) {
         e.preventDefault();
-        this.vender(sim, item);
+        this.selecionados.clear();
+        this.selecionados.add(item.uid);
+        this.confirmarVenda(sim);
       } else if (e.shiftKey) {
-        this.desmontar(sim, item);
+        this.selecionados.clear();
+        this.selecionados.add(item.uid);
+        this.confirmarDesmonte(sim);
       } else {
         // Na nave que a Anatomia está mostrando, não na que está voando.
         // Eram sempre a mesma até a coluna ganhar seletor; desde então o
@@ -379,20 +392,6 @@ export class InventoryPanel implements Panel {
           style: { color: gain > 0 ? '#7ed957' : '#7f93b3' },
         }),
       ),
-      h('.inv-item-actions', { 'aria-label': `Ações para o item selecionado` },
-        h('button.inv-item-action.vender', {
-          type: 'button',
-          disabled: item.favorite,
-          title: item.favorite ? 'Desmarque o favorito antes de vender' : 'Vender este item por sucata',
-          onclick: () => this.vender(sim, item),
-        }, spriteIcon('ui/icon_coin', 16), h('span', { text: 'VENDER' })),
-        h('button.inv-item-action.desmontar', {
-          type: 'button',
-          disabled: item.favorite,
-          title: item.favorite ? 'Desmarque o favorito antes de desmontar' : 'Desmontar este item em materiais',
-          onclick: () => this.desmontar(sim, item),
-        }, spriteIcon('recurso/ferrita', 16), h('span', { text: 'DESMONTAR' })),
-      ),
     );
 
     // Ancora o cartão à célula, mantendo-o dentro do painel.
@@ -406,32 +405,82 @@ export class InventoryPanel implements Panel {
     this.tip.style.top = `${clamp(spot.top - box.top - 10, 0, Math.max(0, box.height - tipH))}px`;
   }
 
-  private vender(sim: Sim, item: Item): void {
-    const valor = sim.sell(item.uid);
-    if (valor <= 0) {
-      toast(item.favorite
-        ? 'Item favorito: desmarque antes de vender.'
-        : 'Este item não está mais no inventário.', 'bad');
-      return;
+  private itensSelecionados(sim: Sim): Item[] {
+    const porId = new Map(sim.state.inventory.map((item) => [item.uid, item]));
+    for (const uid of this.selecionados) {
+      const item = porId.get(uid);
+      if (!item || item.favorite) this.selecionados.delete(uid);
     }
-    toast(`Vendido · +${fmt(valor)} sucata`, 'good', 'ui/icon_coin');
-    this.concluirDescarte(sim, item.uid);
+    return [...this.selecionados].map((uid) => porId.get(uid)!).filter(Boolean);
   }
 
-  private desmontar(sim: Sim, item: Item): void {
-    const retorno = sim.salvage(item.uid);
-    if (!retorno) {
-      toast(item.favorite
-        ? 'Item favorito: desmarque antes de desmontar.'
-        : 'Este item não está mais no inventário.', 'bad');
-      return;
-    }
-    toast(`Desmontado · ${resumoDeMateriais(retorno.materiais)}`, 'good', 'recurso/ferrita');
-    this.concluirDescarte(sim, item.uid);
+  private barraDeLote(sim: Sim, lote: Item[]): HTMLElement {
+    const quantidade = lote.length;
+    return h('.inv-lote-bar', { 'aria-label': 'Ações dos itens selecionados' },
+      h('.inv-lote-status', {},
+        h('strong', { text: quantidade ? `${quantidade} ${quantidade === 1 ? 'ITEM SELECIONADO' : 'ITENS SELECIONADOS'}` : 'NENHUM ITEM SELECIONADO' }),
+        h('span', { text: quantidade ? 'A ação só acontece depois da confirmação.' : 'Marque as peças na grade acima.' }),
+      ),
+      h('.inv-lote-acoes', {},
+        h('button.inv-lote-acao.vender', {
+          type: 'button', disabled: quantidade === 0,
+          onclick: () => this.confirmarVenda(sim),
+        }, spriteIcon('ui/icon_coin', 18), h('span', { text: `VENDER${quantidade ? ` (${quantidade})` : ''}` })),
+        h('button.inv-lote-acao.desmontar', {
+          type: 'button', disabled: quantidade === 0,
+          onclick: () => this.confirmarDesmonte(sim),
+        }, spriteIcon('recurso/ferrita', 18), h('span', { text: `DESMONTAR${quantidade ? ` (${quantidade})` : ''}` })),
+      ),
+    );
   }
 
-  private concluirDescarte(sim: Sim, uid: string): void {
-    if (itemArrastado()?.uid === uid) encerrarArraste();
+  private confirmarVenda(sim: Sim): void {
+    const lote = this.itensSelecionados(sim);
+    if (!lote.length) return;
+    const totalPrevisto = lote.reduce((soma, item) => soma + valorDeVenda(item), 0);
+    const rotulo = `${lote.length} ${lote.length === 1 ? 'item' : 'itens'}`;
+    if (!confirm(`Vender ${rotulo} por ${fmt(totalPrevisto)} de sucata?\n\nEsta ação não pode ser desfeita.`)) return;
+
+    let vendidos = 0;
+    let total = 0;
+    for (const item of lote) {
+      const valor = sim.sell(item.uid);
+      if (valor <= 0) continue;
+      vendidos++;
+      total += valor;
+    }
+    this.concluirLote(sim, lote);
+    toast(`${vendidos} ${vendidos === 1 ? 'item vendido' : 'itens vendidos'} · +${fmt(total)} sucata`, 'good', 'ui/icon_coin');
+  }
+
+  private confirmarDesmonte(sim: Sim): void {
+    const lote = this.itensSelecionados(sim);
+    if (!lote.length) return;
+    const previstos: Record<string, number> = {};
+    for (const item of lote) {
+      for (const [id, n] of Object.entries(retornoDeDesmanche(item).materiais)) {
+        previstos[id] = (previstos[id] ?? 0) + n;
+      }
+    }
+    const rotulo = `${lote.length} ${lote.length === 1 ? 'item' : 'itens'}`;
+    if (!confirm(`Desmontar ${rotulo} em ${resumoDeMateriais(previstos)}?\n\nEsta ação não pode ser desfeita.`)) return;
+
+    const recebidos: Record<string, number> = {};
+    let desmontados = 0;
+    for (const item of lote) {
+      const retorno = sim.salvage(item.uid);
+      if (!retorno) continue;
+      desmontados++;
+      for (const [id, n] of Object.entries(retorno.materiais)) recebidos[id] = (recebidos[id] ?? 0) + n;
+    }
+    this.concluirLote(sim, lote);
+    toast(`${desmontados} ${desmontados === 1 ? 'item desmontado' : 'itens desmontados'} · ${resumoDeMateriais(recebidos)}`, 'good', 'recurso/ferrita');
+  }
+
+  private concluirLote(sim: Sim, lote: Item[]): void {
+    const removidos = new Set(lote.map((item) => item.uid));
+    if (itemArrastado() && removidos.has(itemArrastado()!.uid)) encerrarArraste();
+    this.selecionados.clear();
     this.tip.classList.add('hidden');
     sim.touch();
   }
