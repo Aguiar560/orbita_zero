@@ -35,9 +35,11 @@ describe('ações em lote abaixo do inventário', () => {
   });
 
   it('exige confirmação antes das duas ações irreversíveis', () => {
-    expect(painel).toContain('if (!confirm(`Vender ${rotulo}');
-    expect(painel).toContain('if (!confirm(`Desmontar ${rotulo}');
-    expect(painel.match(/Esta ação não pode ser desfeita\./g)).toHaveLength(2);
+    expect(painel).not.toMatch(/\bconfirm\(/);
+    expect(painel).toContain("h('.inv-confirmacao-camada'");
+    expect(painel).toContain("role: 'dialog', 'aria-modal': 'true'");
+    expect(painel).toContain("h('span', { text: 'Esta ação não pode ser desfeita.' })");
+    expect(painel).toContain("if (e.key === 'Escape')");
   });
 
   it('usa apenas o amarelo da célula e mantém as ações tocáveis no celular', () => {

@@ -96,6 +96,8 @@ export class InventoryPanel implements Panel {
   private readonly selecionados = new Set<string>();
   /** Aguarda o segundo clique para separar seleção de equipamento. */
   private cliquePendente: { uid: string; timer: number; executar: () => void } | null = null;
+  /** Confirmação interna do jogo; no máximo uma pode existir. */
+  private confirmacao: HTMLElement | null = null;
   private readonly tip = h('.inv-tip.hidden');
 
   badge(sim: Sim): number {
@@ -469,18 +471,26 @@ export class InventoryPanel implements Panel {
     if (!lote.length) return;
     const totalPrevisto = lote.reduce((soma, item) => soma + valorDeVenda(item), 0);
     const rotulo = `${lote.length} ${lote.length === 1 ? 'item' : 'itens'}`;
-    if (!confirm(`Vender ${rotulo} por ${fmt(totalPrevisto)} de sucata?\n\nEsta ação não pode ser desfeita.`)) return;
-
-    let vendidos = 0;
-    let total = 0;
-    for (const item of lote) {
-      const valor = sim.sell(item.uid);
-      if (valor <= 0) continue;
-      vendidos++;
-      total += valor;
-    }
-    this.concluirLote(sim, lote);
-    toast(`${vendidos} ${vendidos === 1 ? 'item vendido' : 'itens vendidos'} · +${fmt(total)} sucata`, 'good', 'ui/icon_coin');
+    this.abrirConfirmacao({
+      tipo: 'vender',
+      titulo: 'CONFIRMAR VENDA',
+      resumo: `Vender ${rotulo}?`,
+      retorno: `Você receberá ${fmt(totalPrevisto)} de sucata.`,
+      confirmar: 'VENDER AGORA',
+      icone: 'ui/icon_coin',
+      aoConfirmar: () => {
+        let vendidos = 0;
+        let total = 0;
+        for (const item of lote) {
+          const valor = sim.sell(item.uid);
+          if (valor <= 0) continue;
+          vendidos++;
+          total += valor;
+        }
+        this.concluirLote(sim, lote);
+        toast(`${vendidos} ${vendidos === 1 ? 'item vendido' : 'itens vendidos'} · +${fmt(total)} sucata`, 'good', 'ui/icon_coin');
+      },
+    });
   }
 
   private confirmarDesmonte(sim: Sim): void {
@@ -493,18 +503,97 @@ export class InventoryPanel implements Panel {
       }
     }
     const rotulo = `${lote.length} ${lote.length === 1 ? 'item' : 'itens'}`;
-    if (!confirm(`Desmontar ${rotulo} em ${resumoDeMateriais(previstos)}?\n\nEsta ação não pode ser desfeita.`)) return;
+    this.abrirConfirmacao({
+      tipo: 'desmontar',
+      titulo: 'CONFIRMAR DESMONTAGEM',
+      resumo: `Desmontar ${rotulo}?`,
+      retorno: `Materiais: ${resumoDeMateriais(previstos)}.`,
+      confirmar: 'DESMONTAR AGORA',
+      icone: 'recurso/ferrita',
+      aoConfirmar: () => {
+        const recebidos: Record<string, number> = {};
+        let desmontados = 0;
+        for (const item of lote) {
+          const retorno = sim.salvage(item.uid);
+          if (!retorno) continue;
+          desmontados++;
+          for (const [id, n] of Object.entries(retorno.materiais)) recebidos[id] = (recebidos[id] ?? 0) + n;
+        }
+        this.concluirLote(sim, lote);
+        toast(`${desmontados} ${desmontados === 1 ? 'item desmontado' : 'itens desmontados'} · ${resumoDeMateriais(recebidos)}`, 'good', 'recurso/ferrita');
+      },
+    });
+  }
 
-    const recebidos: Record<string, number> = {};
-    let desmontados = 0;
-    for (const item of lote) {
-      const retorno = sim.salvage(item.uid);
-      if (!retorno) continue;
-      desmontados++;
-      for (const [id, n] of Object.entries(retorno.materiais)) recebidos[id] = (recebidos[id] ?? 0) + n;
-    }
-    this.concluirLote(sim, lote);
-    toast(`${desmontados} ${desmontados === 1 ? 'item desmontado' : 'itens desmontados'} · ${resumoDeMateriais(recebidos)}`, 'good', 'recurso/ferrita');
+  private abrirConfirmacao(opcoes: {
+    tipo: 'vender' | 'desmontar';
+    titulo: string;
+    resumo: string;
+    retorno: string;
+    confirmar: string;
+    icone: string;
+    aoConfirmar: () => void;
+  }): void {
+    this.confirmacao?.remove();
+    const focoAnterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    let camada!: HTMLElement;
+
+    const fechar = (): void => {
+      camada.remove();
+      if (this.confirmacao === camada) this.confirmacao = null;
+      if (focoAnterior?.isConnected) focoAnterior.focus();
+    };
+    const cancelar = h('button.inv-confirmacao-cancelar', {
+      type: 'button', text: 'CANCELAR', onclick: fechar,
+    }) as HTMLButtonElement;
+    const confirmar = h(`button.inv-confirmacao-confirmar.${opcoes.tipo}`, {
+      type: 'button',
+      text: opcoes.confirmar,
+      onclick: () => {
+        fechar();
+        opcoes.aoConfirmar();
+      },
+    }) as HTMLButtonElement;
+    const cartao = h(`section.inv-confirmacao-cartao.${opcoes.tipo}`, {
+      role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'inv-confirmacao-titulo',
+    },
+      h('.inv-confirmacao-topo', {},
+        h('.inv-confirmacao-icone', {}, spriteIcon(opcoes.icone, 32)),
+        h('.inv-confirmacao-titulos', {},
+          h('span', { text: 'PROTOCOLO DE DESCARTE' }),
+          h('h2#inv-confirmacao-titulo', { text: opcoes.titulo }),
+        ),
+      ),
+      h('.inv-confirmacao-resumo', {},
+        h('strong', { text: opcoes.resumo }),
+        h('span', { text: opcoes.retorno }),
+      ),
+      h('.inv-confirmacao-alerta', {},
+        h('i', { text: '!' }),
+        h('span', { text: 'Esta ação não pode ser desfeita.' }),
+      ),
+      h('.inv-confirmacao-acoes', {}, cancelar, confirmar),
+    );
+
+    camada = h('.inv-confirmacao-camada', {
+      tabindex: -1,
+      onclick: (e: Event) => { if (e.target === camada) fechar(); },
+      onkeydown: (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          fechar();
+          return;
+        }
+        if (e.key !== 'Tab') return;
+        const botoes = [cancelar, confirmar];
+        const atual = botoes.indexOf(document.activeElement as HTMLButtonElement);
+        e.preventDefault();
+        botoes[(atual + (e.shiftKey ? -1 : 1) + botoes.length) % botoes.length]!.focus();
+      },
+    }, cartao);
+    this.confirmacao = camada;
+    document.body.append(camada);
+    requestAnimationFrame(() => confirmar.focus());
   }
 
   private concluirLote(sim: Sim, lote: Item[]): void {

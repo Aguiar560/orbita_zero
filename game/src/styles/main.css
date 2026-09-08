@@ -1161,6 +1161,76 @@ select option:disabled { color: #667991; }
   .inv-lote-acoes { grid-template-columns: 1fr; }
 }
 
+/* Confirmação de venda/desmontagem dentro do jogo. Substitui o `confirm()` do
+   navegador, que quebrava a identidade visual e mudava de aparência por SO. */
+.inv-confirmacao-camada {
+  position: fixed; z-index: 1400; inset: 0; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 44%, rgba(35, 145, 193, .13), transparent 38%),
+    rgba(1, 4, 10, .86);
+  -webkit-backdrop-filter: blur(8px) saturate(.8);
+  backdrop-filter: blur(8px) saturate(.8);
+  animation: inv-confirmacao-entra .16s ease-out;
+}
+.inv-confirmacao-cartao {
+  --confirmacao-rgb: 255, 208, 70;
+  position: relative; isolation: isolate; overflow: hidden;
+  width: min(460px, calc(100vw - 24px)); display: grid; gap: 15px; padding: 20px;
+  border: 1px solid rgba(var(--confirmacao-rgb), .64);
+  background:
+    linear-gradient(90deg, rgba(var(--confirmacao-rgb), .07) 1px, transparent 1px) 0 0 / 28px 100%,
+    linear-gradient(180deg, rgba(12, 29, 46, .985), rgba(3, 10, 21, .99));
+  color: #dcecf5;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  box-shadow: inset 3px 0 rgba(var(--confirmacao-rgb), .62), inset 0 0 34px rgba(var(--confirmacao-rgb), .055), 0 24px 80px rgba(0, 0, 0, .82), 0 0 28px rgba(var(--confirmacao-rgb), .13);
+}
+.inv-confirmacao-cartao.desmontar { --confirmacao-rgb: 79, 211, 250; }
+.inv-confirmacao-cartao::after {
+  content: ''; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 4px, rgba(var(--confirmacao-rgb), .025) 4px 5px);
+}
+.inv-confirmacao-topo { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(var(--confirmacao-rgb), .22); }
+.inv-confirmacao-icone {
+  width: 48px; height: 48px; flex: none; display: grid; place-items: center;
+  border: 1px solid rgba(var(--confirmacao-rgb), .46); background: rgba(var(--confirmacao-rgb), .08);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  box-shadow: inset 0 0 17px rgba(var(--confirmacao-rgb), .12);
+}
+.inv-confirmacao-icone .sprite { filter: drop-shadow(0 0 7px rgba(var(--confirmacao-rgb), .64)); }
+.inv-confirmacao-titulos { min-width: 0; display: grid; gap: 4px; }
+.inv-confirmacao-titulos > span { color: rgba(var(--confirmacao-rgb), .72); font: 700 8px/1 'Chakra Petch', sans-serif; letter-spacing: .19em; }
+.inv-confirmacao-titulos h2 { color: #effaff; font: 700 18px/1.1 'Chakra Petch', sans-serif; letter-spacing: .08em; text-shadow: 0 0 12px rgba(var(--confirmacao-rgb), .25); }
+.inv-confirmacao-resumo { display: grid; gap: 7px; padding: 13px 14px; border-left: 2px solid rgba(var(--confirmacao-rgb), .68); background: linear-gradient(90deg, rgba(var(--confirmacao-rgb), .09), transparent); }
+.inv-confirmacao-resumo strong { color: #f4fbff; font-size: 16px; }
+.inv-confirmacao-resumo span { color: rgb(var(--confirmacao-rgb)); font: 600 13px/1.35 'Oxanium', 'Rajdhani', sans-serif; text-shadow: 0 0 9px rgba(var(--confirmacao-rgb), .35); }
+.inv-confirmacao-alerta { display: flex; align-items: center; gap: 8px; color: #ff9a91; font-size: 12px; }
+.inv-confirmacao-alerta i { width: 20px; height: 20px; flex: none; display: grid; place-items: center; border: 1px solid #ff655a; border-radius: 50%; color: #ffd7d1; font-style: normal; font-weight: 800; box-shadow: 0 0 9px rgba(255, 65, 48, .36); }
+.inv-confirmacao-acoes { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(150px, 1.2fr); gap: 9px; padding-top: 2px; }
+.inv-confirmacao-acoes button { min-height: 44px; padding: 9px 12px; border-radius: 4px; font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .09em; }
+.inv-confirmacao-cancelar { border: 1px solid rgba(140, 174, 197, .36); background: rgba(12, 26, 41, .86); color: #94adbe; }
+.inv-confirmacao-cancelar:hover { border-color: #b4cddd; color: #eef9ff; background: rgba(28, 49, 66, .9); }
+.inv-confirmacao-confirmar { border: 1px solid rgb(var(--confirmacao-rgb)); background: rgba(var(--confirmacao-rgb), .17); color: #fff9dc; box-shadow: inset 0 0 18px rgba(var(--confirmacao-rgb), .12), 0 0 13px rgba(var(--confirmacao-rgb), .12); }
+.inv-confirmacao-confirmar.desmontar { color: #d8f8ff; }
+.inv-confirmacao-confirmar:hover { filter: brightness(1.24); }
+
+@keyframes inv-confirmacao-entra {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 430px) {
+  .inv-confirmacao-cartao { gap: 12px; padding: 16px 14px; }
+  .inv-confirmacao-titulos h2 { font-size: 15px; }
+  .inv-confirmacao-resumo strong { font-size: 14px; }
+  .inv-confirmacao-acoes { grid-template-columns: 1fr; }
+  .inv-confirmacao-acoes button { min-height: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-confirmacao-camada { animation: none; }
+}
+
 .item-icon { position: relative; flex-shrink: 0; }
 .slot-pip { position: absolute; right: -3px; bottom: -3px; opacity: 0.75; filter: drop-shadow(0 0 2px #000); }
 .set-line { font-size: 11.5px; font-weight: 600; }
