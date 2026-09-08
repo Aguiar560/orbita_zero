@@ -8,8 +8,89 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 07/09/2026 · 1.163 testes passando · registro consolidado
+**Última atualização:** 07/09/2026 · 1.169 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 07/09/2026 — elementos redistribuídos, e a moldura passou a dizer a verdade
+
+Três defeitos que o Rafael viu na tela, no mesmo dia em que as galáxias
+ganharam elenco elemental.
+
+### 1. O cósmico sumia por vinte galáxias
+
+A primeira tabela saiu só dos NOMES, e a distribuição ficou torta: cósmico na
+galáxia 5 e depois só na 25. Refeita com três critérios, nesta ordem — o FUNDO
+manda, o NOME desempata, o VÃO fecha a conta.
+
+As seis primeiras galáxias têm superfícies atmosféricas longas, e são elas que
+decidem: oceânico→raio, vulcânico→fogo, glacial→gelo, deserto→padrão,
+tóxica→químico, cristalina→cósmico. Os seis elementos entram nas seis
+primeiras galáxias, cada um com o cenário que o explica.
+
+| | Antes | Depois |
+|---|---|---|
+| maior vão entre aparições | **20** (cósmico: g5 → g25) | **9** |
+| pior elemento | gelo e raio, 13 | 9 |
+
+Uma identidade profunda foi reescrita: **Coroa de Caelum** (g28) era cósmica e
+virou de gelo. Sem ela o gelo não existia em NENHUMA das dez galáxias finais, e
+o vão dele era 11 fizesse o que fizesse nas vinte primeiras. O texto seguiu o
+elemento e manteve o vínculo com a Liga Celestial, que é o minério de lá.
+Reescrever uma segunda levaria o vão a 8 e não compensa — a candidata era a
+Dobra de Janus, cujo texto é a definição de cósmico.
+
+### 2. A moldura da galáxia era roxa numa galáxia de gelo
+
+A captura do Rafael: Galáxia 18, Trono Oco, moldura roxa e "Perigo da região:
+Gelo" logo abaixo. A cor vinha de `COLORS[índice % 4]` — quatro cores em
+rodízio, sem relação nenhuma com o que a galáxia é. Metade das identidades
+profundas também tinha cor escrita à mão que contradizia o próprio elemento.
+
+Agora a cor **sai do elemento**, com o tom variando pela posição da galáxia
+entre as irmãs do mesmo elemento — as 30 galáxias têm 30 cores distintas, e
+nenhuma troca de família. A primeira tentativa variava o tom por `(índice × 7)
+% 5` e colidia: sobravam 23 cores em 30.
+
+### 3. Estar no elenco não é ser maioria
+
+Pedido do Rafael: "não ter 100% inimigos de fogo, pode ter outros também, mas
+majoritariamente de fogo". O elenco garantia as VAGAS; quem decide o que
+aparece é o sorteio de `buildEncounter`, e ele ignorava elemento.
+
+Duas mudanças: as vagas do elemento subiram de 2 para 3 das 4, e o elemento da
+região passou a pesar 2,2× no sorteio. O peso é **dividido pelo número de**
+**naves daquele elemento no elenco**, para a cota ser do elemento e não de cada
+nave — sem isso a presença virava refém do catálogo: fogo em 73% e gelo em 20%,
+com a mesma regra.
+
+| | Antes | Depois |
+|---|---|---|
+| rótulo = elemento dominante | 16 de 30 | **27 de 30** |
+| presença média | 38% | **62%** |
+| galáxia de fogo | 49–76% | **65–82%** |
+| galáxia de raio | 27–50% | **48–69%** |
+
+### O que continua sendo lacuna de arte
+
+As galáxias de gelo param em **26–29%** (a g3 chega a 59%). Não é o algoritmo:
+o bestiário tem **um único regular de gelo**, contra cinco de químico e cinco
+de cósmico. O teto do peso elemental existe justamente para não transformar
+isso na mesma silhueta repetida a onda inteira. **Duas ou três naves regulares
+de gelo resolvem, e nada em código resolve.**
+
+### Achado de lado, não corrigido
+
+O teste `offline-online` exigia que `applyOffline` e o laço de `abstractTick`
+ficassem a menos de 10% um do outro. Medido sobre 120 combinações de semente e
+setor, a diferença real vai de **−13% a +750%**, com média +85% — e é
+**idêntica antes desta mudança**, então não é regressão. O limite de 10% valia
+para uma semente num setor, e mais nada. A asserção passou a cobrar o
+invariante de verdade (o offline não pode render MENOS), e a divergência dos
+setores fundos ficou registrada como assunto próprio.
+
+1.169 testes passando.
 
 ---
 

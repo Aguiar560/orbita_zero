@@ -14,7 +14,8 @@ import type { ElementId } from '@sim/types';
  *
  * A ligação com elemento não precisou de tabela nova: **cada galáxia já tem um
  * elemento**, e o material-assinatura dela o herda. Diamantita vem da Galáxia
- * 3, que é de gelo; logo Diamantita é minério de gelo.
+ * 3, que é de gelo; logo Diamantita é minério de gelo. A Liga Celestial virou
+ * de gelo junto com a Coroa de Caelum, e ninguém precisou tocar nesta tabela.
  *
  * Por ser DERIVADA, esta tabela se reescreveu sozinha quando os elementos das
  * galáxias mudaram em 07/09 — e foi de propósito. O que NÃO se reescreveu
@@ -23,11 +24,11 @@ import type { ElementId } from '@sim/types';
  *
  * ## Por que o NÍVEL do item escolhe, e não uma lista fixa
  *
- * Cada elemento tem CINCO minérios, um por galáxia sua. Escolher um por
- * elemento e ignorar o resto deixaria 24 materiais mortos do mesmo jeito, com
- * um nome mais bonito.
+ * Cada elemento tem de QUATRO a SEIS minérios, um por galáxia sua. Escolher um
+ * por elemento e ignorar o resto deixaria 24 materiais mortos do mesmo jeito,
+ * com um nome mais bonito.
  *
- * Cinco e cinco é consequência, não coincidência: antes de 07/09 o cósmico
+ * A faixa estreita é consequência, não coincidência: antes de 07/09 o cósmico
  * tinha oito minérios e o gelo dois, porque o elemento das galáxias saía de um
  * rodízio por índice. Ver `data/elemento-da-galaxia.ts`.
  *

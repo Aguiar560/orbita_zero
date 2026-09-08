@@ -3,6 +3,7 @@ import { ELEMENTO_DA_GALAXIA } from './elemento-da-galaxia';
 import { ELEMENT_IDS, type ElementId } from '@sim/types';
 import { bossForSector } from './bosses';
 import { FLEET_INFO } from './fleets';
+import { getElement } from './elements';
 
 /** Fases por galáxia. A décima é sempre o chefe. */
 export const PHASES_PER_GALAXY = 10;
@@ -53,24 +54,84 @@ const NAMES = [
   'Colmeia de Ícaro', 'Forja de Antares', 'Coroa de Caelum', 'Dobra de Janus', 'Umbra Terminal',
 ];
 
-/** Identidade autoral das galáxias 21–30, alinhada ao material-assinatura. */
-const PROFUNDAS: readonly { identity: string; hazard: string; element: ElementId; color: string }[] = [
-  { identity: 'Rios de escória circulam uma estrela desmontada.', hazard: 'Marés térmicas interrompem escudos.', element: 'fogo', color: '#ff7a42' },
-  { identity: 'Milhões de meteoros formam túmulos em movimento.', hazard: 'Impactos cinéticos cruzam as rotas.', element: 'padrao', color: '#b8c4cf' },
-  { identity: 'Nanofibras antigas costuram destroços em casulos.', hazard: 'Redes móveis reduzem a evasão.', element: 'quimico', color: '#62d7a4' },
-  { identity: 'Folhas de grafeno cortam a luz como navalhas.', hazard: 'Descargas percorrem superfícies condutoras.', element: 'raio', color: '#54cfff' },
-  { identity: 'Prismas quânticos repetem cada nave em futuros rivais.', hazard: 'Ecos dimensionais duplicam projéteis.', element: 'cosmico', color: '#a97bff' },
-  { identity: 'Enxames de nanotubos constroem luas artificiais.', hazard: 'Estruturas se regeneram durante o combate.', element: 'quimico', color: '#70e0bd' },
-  { identity: 'Antares tempera aço dentro de tempestades solares.', hazard: 'Calor crescente pune combates longos.', element: 'fogo', color: '#ff9a4f' },
-  { identity: 'Uma liga celestial sustenta palácios sem gravidade.', hazard: 'Campos alternam massa e velocidade.', element: 'cosmico', color: '#f1cf75' },
-  { identity: 'Todas as rotas se dobram e retornam por outro ângulo.', hazard: 'Saltos reposicionam frotas sem aviso.', element: 'cosmico', color: '#72a2ff' },
-  { identity: 'A luz termina; apenas a matéria escura registra passagem.', hazard: 'Sensores falham e o dano recebido oscila.', element: 'cosmico', color: '#8b68d8' },
+/**
+ * Identidade autoral das galáxias 21–30, alinhada ao material-assinatura.
+ *
+ * Não há mais `color` aqui. Ela era escrita à mão e contradizia o elemento em
+ * metade das entradas — a Coroa de Caelum era cósmica e dourada, a Dobra de
+ * Janus era cósmica e azul. Hoje a cor SAI do elemento, em `corDaGalaxia`.
+ */
+const PROFUNDAS: readonly { identity: string; hazard: string; element: ElementId }[] = [
+  { identity: 'Rios de escória circulam uma estrela desmontada.', hazard: 'Marés térmicas interrompem escudos.', element: 'fogo' },
+  { identity: 'Milhões de meteoros formam túmulos em movimento.', hazard: 'Impactos cinéticos cruzam as rotas.', element: 'padrao' },
+  { identity: 'Nanofibras antigas costuram destroços em casulos.', hazard: 'Redes móveis reduzem a evasão.', element: 'quimico' },
+  { identity: 'Folhas de grafeno cortam a luz como navalhas.', hazard: 'Descargas percorrem superfícies condutoras.', element: 'raio' },
+  { identity: 'Prismas quânticos repetem cada nave em futuros rivais.', hazard: 'Ecos dimensionais duplicam projéteis.', element: 'cosmico' },
+  { identity: 'Enxames de nanotubos constroem luas artificiais.', hazard: 'Estruturas se regeneram durante o combate.', element: 'quimico' },
+  { identity: 'Antares tempera aço dentro de tempestades solares.', hazard: 'Calor crescente pune combates longos.', element: 'fogo' },
+  // A 28 era cósmica. Virou de gelo porque nenhuma das dez profundas era, e o
+  // gelo sumia da campanha inteira depois da galáxia 19. O texto seguiu o
+  // elemento e manteve o vínculo com a Liga Celestial, que é o minério dela.
+  { identity: 'A liga celestial só cristaliza no frio absoluto desta coroa.', hazard: 'O casco enrijece e a manobra fica lenta.', element: 'gelo' },
+  { identity: 'Todas as rotas se dobram e retornam por outro ângulo.', hazard: 'Saltos reposicionam frotas sem aviso.', element: 'cosmico' },
+  { identity: 'A luz termina; apenas a matéria escura registra passagem.', hazard: 'Sensores falham e o dano recebido oscila.', element: 'cosmico' },
 ];
 
 /** Famílias de fundo disponíveis, alternadas para dar identidade a cada galáxia. */
 const BACKDROP_FAMILIES = ['blue_nebula', 'purple_nebula', 'green_nebula', 'starfield'] as const;
 
-const COLORS = ['#4db8ff', '#c060ff', '#5ce08a', '#ffb638'];
+/**
+ * A cor de destaque de uma galáxia SAI DO ELEMENTO dela.
+ *
+ * Antes era `COLORS[index % 4]` — quatro cores em rodízio, sem relação nenhuma
+ * com o que a galáxia é. O Trono Oco aparecia com moldura ROXA logo acima da
+ * linha "Perigo da região: Gelo", que é exatamente o oposto do que a cor
+ * deveria dizer. A tela inteira usa este valor: o nome, a moldura do herói, o
+ * setor selecionado e a barra de progresso.
+ *
+ * O tom varia um pouco por galáxia porque cinco galáxias do mesmo elemento
+ * pintadas com o mesmo hexadecimal ficariam indistinguíveis. A variação mexe em
+ * luminosidade e matiz, nunca no suficiente para trocar de família: um gelo
+ * continua lendo como gelo.
+ */
+const CANAL = (hex: string, i: number): number => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+
+function corDaGalaxia(elemento: ElementId, index: number): string {
+  const base = getElement(elemento).color;
+  const [r, g, b] = [CANAL(base, 0), CANAL(base, 1), CANAL(base, 2)];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+
+  /**
+   * O degrau vem da POSIÇÃO da galáxia entre as do mesmo elemento.
+   *
+   * A primeira tentativa foi `(index * 7) % 5`, e ela colidia: sobravam 23
+   * cores distintas em 30 galáxias, porque duas galáxias do mesmo elemento com
+   * o mesmo resto caíam no mesmo tom. Contando a posição, cada galáxia de um
+   * elemento pega um degrau próprio e a escada fica espalhada por igual.
+   */
+  const irmas = ELEMENTO_DA_GALAXIA.filter((e) => e === elemento).length;
+  const posicao = ELEMENTO_DA_GALAXIA.slice(0, index).filter((e) => e === elemento).length;
+  const degrau = irmas <= 1 ? 0 : (posicao / (irmas - 1)) * 4 - 2;
+  const l2 = Math.min(0.74, Math.max(0.40, l + degrau * 0.045));
+  const h2 = (h + degrau * 0.011 + 1) % 1;
+
+  const c = (1 - Math.abs(2 * l2 - 1)) * sat;
+  const x = c * (1 - Math.abs(((h2 * 6) % 2) - 1));
+  const m = l2 - c / 2;
+  const seg = Math.floor(h2 * 6) % 6;
+  const rgb = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][seg]!;
+  return '#' + rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Uma galáxia é uma janela de dez setores sobre a progressão que já existe.
@@ -110,6 +171,17 @@ export function describeGalaxy(index: number): GalaxyInfo {
   const fleet = FLEET_INFO[Math.min(FLEET_INFO.length - 1, Math.floor(index / 2))]!;
   const profunda = index >= 20 && index < 30 ? PROFUNDAS[index - 20] : null;
 
+  /**
+   * O elemento vem de uma TABELA, e não mais da frota nem de um rodízio.
+   *
+   * Antes as galáxias 1–6 herdavam o elemento da frota e as seguintes entravam
+   * num rodízio por índice. Nenhum dos dois olhava para os INIMIGOS que a
+   * galáxia realmente monta: a galáxia 1 se declarava de fogo e tinha zero
+   * inimigos de fogo. Ver `elemento-da-galaxia.ts`.
+   */
+  const elemento = ELEMENTO_DA_GALAXIA[index]
+    ?? profunda?.element ?? ELEMENT_IDS[index % ELEMENT_IDS.length]!;
+
   // Duas texturas distintas por galáxia: uma de fundo, outra por cima.
   const pool = [...STARFIELDS];
   rng.shuffle(pool);
@@ -136,16 +208,8 @@ export function describeGalaxy(index: number): GalaxyInfo {
     fleet: fleet.name,
     identity: profunda?.identity ?? 'Uma fronteira disputada entre frotas, planetas e rotas de coleta.',
     hazard: profunda?.hazard ?? 'A ameaça dominante acompanha o elemento da frota.',
-    /**
-     * O elemento vem de uma TABELA, e não mais da frota nem de um rodízio.
-     *
-     * Antes as galáxias 1–6 herdavam o elemento da frota e as seguintes
-     * entravam num rodízio por índice. Nenhum dos dois olhava para os INIMIGOS
-     * que a galáxia realmente monta: a galáxia 1 se declarava de fogo e tinha
-     * zero inimigos de fogo. Ver `elemento-da-galaxia.ts`.
-     */
-    element: ELEMENTO_DA_GALAXIA[index] ?? profunda?.element ?? ELEMENT_IDS[index % ELEMENT_IDS.length]!,
-    color: profunda?.color ?? COLORS[index % COLORS.length]!,
+    element: elemento,
+    color: corDaGalaxia(elemento, index),
     firstSector: index * PHASES_PER_GALAXY + 1,
     lastSector: (index + 1) * PHASES_PER_GALAXY,
   };

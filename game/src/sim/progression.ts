@@ -2,6 +2,9 @@ import { Rng } from '@core/math';
 import { bossForSector, isBossSector, type BossDef } from '@data/bosses';
 import { enemiesForSector, type EnemyDef } from '@data/enemies';
 import {
+  ASSINATURAS_DO_ELEMENTO, ELEMENTO_DA_GALAXIA, PESO_DO_ELEMENTO_NA_ONDA, TETO_DO_PESO_ELEMENTAL,
+} from '@data/elemento-da-galaxia';
+import {
   CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_EXIGENCIA, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
   RECOMPENSA_FRACAO, WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
   densidadeAlvo, densidadeParaXp, pressaoAlvo,
@@ -116,10 +119,41 @@ export function buildEncounter(state: GameState, sector: number, wave: number): 
 
   const typeCount = Math.min(usable.length, rng.int(perfil.tipos[0], perfil.tipos[1]));
   const chosen: EnemyDef[] = [];
+  /**
+   * O elemento da região pesa no sorteio — não basta estar no elenco.
+   *
+   * O elenco garante as VAGAS, mas quem decide o que aparece na onda é este
+   * sorteio. Só com as vagas, medido em 07/09, a galáxia de fogo tinha 56% de
+   * fogo e a de raio 31% — o rótulo dizia raio e o jogador via químico. O peso
+   * aqui é o que transforma "tem" em "é majoritariamente".
+   *
+   * É multiplicador e não exclusividade porque o Rafael pediu maioria, não
+   * monocultura: um elenco de um elemento só deixaria o jogador montar uma
+   * resistência e desligar o combate por dez setores.
+   */
+  const elementoDaRegiao = ELEMENTO_DA_GALAXIA[Math.max(0, Math.floor((sector - 1) / 10))];
+  /**
+   * A cota é do ELEMENTO, não de cada nave — por isso ela se divide.
+   *
+   * Um peso fixo por nave fazia a presença depender de quantas naves daquele
+   * elemento o catálogo tem. Medido em 07/09: fogo, com três regulares, ficava
+   * em 73%; gelo, com UM, em 20%. O rótulo prometia o mesmo e entregava coisas
+   * opostas.
+   *
+   * Dividindo a cota pelas naves presentes, o elemento pesa igual em toda
+   * galáxia, e a escassez de arte vira repetição de nave em vez de ausência de
+   * elemento — que é o mal menor: o jogador pediu a galáxia de fogo cheia de
+   * fogo, não uma galáxia de gelo cheia de químicos.
+   */
+  const doElemento = usable.filter((e) => e.element === elementoDaRegiao).length;
+  const pesoDoElemento = Math.min(
+    TETO_DO_PESO_ELEMENTAL,
+    PESO_DO_ELEMENTO_NA_ONDA * (ASSINATURAS_DO_ELEMENTO / Math.max(1, doElemento)),
+  );
   for (let i = 0; i < typeCount; i++) {
     const pick = rng.weighted(
       usable.filter((e) => !chosen.includes(e)),
-      (e) => e.weight,
+      (e) => e.weight * (e.element === elementoDaRegiao ? pesoDoElemento : 1),
     );
     if (pick) chosen.push(pick);
   }

@@ -71,19 +71,23 @@ elemento sem precisar de tabela nova:
 
 | Elemento | Minérios |
 |---|---|
-| raio | 5 — Ferrita (g1), Ródio (g14), Níquel (g16), Manganês (g20), Grafeno (g24) |
-| fogo | 5 — Pirita (g2), Lítio (g9), Neodímio (g11), Escória Estelar (g21), Aço Estelar (g27) |
-| gelo | 5 — Diamantita (g3), Irídio (g7), Obsidiana (g8), Zircônio (g13), Tântalo (g18) |
-| químico | 5 — Titânio (g4), Cromita (g12), Molibdênio (g17), Nanofibra (g23), Nanotubo (g26) |
-| cósmico | 5 — Urânio (g5), Cristal Quântico (g25), Liga Celestial (g28), Fluxo Dimensional (g29), Matéria Escura (g30) |
-| padrão | 5 — Platina (g6), Cobalto (g10), Vanádio (g15), Tecnécio (g19), Fragmento de Meteoro (g22) |
+| raio | 5 — Ferrita (g1), Irídio (g7), Ródio (g14), Manganês (g20), Grafeno (g24) |
+| fogo | 5 — Pirita (g2), Lítio (g9), Vanádio (g15), Escória Estelar (g21), Aço Estelar (g27) |
+| gelo | 5 — Diamantita (g3), Neodímio (g11), Zircônio (g13), Tecnécio (g19), Liga Celestial (g28) |
+| químico | 5 — Urânio (g5), Cromita (g12), Molibdênio (g17), Nanofibra (g23), Nanotubo (g26) |
+| cósmico | 6 — Platina (g6), Obsidiana (g8), Níquel (g16), Cristal Quântico (g25), Fluxo Dimensional (g29), Matéria Escura (g30) |
+| padrão | 4 — Titânio (g4), Cobalto (g10), Tântalo (g18), Fragmento de Meteoro (g22) |
 
-A tabela acima foi **remedida em 07/09**, depois de o elemento das galáxias
-passar a sair de `data/elemento-da-galaxia.ts`. Antes ela era 8/7/6/4/3/2 —
-consequência do rodízio por índice, não de desenho. Agora são cinco por
-elemento, e o minério raso de cada um cai numa das **seis primeiras galáxias**:
-Ferrita (raio, g1), Pirita (fogo, g2), Diamantita (gelo, g3), Titânio (químico,
-g4), Urânio (cósmico, g5), Platina (padrão, g6).
+A tabela é **derivada** do elemento da galáxia, então ela se reescreveu sozinha
+quando os elementos foram redistribuídos em 07/09 — antes era 8/7/6/4/3/2,
+consequência de um rodízio por índice. O cósmico ficou com seis e o padrão com
+quatro porque três das dez galáxias profundas são cósmicas por texto autoral, e
+espremer isso em cinco devolveria o vão de dez galáxias sem cósmico.
+
+O minério raso de cada elemento cai numa das **seis primeiras galáxias**, uma
+para cada: Ferrita (raio, g1), Pirita (fogo, g2), Diamantita (gelo, g3), Titânio
+(padrão, g4), Urânio (químico, g5), Platina (cósmico, g6). É o que garante que
+converter uma peça para qualquer elemento esteja disponível cedo.
 
 `usarCargaNoItem` e `usarCargaNaNave` já existem e já convertem elemento. Hoje
 custam uma **carga de serviço comprada na Loja** — e a Loja vai ser reformulada

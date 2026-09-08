@@ -347,15 +347,19 @@ function buildGalaxyRosters(): GalaxyEnemyRoster[] {
      * O elenco começa pelos inimigos do ELEMENTO da galáxia.
      *
      * Antes ele era montado só por deslocamento de índice, e o resultado era a
-     * galáxia de fogo sem um único inimigo de fogo. Duas vagas das quatro vão
-     * para o elemento da região; as outras duas, mais as duas de apoio,
-     * continuam variadas.
+     * galáxia de fogo sem um único inimigo de fogo. TRÊS vagas das quatro vão
+     * para o elemento da região; a quarta, mais as duas de apoio, continuam
+     * variadas — o Rafael pediu maioria, não monocultura.
      *
-     * DOIS, e não quatro: o catálogo não tem gente suficiente. Gelo tem UM
-     * regular e raio tem dois, contra cinco de químico e cinco de cósmico
-     * (medido em 07/09). Exigir quatro faria a galáxia de gelo repetir a mesma
-     * nave quatro vezes — pior que o problema que se quer resolver. É lacuna de
-     * ARTE, não de código, e está registrada como tal.
+     * TRÊS, e não quatro: a quarta vaga é o que garante que sempre exista algo
+     * de outro elemento na tela, para o jogador não montar uma resistência só e
+     * desligar o combate por dez setores.
+     *
+     * O número é TETO, não cota. O catálogo não tem gente para todo mundo: gelo
+     * tem UM regular e raio tem dois, contra cinco de químico e cinco de
+     * cósmico (medido em 07/09). Onde falta nave, entra o que houver — e o
+     * peso de `buildEncounter` compensa o que dá. É lacuna de ARTE, não de
+     * código, e está registrada como tal.
      */
     const elemento = elementoDaGalaxia(galaxyIndex);
     /**
