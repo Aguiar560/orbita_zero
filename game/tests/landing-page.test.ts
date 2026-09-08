@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const fonte = (...partes: string[]): string => readFileSync(join(process.cwd(), 'src', ...partes), 'utf8');
+
+describe('landing navegável antes do login', () => {
+  it('oferece as quatro páginas no mesmo menu', () => {
+    const landing = fonte('ui', 'Landing.ts');
+    expect(landing).toContain("['jogo', 'O JOGO']");
+    expect(landing).toContain("['naves', 'NAVES']");
+    expect(landing).toContain("['galaxias', 'GALÁXIAS']");
+    expect(landing).toContain("['comunidade', 'COMUNIDADE']");
+    expect(landing).toContain("'aria-current': pagina === id ? 'page' : undefined");
+  });
+
+  it('troca o conteúdo sem recarregar a página', () => {
+    const login = fonte('ui', 'Login.ts');
+    expect(login).toContain('private pagina: PaginaLanding');
+    expect(login).toContain('this.pagina = pagina;');
+    expect(login).toContain('montarLanding(this.pagina');
+    expect(login).not.toMatch(/navegar[\s\S]{0,250}location\.reload/);
+  });
+
+  it('liga entrar, criar conta e jogar agora ao formulário correto', () => {
+    const login = fonte('ui', 'Login.ts');
+    expect(login).toContain("entrar: () => abrir('entrar')");
+    expect(login).toContain("criarConta: () => abrir('criar')");
+    expect(login).toContain("jogar: () => abrir('criar')");
+  });
+
+  it('possui conteúdo próprio para naves, galáxias e comunidade', () => {
+    const landing = fonte('ui', 'Landing.ts');
+    expect(landing).toContain('function paginaNaves');
+    expect(landing).toContain('function paginaGalaxias');
+    expect(landing).toContain('function paginaComunidade');
+    expect(landing).toContain('ANATOMIA DA NAVE');
+    expect(landing).toContain('DETALHES DO SETOR');
+    expect(landing).toContain('RANKING MUNDIAL');
+    expect(landing).toContain('COMUNICAÇÕES');
+  });
+
+  it('é responsiva e deixa a landing rolar no celular', () => {
+    const css = fonte('styles', 'landing.css');
+    expect(css).toContain('overflow-y: auto');
+    expect(css).toContain('@media (max-width: 760px)');
+    expect(css).toContain('.landing-nav');
+    expect(css).toContain('.landing-community-grid');
+  });
+});

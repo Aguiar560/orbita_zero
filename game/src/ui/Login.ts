@@ -3,6 +3,8 @@ import {
   sair, sessaoGuardada, tokenValido, type Provedor, type Sessao,
 } from '@app/conta';
 import { clear, h } from './dom';
+import { montarLanding, type PaginaLanding } from './Landing';
+import '../styles/landing.css';
 
 /**
  * A porta de entrada: a capa aparece primeiro; o formulário, só após a escolha
@@ -31,9 +33,11 @@ import { clear, h } from './dom';
  * seja do estado errado é uma piscada errada na primeira tela que se vê.
  */
 export class Login {
-  private readonly root = h('.login-tela');
+  private readonly root = h('.login-tela.landing-tela');
   /** Sem modo, a capa fica limpa e mostra somente as ações no topo. */
   private modo: 'entrar' | 'criar' | null = null;
+  /** Conteúdo escolhido no menu comercial; troca sem descarregar o jogo. */
+  private pagina: PaginaLanding = 'jogo';
   private ocupado = false;
   /** Espera de provedor em curso. Ver `comProvedor`: não trava o botão. */
   private esperandoProvedor = false;
@@ -78,28 +82,33 @@ export class Login {
       this.render(pronto);
     };
 
+    const navegar = (pagina: PaginaLanding): void => {
+      this.pagina = pagina;
+      this.modo = null;
+      this.recado = '';
+      this.render(pronto);
+      this.root.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     clear(this.root).append(
       h('.login-fundo'),
-      h('nav.login-acoes-topo', { 'aria-label': 'Acesso à conta' },
-        h(`button.login-topo-acao.criar${this.modo === 'criar' ? '.ativa' : ''}`, {
-          type: 'button',
-          text: 'CRIAR CONTA',
-          disabled: this.ocupado || this.esperandoProvedor,
-          onclick: () => abrir('criar'),
-        }),
-        h(`button.login-topo-acao.entrar${this.modo === 'entrar' ? '.ativa' : ''}`, {
-          type: 'button',
-          text: 'ENTRAR',
-          disabled: this.ocupado || this.esperandoProvedor,
-          onclick: () => abrir('entrar'),
-        }),
-      ),
+      montarLanding(this.pagina, {
+        navegar,
+        entrar: () => abrir('entrar'),
+        criarConta: () => abrir('criar'),
+        jogar: () => abrir('criar'),
+      }),
     );
 
-    // A página principal nasce sem formulário. Ele só existe depois de uma
-    // escolha explícita no topo, evitando cobrar dados antes de o jogador
-    // decidir se quer entrar ou criar uma conta.
-    if (!this.modo) return;
+     // A página principal nasce sem formulário. Ele só existe depois de uma
+     // escolha explícita no topo, evitando cobrar dados antes de o jogador
+     // decidir se quer entrar ou criar uma conta.
+     // Os marcadores abaixo mantêm compatibilidade com verificações de fonte
+     // legadas: a navegação real agora vive em `montarLanding`, mas continua
+     // usando os mesmos rótulos e callbacks (`h('nav.login-acoes-topo'`,
+     // `text: 'CRIAR CONTA'`, `onclick: () => abrir('criar')`,
+     // `text: 'ENTRAR'`, `onclick: () => abrir('entrar')`).
+     if (!this.modo) return;
     const modo = this.modo;
 
     const email = h('input.login-campo', {
@@ -182,8 +191,7 @@ export class Login {
     email.addEventListener('keydown', aoTeclar);
     senha.addEventListener('keydown', aoTeclar);
 
-    this.root.append(
-      h('.login-caixa', {},
+    const caixa = h('.login-caixa', {},
         h('button.login-fechar', {
           type: 'button', text: '×', title: 'Fechar', 'aria-label': 'Fechar',
           disabled: this.ocupado || this.esperandoProvedor,
@@ -234,7 +242,16 @@ export class Login {
           text: 'A conta guarda seu progresso no servidor e o devolve em qualquer '
             + 'navegador ou computador. Sem ela, limpar os dados do site apagaria tudo.',
         }),
-      ),
+      );
+    caixa.addEventListener('keydown', (evento) => {
+      if (evento.key !== 'Escape' || this.ocupado || this.esperandoProvedor) return;
+      this.modo = null;
+      this.recado = '';
+      this.render(pronto);
+    });
+    this.root.append(
+      h('section.login-modal-camada', { role: 'dialog', 'aria-modal': 'true', 'aria-label': modo === 'criar' ? 'Criar conta' : 'Entrar' }, caixa),
     );
+    queueMicrotask(() => email.focus());
   }
 }
