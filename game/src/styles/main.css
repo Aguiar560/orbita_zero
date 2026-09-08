@@ -1134,14 +1134,16 @@ select option:disabled { color: #667991; }
   box-shadow: inset 0 0 20px rgba(255, 203, 55, .28), 0 0 11px rgba(255, 203, 55, .38) !important;
 }
 .inv-lote-bar {
-  position: sticky; z-index: 12; bottom: 0; display: grid; gap: 8px; padding: 10px;
+  /* O chat ocupa o canto inferior direito; esta reserva impede que ele cubra
+     DESMONTAR sem mover o botão flutuante para cima da grade. */
+  position: sticky; z-index: 12; bottom: 0; display: grid; gap: 8px;
+  padding: 10px 112px 10px 10px;
   border: 1px solid rgba(91, 185, 220, .36); border-top: 2px solid rgba(86, 210, 249, .62);
   background: linear-gradient(180deg, rgba(9, 25, 40, .97), rgba(4, 11, 22, .99));
   box-shadow: 0 -9px 20px rgba(0, 0, 0, .42), inset 0 0 18px rgba(53, 183, 226, .06);
 }
-.inv-lote-status { min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.inv-lote-status { min-width: 0; display: flex; align-items: baseline; }
 .inv-lote-status strong { color: #cbefff; font: 700 9px/1.2 'Chakra Petch', sans-serif; letter-spacing: .08em; }
-.inv-lote-status span { color: #7595ab; font-size: 10px; text-align: right; }
 .inv-lote-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .inv-lote-acao {
   min-width: 0; min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px;
@@ -1152,6 +1154,12 @@ select option:disabled { color: #667991; }
 .inv-lote-acao.desmontar { color: #6edcff; background: rgba(10, 75, 101, .26); box-shadow: inset 0 0 14px rgba(74, 207, 247, .09); }
 .inv-lote-acao:hover:not(:disabled) { filter: brightness(1.25); }
 .inv-lote-acao:disabled { cursor: not-allowed; opacity: .3; filter: grayscale(.35); }
+
+/* Com a coluna direita estreita, empilhar mantém os rótulos inteiros mesmo
+   depois de reservar o espaço horizontal do chat. */
+@media (min-width: 821px) and (max-width: 1080px) {
+  .inv-lote-acoes { grid-template-columns: 1fr; }
+}
 
 .item-icon { position: relative; flex-shrink: 0; }
 .slot-pip { position: absolute; right: -3px; bottom: -3px; opacity: 0.75; filter: drop-shadow(0 0 2px #000); }
@@ -5057,6 +5065,48 @@ select option:disabled { color: #667991; }
 .evt-top p { max-width: 620px; color: var(--muted); }
 .evt-clock { position: absolute; right: 22px; top: 22px; display: flex; flex-direction: column; text-align: right; }
 .evt-clock b { color: #dff7ff; font-variant-numeric: tabular-nums; }
+/* A lista dos TRES eventos ativos.
+ *
+ * Antes havia um so, e o layout era duas colunas -- objetivo a esquerda,
+ * recompensa a direita. Com tres, cada um vira um cartao inteiro, e a coluna
+ * some: comparar "qual eu consigo hoje" e a decisao que a tela existe para
+ * ajudar, e comparar exige os tres lado a lado. */
+.evt-lista {
+  display: grid; gap: 14px; margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.evt-lista .evt-card {
+  display: grid; gap: 10px; align-content: start;
+  border-color: color-mix(in srgb, var(--evt-cor) 32%, transparent);
+}
+
+/* Pronto para resgatar: a borda acende na cor do evento. E o unico estado que
+ * pede acao do jogador, e por isso o unico que grita. */
+.evt-lista .evt-card.pronto {
+  border-color: var(--evt-cor);
+  box-shadow: 0 0 14px -2px color-mix(in srgb, var(--evt-cor) 45%, transparent);
+}
+
+.evt-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.evt-tag {
+  padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--evt-cor) 22%, transparent);
+  color: var(--evt-cor); font-size: 10px; font-weight: 800; letter-spacing: .1em;
+}
+.evt-sub { color: var(--evt-cor); font-size: 11px; letter-spacing: .08em; }
+.evt-desc { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.evt-objetivo { display: grid; gap: 5px; }
+.evt-objetivo > small, .evt-mod > small {
+  color: var(--muted); font-size: 10px; letter-spacing: .08em;
+}
+.evt-mod { display: grid; gap: 3px; font-size: 11.5px; }
+.evt-premio {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border-radius: 8px; background: rgba(3, 8, 16, .55);
+}
+.evt-premio-txt { display: grid; gap: 2px; }
+
 .evt-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .7fr); gap: 14px; margin-top: 16px; }
 .evt-card { border: 1px solid rgba(126,160,180,.24); background: rgba(7,13,21,.9); padding: 22px; }
 .evt-card h2 { margin: 8px 0; font: 700 19px 'Chakra Petch', sans-serif; color: #e9f7ff; }
@@ -8455,9 +8505,7 @@ select option:disabled { color: #667991; }
     position: static; order: -1; width: 100%; box-sizing: border-box;
     pointer-events: none;
   }
-  .inv-lote-bar { position: static; padding: 9px 8px; }
-  .inv-lote-status { align-items: flex-start; flex-direction: column; gap: 3px; }
-  .inv-lote-status span { text-align: left; }
+  .inv-lote-bar { position: static; padding: 9px 112px 9px 8px; }
   .inv-lote-acao { min-height: 44px; font-size: 9px; }
   .inv-cell.selecionado {
     border-color: #70dcff !important;

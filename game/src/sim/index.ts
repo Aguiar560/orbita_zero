@@ -64,7 +64,7 @@ import {
   aplicarFato, confiancaDe, contatoDesbloqueado, fracaoDe, progressoDe, situacaoDe,
   sinalDoContato, type SinalDeContato, type SituacaoDeMissao,
 } from './missoes';
-import { aplicarFatoAoEvento, progressoDoEvento, type ProgressoDeEvento } from './eventos';
+import { aplicarFatoAoEvento, eventosAtivos as janelasComProgresso, progressoDoEvento, type ProgressoDeEvento } from './eventos';
 
 /**
  * Sufixo do id de essência por elemento.
@@ -794,19 +794,44 @@ export class Sim {
     if (prontas.length || evento.mudou) this.touch();
   }
 
-  /** Evento rotativo atual e progresso desta ocorrência. */
+  /** O evento SEMANAL. Existe para quem só precisa de um. */
   get eventoAtivo(): ProgressoDeEvento {
     return progressoDoEvento(this.state, this.alcanceLiberado);
   }
 
-  resgatarEvento(): boolean {
-    const atual = this.eventoAtivo;
+  /** Os três ativos: diário, semanal e mensal. */
+  get eventosAtivos(): ProgressoDeEvento[] {
+    return janelasComProgresso(this.state, this.alcanceLiberado);
+  }
+
+  /**
+   * Resgata um evento pela CHAVE da ocorrência.
+   *
+   * Por chave, e não "o ativo": com três eventos ao mesmo tempo, um botão que
+   * resgata "o atual" resgataria o errado — e o jogador descobriria pelo
+   * recurso que apareceu no armazém.
+   *
+   * Sem argumento, resgata o semanal. É o que os chamadores antigos esperavam.
+   */
+  resgatarEvento(chave?: string): boolean {
+    const atual = chave
+      ? this.eventosAtivos.find((e) => e.janela.chave === chave)
+      : this.eventoAtivo;
+    if (!atual) return false;
     if (!atual.liberado || atual.resgatado || atual.progresso < atual.alvo) return false;
-    const { def, chave } = atual.janela;
-    const guardado = this.guardarMaterial(def.gas, def.quantidade);
+
+    const { def } = atual.janela;
+    const guardado = this.guardarMaterial(def.recurso, def.quantidade);
+    // Armazém cheio: NÃO marca como resgatado. O evento continua pronto, e o
+    // jogador resgata depois de abrir espaço — perder a recompensa por falta de
+    // lugar seria punir quem cumpriu a diretiva.
     if (guardado < def.quantidade) return false;
-    this.state.eventos[chave] = { progresso: atual.alvo, resgatado: true };
-    toast(`${def.nome}: +${def.quantidade} ${RECURSO_POR_ID.get(def.gas)?.nome ?? def.gas}`, 'epic', `recurso/${def.gas}`);
+
+    this.state.eventos[atual.janela.chave] = { progresso: atual.alvo, resgatado: true };
+    toast(
+      `${def.nome}: +${def.quantidade} ${RECURSO_POR_ID.get(def.recurso)?.nome ?? def.recurso}`,
+      'epic', `recurso/${def.recurso}`,
+    );
     this.touch();
     return true;
   }

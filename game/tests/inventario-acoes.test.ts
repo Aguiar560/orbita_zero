@@ -29,6 +29,11 @@ describe('ações em lote abaixo do inventário', () => {
     expect(painel).toContain('sim.salvage(item.uid)');
   });
 
+  it('reserva o canto do chat sem repetir a explicação da confirmação', () => {
+    expect(css).toMatch(/\.inv-lote-bar \{[\s\S]*?padding: 10px 112px 10px 10px/);
+    expect(painel).not.toContain('A ação só acontece depois da confirmação.');
+  });
+
   it('exige confirmação antes das duas ações irreversíveis', () => {
     expect(painel).toContain('if (!confirm(`Vender ${rotulo}');
     expect(painel).toContain('if (!confirm(`Desmontar ${rotulo}');
