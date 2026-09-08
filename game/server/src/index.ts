@@ -18,11 +18,12 @@ import {
 import {
   conferirDelta, conferirMatriz, melhorSetor, nivelDoPiloto,
 } from './progresso';
-import { simDoServidor, type ContextoDoCliente } from './estado';
+import { montarEstado, simDoServidor, type ContextoDoCliente } from './estado';
 import { HULL_BY_ID } from '@data/hulls';
 import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { xpAcumuladoDe } from '@sim/nivel';
 import { excedeuPorReplica } from './replica';
+import { precificarEncontros } from './encontros';
 import type { Item } from '@sim/types';
 
 /**
@@ -1322,6 +1323,7 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
     xp?: unknown; setor?: unknown; matriz?: unknown;
     naves?: Record<string, unknown>; materiais?: Record<string, unknown>;
     casco?: unknown; semente?: unknown;
+    encontros?: Record<string, unknown>;
   };
   try {
     corpo = JSON.parse(bruto) as typeof corpo;
@@ -1406,6 +1408,49 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
    * generoso demais registra de menos, nunca recusa de mais. Errar para o lado
    * de deixar passar é o certo enquanto isto só mede.
    */
+  /**
+   * O servidor PRECIFICA o que o cliente declarou ter enfrentado.
+   *
+   * Ainda não é o pagamento: por enquanto ele compara com o XP declarado e
+   * registra a diferença. É o último desconhecido antes de virar a chave — o
+   * invariante já foi provado em teste, mas ali cliente e servidor partem do
+   * MESMO estado. Em produção o servidor pode ter um item a menos (equipado e
+   * ainda não sincronizado), e aí o multiplicador `xpGanho` difere.
+   *
+   * Uma divergência aqui é exatamente o XP que o jogador perderia se a chave
+   * virasse hoje. Por isso ela é medida antes, e não depois.
+   */
+  if (corpo.encontros && typeof corpo.encontros === 'object') {
+    try {
+      const [frota, itens] = await Promise.all([frotaDe(env, id), inventarioDe(env, id)]);
+      const estado = montarEstado(
+        {
+          saldos: { sucata: 0, nucleo: 0, cristal: 0 },
+          xp: atual.xp, nivel: atual.nivel, matriz: atual.matriz,
+          melhorSetor: atual.melhorSetor, materiais: atual.materiais,
+          naves: atual.naves, frota, itens, cascoEmCampo, semente,
+        },
+        { hull: cascoEmCampo },
+      );
+      const preco = precificarEncontros(corpo.encontros, estado, atual.melhorSetor);
+      const declarado = xp - atual.xp;
+      // Só registra quando a diferença é grande: 1,2× é ruído de item fora de
+      // sincronia; 40× é outra coisa. A folga é a mesma leitura de sempre.
+      const folga = declarado / Math.max(1, preco.xp);
+      if (preco.encontros > 0 && (folga > 2 || folga < 0.5)) {
+        escritas.push(env.DB
+          .prepare(
+            'INSERT INTO excedentes (usuario, em, moeda, motivo, quantia, teto, folga, setor, segundos)'
+            + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          )
+          .bind(id, agora, 'xp', 'encontros', declarado, preco.xp, folga, setor, preco.encontros));
+      }
+    } catch {
+      // Precificar é auditoria: uma falha aqui não pode custar o progresso
+      // legítimo que veio no mesmo envio.
+    }
+  }
+
   if (corpo.xp !== undefined) {
     const janela = atual.atualizadoEm ? Math.max(1, agora - atual.atualizadoEm) : 120;
     const e = excedeuPorReplica(xp - atual.xp, setor, janela);

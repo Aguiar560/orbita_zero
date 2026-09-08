@@ -247,6 +247,15 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
      * mandar sempre poupa um campo de estado no cliente para saber se já foi.
      */
     semente: s.universe.seed,
+    /**
+     * Os encontros enfrentados desde a última confirmação.
+     *
+     * É o que substitui a declaração de XP de combate: o cliente diz ONDE e
+     * QUANTOS, e o servidor calcula quanto vale. Enquanto ele ainda não paga
+     * por aqui, os dois sobem juntos e o servidor compara — é assim que se
+     * descobre uma divergência antes de ela virar XP perdido de alguém.
+     */
+    encontros: { ...s.encontros },
     // Materiais ainda não têm marco: eles são gravados como ABSOLUTO pelo
     // caminho antigo e a conversão para delta entra junto do Armazém no
     // servidor. Enviar zero é honesto — não muda nada — até lá.
@@ -257,6 +266,21 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
   if (!r) return;
   // O servidor devolve o progresso já gravado, então o que voltar é a verdade.
   if (corpo.casco && r.cascoEmCampo === corpo.casco) cascoEscolhido = null;
+
+  /**
+   * Os encontros declarados saem da fila SÓ depois da confirmação.
+   *
+   * E saem por CHAVE, não com um `= {}`: entre montar o corpo e receber a
+   * resposta o jogador continuou abatendo, e zerar o mapa inteiro apagaria o
+   * que entrou nesse meio — que é o XP de combate dele quando o servidor
+   * passar a pagar por aqui.
+   */
+  for (const chave of Object.keys(corpo.encontros)) {
+    const enviado = corpo.encontros[chave] ?? 0;
+    const atual = s.encontros[chave] ?? 0;
+    if (atual > enviado) s.encontros[chave] = atual - enviado;
+    else delete s.encontros[chave];
+  }
 
   // `adotar` move o marco junto. O marco só anda quando o servidor confirma:
   // andar antes perderia o ganho da requisição que falhou, em silêncio.

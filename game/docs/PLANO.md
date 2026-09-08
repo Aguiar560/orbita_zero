@@ -1147,10 +1147,28 @@ Três decisões, cada uma com teste:
 Vale nos setores 1, 8 e 40, percorrendo o setor inteiro onda a onda. Se não
 valesse, a diferença seria exatamente o que o jogador perderia.
 
-**Falta só virar a chave:** `gravarProgresso` montar o `GameState` (como
-`/ausencia` já faz) para ter o equipamento, precificar os `encontros` e pagar
-isso em vez do XP declarado. As missões continuam declarando XP até terem preço
-próprio, então o pagamento é `preço dos encontros + XP das outras fontes`.
+#### Passo 8 ✅ — o servidor PRECIFICA o declarado (09/09)
+
+`gravarProgresso` passou a montar o `GameState` do jogador — frota, itens,
+Matriz, nível e semente — e a chamar `precificarEncontros`. O valor sai do
+próprio jogo, encontro a encontro.
+
+O que ele recusa, e sem derrubar o resto do envio (a lição de
+`planejarEquipar`): chave torta, setor acima do MELHOR JÁ ALCANÇADO, e mais
+abates do que a onda tem. Um envio com dez mil chaves para no teto de 400.
+
+**Ainda compara em vez de pagar, e é a última medição que falta.** O
+invariante já foi provado em teste — mas ali cliente e servidor partem do
+MESMO estado. Em produção o servidor pode ter um item a menos, equipado e não
+sincronizado, e aí o multiplicador `xpGanho` difere. **Uma divergência aqui é
+exatamente o XP que o jogador perderia se a chave virasse hoje**, e por isso
+ela é medida antes, e não depois. Vai para `excedentes` com motivo
+`encontros`, e só quando a razão passa de 2× ou fica abaixo de 0,5×.
+
+**Para virar a chave**, depois de os dados mostrarem que os dois concordam:
+trocar `xp = atual.xp + declarado` por `atual.xp + preco.xp + xpDeOutrasFontes`,
+e creditar a mesma parcela em `naves_progresso` do casco em campo. As missões
+continuam declarando XP até terem preço próprio.
 
 **O desenho que sai disso:**
 
