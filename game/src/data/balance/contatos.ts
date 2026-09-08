@@ -61,15 +61,32 @@ export const multiplicadorDoTier = (tier: number): number =>
 /**
  * A raridade da peça que fecha a cadeia de um contato.
  *
- * Épico nos tiers baixos, Lendário nos altos — a decisão do Rafael em 07/09.
- * O corte fica no meio da escada: quem trabalha para um contato das primeiras
- * doze galáxias termina com uma peça Épica; das galáxias 13 em diante, Lendária.
+ * Épico até o tier 2, Lendário nos 3 e 4, **Mítico no 5**.
  *
- * Mítico e Divino NÃO entram: o Mítico é o teto da Provação (piso 90) e o
- * Divino só sai da fusão, a 301 Míticos por Divino. Se a última missão de um
- * contato pagasse Divino, os dois sistemas que existem para isso viravam
- * enfeite.
+ * ## Sobre o Mítico no topo
+ *
+ * Eu havia proposto parar no Lendário, com o argumento de que o Mítico é o teto
+ * da Provação (piso 90) e uma segunda fonte o esvaziaria. O Rafael decidiu
+ * incluí-lo em 07/09, e o desenho aguenta: são SEIS contatos no tier 5, cada um
+ * com uma cadeia inteira até o fim, nas galáxias 25 a 30. Não é uma fonte
+ * paralela de Mítico — é o prêmio de terminar o conteúdo mais profundo do jogo,
+ * uma vez por contato.
+ *
+ * ## O Divino continua fora, e por um motivo diferente do que eu disse antes
+ *
+ * Eu havia escrito que ele "só sai da fusão". Está errado: o Divino CAI, com
+ * peso 0,00323 contra 10.000 do Comum. Medido em 07/09 com
+ * `npm run simular -- drops`: 1 em 3,56 milhões de sorteios sem Sorte, e 1 em
+ * 300 mil no teto do atributo. O alvo escrito em `raridades.ts` é "de 1000
+ * jogadores no teto, uns 20 com um Divino".
+ *
+ * A razão de ele ficar fora daqui é outra, e mais forte: uma peça garantida no
+ * fim de uma cadeia de missões é o oposto de 1 em 300 mil. Não competiria com a
+ * fusão — apagaria a raridade inteira, que é a única do jogo cuja graça é ser
+ * quase inalcançável. O Mítico aguenta ser prêmio de conteúdo profundo; o
+ * Divino, não.
  */
 export function raridadeExclusivaDoTier(tier: number): Rarity {
+  if (tier >= TIER_MAX) return 5 as Rarity;
   return (tier >= 3 ? 4 : 3) as Rarity;
 }

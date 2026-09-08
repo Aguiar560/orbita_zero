@@ -74,22 +74,27 @@ describe('o que o tier muda', () => {
     }
   });
 
-  it('e a peça final é Épica nos tiers baixos e Lendária nos altos', () => {
+  it('e a peça final sobe de Épica a Mítica ao longo da escada', () => {
     expect(raridadeExclusivaDoTier(1)).toBe(3);
     expect(raridadeExclusivaDoTier(2)).toBe(3);
     expect(raridadeExclusivaDoTier(3)).toBe(4);
-    expect(raridadeExclusivaDoTier(TIER_MAX)).toBe(4);
+    expect(raridadeExclusivaDoTier(4)).toBe(4);
+    // Mítico no topo: decisão do Rafael em 07/09. São seis contatos no tier 5,
+    // cada um com uma cadeia inteira até o fim, nas galáxias 25 a 30.
+    expect(raridadeExclusivaDoTier(TIER_MAX)).toBe(5);
   });
 
-  it('e NUNCA chega a Mítico ou Divino', () => {
+  it('e NUNCA chega a Divino', () => {
     /**
-     * O Mítico é o teto da Provação (piso 90) e o Divino só sai da fusão, a 301
-     * Míticos por Divino. Se a última missão de um contato pagasse Divino, os
-     * dois sistemas que existem para isso viravam enfeite.
+     * O Divino CAI — peso 0,00323, ou 1 em 300 mil no teto de Sorte, medido em
+     * 07/09. O que ele não pode é ser GARANTIDO: uma peça certa no fim de uma
+     * cadeia de missões é o oposto de 1 em 300 mil, e apagaria a única raridade
+     * do jogo cuja graça é ser quase inalcançável.
      */
     for (let t = 1; t <= TIER_MAX; t++) {
-      expect(raridadeExclusivaDoTier(t), `tier ${t}`).toBeLessThanOrEqual(4);
+      expect(raridadeExclusivaDoTier(t), `tier ${t}`).toBeLessThanOrEqual(5);
     }
+    expect(raridadeExclusivaDoTier(TIER_MAX)).toBeLessThan(6);
   });
 
   it('e o tier NÃO aparece em tela nenhuma', () => {
