@@ -299,3 +299,32 @@ export function unidadesMinimasDaOnda(sector: number): number {
     Math.floor(densidadeAlvo(Math.max(1, Math.floor(sector))) * menor * ARREDONDAMENTO_POR_GRUPO),
   ));
 }
+
+/**
+ * Quantas ondas comuns de vida vale este encontro.
+ *
+ * ## Por que a RAZÃO, e não o tempo
+ *
+ * Uma onda comum é limitada pela ENTRADA: não se mata quem não chegou, e
+ * `TAXA_DE_ENTRADA` dá o piso. A onda de CHEFE não — ele é UMA unidade, entra
+ * instantaneamente, e o que segura é o DANO. Usar o piso de entrada nos dois
+ * casos dava ao chefe o mesmo tempo mínimo de uma onda comum, e ele paga 12×.
+ * Medido em 09/09: o teto ficava 522× acima do jogo real no setor 300.
+ *
+ * O dano do jogador é justamente a grandeza instável que a Fase 5 evita. Mas a
+ * RAZÃO entre as duas vidas não depende dele: seja qual for o dano, um encontro
+ * com dez vezes a vida leva dez vezes o tempo. É o mesmo truque de sempre —
+ * comparar com o próprio jogo em vez de estimar o jogador.
+ *
+ * Devolve 1 para onda comum, e o multiplicador de vida para elite e chefe.
+ */
+export function vidasDeOndaComum(sector: number, wave: number): number {
+  const s = Math.max(1, Math.floor(sector));
+  const w = Math.max(1, Math.floor(wave));
+  const encontro = buildEncounter(ESTADO_DE_PRECO, s, w);
+  // A referência é a PRIMEIRA onda do setor: a menor delas, para o piso ficar
+  // do lado seguro. Usar a média deixaria o piso acima do honesto nas ondas
+  // iniciais, que é como se recusa jogo legítimo.
+  const referencia = buildEncounter(ESTADO_DE_PRECO, s, 1);
+  return Math.max(1, encontro.hpPool / Math.max(1, referencia.hpPool));
+}

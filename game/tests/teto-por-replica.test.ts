@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { WAVES_PER_SECTOR, buildEncounter, unidadesMinimasDaOnda, xpDaOnda } from '@sim/progression';
+import {
+  WAVES_PER_SECTOR, buildEncounter, unidadesMinimasDaOnda, vidasDeOndaComum, xpDaOnda,
+} from '@sim/progression';
 import { createState } from '@sim/state';
 import { PERFIS_DE_ONDA, TAXA_DE_ENTRADA } from '@data/balance/curvas';
 import { FOLGA_DO_PISO, excedeuPorReplica, pisoDeTempoDaOnda, tetoPorReplica } from '../server/src/replica';
@@ -86,7 +88,29 @@ describe('o piso de tempo', () => {
     // `LEVA_MIN/MAX` e `LEVA_INTERVALO_MIN/MAX`, que são o agendamento real do
     // `WaveDirector`. Se alguém a transformar num número solto, isto quebra.
     expect(TAXA_DE_ENTRADA).toBeGreaterThan(0);
-    expect(pisoDeTempoDaOnda(40)).toBeCloseTo(unidadesMinimasDaOnda(40) / TAXA_DE_ENTRADA, 9);
+    expect(pisoDeTempoDaOnda(40, 1)).toBeCloseTo(unidadesMinimasDaOnda(40) / TAXA_DE_ENTRADA, 9);
+  });
+
+  it('mas o CHEFE não é limitado por entrada — ele é uma unidade só', () => {
+    /**
+     * O chefe entra na hora; o que segura é o dano. Sem piso próprio ele ganhava
+     * o tempo de uma onda comum e paga 12×, e o teto ficava **522× acima** do
+     * jogo real no setor 300 (medido em 09/09). Com a razão de vida, caiu para
+     * 1,3×.
+     *
+     * A razão de vida é a grandeza certa porque não depende do dano do jogador:
+     * seja qual for, um encontro com dez vezes a vida leva dez vezes o tempo.
+     */
+    for (const setor of [1, 40, 300]) {
+      const comum = pisoDeTempoDaOnda(setor, 1);
+      const final = pisoDeTempoDaOnda(setor, WAVES_PER_SECTOR + 1);
+      expect(final, `setor ${setor}: a onda final custa o mesmo que uma comum`)
+        .toBeGreaterThan(comum);
+      expect(vidasDeOndaComum(setor, 1), 'a primeira onda é a referência').toBe(1);
+    }
+    // E o peso cresce com o setor: o chefe do 300 vale muito mais ondas que o do 1.
+    expect(vidasDeOndaComum(300, WAVES_PER_SECTOR + 1))
+      .toBeGreaterThan(vidasDeOndaComum(1, WAVES_PER_SECTOR + 1));
   });
 });
 
@@ -100,16 +124,20 @@ describe('o teto', () => {
      * quem não entrou. Se o teto ficar abaixo dele, o servidor está recusando
      * jogo legítimo.
      *
-     * Medido em 09/09, refeito depois que este mesmo teste pegou dois erros
-     * meus: a folga vai de 1,25× a 1,41× de 1 a 300.
+     * Medido em 09/09, refeito duas vezes — este teste pegou dois erros meus, e
+     * a terceira medição foi depois de o chefe ganhar piso próprio: a folga vai
+     * de 1,00× a 1,50×. O 1,00× dos setores 150 e 300 não é folga espremida: é
+     * que lá a onda de chefe custa 63 vidas de onda comum e não cabe na janela,
+     * então o teto e o honesto param na mesma quinta onda.
      */
     const JANELA = 150;
     for (const setor of [1, 3, 8, 15, 21, 40, 85, 150, 300]) {
-      const piso = pisoDeTempoDaOnda(setor);
       let honesto = 0;
       let gasto = 0;
       let onda = 1;
-      while (gasto + piso <= JANELA) {
+      for (;;) {
+        const piso = pisoDeTempoDaOnda(setor, onda);
+        if (gasto + piso > JANELA) break;
         honesto += xpDaOnda(setor, onda);
         gasto += piso;
         onda = (onda % (WAVES_PER_SECTOR + 1)) + 1;

@@ -1,5 +1,5 @@
 import { TAXA_DE_ENTRADA, WAVES_PER_SECTOR } from '@data/balance/curvas';
-import { unidadesMinimasDaOnda, xpDaOnda } from '@sim/progression';
+import { unidadesMinimasDaOnda, vidasDeOndaComum, xpDaOnda } from '@sim/progression';
 
 /**
  * O teto de ganho por RÉPLICA: o servidor não estima, ele executa o jogo.
@@ -36,10 +36,18 @@ import { unidadesMinimasDaOnda, xpDaOnda } from '@sim/progression';
  * Dispersão de 1,25× a 1,41× em toda a faixa, contra 0,3× a 9,9× da tentativa
  * anterior. É a diferença entre grandeza estável e instável.
  *
- * Contra ondas REAIS a folga é maior: 3,9× no setor 1 e **522×** no 300. O teto
- * é frouxo no fim da campanha porque lá a onda de chefe paga 12× e o piso de
- * tempo dela é o de uma onda comum — o chefe é UMA unidade. Antes de recusar,
- * ele precisa de piso próprio; enquanto MEDE, frouxo é o lado seguro de errar.
+ * ## O chefe precisou de piso próprio
+ *
+ * Ele é UMA unidade: entra na hora, e o que segura é o dano. Com o piso de
+ * entrada de uma onda comum, e pagando 12×, o teto ficava **522× acima** do
+ * jogo real no setor 300. A razão de VIDA resolve sem voltar a estimar o
+ * jogador — seja qual for o dano, dez vezes a vida leva dez vezes o tempo.
+ *
+ * | contra ondas reais | antes | depois |
+ * |---|---|---|
+ * | setor 1 | 3,9× | 3,0× |
+ * | setor 40 | 6,8× | 2,0× |
+ * | setor 300 | **522×** | **1,3×** |
  *
  * ## Ainda MEDE, não impede
  *
@@ -60,9 +68,23 @@ import { unidadesMinimasDaOnda, xpDaOnda } from '@sim/progression';
  */
 export const FOLGA_DO_PISO = 0.75;
 
-/** Quanto tempo, no mínimo, uma onda deste setor leva para entrar em campo. */
-export function pisoDeTempoDaOnda(setor: number): number {
-  return unidadesMinimasDaOnda(setor) / TAXA_DE_ENTRADA;
+/**
+ * Quanto tempo, no mínimo, esta onda leva.
+ *
+ * Para a onda COMUM é o tempo de ENTRAR em campo: não se mata quem não chegou.
+ *
+ * Para a onda de CHEFE não serve — ele é UMA unidade e entra na hora; o que
+ * segura é o DANO. Sem tratamento próprio ele ganhava o piso de uma onda
+ * comum e paga 12×, e o teto ficava 522× acima do jogo real no setor 300
+ * (medido em 09/09).
+ *
+ * O dano do jogador é a grandeza instável que esta fase evita. Mas a RAZÃO
+ * entre as vidas não depende dele: seja qual for o dano, um encontro com dez
+ * vezes a vida leva dez vezes o tempo. Ver `vidasDeOndaComum`.
+ */
+export function pisoDeTempoDaOnda(setor: number, onda = 1): number {
+  const entrada = unidadesMinimasDaOnda(setor) / TAXA_DE_ENTRADA;
+  return entrada * vidasDeOndaComum(setor, onda);
 }
 
 export interface TetoPorReplica {
@@ -83,16 +105,20 @@ export interface TetoPorReplica {
 export function tetoPorReplica(setor: number, segundos: number): TetoPorReplica {
   const s = Math.max(1, Math.floor(setor));
   let restante = Math.max(0, segundos) / FOLGA_DO_PISO;
-  const piso = pisoDeTempoDaOnda(s);
 
   let xp = 0;
   let ondas = 0;
   // Teto de sanidade: uma janela absurda (relógio adulterado, conta parada por
   // meses) não pode virar um laço de milhões de voltas.
   const MAX_ONDAS = 20_000;
-  while (restante >= piso && ondas < MAX_ONDAS) {
+  for (;;) {
     // A onda cicla 1..WAVES_PER_SECTOR e depois a final (WAVES_PER_SECTOR+1).
     const onda = (ondas % (WAVES_PER_SECTOR + 1)) + 1;
+    // O piso é POR ONDA: a final custa muito mais tempo que uma comum, porque
+    // tem muito mais vida. Calcular um piso só para o setor dava ao chefe o
+    // tempo de uma onda comum, e ele paga 12×.
+    const piso = pisoDeTempoDaOnda(s, onda);
+    if (restante < piso || ondas >= MAX_ONDAS) break;
     xp += xpDaOnda(s, onda);
     restante -= piso;
     ondas++;

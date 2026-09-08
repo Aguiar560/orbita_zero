@@ -1050,11 +1050,21 @@ limpa cada onda exatamente no piso de tempo, coisa que ninguém consegue:
 da tentativa 2. É a diferença entre uma grandeza estável e uma instável, e é o
 que faltava.
 
-Contra ondas REAIS, que são mais cheias que o piso, a folga é bem maior: 3,9×
-no setor 1, 6,8× no 40 e **522×** no 300. O teto é frouxo no fim da campanha,
-porque lá a onda de chefe paga 12× e o piso de tempo dela é o de uma onda
-comum. Isso é aceitável enquanto ele MEDE; antes de recusar, o chefe precisa
-de piso próprio.
+O CHEFE precisou de piso próprio, e foi a segunda entrega. Ele é UMA unidade:
+entra na hora, e o que segura é o dano. Com o piso de entrada de uma onda comum,
+e pagando 12×, o teto ficava frouxo justamente no fim da campanha. A razão de
+VIDA resolve sem voltar a estimar o jogador — seja qual for o dano, dez vezes a
+vida leva dez vezes o tempo.
+
+| folga contra ondas reais | antes | depois |
+|---|---|---|
+| setor 1 | 3,9× | 3,0× |
+| setor 40 | 6,8× | 2,0× |
+| setor 300 | **522×** | **1,3×** |
+
+Nos setores 150 e 300 a folga contra o jogador teórico é 1,00×, e isso não é
+margem espremida: lá a onda de chefe custa 63 vidas de onda comum e não cabe na
+janela de 150 s, então o teto e o honesto param na mesma quinta onda.
 
 **O desenho que sai disso:**
 
