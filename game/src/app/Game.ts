@@ -26,6 +26,7 @@ import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota } from './inventario';
 import { drenarProgresso, sincronizarProgresso } from './progresso';
+import { drenarMissoes, sincronizarMissoes } from './missoes';
 import { creditarAusencia } from './ausencia';
 
 /**
@@ -239,6 +240,10 @@ export class Game {
     // atributos, e um quadro com o nível errado é uma piscada de números
     // errados na primeira tela que o jogador vê.
     await sincronizarProgresso(this.sim);
+    // As missoes e a confianca vem do servidor desde a fatia 1: a entrega passa
+    // pela conferencia dele, e a mescla monotonica soma o que duas maquinas
+    // avancaram em vez de uma vencer.
+    await sincronizarMissoes(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -736,6 +741,9 @@ export class Game {
     // XP, Matriz e setor no mesmo relógio: o ganho é contínuo, mas mandá-lo
     // no ritmo do setor basta — o delta acumula sozinho até o próximo ciclo.
     void drenarProgresso(this.sim);
+    // As missoes andam no mesmo relogio: o progresso delas vem de abate e de
+    // setor concluido, que e o mesmo evento que enche a carteira.
+    void drenarMissoes(this.sim);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {

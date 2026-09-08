@@ -24,6 +24,10 @@ import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { xpAcumuladoDe } from '@sim/nivel';
 import { excedeuPorReplica } from './replica';
 import { precificarEncontros } from './encontros';
+import {
+  MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
+  type LinhaDeMissao,
+} from './missoes';
 import type { Item } from '@sim/types';
 
 /**
@@ -346,6 +350,11 @@ export default {
     if (url.pathname === '/frota') {
       if (req.method === 'GET') return json({ frota: await frotaDe(env, usuario.id) }, 200, origem);
       if (req.method === 'POST') return adquirirCasco(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/missoes') {
+      if (req.method === 'GET') return json(await missoesDe(env, usuario.id), 200, origem);
+      if (req.method === 'POST') return gravarMissoes(req, env, usuario.id, origem);
     }
 
     if (url.pathname === '/progresso') {
@@ -1242,6 +1251,108 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
 
   return json({ frota: await frotaDe(env, id) }, 200, origem);
 }
+// ── missões ─────────────────────────────────────────────────────────────────
+
+/**
+ * As missões do jogador, mais a confiança DERIVADA delas.
+ *
+ * A confiança não tem coluna: somar `confiancaDaMissao` sobre o que foi
+ * entregue devolve o mesmo número que o cliente mantinha. Guardá-la seria a
+ * mesma informação duas vezes — o argumento que `progresso.ts` já usa para o
+ * nível não ter coluna.
+ */
+async function missoesDe(env: Env, usuario: string) {
+  const { results } = await env.DB
+    .prepare('SELECT missao, passos, iniciada, entregue_em FROM missoes WHERE usuario = ?')
+    .bind(usuario)
+    .all<{ missao: string; passos: string; iniciada: number; entregue_em: number | null }>();
+
+  const missoes: Record<string, LinhaDeMissao> = {};
+  const entregues: string[] = [];
+  for (const l of results) {
+    let passos: number[] = [];
+    try { passos = JSON.parse(l.passos) as number[]; } catch { passos = []; }
+    missoes[l.missao] = {
+      passos: Array.isArray(passos) ? passos : [],
+      iniciada: l.iniciada === 1,
+      entregueEm: l.entregue_em,
+    };
+    if (l.entregue_em !== null) entregues.push(l.missao);
+  }
+  return { missoes, confianca: confiancaDerivada(entregues) };
+}
+
+/**
+ * Recebe o que o cliente avançou e MESCLA — nunca sobrescreve.
+ *
+ * A mescla é monotônica (ver `missoes.ts`), então duas máquinas em paralelo
+ * somam em vez de uma vencer. E é idempotente, que é o que torna a semeadura
+ * dos saves atuais segura: mandar o mapa inteiro duas vezes dá o mesmo.
+ *
+ * A ENTREGA passa pela validação B: a missão existe, ainda não foi entregue, e
+ * os passos alcançam o alvo do catálogo. Uma entrega recusada não derruba o
+ * envio — o progresso que veio junto é legítimo, e derrubar o lote por causa
+ * dela transformaria um erro num bloqueio permanente. É a lição de
+ * `planejarEquipar`.
+ */
+async function gravarMissoes(req: Request, env: Env, id: string, origem: string): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { missoes?: Record<string, unknown> };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const guardadas = (await missoesDe(env, id)).missoes;
+  const escritas: D1PreparedStatement[] = [];
+  const recusadas: { missao: string; motivo: string }[] = [];
+  let n = 0;
+
+  for (const [missaoId, bruta] of Object.entries(corpo.missoes ?? {})) {
+    if (n >= MISSOES_MAX) break;
+    if (missaoId.length > 64) continue;
+
+    const recebida = linhaSa(bruta);
+    if (!recebida) { recusadas.push({ missao: missaoId, motivo: 'linha_invalida' }); continue; }
+
+    const guardada = guardadas[missaoId] ?? null;
+    const junta = mesclarMissao(guardada, recebida);
+
+    // A entrega só vale se passar na conferência. Recusada, o PROGRESSO dela
+    // continua valendo — o jogador avançou de verdade, só não terminou.
+    if (junta.entregueEm !== null && guardada?.entregueEm == null) {
+      const mau = podeEntregar(missaoId, { ...junta, entregueEm: null });
+      if (mau) {
+        recusadas.push({ missao: missaoId, motivo: mau });
+        junta.entregueEm = null;
+      } else {
+        junta.entregueEm = agora;
+      }
+    }
+
+    escritas.push(env.DB.prepare(`
+      INSERT INTO missoes (usuario, missao, passos, iniciada, entregue_em)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(usuario, missao) DO UPDATE SET
+        passos = excluded.passos, iniciada = excluded.iniciada,
+        entregue_em = COALESCE(missoes.entregue_em, excluded.entregue_em)
+    `).bind(id, missaoId, JSON.stringify(junta.passos), junta.iniciada ? 1 : 0, junta.entregueEm));
+    n++;
+  }
+
+  if (escritas.length) await env.DB.batch(escritas);
+  return json({ ...(await missoesDe(env, id)), recusadas }, 200, origem);
+}
+
 // ── progressão ──────────────────────────────────────────────────────────────
 
 /** XP, Matriz, setor alcançado, XP por nave e materiais. */
