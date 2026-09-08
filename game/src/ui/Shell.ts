@@ -36,6 +36,7 @@ import { LaboratorioPanel } from './panels/LaboratorioPanel';
 import { ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
 import { ChatPanel } from './ChatPanel';
+import { instalarTooltipsDoJogo } from './TooltipDoJogo';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
@@ -139,6 +140,7 @@ export class Shell {
 
   /** Monta o esqueleto e devolve o canvas para o modo de jogo. */
   build(): { stage: HTMLCanvasElement; stageWrap: HTMLElement } {
+    instalarTooltipsDoJogo();
     this.chat?.destruir();
     this.chat = new ChatPanel();
     document.documentElement.dataset.contrast = this.sim.state.settings.highContrast ? 'high' : '';

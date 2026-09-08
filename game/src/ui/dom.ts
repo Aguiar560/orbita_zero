@@ -40,6 +40,12 @@ export function h<K extends keyof HTMLElementTagNameMap>(
       case 'text':
         el.textContent = String(value);
         break;
+      case 'title':
+        // `title` abre um balão branco do navegador, fora da linguagem do
+        // cockpit. A tooltip global lê este atributo e cuida de mouse, teclado
+        // e posicionamento sem cada painel precisar implementar sua versão.
+        el.dataset.gameTip = String(value);
+        break;
 
       case 'style':
         if (typeof value === 'string') el.setAttribute('style', value);

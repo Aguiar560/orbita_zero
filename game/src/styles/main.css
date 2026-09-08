@@ -1187,6 +1187,50 @@ select option:disabled { color: #667991; }
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75);
 }
 
+/* Tooltip único do cockpit. Substitui o `title` nativo do navegador em toda a
+   interface, inclusive nos painéis reconstruídos durante a simulação. */
+.game-tooltip {
+  position: fixed;
+  z-index: 1600;
+  width: max-content;
+  max-width: min(310px, calc(100vw - 16px));
+  padding: 9px 12px 9px 14px;
+  pointer-events: none;
+  color: #dff7ff;
+  background:
+    linear-gradient(90deg, rgba(55, 205, 255, .11), transparent 42%),
+    rgba(4, 13, 25, .97);
+  border: 1px solid rgba(91, 210, 255, .68);
+  border-left: 3px solid #4fd5ff;
+  border-radius: 3px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, .72),
+    0 0 13px rgba(55, 194, 255, .22),
+    inset 0 0 18px rgba(55, 194, 255, .06);
+  font: 600 11px/1.38 'Chakra Petch', 'Rajdhani', sans-serif;
+  letter-spacing: .025em;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  animation: game-tooltip-entrada .1s ease-out;
+}
+.game-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -3px;
+  width: 15px;
+  height: 4px;
+  background: #80e5ff;
+  box-shadow: 0 0 8px rgba(91, 221, 255, .8);
+}
+@keyframes game-tooltip-entrada {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-tooltip { animation: none; }
+}
+
 .inv-tip .tip-head, .item-card-float .tip-head { display: flex; gap: 9px; align-items: center; margin-bottom: 6px; }
 .tip-title { display: flex; flex-direction: column; min-width: 0; }
 .tip-title strong { font-size: 13px; }
