@@ -37,6 +37,8 @@ interface Remoto {
   matriz: string[];
   naves: Record<string, number>;
   materiais: Record<string, number>;
+  /** O casco em campo, guardado pelo servidor. Vazio = nunca escolheu. */
+  cascoEmCampo?: string;
 }
 
 let sincronizado = false;
@@ -119,6 +121,18 @@ function adotar(sim: Sim, r: Remoto): void {
   }
   sim.state.armazem = { ...r.materiais };
 
+  /**
+   * O casco em campo volta do servidor, que agora é quem o guarda.
+   *
+   * Só se for da pessoa e só fora do modo de teste — no modo de teste o admin
+   * está pilotando algo que não é dele de propósito, e sobrescrever a escolha
+   * dele aqui seria repetir o defeito que esta mudança conserta.
+   */
+  if (r.cascoEmCampo && !sim.state.settings.testMode
+    && sim.state.fleet.includes(r.cascoEmCampo)) {
+    sim.state.hull = r.cascoEmCampo;
+  }
+
   marco = { xp: r.xp, naves: { ...r.naves } };
   sincronizado = true;
   sim.touch();
@@ -178,6 +192,14 @@ export async function drenarProgresso(sim: Sim): Promise<void> {
     setor: s.universe.bestSectorEver,
     matriz: s.command.allocated,
     naves: dNaves,
+    /**
+     * O casco em campo sobe junto, e só quando é DA PESSOA.
+     *
+     * Mandar o casco do modo de teste seria mandar algo que o servidor vai
+     * recusar — e pior, se ele aceitasse, o modo de teste viraria uma forma de
+     * ganhar nave. `state.fleet` é a frota do servidor, adotada no boot.
+     */
+    casco: s.fleet.includes(s.hull) ? s.hull : undefined,
     // Materiais ainda não têm marco: eles são gravados como ABSOLUTO pelo
     // caminho antigo e a conversão para delta entra junto do Armazém no
     // servidor. Enviar zero é honesto — não muda nada — até lá.

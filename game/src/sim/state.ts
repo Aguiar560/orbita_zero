@@ -190,6 +190,20 @@ export function createState(
  * não há duas versões da regra para divergirem.
  */
 export function casarCascoComAFrota(state: GameState): void {
+  /**
+   * O MODO DE TESTE conta, e não contava.
+   *
+   * `selectHull` pergunta a `frotaDisponivel`, que devolve o catálogo inteiro
+   * no modo de teste. Esta função perguntava só a `state.fleet`. Duas regras
+   * para a mesma pergunta: o admin escolhia uma nave, a tela aceitava, e a
+   * primeira sincronização a tirava dele — em silêncio, a cada recarga.
+   *
+   * É o defeito que o Rafael viu: "sempre que atualizo a página, volta pra nave
+   * núcleo vektor". A nave dele não estava na frota do servidor (nunca esteve —
+   * é um casco de piloto que ele não escolheu), e o modo de teste era o que
+   * deixava usá-la.
+   */
+  if (state.settings.testMode) return;
   if (state.fleet.includes(state.hull)) return;
   state.hull = state.fleet[0] ?? HULLS[0]!.id;
 }

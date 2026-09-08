@@ -1230,9 +1230,9 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
 async function progressoDe(env: Env, usuario: string) {
   const [linha, naves, mats] = await Promise.all([
     env.DB
-      .prepare('SELECT xp, melhor_setor, matriz FROM progresso WHERE usuario = ?')
+      .prepare('SELECT xp, melhor_setor, matriz, casco_em_campo FROM progresso WHERE usuario = ?')
       .bind(usuario)
-      .first<{ xp: number; melhor_setor: number; matriz: string }>(),
+      .first<{ xp: number; melhor_setor: number; matriz: string; casco_em_campo: string }>(),
     env.DB
       .prepare('SELECT casco, xp FROM naves_progresso WHERE usuario = ?')
       .bind(usuario).all<{ casco: string; xp: number }>(),
@@ -1248,6 +1248,13 @@ async function progressoDe(env: Env, usuario: string) {
     // derivasse por conta própria e a curva mudasse numa entrega, os dois
     // discordariam e o jogador veria um nível que o servidor não reconhece.
     nivel: nivelDoPiloto(linha?.xp ?? 0),
+    /**
+     * O casco EM CAMPO, que agora é do servidor.
+     *
+     * Vazio significa "nunca escolheu" — save de antes da coluna. Quem lê cai
+     * na frota, como sempre caiu. Ver `migrations/0012-casco-em-campo.sql`.
+     */
+    cascoEmCampo: linha?.casco_em_campo ?? '',
     matriz: JSON.parse(linha?.matriz ?? '[]') as string[],
     naves: Object.fromEntries(naves.results.map((n) => [n.casco, n.xp])),
     materiais: Object.fromEntries(mats.results.map((m) => [m.material, m.quantia])),
@@ -1284,6 +1291,7 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   let corpo: {
     xp?: unknown; setor?: unknown; matriz?: unknown;
     naves?: Record<string, unknown>; materiais?: Record<string, unknown>;
+    casco?: unknown;
   };
   try {
     corpo = JSON.parse(bruto) as typeof corpo;
@@ -1310,6 +1318,27 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
     setor = s;
   }
 
+  /**
+   * ── casco EM CAMPO ────────────────────────────────────────────────────────
+   *
+   * Aceito só se for DA PESSOA. É a mesma conferência que `montarEstado` já
+   * fazia com o casco que o cliente informava — a diferença é que agora o valor
+   * FICA, em vez de valer para uma requisição só.
+   *
+   * Sem isto, "qual nave está em campo" vivia apenas no save, e o save que sobe
+   * para a nuvem tem a frota arrancada. A regra "casco em campo tem de estar na
+   * frota" então derrubava a escolha do jogador em toda recarga.
+   *
+   * Valor desconhecido não derruba o resto do envio: o progresso que veio junto
+   * é legítimo, e recusar tudo por causa de um campo faria o jogador perder XP
+   * por ter clicado numa nave.
+   */
+  let cascoEmCampo = atual.cascoEmCampo;
+  if (typeof corpo.casco === 'string' && corpo.casco.length <= 64) {
+    const frota = await frotaDe(env, id);
+    if (frota.includes(corpo.casco) && HULL_BY_ID.has(corpo.casco)) cascoEmCampo = corpo.casco;
+  }
+
   // ── Matriz, contra o nível JÁ atualizado ──────────────────────────────────
   let matriz = atual.matriz;
   if (corpo.matriz !== undefined) {
@@ -1320,11 +1349,13 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   }
 
   escritas.push(env.DB.prepare(`
-    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
       xp = excluded.xp, melhor_setor = excluded.melhor_setor,
-      matriz = excluded.matriz, atualizado_em = excluded.atualizado_em
-  `).bind(id, xp, setor, JSON.stringify(matriz), agora));
+      matriz = excluded.matriz, casco_em_campo = excluded.casco_em_campo,
+      atualizado_em = excluded.atualizado_em
+  `).bind(id, xp, setor, JSON.stringify(matriz), cascoEmCampo, agora));
 
   // ── XP por nave ───────────────────────────────────────────────────────────
   for (const [casco, valor] of Object.entries(corpo.naves ?? {})) {
@@ -1432,6 +1463,10 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
       xp: prog.xp, nivel: prog.nivel, matriz: prog.matriz,
       melhorSetor: prog.melhorSetor, materiais: prog.materiais,
       naves: prog.naves, frota, itens,
+      // Qual nave esta em campo e do servidor desde 08/09. Sem passar isto, a
+      // ausencia de quem nao informou nada caia no primeiro casco da frota --
+      // quase sempre o do piloto, e nao a nave que o jogador deixou voando.
+      cascoEmCampo: prog.cascoEmCampo,
     },
     ctx,
     lote?.semente ?? novaSemente(),
@@ -1485,13 +1520,16 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
    * que ele estava. Quanto mais alto o nível, mais se perdia.
    */
   escritas.push(env.DB.prepare(`
-    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, atualizado_em) VALUES (?, ?, ?, ?, ?)
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
       xp = excluded.xp, melhor_setor = excluded.melhor_setor, atualizado_em = excluded.atualizado_em
   `).bind(
     id, xpAcumuladoDe(sim.state.command, curvaXpPersonagem),
     Math.max(prog.melhorSetor, sim.state.run.sector),
-    JSON.stringify(prog.matriz), agora,
+    // A ausência não escolhe nave: o `DO UPDATE` acima não toca na coluna, e
+    // estes valores só existem para o caso de a linha ainda não existir.
+    JSON.stringify(prog.matriz), prog.cascoEmCampo, agora,
   ));
 
   for (const [casco, nave] of Object.entries(sim.state.naves)) {

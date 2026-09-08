@@ -42,6 +42,8 @@ export interface DadosDoServidor {
   materiais: Record<string, number>;
   naves: Record<string, number>;
   frota: string[];
+  /** O casco em campo, guardado. Vazio = nunca escolheu. */
+  cascoEmCampo?: string;
   itens: { item: Item; nave: string | null; slot: string | null }[];
 }
 
@@ -84,10 +86,23 @@ export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): Ga
   // estiver na frota. Sem essa conferência, alegar um casco melhor seria uma
   // troca de atributos de graça — e é justamente o que a Fase 3c fechou.
   estado.fleet = [...dados.frota];
-  const desejado = ctx.hull;
-  estado.hull = desejado && dados.frota.includes(desejado) && HULL_BY_ID.has(desejado)
-    ? desejado
-    : (dados.frota[0] ?? estado.hull);
+  /**
+   * O casco em campo tem TRÊS origens, nesta ordem.
+   *
+   * 1. O que o cliente informa, se for dele. É a intenção mais recente — ele
+   *    pode ter trocado de nave neste boot, antes de a troca ser drenada.
+   * 2. O que está GUARDADO. É a novidade: antes não havia onde guardar, e a
+   *    ausência de um jogador que não tivesse informado nada caía direto no
+   *    primeiro casco da frota — quase sempre o do piloto.
+   * 3. O primeiro da frota, como último recurso.
+   *
+   * As três passam pela mesma conferência: só vale casco que é da pessoa.
+   */
+  const dele = (id: string | undefined): boolean =>
+    !!id && dados.frota.includes(id) && HULL_BY_ID.has(id);
+  estado.hull = dele(ctx.hull) ? ctx.hull!
+    : dele(dados.cascoEmCampo) ? dados.cascoEmCampo!
+      : (dados.frota[0] ?? estado.hull);
 
   /**
    * A nave entra na simulação com o NÍVEL dela, e não no 1.

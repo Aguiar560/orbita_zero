@@ -1,0 +1,29 @@
+-- O casco EM CAMPO passa a morar no servidor.
+--
+-- ## O que faltava
+--
+-- A tabela `frota` responde "quais cascos são desta pessoa". Ela nunca
+-- respondeu "qual deles está em campo" — isso vivia só no `GameState`, ou seja,
+-- no save. E o save que sobe para a nuvem tem a frota ARRANCADA
+-- (`semODinheiro`), porque casco é poder e a lista não pode ser escrita pelo
+-- cliente. O resultado, relatado pelo Rafael em 08/09: "sempre que atualizo a
+-- página, volta pra nave núcleo vektor".
+--
+-- A regra "casco em campo tem de estar na frota" precisa ser cobrada contra a
+-- frota do servidor. Sem esta coluna, o único jeito de cobrá-la era demover o
+-- casco toda vez que a frota chegasse — e ela chega vazia por construção.
+--
+-- ## Por que aqui e não numa tabela nova
+--
+-- É UM valor por jogador, do mesmo tamanho e do mesmo tempo de vida que `xp` e
+-- `melhor_setor`. Uma tabela para uma coluna custaria uma junção em todo boot
+-- para responder uma pergunta que a linha de progresso já responde.
+--
+-- ## Vazio é resposta legítima
+--
+-- Significa "nunca escolheu" — save de antes desta coluna, ou conta nova antes
+-- da escolha de piloto. Quem lê cai na frota, como sempre caiu. Não há
+-- backfill: adivinhar o casco de alguém a partir do save seria escrever poder
+-- por palpite, e o jogador conserta isso levando a nave a campo uma vez.
+
+ALTER TABLE progresso ADD COLUMN casco_em_campo TEXT NOT NULL DEFAULT '';

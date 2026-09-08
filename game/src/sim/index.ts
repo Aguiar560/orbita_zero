@@ -2835,6 +2835,11 @@ export class Sim {
     if (!this.frotaDisponivel.includes(id)) return false;
     this.state.hull = id;
     this.touch();
+    // O servidor guarda qual nave esta em campo desde 08/09, e a drenagem de
+    // progresso so acontece ao concluir um setor. Sem este aviso, trocar de
+    // nave e recarregar a pagina em seguida perdia a troca -- que e exatamente
+    // o defeito que a coluna nova existe para acabar.
+    bus.emit('casco:emCampo', { casco: id });
     return true;
   }
 

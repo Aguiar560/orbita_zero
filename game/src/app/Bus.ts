@@ -29,6 +29,8 @@ export interface GameEvents {
   'provacao:vencido': { piso: number; chefeId: string; camadas: string[] };
   'provacao:falhou': { piso: number };
   'provacao:marco': { piso: number };
+  /** O jogador levou outra nave a campo. O servidor precisa saber na hora. */
+  'casco:emCampo': { casco: string };
 
   /**
    * A nave em campo secou e o comando passou para outra.

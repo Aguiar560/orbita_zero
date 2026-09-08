@@ -8,8 +8,71 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.182 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.188 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — qual nave está em campo passou a ser do servidor
+
+O Rafael, depois do deploy anterior: "sempre que atualizo a página, volta pra
+nave núcleo vektor e o nível do piloto reseta, tudo isso precisa ficar no
+servidor". Consultando o D1, os dois sintomas tinham causa distinta e ambas
+estavam nos dados do servidor.
+
+### 1. Não havia onde guardar "qual nave está em campo"
+
+A tabela `frota` responde *quais cascos são desta pessoa*. Nunca respondeu
+*qual deles está em campo* — isso vivia só no `GameState`, e o save que sobe
+para a nuvem tem a frota arrancada por `semODinheiro`. A regra "casco em campo
+tem de estar na frota" era então cobrada contra uma lista vazia por construção.
+
+Agora existe `progresso.casco_em_campo`
+([migração 0012](../server/migrations/0012-casco-em-campo.sql)). O `POST
+/progresso` aceita o casco e **só o guarda se for da pessoa** — a mesma
+conferência que `montarEstado` já fazia, mas agora o valor fica em vez de valer
+para uma requisição. `selectHull` emite `casco:emCampo` e o app drena na hora:
+a drenagem normal só acontece ao concluir um setor, e trocar de nave e
+recarregar antes disso perdia a troca.
+
+Na ausência, o casco tem três origens em ordem: o que o cliente informa (a
+intenção mais recente), o **guardado**, e o primeiro da frota. Antes o do meio
+não existia — quem abrisse o jogo depois de dias caía no primeiro da frota,
+que é quase sempre o casco do piloto. A nave errada farmava as horas todas.
+
+### 2. Duas regras para a mesma pergunta, e o modo de teste no meio
+
+`selectHull` pergunta a `frotaDisponivel`, que devolve o **catálogo inteiro** no
+modo de teste. `casarCascoComAFrota` perguntava só a `state.fleet`. O admin
+escolhia uma nave, a tela aceitava, e a primeira sincronização a tirava dele.
+
+Medido no D1: **nenhuma conta tem `sopro_astral` na tabela `frota`** — a do
+Rafael tem só `nucleo_vektor`, origem `piloto`. Ele pilotava a outra pelo modo
+de teste, e o servidor nunca a concedeu. A demoção estava tecnicamente certa e
+praticamente errada; agora o modo de teste é respeitado, e nada dele sobe.
+
+### 3. O nível do piloto: dado danificado, não regressão
+
+O XP do servidor foi destruído pelo truncamento corrigido mais cedo hoje.
+Medido no D1 em 08/09:
+
+| conta | `melhor_setor` | `xp` guardado |
+|---|---|---|
+| …f2f98 | 201 | **0** |
+| …81c591 | 201 | 1.248 |
+| …a43b | 201 | 344.171 |
+
+Uma conta com setor 201 e XP zero. O conserto de hoje impede que piore e faz o
+`adotar` nunca rebaixar o XP — então quem ainda tem o save local com o nível
+verdadeiro empurra o valor de volta na próxima drenagem. Quem não tem, perdeu:
+não há como recuperar um acumulado a partir de um resto.
+
+### Ordem de aplicação
+
+A migração vem **antes** do deploy: o Worker novo faz `SELECT casco_em_campo`,
+e sem a coluna a rota de progresso quebra.
+
+1.188 testes passando.
 
 ---
 

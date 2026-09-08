@@ -261,6 +261,11 @@ export class Game {
     bus.on('guia:painel', ({ id }) => this.abrirTutorialDeTela(id));
     bus.on('preferencias:visuais', () => this.aplicarPreferenciasVisuais());
     bus.on('musica:trocar', ({ id }) => this.musica.tocar(id));
+    // Qual nave esta em campo mora no servidor. A drenagem normal so acontece
+    // ao concluir um setor, e trocar de nave e recarregar antes disso perdia a
+    // escolha -- o sintoma que o Rafael relatou como "volta pra nave nucleo
+    // vektor".
+    bus.on('casco:emCampo', () => { void drenarProgresso(this.sim); });
 
     /**
      * Cada galáxia começa com a sua faixa.
