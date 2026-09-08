@@ -451,7 +451,9 @@ export class InventoryPanel implements Panel {
     const quantidade = lote.length;
     return h('.inv-lote-bar', { 'aria-label': 'Ações dos itens selecionados' },
       h('.inv-lote-status', {},
-        h('strong', { text: quantidade ? `${quantidade} ${quantidade === 1 ? 'ITEM SELECIONADO' : 'ITENS SELECIONADOS'}` : 'NENHUM ITEM SELECIONADO' }),
+        quantidade
+          ? h('strong', { text: `${quantidade} ${quantidade === 1 ? 'ITEM SELECIONADO' : 'ITENS SELECIONADOS'}` })
+          : null,
       ),
       h('.inv-lote-acoes', {},
         h('button.inv-lote-acao.vender', {

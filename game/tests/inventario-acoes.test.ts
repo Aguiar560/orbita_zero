@@ -23,6 +23,8 @@ describe('ações em lote abaixo do inventário', () => {
 
   it('oferece venda e desmontagem na barra depois da grade', () => {
     expect(painel).toContain("h('.inv-lote-bar'");
+    expect(painel).not.toContain('NENHUM ITEM SELECIONADO');
+    expect(painel).toContain("quantidade\n          ? h('strong'");
     expect(painel).toContain('button.inv-lote-acao.vender');
     expect(painel).toContain('button.inv-lote-acao.desmontar');
     expect(painel).toContain('sim.sell(item.uid)');
