@@ -1,4 +1,6 @@
 import type { ElementId, Rarity, ResourceId, SlotId } from '@sim/types';
+import { expandirTodas } from './missoes-cadeias';
+import { SEMENTES } from './missoes-sementes';
 
 /**
  * Missões (§27).
@@ -544,7 +546,16 @@ export const MISSOES: readonly MissaoDef[] = [
     recompensaExclusiva: {
       nome: 'REATOR DO NÚCLEO FERRUGEM',
       de: 'NÚCLEO FERRUGEM',
-      raridadeMin: 5,
+      // ► O PISO DE MÍTICO SAIU DAQUI.
+      //
+      // Ele foi escrito quando este contrato era solto. Com a cadeia montada,
+      // ele caiu na POSIÇÃO 2 de dezoito — e o Núcleo Ferrugem é contato de
+      // TIER 1. Um Mítico garantido na segunda missão da primeira galáxia
+      // atropela de uma vez a escada de raridade dos contatos, a fusão (301
+      // Míticos por Divino) e a Provação, cujo teto é justamente o Mítico.
+      //
+      // Sem o campo, quem decide é `raridadeExclusivaDoTier`: Épico para o
+      // tier 1. E o dia em que este contato mudar de tier, a peça acompanha.
       // O SLOT mostra o item que vai sair, nao um simbolo generico: e a peca
       // que da razao ao contrato existir. O sprite vem de `iconeDeItem`, a
       // mesma funcao que nomeia o icone de qualquer item do jogo — inventar um
@@ -703,6 +714,12 @@ export const MISSOES: readonly MissaoDef[] = [
     },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_14_ultima_doca' }],
   },
+  // ── as cadeias geradas ────────────────────────────────────────────────────
+  //
+  // A prosa de cada uma esta em `missoes-sementes.ts`; a mecanica sai da
+  // posicao e da galaxia, em `missoes-cadeias.ts`. A cadeia do Kael Voss fica
+  // ACIMA, escrita a mao: ela e o molde contra o qual o gerado e comparado.
+  ...expandirTodas(SEMENTES),
 ];
 
 export const MISSAO_POR_ID = new Map(MISSOES.map((m) => [m.id, m]));

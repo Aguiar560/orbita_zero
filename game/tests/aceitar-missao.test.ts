@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MISSAO_POR_ID, MISSOES } from '@data/missoes';
 import { PERSONAGENS } from '@data/personagens';
 import { confiancaDaMissao } from '@data/balance/confianca';
+import { MISSOES_POR_CADEIA } from '@data/missoes-cadeias';
 import { CONFIANCA_MAX } from '@data/personagens';
 import { createState } from '@sim/state';
 import { aplicarFato, missaoAceita, progressoDe, situacaoDe } from '@sim/missoes';
@@ -107,9 +108,20 @@ describe('a escada de confiança, medida', () => {
     expect(soma.get('char_kael_voss')).toBeCloseTo(CONFIANCA_MAX, 6);
   });
 
-  it('e a maioria dos contatos ainda não tem missão nenhuma', () => {
-    // 29 de 33 em 07/09. É o buraco que as ~15 missões por contato preenchem.
-    const comMissao = new Set(MISSOES.map((m) => m.giverId).filter(Boolean));
-    expect(PERSONAGENS.length - comMissao.size).toBe(29);
+  it('e todo contato COM missão tem a cadeia inteira', () => {
+    /**
+     * A linha de base anterior contava os contatos vazios — 29 de 33 em 07/09 —
+     * e por isso mudava a cada cadeia escrita. Um número que muda a cada commit
+     * não guarda nada: ele só obriga a editar o teste.
+     *
+     * O que vale guardar é o invariante: contato com missão tem cadeia
+     * COMPLETA. Meia cadeia é pior que nenhuma — o jogador investe confiança
+     * num contato que não tem como chegar ao fim.
+     */
+    const incompletos = PERSONAGENS
+      .map((p) => [p.nome, MISSOES.filter((m) => m.giverId === p.id).length] as const)
+      .filter(([, n]) => n > 0 && n < MISSOES_POR_CADEIA);
+
+    expect(incompletos, `cadeias pela metade: ${JSON.stringify(incompletos)}`).toEqual([]);
   });
 });

@@ -51,6 +51,58 @@ describe('a cadeia de Kael Voss', () => {
   });
 });
 
+describe('as 33 cadeias', () => {
+  it('todas têm ao menos 15 missões e fecham no teto de confiança', () => {
+    for (const p of PERSONAGENS) {
+      const c = cadeiaDoContato(p.id);
+      expect(c.length, p.nome).toBeGreaterThanOrEqual(15);
+      expect(confiancaDaCadeia(p.id), p.nome).toBeCloseTo(CONFIANCA_MAX, 6);
+    }
+  });
+
+  it('e a ÚLTIMA missão de cada uma paga a peça do contato', () => {
+    /**
+     * É o fecho do arco: o guardião entrega o próprio instrumento a quem tomou
+     * o lugar dele. Uma cadeia sem isso é quinze missões sem desfecho.
+     */
+    for (const p of PERSONAGENS) {
+      const c = cadeiaDoContato(p.id);
+      expect(c[c.length - 1]!.recompensaExclusiva, `${p.nome} termina sem peça`).toBeTruthy();
+    }
+  });
+
+  it('e peça exclusiva fora do fim só em contrato ESPECIAL', () => {
+    /**
+     * O Núcleo Ferrugem tem duas: o contrato especial escrito à mão, na posição
+     * 2, e a peça de assinatura no fim. É legítimo — contrato especial é uma
+     * peça com razão própria —, mas só para quem se declara `especial`.
+     *
+     * Foi ao montar a cadeia que apareceu o problema de verdade: aquele
+     * contrato pedia piso MÍTICO, e na posição 2 de um contato tier 1 isso
+     * atropelava a escada de raridade, a fusão e a Provação de uma vez. O piso
+     * saiu; quem decide é o tier.
+     */
+    for (const p of PERSONAGENS) {
+      const c = cadeiaDoContato(p.id);
+      c.slice(0, -1).filter((m) => m.recompensaExclusiva).forEach((m) => {
+        expect(m.tipo, `${m.nome} paga exclusiva no meio sem ser especial`).toBe('especial');
+      });
+    }
+  });
+
+  it('e nenhuma peça exclusiva declara raridade fixa', () => {
+    /**
+     * O tier do contato decide — Épico até o tier 2, Lendário nos 3 e 4, Mítico
+     * no 5. Uma raridade escrita à mão sobrevive a mudanças de tier e vira
+     * mentira silenciosa: foi exatamente o que aconteceu com o Núcleo Ferrugem.
+     */
+    const comPiso = MISSOES
+      .filter((m) => m.recompensaExclusiva?.raridadeMin !== undefined)
+      .map((m) => m.nome);
+    expect(comPiso, `peças com raridade fixa: ${comPiso.join(', ')}`).toEqual([]);
+  });
+});
+
 describe('toda cadeia do jogo', () => {
   it('não tem elo apontando para missão de OUTRO contato', () => {
     /**
