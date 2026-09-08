@@ -26,6 +26,63 @@
   min-height: 100%;
   color: #dcebf5;
 }
+.landing-art-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #020711;
+}
+.landing-art-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+.landing-code-shell { display: none; }
+.landing-art-hotspot {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.landing-art-hotspot:hover,
+.landing-art-hotspot:focus-visible {
+  outline: 2px solid rgba(70, 220, 255, .8);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 18px rgba(48, 205, 255, .15), 0 0 16px rgba(48, 205, 255, .24);
+}
+.landing-art-hotspot.conta-criar:hover,
+.landing-art-hotspot.conta-criar:focus-visible,
+.landing-art-hotspot[class*='acao-']:hover,
+.landing-art-hotspot[class*='acao-']:focus-visible {
+  outline-color: #ffd465;
+  box-shadow: inset 0 0 20px rgba(255, 189, 47, .14), 0 0 18px rgba(255, 189, 47, .28);
+}
+.landing-art-hotspot[class*='nav-']:hover,
+.landing-art-hotspot[class*='nav-']:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 -3px #42dfff, 0 8px 12px -8px #42dfff;
+}
+.landing-art-hotspot.marca { top: 0; left: 7.6%; width: 14.5%; height: 9.5%; }
+.landing-art-hotspot.nav-jogo { top: .5%; left: 32.4%; width: 6.8%; height: 6.2%; }
+.landing-art-hotspot.nav-naves { top: .5%; left: 39.8%; width: 5.8%; height: 6.2%; }
+.landing-art-hotspot.nav-galaxias { top: .5%; left: 46.2%; width: 7.8%; height: 6.2%; }
+.landing-art-hotspot.nav-comunidade { top: .5%; left: 54.5%; width: 10.6%; height: 6.2%; }
+.landing-art-hotspot.conta-entrar { top: 1.5%; left: 73.8%; width: 8.7%; height: 4.8%; }
+.landing-art-hotspot.conta-criar { top: 1.5%; left: 83%; width: 9.7%; height: 4.8%; }
+.landing-art-hotspot.acao-principal { top: 36.2%; left: 9.6%; width: 19.3%; height: 7%; }
+.landing-art-hotspot.card-naves { top: 64.2%; left: 1.8%; width: 31.4%; height: 29.6%; }
+.landing-art-hotspot.card-galaxias { top: 64.2%; left: 34.1%; width: 31.4%; height: 29.6%; }
+.landing-art-hotspot.card-comunidade { top: 64.2%; left: 66.5%; width: 31.6%; height: 29.6%; }
+.landing-art-hotspot.acao-naves { top: 53.5%; left: 74.2%; width: 22%; height: 6.2%; }
+.landing-art-hotspot.acao-galaxias { top: 76.5%; left: 67%; width: 28.6%; height: 6%; }
+.landing-art-hotspot.acao-comunidade { top: 89.8%; left: 37.3%; width: 25.3%; height: 6.2%; }
 .landing-shell button { font-family: 'Chakra Petch', sans-serif; }
 .landing-header {
   position: sticky;
@@ -274,6 +331,8 @@
 }
 
 @media (max-width: 760px) {
+  .landing-art-shell { display: none; }
+  .landing-code-shell { display: block; }
   .landing-header { position: sticky; min-height: 104px; grid-template-columns: 1fr auto; grid-template-rows: 53px 43px; padding: env(safe-area-inset-top) 8px 4px; }
   .landing-marca { width: 132px; padding-inline: 15px; }.landing-marca-orbita { font-size: 17px; }.landing-marca-zero { font-size: 12px; }
   .landing-conta { gap: 5px; }.landing-entrar, .landing-criar { min-height: 34px; padding-inline: 9px; font-size: 8px; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const fonte = (...partes: string[]): string => readFileSync(join(process.cwd(), 'src', ...partes), 'utf8');
@@ -38,6 +38,17 @@ describe('landing navegável antes do login', () => {
     expect(landing).toContain('DETALHES DO SETOR');
     expect(landing).toContain('RANKING MUNDIAL');
     expect(landing).toContain('COMUNICAÇÕES');
+  });
+
+  it('usa as quatro artes aprovadas no desktop com controles clicáveis', () => {
+    const landing = fonte('ui', 'Landing.ts');
+    for (const nome of ['o-jogo', 'naves', 'galaxias', 'comunidade']) {
+      expect(landing).toContain(`/assets/landing/${nome}.png`);
+      expect(existsSync(join(process.cwd(), 'public', 'assets', 'landing', `${nome}.png`))).toBe(true);
+    }
+    expect(landing).toContain('landing-art-hotspot');
+    expect(landing).toContain("pontoClicavel('conta-entrar'");
+    expect(landing).toContain("pontoClicavel('conta-criar'");
   });
 
   it('é responsiva e deixa a landing rolar no celular', () => {

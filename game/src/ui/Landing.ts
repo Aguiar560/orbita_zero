@@ -20,6 +20,71 @@ const PAGINAS: readonly [PaginaLanding, string][] = [
   ['comunidade', 'COMUNIDADE'],
 ];
 
+const ARTE_POR_PAGINA: Record<PaginaLanding, string> = {
+  jogo: '/assets/landing/o-jogo.png',
+  naves: '/assets/landing/naves.png',
+  galaxias: '/assets/landing/galaxias.png',
+  comunidade: '/assets/landing/comunidade.png',
+};
+let preCargaDasArtesIniciada = false;
+
+function preCarregarDemaisArtes(atual: string): void {
+  if (preCargaDasArtesIniciada) return;
+  preCargaDasArtesIniciada = true;
+  for (const src of Object.values(ARTE_POR_PAGINA)) {
+    if (src === atual) continue;
+    const imagem = new Image();
+    imagem.decoding = 'async';
+    imagem.src = src;
+  }
+}
+
+function pontoClicavel(classe: string, rotulo: string, aoClicar: () => void): HTMLElement {
+  return h(`button.landing-art-hotspot.${classe}`, {
+    type: 'button', 'aria-label': rotulo, onclick: aoClicar,
+  });
+}
+
+/**
+ * As artes aprovadas são a própria direção visual no desktop. Os controles
+ * transparentes preservam os cliques reais sem redesenhar ou reinterpretar a
+ * composição. A versão DOM continua logo abaixo como alternativa responsiva.
+ */
+function arteAprovada(pagina: PaginaLanding, acoes: AcoesLanding): HTMLElement {
+  const src = ARTE_POR_PAGINA[pagina];
+  const imagem = h('img.landing-art-image', {
+    src,
+    alt: `Apresentação de ${PAGINAS.find(([id]) => id === pagina)?.[1] ?? 'Órbita Zero'}`,
+    draggable: 'false',
+  }) as HTMLImageElement;
+  imagem.addEventListener('load', () => preCarregarDemaisArtes(src), { once: true });
+  const acoesDaPagina: HTMLElement[] = pagina === 'jogo'
+    ? [
+        pontoClicavel('acao-principal', 'Jogar agora', acoes.jogar),
+        pontoClicavel('card-naves', 'Conhecer as naves', () => acoes.navegar('naves')),
+        pontoClicavel('card-galaxias', 'Explorar galáxias', () => acoes.navegar('galaxias')),
+        pontoClicavel('card-comunidade', 'Conhecer a comunidade', () => acoes.navegar('comunidade')),
+      ]
+    : pagina === 'naves'
+      ? [pontoClicavel('acao-naves', 'Jogar com esta nave', acoes.jogar)]
+      : pagina === 'galaxias'
+        ? [pontoClicavel('acao-galaxias', 'Explorar esta galáxia', acoes.jogar)]
+        : [pontoClicavel('acao-comunidade', 'Entrar na comunidade', acoes.criarConta)];
+
+  return h('.landing-art-shell', {},
+    imagem,
+    pontoClicavel('marca', 'Ir para O Jogo', () => acoes.navegar('jogo')),
+    ...PAGINAS.map(([id, rotulo]) => {
+      const botao = pontoClicavel(`nav-${id}`, rotulo, () => acoes.navegar(id));
+      if (pagina === id) botao.setAttribute('aria-current', 'page');
+      return botao;
+    }),
+    pontoClicavel('conta-entrar', 'Entrar', acoes.entrar),
+    pontoClicavel('conta-criar', 'Criar conta', acoes.criarConta),
+    ...acoesDaPagina,
+  );
+}
+
 const navesDeVitrine = (): Hull[] => {
   const nomes = ['Prisma Arco', 'Ignis Mk I', 'Prisma Aegis', 'Falcão Azul', 'Prisma Vazio'];
   return nomes.map((nome) => HULLS.find((nave) => nave.name === nome)).filter((nave): nave is Hull => !!nave);
@@ -341,7 +406,12 @@ export function montarLanding(pagina: PaginaLanding, acoes: AcoesLanding): HTMLE
       : pagina === 'comunidade'
         ? paginaComunidade(acoes)
         : paginaJogo(acoes);
-  return h('.landing-shell', { dataset: { pagina } }, cabecalho(pagina, acoes), h('main.landing-main', {}, conteudo),
-    h('footer.landing-footer', {}, h('span', { text: 'ÓRBITA ZERO' }), h('span', { text: 'PILOTE · CONSTRUA · COMBATA · EXPLORE' })),
+  return h('.landing-shell', { dataset: { pagina } },
+    arteAprovada(pagina, acoes),
+    h('.landing-code-shell', {},
+      cabecalho(pagina, acoes),
+      h('main.landing-main', {}, conteudo),
+      h('footer.landing-footer', {}, h('span', { text: 'ÓRBITA ZERO' }), h('span', { text: 'PILOTE · CONSTRUA · COMBATA · EXPLORE' })),
+    ),
   );
 }
