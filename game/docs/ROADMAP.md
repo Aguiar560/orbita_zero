@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.203 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.205 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -86,13 +86,25 @@ paralelo — ou numa delas com a rede fora — termina com o bloco de UMA, e as
 missões que a outra avançou nesse meio-tempo somem. Não há mescla campo a
 campo, porque o save é um bloco só.
 
+**E voltando para a primeira máquina?** Pergunta seguinte do Rafael. Vem o
+progresso de B, e o motivo é `playtime` ser ACUMULADO: quando B adota o save
+de A, ele herda o tempo de A e continua somando, então o tempo de B é sempre
+maior que o de A no instante em que A parou. O save velho de A perde por ser
+o mais curto — que é o que se quer.
+
+O único jeito de o save velho vencer é A ter jogado **mais tempo sem
+conseguir subir** (rede fora). A regra prefere o save mais longo, e aí o de B
+é substituído. As duas pontas estão medidas em
+`tests/voltar-para-a-primeira-maquina.test.ts`, inclusive o contra-exemplo,
+para ninguém descobrir isso por acidente.
+
 Fechar isso é dar tabela a esses campos, como foi feito com item, frota,
 carteira e progressão. É trabalho de fase, não de conserto, e a ordem sugerida
 é por dano: `missoes` e `confianca` primeiro (progresso lento e irrecuperável),
 depois `chests` e `medalhas` (contam valor), depois `codex` e `provacao`
 (registro), e `stats`/`settings` por último (não é progresso).
 
-1.203 testes passando.
+1.205 testes passando.
 
 ---
 
