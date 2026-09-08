@@ -13,6 +13,50 @@ de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
+## 09/09/2026 — recarregar a página curava a nave
+
+Relato do Rafael: "estou no setor 2 na onda 2, com 70 de HP; se eu atualizar o
+navegador o meu HP volta para 100%". Cura de graça, e a mais barata do jogo:
+um F5, sem custo de tempo, de recurso ou de risco.
+
+### Por que acontecia
+
+A vida do jogador vivia **só na cena**. O boot remontava a cena e chamava
+`refreshPlayer(true)`, que devolve a nave cheia — o mesmo método usado ao sair
+do laboratório e ao renascer, onde curar é o certo.
+
+Agora a cena GRAVA `run.vidaFracao` e `run.escudoFracao` a cada quadro, e o
+boot RETOMA em vez de curar. São duas frações e não uma porque o escudo se
+recompõe sozinho depois de alguns segundos sem levar dano e a vida não —
+guardar uma só faria a recarga do escudo se confundir com cura.
+
+Grava todo quadro de propósito: a vida cai por tiro, por colisão e por zona de
+perigo, e sobe por regeneração e por recarga. Pendurar a gravação em cada uma
+dessas fontes é a receita para alguém acrescentar a sexta e esquecer — e o
+sintoma seria de novo cura silenciosa. São duas divisões por quadro, sem
+`touch()`: quem grava em disco é `tickSave`, no ritmo dele.
+
+### E a regra que entrou junto
+
+Do mesmo relato: "ao concluir um setor o HP é totalmente recuperado para
+iniciar o setor seguinte". Antes a vida atravessava os setores e **só voltava
+ao morrer** — ou seja, morrer de propósito era a forma de curar. Agora o
+descanso é a recompensa de fechar o setor.
+
+A regra mora no `sim` (`completeEncounter`), e não na cena, porque o caminho
+abstrato precisa da mesma: se a cena curasse por conta própria, ficar offline
+curaria num ritmo diferente de jogar.
+
+### Medido no jogo rodando
+
+| | |
+|---|---|
+| vida em 70%, F5 | volta com **77/110 = 0,700** (era 110/110) |
+| escudo em 30%, F5 | volta com **0,300** |
+| vida em 40%, setor concluído | vai a **1,000**, setor 1 → 2 |
+
+---
+
 ## 08/09/2026 — auditoria: o que mais se perdia ao atualizar a página
 
 Pedido do Rafael depois do defeito da nave: "verifique se outras coisas estão

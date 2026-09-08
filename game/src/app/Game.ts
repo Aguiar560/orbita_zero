@@ -147,7 +147,9 @@ export class Game {
 
     this.stage = new Surface(stage);
     this.vertical = new VerticalMode(this.stage, this.sim);
-    this.vertical.refreshPlayer(true);
+    // RETOMA, não cura: a vida da sessão anterior está no save desde 09/09.
+    // Curar aqui fazia de um F5 a forma mais barata de recuperar vida no jogo.
+    this.vertical.retomarVidaGuardada();
 
     // Ao esconder a aba, tenta subir na hora. É o momento em que o jogador
     // some de verdade, e esperar o intervalo perderia a sessão toda dele.

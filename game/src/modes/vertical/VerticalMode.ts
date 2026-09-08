@@ -450,10 +450,19 @@ export class VerticalMode {
   }
 
   /** Detecta troca de encontro (pelo caminho ao vivo ou pelo abstrato). */
+  /** O setor que a cena montou por último, para saber quando ele muda. */
+  private setorEncenado = 0;
+
   private syncEncounter(force = false): void {
     const e = this.sim.encounter;
     const key = `${this.sim.state.universe.index}:${e.sector}:${e.wave}`;
     if (!force && key === this.encounterKey) return;
+
+    // Setor novo devolve a nave inteira: `completeEncounter` gravou 1 nas
+    // frações, e é só aplicá-las. A cena não decide a regra — ela obedece ao
+    // save, que é o mesmo que o caminho offline usa.
+    const setorMudou = this.setorEncenado !== e.sector;
+    this.setorEncenado = e.sector;
 
     this.encounterKey = key;
     this.cleared = false;
@@ -462,6 +471,7 @@ export class VerticalMode {
     this.enemies.clear();
     this.dangerZones.length = 0;
     this.ai.reset();
+    if (setorMudou) this.retomarVidaGuardada();
 
     if (e.kind === 'chefe' && e.boss) {
       this.setBanner(e.boss.name.toUpperCase());
@@ -665,6 +675,57 @@ export class VerticalMode {
     this.particles.update(dt);
 
     this.checkCleared();
+    this.guardarVida();
+  }
+
+  /**
+   * Grava a vida da cena no save, todo quadro.
+   *
+   * ## O defeito que isto conserta
+   *
+   * A vida do jogador vivia SÓ na cena. Recarregar a página remontava a cena e
+   * `refreshPlayer(true)` devolvia a nave cheia — relatado pelo Rafael em
+   * 09/09: "estou no setor 2 na onda 2, com 70 de HP; se eu atualizar o
+   * navegador o meu HP volta para 100%". Era cura de graça, e a mais barata do
+   * jogo: um F5.
+   *
+   * ## Por que todo quadro, e não num evento
+   *
+   * Porque não existe um evento só. A vida cai por tiro, por colisão e por
+   * zona de perigo, e sobe por regeneração e por recarga de escudo. Pendurar
+   * a gravação em cada um deles é a receita para alguém acrescentar a sétima
+   * fonte e esquecer — e o sintoma seria de novo cura silenciosa.
+   *
+   * São duas divisões e duas atribuições, sem `touch()`: quem grava em disco é
+   * `tickSave`, no ritmo dele. Escrever no objeto é de graça; o custo seria
+   * avisar a interface, e disso não se trata.
+   */
+  private guardarVida(): void {
+    if (this.sim.laboratorio.active) return;
+    const run = this.sim.state.run;
+    run.vidaFracao = clamp01(this.player.hp / Math.max(1, this.player.hpMax));
+    run.escudoFracao = clamp01(this.player.shield / Math.max(1, this.player.shieldMax));
+  }
+
+  /**
+   * Devolve à cena a vida que o save guardou.
+   *
+   * Usada ao abrir o jogo e ao trocar de setor. Nos dois casos o valor certo
+   * está no save: no boot é o que sobrou da sessão anterior; na troca de setor
+   * é o 1 que `completeEncounter` acabou de gravar.
+   *
+   * O piso de 5% existe para um save adulterado ou uma fração zerada por
+   * arredondamento não matarem a nave no primeiro quadro — "save malformado
+   * não pode travar o boot". Não é generosidade: 5% de vida não salva ninguém.
+   */
+  retomarVidaGuardada(): void {
+    const s = this.currentStats;
+    const run = this.sim.state.run;
+    this.player.hpMax = s.vida;
+    this.player.shieldMax = s.escudo;
+    this.player.hp = s.vida * Math.max(0.05, clamp01(run.vidaFracao ?? 1));
+    this.player.shield = s.escudo * clamp01(run.escudoFracao ?? 1);
+    this.syncPlayerHitbox();
   }
 
   private resetLaboratorio(): void {

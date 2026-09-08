@@ -291,6 +291,15 @@ export interface RunState {
    */
   vidaFracao?: number;
   /**
+   * Fração de escudo, pelo mesmo motivo — e ela é separada da vida.
+   *
+   * O escudo se recompõe sozinho depois de alguns segundos sem levar dano
+   * (`SHIELD_LOCK`), a vida não. Guardar uma fração só faria a recarga se
+   * confundir com cura, e recarregar a página devolveria vida que o jogador
+   * não recuperou.
+   */
+  escudoFracao?: number;
+  /**
    * Mortes seguidas neste setor, para a DECISÃO do jogador simulado.
    *
    * Só o caminho abstrato usa. Não é mecânica de jogo — ao vivo não existe

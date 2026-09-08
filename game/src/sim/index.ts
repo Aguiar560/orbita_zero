@@ -1553,6 +1553,21 @@ export class Sim {
       run.wave = 1;
       run.cleared++;
 
+      /**
+       * Setor concluído devolve a nave inteira. Pedido do Rafael em 09/09.
+       *
+       * Antes a vida atravessava os setores e só voltava ao morrer, então uma
+       * nave que chegasse arranhada ao fim do setor 2 começava o 3 arranhada, e
+       * a única forma de curar era perder. O descanso vira a recompensa de
+       * fechar o setor — e é o que dá sentido a "aguentar até o fim" em vez de
+       * "morrer de propósito para renascer inteiro".
+       *
+       * A regra mora aqui, e não na cena, porque o caminho abstrato precisa da
+       * mesma: sem isso, ficar offline curaria em ritmo diferente de jogar.
+       */
+      run.vidaFracao = 1;
+      run.escudoFracao = 1;
+
       // O setor seguinte libera de qualquer forma: quem venceu conquistou o
       // acesso, mesmo que escolha ficar. É `bestSector` que abre o setor no mapa,
       // não a posição da incursão.
@@ -1664,6 +1679,7 @@ export class Sim {
     }    // Renasce inteiro: morrer já custa XP, nível, ponto de Matriz e carga, e a
     // cena devolve a nave cheia. Manter a vida gasta puniria duas vezes.
     run.vidaFracao = 1;
+    run.escudoFracao = 1;
 
     bus.emit('sector:failed', { sector: run.sector, perdido, resumo });
     this.refreshEncounter();
