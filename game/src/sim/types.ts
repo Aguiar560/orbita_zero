@@ -638,7 +638,7 @@ export interface GameState {
    * Criado sob demanda: uma missão nova no catálogo nasce funcionando em save
    * antigo, sem migração. Ver `sim/missoes.ts`.
    */
-  missoes: Record<string, { passos: number[]; entregue: boolean }>;
+  missoes: Record<string, { passos: number[]; entregue: boolean; iniciada: boolean }>;
 
   /** Progresso por ocorrência de evento (`id:ciclo`), para não resgatar duas vezes. */
   eventos: Record<string, { progresso: number; resgatado: boolean }>;

@@ -349,7 +349,7 @@ describe('o save', () => {
     const state = createState(8);
     aceitarTudo(state);
     const def = MISSOES.find((m) => m.objetivos.length >= 1)!;
-    state.missoes[def.id] = { passos: [7], entregue: false };
+    state.missoes[def.id] = { passos: [7], entregue: false, iniciada: true };
 
     const p = progressoDe(state, def);
     expect(p.passos[0]).toBe(7);

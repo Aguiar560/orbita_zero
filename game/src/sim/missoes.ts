@@ -20,6 +20,8 @@ export interface ProgressoDeMissao {
   passos: number[];
   /** Já foi resgatada? */
   entregue: boolean;
+  /** Já foi aceita alguma vez? Distingue progresso válido do legado automático. */
+  iniciada: boolean;
 }
 
 export type EstadoDeMissoes = Record<string, ProgressoDeMissao>;
@@ -53,12 +55,21 @@ export const LIMITE_MISSOES_RASTREADAS = 4;
  */
 export function progressoDe(state: GameState, def: MissaoDef): ProgressoDeMissao {
   const atual = state.missoes[def.id];
-  if (atual && atual.passos.length === def.objetivos.length) return atual;
+  if (atual && atual.passos.length === def.objetivos.length && typeof atual.iniciada === 'boolean') return atual;
 
-  // Objetivo acrescentado a uma missão já em andamento: preserva o que casa por
-  // índice e completa com zeros, em vez de zerar o que o jogador já fez.
-  const passos = def.objetivos.map((_, i) => atual?.passos[i] ?? 0);
-  const novo = { passos, entregue: atual?.entregue ?? false };
+  /**
+   * Saves anteriores ao aceite não dizem se o progresso veio de uma escolha do
+   * jogador ou do contador automático antigo. Só há prova de aceite quando a
+   * missão ainda está na lista, ou de conclusão quando já foi entregue. Sem
+   * uma dessas provas, o progresso legado precisa começar em zero.
+   */
+  const iniciada = atual?.iniciada === true
+    || atual?.entregue === true
+    || missaoAceita(state, def.id);
+  // Objetivo acrescentado a uma missão já iniciada preserva o índice; missão
+  // nunca aceita nasce zerada mesmo que o save antigo traga passos automáticos.
+  const passos = def.objetivos.map((_, i) => iniciada ? (atual?.passos[i] ?? 0) : 0);
+  const novo = { passos, entregue: atual?.entregue ?? false, iniciada };
   state.missoes[def.id] = novo;
   return novo;
 }
@@ -183,10 +194,10 @@ export function estaCompleta(state: GameState, def: MissaoDef): boolean {
 export function situacaoDe(state: GameState, def: MissaoDef, alcance: number): SituacaoDeMissao {
   if (progressoDe(state, def).entregue) return 'entregue';
   if (!estaLiberada(state, def, alcance)) return 'oculta';
-  // Pronta vence "nao aceita": uma missao que ja bateu os objetivos -- por ter
-  // sido aceita antes e abandonada depois -- deve poder ser entregue.
-  if (estaCompleta(state, def)) return 'pronta';
-  return missaoAceita(state, def.id) ? 'ativa' : 'disponivel';
+  // Mesmo com progresso preservado de uma aceitação anterior, abandonar pausa
+  // a missão: ela só pode ficar pronta e ser entregue depois de aceita novamente.
+  if (!missaoAceita(state, def.id)) return 'disponivel';
+  return estaCompleta(state, def) ? 'pronta' : 'ativa';
 }
 
 /**
@@ -243,11 +254,21 @@ export function alternarRastreioDeMissao(
     state.settings.pinnedMissions = ids;
     return;
   }
-  state.settings.pinnedMissions = ids.includes(def.id)
-    ? ids.filter((id) => id !== def.id)
-    : ids.length < limite
-      ? [...ids, def.id]
-      : ids;
+  if (ids.includes(def.id)) {
+    state.settings.pinnedMissions = ids.filter((id) => id !== def.id);
+    return;
+  }
+  if (ids.length >= limite) {
+    state.settings.pinnedMissions = ids;
+    return;
+  }
+
+  const progresso = progressoDe(state, def);
+  if (!progresso.iniciada) {
+    progresso.passos = def.objetivos.map(() => 0);
+    progresso.iniciada = true;
+  }
+  state.settings.pinnedMissions = [...ids, def.id];
 }
 
 /**
@@ -281,6 +302,12 @@ export function aplicarFato(
      * decisao -- que e o que a barra existe para medir.
      */
     if (!missaoAceita(state, def.id)) continue;
+    // Protege também integrações e testes que escrevam a lista de aceitas
+    // diretamente, sem passar por `alternarRastreioDeMissao`.
+    if (!p.iniciada) {
+      p.passos = def.objetivos.map(() => 0);
+      p.iniciada = true;
+    }
 
     const eraCompleta = estaCompleta(state, def);
     let mexeu = false;

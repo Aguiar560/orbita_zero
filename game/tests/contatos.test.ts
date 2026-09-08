@@ -177,7 +177,7 @@ describe('a conversão de chefe em aliado', () => {
 
     // Mesmo completa no save, a missão permanece oculta até a vitória que
     // converte o guardião em aliado e libera o contato na Central.
-    sim.state.missoes[def.id] = { passos: [def.objetivos[0]!.alvo], entregue: false };
+    sim.state.missoes[def.id] = { passos: [def.objetivos[0]!.alvo], entregue: false, iniciada: true };
     expect(contatoDesbloqueado(sim.state, contato)).toBe(false);
     expect(situacaoDe(sim.state, def, 10)).toBe('oculta');
     expect(sim.entregaveisEmLote).toBe(0);

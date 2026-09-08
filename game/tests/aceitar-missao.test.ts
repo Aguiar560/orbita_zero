@@ -5,7 +5,7 @@ import { confiancaDaMissao } from '@data/balance/confianca';
 import { MISSOES_POR_CADEIA } from '@data/missoes-cadeias';
 import { CONFIANCA_MAX } from '@data/personagens';
 import { createState } from '@sim/state';
-import { aplicarFato, missaoAceita, progressoDe, situacaoDe } from '@sim/missoes';
+import { alternarRastreioDeMissao, aplicarFato, missaoAceita, progressoDe, situacaoDe } from '@sim/missoes';
 import { limiteDeMissoes } from '@sim/vip';
 import type { FatoDeJogo } from '@sim/types';
 
@@ -47,6 +47,26 @@ describe('aceitar a missão', () => {
     expect(progressoDe(state, def).passos[0]).toBe(def.objetivos[0]!.alvo);
   });
 
+  it('zera progresso automatico legado ao aceitar pela primeira vez', () => {
+    const state = createState(1);
+    const def = MISSAO_POR_ID.get('elim_primeiros')!;
+    // Formato anterior a `iniciada`: este 1/1 podia ter sido acumulado sem
+    // aceite e não deve transformar o primeiro aceite em entrega imediata.
+    (state.missoes as unknown as Record<string, { passos: number[]; entregue: boolean }>)[def.id] = {
+      passos: [def.objetivos[0]!.alvo], entregue: false,
+    };
+
+    expect(situacaoDe(state, def, 300)).toBe('disponivel');
+    expect(progressoDe(state, def).passos[0]).toBe(0);
+
+    alternarRastreioDeMissao(state, def, 300);
+    expect(missaoAceita(state, def.id)).toBe(true);
+    expect(progressoDe(state, def).passos[0]).toBe(0);
+
+    aplicarFato(state, abate(), 300);
+    expect(progressoDe(state, def).passos[0]).toBe(1);
+  });
+
   it('e a liberada mas não aceita aparece como `disponivel`', () => {
     /**
      * A situação nova existe para a tela poder oferecer o aceite. Sem ela, a
@@ -73,6 +93,10 @@ describe('aceitar a missão', () => {
     expect(feito).toBeGreaterThan(0);
 
     state.settings.pinnedMissions = [];
+    expect(progressoDe(state, def).passos[0]).toBe(feito);
+    expect(situacaoDe(state, def, 300)).toBe('disponivel');
+
+    state.settings.pinnedMissions.push(def.id);
     expect(progressoDe(state, def).passos[0]).toBe(feito);
   });
 

@@ -336,11 +336,11 @@ export class MissoesPanel implements Panel {
           )]
         : []),
 
-      pronta
-        ? h('button.btn.mis-entregar.esp.tipo-especial', {
+      ...(pronta
+        ? [h('button.btn.mis-entregar.esp.tipo-especial', {
             onclick: () => { sim.resgatarMissao(def.id); },
-          }, h('span', { text: 'RECLAMAR CONTRATO' }))
-        : h('span'),
+          }, h('span', { text: 'RECLAMAR CONTRATO' }))]
+        : []),
     );
   }
 

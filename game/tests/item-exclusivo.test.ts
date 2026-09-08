@@ -6,7 +6,7 @@ import { pisoDaProvacao } from '@data/provacao';
 import { createState } from '@sim/state';
 import { Sim } from '@sim/index';
 import { itemName } from '@sim/loot';
-import { progressoDe } from '@sim/missoes';
+import { alternarRastreioDeMissao, progressoDe } from '@sim/missoes';
 import { BOSSES } from '@data/bosses';
 import { PERSONAGENS, CONFIANCA_MAX } from '@data/personagens';
 
@@ -40,6 +40,7 @@ function deixarPronta(sim: Sim, def: (typeof MISSOES)[number]): void {
   sim.setTestMode(true);
   sim.state.codex.push(...BOSSES.map((b) => b.id));
   for (const p of PERSONAGENS) sim.state.confianca[p.id] = CONFIANCA_MAX;
+  alternarRastreioDeMissao(sim.state, def, sim.alcanceLiberado);
   const p = progressoDe(sim.state, def);
   def.objetivos.forEach((o, i) => { p.passos[i] = o.alvo; });
 }
