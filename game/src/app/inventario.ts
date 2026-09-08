@@ -124,6 +124,11 @@ export async function drenarInventario(sim: Sim): Promise<void> {
     fila.unshift(...enviando);
     return;
   }
+  // Uma coleta pode acontecer enquanto a resposta está viajando. Nesse caso,
+  // ela descreve um instante anterior e substituir a mochila inteira faria a
+  // peça recém-coletada sumir até o próximo envio. Mantemos o espelho otimista;
+  // a fila restante será confirmada no ciclo seguinte.
+  if (fila.length) return;
   adotar(sim, linhas);
 }
 

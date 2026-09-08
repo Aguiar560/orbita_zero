@@ -511,6 +511,12 @@ export class Shell {
     });
 
     bus.on('loot:dropped', ({ item }) => {
+      // Coleta é uma ação rara e visível: atualize a Carga agora, sem esperar
+      // a amostragem de 5 Hz dos painéis. Em celulares ocupados, deixar este
+      // redesenho no relógio geral chegou a atrasá-lo por vários segundos.
+      this.dirty = false;
+      this.renderPanel();
+      this.buildTabs();
       if (item.rarity < 2) return;
       const info = rarityInfo(item.rarity);
       this.pushToast(`${itemName(item)} · ${info.name}`, item.rarity >= 4 ? 'epic' : 'good', item.icon);
