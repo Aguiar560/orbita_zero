@@ -199,11 +199,10 @@ export class Game {
     // NÃO dá para pular, e não é rigor: sem token, `garantirLote` desiste antes
     // da rede e nenhum item cai — nunca. Ver o comentário de classe do `Login`.
     //
-    // Ninguém precisa dar e-mail, porém: a conta anônima entra com um clique e
-    // não pede nada. O que a tela cobra é uma SESSÃO, não um cadastro.
-    //
-    // A promessa fica pendente enquanto não houver uma, então este `await`
-    // segura o boot de propósito.
+    // A capa pode ser explorada sem formulário: Entrar e Criar conta ficam no
+    // topo e só abrem seus campos depois do clique. A promessa, porém, fica
+    // pendente enquanto não houver sessão, então este `await` segura o início
+    // da partida de propósito.
     await new Login().mostrar(this.rootEl);
 
     // Com a conta resolvida dá para juntar o save local ao da nuvem. Antes da

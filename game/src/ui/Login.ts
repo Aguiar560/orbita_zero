@@ -5,18 +5,8 @@ import {
 import { clear, h } from './dom';
 
 /**
- * A porta de entrada: entrar ou criar conta.
- *
- * ## Por que dá para entrar sem cadastro — e por que não é mais "sem conta"
- *
- * Obrigar a criar conta na primeira tela cobra um e-mail antes de a pessoa saber
- * se gosta do jogo. Esse motivo continua de pé, e o botão continua ali.
- *
- * O que mudou é o que ele faz. Ele devolvia `null`: o jogo rodava só com o save
- * do navegador, sem dono do outro lado. Isso deixa de funcionar quando recurso,
- * item e nave passam a morar no servidor — estado precisa de dono. Agora ele
- * cria uma **conta anônima** de verdade, com id no servidor e nada pedido ao
- * jogador.
+ * A porta de entrada: a capa aparece primeiro; o formulário, só após a escolha
+ * explícita entre Entrar e Criar conta no topo.
  *
  * ## Por que NÃO dá mais para entrar sem sessão
  *
@@ -31,10 +21,8 @@ import { clear, h } from './dom';
  * entrando, então nada parece quebrado — e a dívida de drop tem teto de 100,
  * mora só em memória e morre ao fechar a aba.
  *
- * Entrar sem sessão virou, então, jogar um jogo que não é o jogo. A tela
- * insiste em vez de deixar passar: falhou, mostra o motivo e oferece tentar de
- * novo. É pior para quem tem azar de rede no boot, e é a única saída que não
- * entrega calado um jogo sem item.
+ * Entrar sem sessão virou, então, jogar um jogo que não é o jogo. A capa pode
+ * ser vista sem conta, mas o boot espera uma sessão antes de iniciar a partida.
  *
  * ## Por que uma tela e não um painel
  *
@@ -44,7 +32,8 @@ import { clear, h } from './dom';
  */
 export class Login {
   private readonly root = h('.login-tela');
-  private modo: 'entrar' | 'criar' = 'entrar';
+  /** Sem modo, a capa fica limpa e mostra somente as ações no topo. */
+  private modo: 'entrar' | 'criar' | null = null;
   private ocupado = false;
   /** Espera de provedor em curso. Ver `comProvedor`: não trava o botão. */
   private esperandoProvedor = false;
@@ -82,6 +71,37 @@ export class Login {
   }
 
   private render(pronto: (s: Sessao) => void): void {
+    const abrir = (modo: 'entrar' | 'criar'): void => {
+      if (this.ocupado || this.esperandoProvedor) return;
+      this.modo = modo;
+      this.recado = '';
+      this.render(pronto);
+    };
+
+    clear(this.root).append(
+      h('.login-fundo'),
+      h('nav.login-acoes-topo', { 'aria-label': 'Acesso à conta' },
+        h(`button.login-topo-acao.criar${this.modo === 'criar' ? '.ativa' : ''}`, {
+          type: 'button',
+          text: 'CRIAR CONTA',
+          disabled: this.ocupado || this.esperandoProvedor,
+          onclick: () => abrir('criar'),
+        }),
+        h(`button.login-topo-acao.entrar${this.modo === 'entrar' ? '.ativa' : ''}`, {
+          type: 'button',
+          text: 'ENTRAR',
+          disabled: this.ocupado || this.esperandoProvedor,
+          onclick: () => abrir('entrar'),
+        }),
+      ),
+    );
+
+    // A página principal nasce sem formulário. Ele só existe depois de uma
+    // escolha explícita no topo, evitando cobrar dados antes de o jogador
+    // decidir se quer entrar ou criar uma conta.
+    if (!this.modo) return;
+    const modo = this.modo;
+
     const email = h('input.login-campo', {
       type: 'email', placeholder: 'seu@email.com', autocomplete: 'email',
     }) as HTMLInputElement;
@@ -89,7 +109,7 @@ export class Login {
       type: 'password', placeholder: 'senha',
       // `new-password` no cadastro faz o gerenciador de senhas OFERECER uma
       // senha forte em vez de tentar preencher uma que não existe.
-      autocomplete: this.modo === 'criar' ? 'new-password' : 'current-password',
+      autocomplete: modo === 'criar' ? 'new-password' : 'current-password',
     }) as HTMLInputElement;
 
     const enviar = async (): Promise<void> => {
@@ -107,7 +127,7 @@ export class Login {
       this.recado = this.modo === 'criar' ? 'Criando conta…' : 'Entrando…';
       this.render(pronto);
 
-      const r = this.modo === 'criar' ? await cadastrar(e, s) : await entrar(e, s);
+      const r = modo === 'criar' ? await cadastrar(e, s) : await entrar(e, s);
       this.ocupado = false;
       if (r.ok) return pronto(r.sessao);
 
@@ -162,33 +182,29 @@ export class Login {
     email.addEventListener('keydown', aoTeclar);
     senha.addEventListener('keydown', aoTeclar);
 
-    clear(this.root).append(
-      h('.login-fundo'),
+    this.root.append(
       h('.login-caixa', {},
-        // Sem título aqui: a arte de capa JÁ traz o logo, e escrever
-        // "ÓRBITA ZERO" de novo logo abaixo dele seria a mesma informação
-        // duas vezes, com a segunda em tipografia pior que a primeira.
+        h('button.login-fechar', {
+          type: 'button', text: '×', title: 'Fechar', 'aria-label': 'Fechar',
+          disabled: this.ocupado || this.esperandoProvedor,
+          onclick: () => {
+            this.modo = null;
+            this.recado = '';
+            this.render(pronto);
+          },
+        }),
+        h('span.login-etiqueta', { text: 'CONTA DE PILOTO' }),
+        h('h1.login-titulo', { text: modo === 'criar' ? 'Criar conta' : 'Entrar' }),
         h('p.login-sub', {
-          text: this.modo === 'criar'
+          text: modo === 'criar'
             ? 'Uma conta guarda seu progresso e o leva para outros aparelhos.'
             : 'Entre para sincronizar seu progresso.',
         }),
 
-        h('.login-abas', {},
-          ...(['entrar', 'criar'] as const).map((m) => h(
-            `button.login-aba${this.modo === m ? '.ativa' : ''}`,
-            {
-              text: m === 'entrar' ? 'Entrar' : 'Criar conta',
-              disabled: this.ocupado,
-              onclick: () => { this.modo = m; this.recado = ''; this.render(pronto); },
-            },
-          )),
-        ),
-
         email, senha,
 
         h('button.login-enviar', {
-          text: this.ocupado ? '…' : (this.modo === 'criar' ? 'Criar conta' : 'Entrar'),
+          text: this.ocupado ? '…' : (modo === 'criar' ? 'Criar conta' : 'Entrar'),
           disabled: this.ocupado,
           onclick: () => { void enviar(); },
         }),
