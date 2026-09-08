@@ -245,8 +245,18 @@ export interface MissaoDef {
     icone?: string;
     raridadeMin?: Rarity;
   };
-  /** Quanta confiança a entrega soma com o `giverId`. */
-  confianca?: number;
+  /**
+   * ► A CONFIANÇA SAIU DAQUI.
+   *
+   * Ela era escrita à mão, quase sempre `1`, e o resultado estourava o teto:
+   * Kael Voss tinha 7 missões somando 8 para um máximo de 5. A barra enchia na
+   * quarta missão e as três últimas não valiam nada — fazer a cadeia inteira
+   * pagava o mesmo que largar no meio.
+   *
+   * Agora ela é DERIVADA da posição na cadeia, e a cadeia inteira fecha exato
+   * no teto. Ver `balance/confianca.ts`. Cadastrar quinze missões novas não
+   * exige recalcular nada: o valor de cada uma cai sozinho do tamanho da cadeia.
+   */
   /** Missões que esta entrega libera. Informativo — o requisito manda. */
   proximas?: readonly string[];
   /**
@@ -272,7 +282,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // ── eliminação ────────────────────────────────────────────────────────────
   {
     id: 'elim_primeiros',
-    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'Batismo de Fogo',
     descricao: 'A frota inimiga não se apresenta. Apresente-se você.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -281,7 +291,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'elim_chefes',
-    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'Caçador de Comandantes',
     descricao: 'Cada frota tem uma cabeça. Corte três.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -291,7 +301,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'elim_fogo',
-    giverId: 'char_nucleo_ferrugem', tipo: 'galaxia', confianca: 1,
+    giverId: 'char_nucleo_ferrugem', tipo: 'galaxia',
     nome: 'Contrafogo',
     descricao: 'Frotas de fogo queimam o escudo antes do casco. Apague 60.',
     categoria: 'eliminacao', ritmo: 'semanal',
@@ -307,7 +317,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // ── coleta ────────────────────────────────────────────────────────────────
   {
     id: 'coleta_ferrita',
-    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'Linha de Suprimento',
     descricao: 'Ferrita é o que segura a fabricação de pé.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -320,7 +330,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'coleta_sucata',
-    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
+    giverId: 'char_lira_nexus', tipo: 'aliado',
     nome: 'Ferro-Velho Orbital',
     descricao: 'Nada se perde no vácuo — tudo se recolhe.',
     categoria: 'coleta', ritmo: 'diaria',
@@ -333,7 +343,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'coleta_raro',
-    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
+    giverId: 'char_lira_nexus', tipo: 'aliado',
     nome: 'Olho para o Raro',
     descricao: 'Dez peças raras. Não é sorte, é volume.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -349,7 +359,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // ── entrega ───────────────────────────────────────────────────────────────
   {
     id: 'entrega_titanio',
-    giverId: 'char_zyrak', tipo: 'aliado', confianca: 1,
+    giverId: 'char_zyrak', tipo: 'aliado',
     nome: 'Encomenda da Doca',
     descricao: 'A doca reforma o porão em troca de titânio. Bom negócio.',
     categoria: 'entrega', ritmo: 'campanha',
@@ -366,7 +376,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // ── progressão ────────────────────────────────────────────────────────────
   {
     id: 'prog_setor_10',
-    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'Fronteira Interior',
     descricao: 'Dez setores atrás de você.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -379,7 +389,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'prog_galaxia_2',
-    giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'Salto Interestelar',
     descricao: 'A segunda galáxia não perdoa quem chegou cedo.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -393,7 +403,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'prog_nivel_25',
-    giverId: 'char_zyrak', tipo: 'aliado', confianca: 1,
+    giverId: 'char_zyrak', tipo: 'aliado',
     nome: 'Patente de Comando',
     descricao: 'Nível 25 de comando. A frota começa a ouvir.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -406,7 +416,7 @@ export const MISSOES: readonly MissaoDef[] = [
   },
   {
     id: 'prog_fusao',
-    giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
+    giverId: 'char_lira_nexus', tipo: 'aliado',
     nome: 'Mão de Artífice',
     descricao: 'Cinco sínteses que subiram de raridade. As que não subiram não contam.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -423,7 +433,7 @@ export const MISSOES: readonly MissaoDef[] = [
   // Cada cadeia introduz dois ou três materiais e termina consumindo parte do
   // que entregou. Assim missão é fonte E sumidouro, não uma torneira sem uso.
   {
-    id: 'org_bioma_1', giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
+    id: 'org_bioma_1', giverId: 'char_lira_nexus', tipo: 'aliado',
     nome: 'Medicina do Vácuo I — Cultura',
     descricao: 'Lira precisa de peças raras para calibrar uma incubadora de reparo vivo.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -432,7 +442,7 @@ export const MISSOES: readonly MissaoDef[] = [
     proximas: ['org_bioma_2'], requisitos: [{ tipo: 'setorAlcancado', valor: 30 }],
   },
   {
-    id: 'org_bioma_2', giverId: 'char_lira_nexus', tipo: 'aliado', confianca: 1,
+    id: 'org_bioma_2', giverId: 'char_lira_nexus', tipo: 'aliado',
     nome: 'Medicina do Vácuo II — Contenção',
     descricao: 'A cultura reagiu. Esporos de frotas químicas estabilizam a matriz.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -441,7 +451,7 @@ export const MISSOES: readonly MissaoDef[] = [
     proximas: ['org_bioma_3'], requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_bioma_1' }],
   },
   {
-    id: 'org_bioma_3', giverId: 'char_lira_nexus', tipo: 'especial', confianca: 2,
+    id: 'org_bioma_3', giverId: 'char_lira_nexus', tipo: 'especial',
     nome: 'Medicina do Vácuo III — Primeiro Pulso',
     descricao: 'Alimente o protótipo com a cultura estabilizada e desperte um núcleo vivo.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -455,7 +465,7 @@ export const MISSOES: readonly MissaoDef[] = [
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_bioma_2' }],
   },
   {
-    id: 'org_jardim_1', giverId: 'char_zyrak', tipo: 'galaxia', galaxiaId: 5, confianca: 1,
+    id: 'org_jardim_1', giverId: 'char_zyrak', tipo: 'galaxia', galaxiaId: 5,
     nome: 'Jardins sem Sol I — Semente',
     descricao: 'Zyrak detectou fotossíntese onde nenhuma estrela deveria alcançar.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -464,7 +474,7 @@ export const MISSOES: readonly MissaoDef[] = [
     proximas: ['org_jardim_2'], requisitos: [{ tipo: 'setorAlcancado', valor: 55 }],
   },
   {
-    id: 'org_jardim_2', giverId: 'char_zyrak', tipo: 'galaxia', galaxiaId: 5, confianca: 1,
+    id: 'org_jardim_2', giverId: 'char_zyrak', tipo: 'galaxia', galaxiaId: 5,
     nome: 'Jardins sem Sol II — Floração',
     descricao: 'Cápsulas antigas guardam micronutrientes que fazem a alga florescer.',
     categoria: 'coleta', ritmo: 'campanha',
@@ -473,7 +483,7 @@ export const MISSOES: readonly MissaoDef[] = [
     proximas: ['org_jardim_3'], requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_jardim_1' }],
   },
   {
-    id: 'org_jardim_3', giverId: 'char_zyrak', tipo: 'especial', galaxiaId: 5, confianca: 2,
+    id: 'org_jardim_3', giverId: 'char_zyrak', tipo: 'especial', galaxiaId: 5,
     nome: 'Jardins sem Sol III — Fruto Nebular',
     descricao: 'Comprima a colheita numa fusão estável e preserve o primeiro fruto.',
     categoria: 'progressao', ritmo: 'campanha',
@@ -487,7 +497,7 @@ export const MISSOES: readonly MissaoDef[] = [
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_jardim_2' }],
   },
   {
-    id: 'org_xeno_1', giverId: 'char_kael_voss', tipo: 'principal', confianca: 1,
+    id: 'org_xeno_1', giverId: 'char_kael_voss', tipo: 'principal',
     nome: 'O Outro Lado I — Assinatura',
     descricao: 'Kael quer uma amostra da matéria que atravessa escudos cósmicos sem perder forma.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -496,7 +506,7 @@ export const MISSOES: readonly MissaoDef[] = [
     proximas: ['org_xeno_2'], requisitos: [{ tipo: 'setorAlcancado', valor: 80 }],
   },
   {
-    id: 'org_xeno_2', giverId: 'char_kael_voss', tipo: 'especial', confianca: 2,
+    id: 'org_xeno_2', giverId: 'char_kael_voss', tipo: 'especial',
     nome: 'O Outro Lado II — Mineral Vivo',
     descricao: 'Submeta a essência a cinco assinaturas de comandante e force-a a cristalizar.',
     categoria: 'eliminacao', ritmo: 'campanha',
@@ -519,7 +529,7 @@ export const MISSOES: readonly MissaoDef[] = [
     nome: 'Coração da Ferrugem',
     descricao: 'Destrua o Protótipo NF-07 sem perder o escudo.',
     categoria: 'eliminacao', ritmo: 'campanha',
-    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0, confianca: 2,
+    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0,
     objetivos: [{
       fato: 'chefe', alvo: 1,
       filtro: { chefeId: 'nucleo_ferrugem' },
@@ -551,7 +561,7 @@ export const MISSOES: readonly MissaoDef[] = [
     nome: 'Segredos Enterrados',
     descricao: 'Há registros do que o Núcleo era antes de acordar. Ele ainda não confia o bastante para mostrá-los.',
     categoria: 'progressao', ritmo: 'campanha',
-    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0, confianca: 1,
+    giverId: 'char_nucleo_ferrugem', tipo: 'especial', galaxiaId: 0,
     objetivos: [{ fato: 'abate', alvo: 300, filtro: { elemento: 'fogo' }, texto: 'Abater 300 inimigos de fogo' }],
     requisitos: [{ tipo: 'confianca', personagem: 'char_nucleo_ferrugem', valor: 4 }],
     recompensa: { medalhas: 5, baus: { singularidade: 1 } },

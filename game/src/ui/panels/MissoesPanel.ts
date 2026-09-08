@@ -23,6 +23,7 @@ import type { Sim } from '@sim/index';
 import { h, portraitIcon, spriteIcon, progressBar } from '../dom';
 import { ligarFicha } from '../FichaDeItem';
 import { affixCandidates } from '@sim/loot';
+import { confiancaDaMissao } from '@data/balance/confianca';
 import type { Panel } from './types';
 
 /**
@@ -621,8 +622,18 @@ export class MissoesPanel implements Panel {
       const c = CONCESSAO_POR_ID.get(r.concessao);
       out.push(premio('espaco', `+${c?.itens ?? 0}`, `+${c?.itens ?? 0} espaços de carga`));
     }
-    if (def.confianca) {
-      out.push(premio('confianca', `+${def.confianca}`, `+${def.confianca} de confiança`));
+    /**
+     * A confiança é DERIVADA da posição na cadeia — as primeiras missões de um
+     * contato valem menos, as últimas mais, e a cadeia inteira fecha no teto.
+     *
+     * Uma casa decimal porque os valores são fracionários: uma cadeia de quinze
+     * numa escada de cinco dá frações, e arredondar para inteiro mostraria "+0"
+     * na metade das missões.
+     */
+    const ganhoDeConfianca = confiancaDaMissao(def);
+    if (ganhoDeConfianca > 0) {
+      const texto = `+${ganhoDeConfianca.toFixed(1)}`;
+      out.push(premio('confianca', texto, `${texto} de confiança`));
     }
     if (def.recompensaExclusiva) {
       /**

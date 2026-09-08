@@ -2,6 +2,7 @@
 import { bus, toast } from '@app/Bus';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { multiplicadorDoTier, raridadeExclusivaDoTier, tierDoContatoPorId } from '@data/balance/contatos';
+import { confiancaDaMissao } from '@data/balance/confianca';
 import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
@@ -902,13 +903,23 @@ export class Sim {
 
     // A confiança sobe DEPOIS do pagamento e antes do `touch`: subi-la primeiro
     // deixaria o estado inconsistente se a entrega fosse recusada acima.
-    if (def.confianca && def.giverId) {
+    const ganho = confiancaDaMissao(def);
+    if (ganho > 0 && def.giverId) {
       const atual = this.state.confianca[def.giverId] ?? 0;
-      const novo = Math.min(CONFIANCA_MAX, atual + def.confianca);
+      const novo = Math.min(CONFIANCA_MAX, atual + ganho);
       this.state.confianca[def.giverId] = novo;
-      if (novo > atual) {
+      /**
+       * O aviso só sai quando um DEGRAU inteiro abre.
+       *
+       * A confiança passou a ser fracionária — quinze missões numa escada de
+       * cinco —, e avisar a cada fração daria quinze toasts por contato, todos
+       * dizendo a mesma coisa. O que o jogador quer saber é quando o degrau
+       * seguinte se acende.
+       */
+      if (Math.floor(novo) > Math.floor(atual)) {
         const p = PERSONAGEM_POR_ID.get(def.giverId);
-        toast(`Confiança ${ROMANOS[novo - 1] ?? novo} com ${p?.nome ?? def.giverId}`, 'epic');
+        const grau = Math.floor(novo);
+        toast(`Confiança ${ROMANOS[grau - 1] ?? grau} com ${p?.nome ?? def.giverId}`, 'epic');
       }
     }
 

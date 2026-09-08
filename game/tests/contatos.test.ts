@@ -6,6 +6,7 @@ import { MISSOES, MISSAO_POR_ID, TIPO_DE_MISSAO } from '@data/missoes';
 import {
   CONFIANCA_MAX, PERSONAGENS, PERSONAGEM_POR_ID, contatoDoChefe,
 } from '@data/personagens';
+import { confiancaDaMissao } from '@data/balance/confianca';
 import {
   confiancaDe, contatoDesbloqueado, requisitoSatisfeito, requisitosPendentes,
   sinalDoContato, situacaoDe, textoDoRequisito,
@@ -223,7 +224,9 @@ describe('a confiança', () => {
 
     sim.guardarMaterial('ferrita', 500);
     sim.resgatarMissao(def.id);
-    expect(confiancaDe(sim.state, def.giverId!)).toBe(def.confianca ?? 0);
+    // A confiança é DERIVADA da posição na cadeia desde 07/09 — antes era um
+    // número escrito na missão, quase sempre 1, e a soma estourava o teto.
+    expect(confiancaDe(sim.state, def.giverId!)).toBeCloseTo(confiancaDaMissao(def), 6);
 
     sim.state.confianca[def.giverId!] = 99;
     expect(confiancaDe(sim.state, def.giverId!)).toBe(CONFIANCA_MAX);

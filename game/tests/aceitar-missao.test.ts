@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MISSAO_POR_ID, MISSOES } from '@data/missoes';
 import { PERSONAGENS } from '@data/personagens';
+import { confiancaDaMissao } from '@data/balance/confianca';
 import { CONFIANCA_MAX } from '@data/personagens';
 import { createState } from '@sim/state';
 import { aplicarFato, missaoAceita, progressoDe, situacaoDe } from '@sim/missoes';
@@ -83,29 +84,27 @@ describe('aceitar a missão', () => {
 });
 
 describe('a escada de confiança, medida', () => {
-  it('registra o excesso que hoje existe por contato', () => {
+  it('o excesso que esta linha de base registrava ACABOU', () => {
     /**
-     * LINHA DE BASE, e ela está QUEBRADA de propósito — no sentido do
-     * `CLAUDE.md`: fixa por escrito o quanto o balanceamento está torto hoje,
-     * para a correção ser visível quando vier.
+     * Esta era a LINHA DE BASE do estrago, no sentido do `CLAUDE.md`: fixava
+     * por escrito que três contatos estouravam o teto — Kael Voss somando 8
+     * para um máximo de 5 —, para a correção ser visível quando viesse.
      *
-     * Kael Voss tem 7 missões que somam 8 de confiança para um teto de 5. Com
-     * as vagas, o jogador não consegue mais fazer as sete de enfiada — mas o
-     * excesso continua lá, e some quando as ~15 missões por contato entrarem e
-     * a confiança por missão for redistribuída.
+     * Veio no mesmo dia. A confiança deixou de ser escrita à mão e passou a ser
+     * derivada da posição na cadeia, normalizada para fechar exato no teto.
      *
-     * Quando isso acontecer, este teste falha. Falhar aqui é sucesso: troque o
-     * número pela faixa saudável em vez de apagar o teste.
+     * O teste fica, invertido: agora ele guarda o conserto em vez de registrar
+     * o defeito. A cobrança detalhada mora em `confianca-da-cadeia.test.ts`.
      */
     const soma = new Map<string, number>();
     for (const m of MISSOES) {
       if (!m.giverId) continue;
-      soma.set(m.giverId, (soma.get(m.giverId) ?? 0) + (m.confianca ?? 0));
+      soma.set(m.giverId, (soma.get(m.giverId) ?? 0) + confiancaDaMissao(m));
     }
 
-    const excedem = [...soma].filter(([, n]) => n > CONFIANCA_MAX);
-    expect(excedem.length, `contatos que estouram o teto: ${JSON.stringify(excedem)}`).toBe(3);
-    expect(soma.get('char_kael_voss')).toBe(8);
+    const excedem = [...soma].filter(([, n]) => n > CONFIANCA_MAX + 1e-9);
+    expect(excedem, `contatos que estouram o teto: ${JSON.stringify(excedem)}`).toEqual([]);
+    expect(soma.get('char_kael_voss')).toBeCloseTo(CONFIANCA_MAX, 6);
   });
 
   it('e a maioria dos contatos ainda não tem missão nenhuma', () => {
