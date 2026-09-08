@@ -543,7 +543,10 @@ export class Game {
     const deLa = r.doServidor;
     if (deLa && progressoDe(deLa) > progressoDe(this.sim.state)) {
       allowSaving();
-      this.sim.state = deLa;
+      // Mesma regra do boot: as filas de saida DESTE aparelho nao vao embora
+      // com o save antigo. Elas sao o que o jogador fez e o servidor ainda nao
+      // confirmou -- ver `comAsFilasDaqui`.
+      this.sim.state = comAsFilasDaqui(deLa, this.sim.state);
       this.sim.touch();
       this.sim.save();
       this.vertical.refreshPlayer(true);

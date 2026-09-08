@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.201 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.203 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -64,11 +64,35 @@ antes de alguém perder uma Matriz por causa disso.
 Os demais — `missoes`, `eventos`, `chests`, `codex`, `confianca`, `provacao`,
 `stats`, `settings`, `shop`, `servicos`, `run`, `medalhas`, `playtime`,
 `lifetime`, `piloto`, `cargaLiberada` — **sobem inteiros no save da nuvem**,
-então uma recarga não os toca. Eles não têm cópia em tabela: some o save local
-E o da nuvem, some o progresso. É dívida conhecida, e de outra natureza —
-nenhum deles se perde ao atualizar a página, que era a pergunta.
+então uma recarga não os toca, e eles ATRAVESSAM máquinas
+(`tests/missoes-viajam-entre-maquinas.test.ts` mede isso).
 
-1.201 testes passando.
+### O que fica devendo, e a pergunta que o levantou
+
+O Rafael, lendo a tabela acima: "mas se a pessoa logar em outra máquina as
+missões, eventos e etc não vão ser as mesmas?".
+
+Vão — mas por um caminho mais frágil que o dos campos de tabela, e a diferença
+merece estar escrita:
+
+| | campo de TABELA | campo do SAVE |
+|---|---|---|
+| como viaja | linha própria no D1 | dentro do bloco do save |
+| duas máquinas juntas | **soma** (delta, monotônico, livro-caixa) | **uma vence** |
+| critério | a regra da tabela | maior `playtime` |
+
+Ou seja: quem joga em A e depois em B recebe tudo. Quem joga nas duas em
+paralelo — ou numa delas com a rede fora — termina com o bloco de UMA, e as
+missões que a outra avançou nesse meio-tempo somem. Não há mescla campo a
+campo, porque o save é um bloco só.
+
+Fechar isso é dar tabela a esses campos, como foi feito com item, frota,
+carteira e progressão. É trabalho de fase, não de conserto, e a ordem sugerida
+é por dano: `missoes` e `confianca` primeiro (progresso lento e irrecuperável),
+depois `chests` e `medalhas` (contam valor), depois `codex` e `provacao`
+(registro), e `stats`/`settings` por último (não é progresso).
+
+1.203 testes passando.
 
 ---
 
