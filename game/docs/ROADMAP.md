@@ -8,8 +8,53 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.188 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.193 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — equipar uma peça recém-caída travava o inventário inteiro
+
+Relato do Rafael: "estava com a Núcleo Vektor com alguns itens equipados,
+alterei para a Vetor VC-1 e atualizei a página; ao retornar voltei para Núcleo
+Vektor e ela estava pelada, sem itens".
+
+Consultando o D1: os onze itens da conta estavam com `nave` **nulo**. Nada
+nunca chegou a ser equipado no servidor — não era a troca de nave que perdia o
+equipamento; ele jamais tinha sido gravado.
+
+### A cadeia
+
+1. A rota `/inventario` resolvia cada `equipar` com um `SELECT` ao vivo.
+2. As coletas do **mesmo lote** ainda não tinham sido gravadas: elas entram
+   numa lista de escritas que só roda no fim, para caber num `batch` só.
+3. Equipar uma peça recém-caída não a encontrava, e a rota respondia 409 com
+   `return` — **antes** do `batch`. O lote inteiro se perdia junto: as
+   coletas, os descartes e os outros equipamentos.
+4. O cliente devolve a fila ao início quando a requisição falha. O mesmo
+   comando voltava no envio seguinte e derrubava esse também.
+
+Uma peça equipada logo depois de cair travava a sincronização de inventário
+**para sempre**. E o jogo equipa automaticamente o que é melhor assim que cai,
+então a chance de cair nisso é alta.
+
+### O conserto
+
+A decisão virou função pura, `planejarEquipar`, e a peça pode vir de duas
+origens: do banco ou do que **acabou de cair neste lote**. Duas mudanças:
+
+- a coleta guarda o que produziu num mapa, e o `equipar` o consulta antes de
+  ir ao banco — o que também reduz consultas;
+- um comando que não dá para aplicar é **recusado**, não derruba o lote. Ele
+  não melhora com retentativa: ou o item não é da pessoa, ou a peça não serve
+  naquela nave. Derrubar o lote por causa dele transformava um comando ruim
+  num bloqueio permanente de tudo, inclusive dos descartes — e o inventário do
+  servidor crescia com peças que o jogador já tinha jogado fora.
+
+Os recusados voltam na resposta. Como o cliente adota a lista que vem do
+servidor, uma peça recusada simplesmente aparece desequipada — que é a verdade.
+
+1.193 testes passando.
 
 ---
 

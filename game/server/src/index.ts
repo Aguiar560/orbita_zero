@@ -11,7 +11,7 @@ import {
   ITENS_POR_POOL, TIPOS, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
   setorValido, sorteValida, type TipoDeDrop,
 } from './lote';
-import { conferirComandos, derivarColeta, podeIrPara, type Comandos } from './inventario';
+import { conferirComandos, derivarColeta, planejarEquipar, type Comandos } from './inventario';
 import {
   cascoDoPiloto, conferirCompraDeCasco, conferirFusao, fundir,
 } from './fabrica';
@@ -22,7 +22,7 @@ import { simDoServidor, type ContextoDoCliente } from './estado';
 import { HULL_BY_ID } from '@data/hulls';
 import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { xpAcumuladoDe } from '@sim/nivel';
-import type { Item, SlotId } from '@sim/types';
+import type { Item } from '@sim/types';
 
 /**
  * A API do Órbita Zero.
@@ -1008,6 +1008,8 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
    */
   const descartados = new Set(comandos.descartar ?? []);
   const nascidosEMortos = new Set<string>();
+  /** O que nasceu NESTE lote e ainda não está no banco. */
+  const nascidos = new Map<string, Item>();
 
   // ── coletar ───────────────────────────────────────────────────────────────
   const pedido = comandos.coletar ?? {};
@@ -1042,6 +1044,10 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
     for (const item of coleta.itens) {
       // Caiu e já foi descartado neste mesmo lote: não grava.
       if (descartados.has(item.uid)) { nascidosEMortos.add(item.uid); continue; }
+      // O `equipar` deste mesmo lote precisa ENXERGAR o que acabou de cair. As
+      // escritas só rodam no fim, então um `SELECT` não encontraria a peça — e
+      // era isso que derrubava o lote inteiro. Ver `planejarEquipar`.
+      nascidos.set(item.uid, item);
       escritas.push(env.DB
         .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
         .bind(item.uid, id, JSON.stringify(item), agora));
@@ -1063,36 +1069,46 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
   }
 
   // ── equipar ───────────────────────────────────────────────────────────────
+  //
+  // A peça vem de `nascidos` (caiu neste lote) ou do banco. Buscar só o que
+  // ainda não se conhece mantém o número de consultas igual ao de antes.
+  const conhecidas = new Map<string, Item>(nascidos);
   for (const e of comandos.equipar ?? []) {
+    if (conhecidas.has(e.uid)) continue;
     const linha = await env.DB
       .prepare('SELECT dados FROM itens WHERE uid = ? AND usuario = ?')
       .bind(e.uid, id)
       .first<{ dados: string }>();
-    if (!linha) return json({ erro: 'item_nao_e_seu' }, 409, origem);
+    if (linha) conhecidas.set(e.uid, JSON.parse(linha.dados) as Item);
+  }
 
-    if (e.nave === null) {
-      escritas.push(env.DB.prepare('UPDATE itens SET nave = NULL, slot = NULL WHERE uid = ? AND usuario = ?').bind(e.uid, id));
-      continue;
-    }
+  const plano = planejarEquipar(
+    comandos.equipar ?? [],
+    (uid) => conhecidas.get(uid) ?? null,
+    (nave) => HULL_BY_ID.get(nave)?.element ?? null,
+  );
 
-    const item = JSON.parse(linha.dados) as Item;
-    const casco = HULL_BY_ID.get(e.nave);
-    if (!casco) return json({ erro: 'item_nao_e_seu' }, 409, origem);
-    const mau = podeIrPara(item, casco.element, (e.slot ?? item.slot) as SlotId);
-    if (mau) return json({ erro: mau }, 409, origem);
-
+  for (const uid of plano.desequipar) {
+    escritas.push(env.DB
+      .prepare('UPDATE itens SET nave = NULL, slot = NULL WHERE uid = ? AND usuario = ?')
+      .bind(uid, id));
+  }
+  for (const t of plano.aplicar) {
     // Desequipa o que estiver no slot antes de ocupar: o índice único recusaria
     // a segunda peça, e o jogador veria "falhou" onde o jogo sempre trocou.
     escritas.push(env.DB
       .prepare('UPDATE itens SET nave = NULL, slot = NULL WHERE usuario = ? AND nave = ? AND slot = ?')
-      .bind(id, e.nave, item.slot));
+      .bind(id, t.nave, t.slot));
     escritas.push(env.DB
       .prepare('UPDATE itens SET nave = ?, slot = ? WHERE uid = ? AND usuario = ?')
-      .bind(e.nave, item.slot, e.uid, id));
+      .bind(t.nave, t.slot, t.uid, id));
   }
 
   if (escritas.length) await env.DB.batch(escritas);
-  return json({ itens: await inventarioDe(env, id) }, 200, origem);
+  // Os recusados vão na resposta em vez de derrubarem o lote. O cliente adota a
+  // lista que volta, então uma peça recusada simplesmente aparece desequipada —
+  // que é a verdade.
+  return json({ itens: await inventarioDe(env, id), recusados: plano.recusados }, 200, origem);
 }
 // ── síntese e frota ─────────────────────────────────────────────────────────
 

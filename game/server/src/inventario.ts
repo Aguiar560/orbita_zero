@@ -120,3 +120,70 @@ export function podeIrPara(item: Item, elementoDaNave: string, slot: SlotId): Re
   if (!naveAceita(item, elementoDaNave as never)) return 'nave_nao_aceita';
   return null;
 }
+
+/**
+ * O que fazer com cada `equipar` do lote, decidido de uma vez.
+ *
+ * ## O defeito que isto conserta
+ *
+ * A rota resolvia cada `equipar` com um `SELECT` ao vivo, e as coletas do MESMO
+ * lote ainda não tinham sido gravadas — elas ficam numa lista de escritas que só
+ * roda no fim. Então equipar uma peça que acabou de cair nunca encontrava a
+ * peça, e a rota respondia 409.
+ *
+ * Pior que o 409: ele saía com `return`, ANTES do `batch`. O lote inteiro se
+ * perdia junto — as coletas, os descartes e os outros equipamentos. E o cliente
+ * devolve a fila ao início quando a requisição falha, então o mesmo comando
+ * voltava no próximo envio e derrubava esse também. Uma peça equipada logo após
+ * cair travava a sincronização de inventário PARA SEMPRE.
+ *
+ * Medido no D1 em 08/09: a conta do Rafael tinha onze itens, todos com
+ * `nave` nulo. Nada nunca chegou a ser equipado no servidor, e a nave dele
+ * aparecia pelada ao recarregar a página.
+ *
+ * ## Por que RECUSAR em vez de derrubar o lote
+ *
+ * Um comando que não dá para aplicar não melhora com retentativa: o item não é
+ * da pessoa, ou a peça não serve naquela nave. Derrubar o lote por causa dele
+ * transforma um comando ruim num bloqueio permanente de tudo. Aqui ele sai da
+ * fila com um motivo, e o resto do lote passa.
+ *
+ * Isso não afrouxa nada: recusar é a decisão SEGURA. O que era inseguro é o
+ * lote perdido levar junto os descartes — o inventário do servidor crescia com
+ * peças que o jogador já tinha jogado fora.
+ */
+export interface PlanoDeEquipar {
+  /** Trocas a aplicar, na ordem em que chegaram. */
+  aplicar: { uid: string; nave: string; slot: SlotId }[];
+  /** Peças a tirar do soquete. */
+  desequipar: string[];
+  /** O que não deu para aplicar, com o porquê. */
+  recusados: { uid: string; motivo: RecusaDeInventario }[];
+}
+
+export function planejarEquipar(
+  equipar: readonly { uid: string; nave: string | null; slot?: SlotId }[],
+  /** A peça, venha ela do banco ou da coleta deste mesmo lote. */
+  peca: (uid: string) => Item | null,
+  /** O elemento de fábrica do casco, ou `null` se ele não existe. */
+  elementoDoCasco: (nave: string) => string | null,
+): PlanoDeEquipar {
+  const plano: PlanoDeEquipar = { aplicar: [], desequipar: [], recusados: [] };
+
+  for (const e of equipar) {
+    const item = peca(e.uid);
+    if (!item) { plano.recusados.push({ uid: e.uid, motivo: 'item_nao_e_seu' }); continue; }
+
+    if (e.nave === null) { plano.desequipar.push(e.uid); continue; }
+
+    const elemento = elementoDoCasco(e.nave);
+    if (!elemento) { plano.recusados.push({ uid: e.uid, motivo: 'item_nao_e_seu' }); continue; }
+
+    const mau = podeIrPara(item, elemento, (e.slot ?? item.slot) as SlotId);
+    if (mau) { plano.recusados.push({ uid: e.uid, motivo: mau }); continue; }
+
+    plano.aplicar.push({ uid: e.uid, nave: e.nave, slot: item.slot as SlotId });
+  }
+
+  return plano;
+}
