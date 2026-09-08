@@ -26,7 +26,12 @@
  * (as explosões grandes ocupam quase tudo) a mediana já é sprite, e o recorte
  * comeria o miolo. O percentil 20 ainda cai no fundo mesmo nessas.
  */
-export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.20, corte = 26 } = {}) {
+export function extrairCelula(data, info, x0, y0, w, h, {
+  margem = 46,
+  piso = 0.20,
+  corte = 26,
+  fundoInterpolado = false,
+} = {}) {
   const { width: W, channels: C } = info;
   const lums = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
@@ -39,12 +44,43 @@ export function extrairCelula(data, info, x0, y0, w, h, { margem = 46, piso = 0.
   const ord = Float32Array.from(lums).sort();
   const base = ord[Math.floor(ord.length * piso)];
 
+  /**
+   * Explosões ocupam uma área grande, mas deixam fundo acima e abaixo em quase
+   * toda coluna. A folha original tem gradiente nos dois eixos (vermelho, azul,
+   * ciano...), então um único `base` transforma esse gradiente num retângulo
+   * translúcido. Interpolar as duas bordas acompanha a placa sem confundir o
+   * miolo da explosão com fundo.
+   */
+  let basesTopo = null;
+  let basesBase = null;
+  if (fundoInterpolado) {
+    basesTopo = new Float32Array(w);
+    basesBase = new Float32Array(w);
+    const amostra = Math.max(6, Math.min(14, Math.round(h * 0.1)));
+    const borda = Math.floor((amostra - 1) * 0.35);
+    const topo = new Float32Array(amostra);
+    const baseDaCelula = new Float32Array(amostra);
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < amostra; y++) {
+        topo[y] = lums[y * w + x];
+        baseDaCelula[y] = lums[(h - 1 - y) * w + x];
+      }
+      topo.sort();
+      baseDaCelula.sort();
+      basesTopo[x] = topo[borda];
+      basesBase[x] = baseDaCelula[borda];
+    }
+  }
+
   const out = Buffer.alloc(w * h * 4);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = ((y0 + y) * W + (x0 + x)) * C;
       const o = (y * w + x) * 4;
-      const t = Math.min(1, Math.max(0, (lums[y * w + x] - base) / margem));
+      const fundo = basesTopo && basesBase
+        ? basesTopo[x] + (basesBase[x] - basesTopo[x]) * (y / Math.max(1, h - 1))
+        : base;
+      const t = Math.min(1, Math.max(0, (lums[y * w + x] - fundo) / margem));
       out[o] = data[i];
       out[o + 1] = data[i + 1];
       out[o + 2] = data[i + 2];

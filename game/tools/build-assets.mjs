@@ -157,7 +157,13 @@ async function buildEspaco(manifest) {
       continue;
     }
 
-    region = unmatte(region, ESPACO_MATTE, s.mode === 'glow' ? 'glow' : 'solid');
+    region = s.id.startsWith('fx/blast_')
+      ? extrairCelula(sheet.data, { width: sheet.width, channels: 4 }, s.x, s.y, s.w, s.h, {
+          margem: 52,
+          corte: 18,
+          fundoInterpolado: true,
+        })
+      : unmatte(region, ESPACO_MATTE, s.mode === 'glow' ? 'glow' : 'solid');
     const trimmed = s.trim === false ? { raw: region, ox: 0, oy: 0 } : trimAlpha(region, s.mode === 'glow' ? 6 : 2);
     if (!trimmed) {
       console.warn(`   ! recorte vazio: ${s.id} (${s.x},${s.y},${s.w},${s.h})`);
@@ -1491,7 +1497,12 @@ async function buildTiros(manifest) {
       // Duas células têm fundo largo demais para o piso padrão e saíam como
       // retângulos opacos da cor do elemento — ver `ALFA_A_MAO`.
       const chave = `${cat.id}/${col.elemento}`;
-      const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0], ALFA_A_MAO[chave] ?? {});
+      const celula = extrairCelula(data, info, x0, cat.y[0], w, cat.y[1] - cat.y[0], {
+        ...(ALFA_A_MAO[chave] ?? {}),
+        // A fileira de explosões cruza o gradiente colorido inteiro da folha.
+        // Interpolar o fundo pelas bordas remove a placa sem apagar o halo.
+        ...(cat.id === 'estouro' ? { fundoInterpolado: true } : {}),
+      });
 
       // A tabela à mão vence a segmentação nas células que ela não separa —
       // ver `FAIXAS_A_MAO`. São duas, e as duas produziam a célula inteira
