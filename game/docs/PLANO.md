@@ -1019,21 +1019,42 @@ tempo para ENTRAR em campo. `TAXA_DE_ENTRADA` (3,43 inimigos/s) sai de
 `WaveDirector` da cena usa para agendar as levas. Não é constante do modelo
 abstrato: é do agendamento real.
 
-**Medido em 09/09**, comparando o piso `unidades ÷ TAXA_DE_ENTRADA` com o
-instante em que a última leva de fato entra, somando as dez ondas do setor:
+> ⚠️ **A primeira medição desta seção estava errada, e os testes a pegaram.**
+> Ela somava DEZ ondas por setor — `WAVES_PER_SECTOR` é **5**, mais a final —
+> e usava um piso de unidades que não era piso: o repartimento por grupo em
+> `buildEncounter` arredonda cada pedaço, e a soma final cai abaixo do alvo.
+> Pior, ela precificava a onda de CHEFE como onda comum, cinco vezes abaixo.
+> Um teto subestimado recusa jogo honesto — o defeito exato da tentativa 2.
+> Os números abaixo são os refeitos.
 
-| setor | unidades | piso | última leva (real) | folga |
-|---|---|---|---|---|
-| 1 | 243 | 70,9 s | 86,1 s | 1,22× |
-| 3 | 309 | 90,1 s | 94,5 s | 1,05× |
-| 15 | 272 | 79,3 s | 82,2 s | 1,04× |
-| 40 | 462 | 134,8 s | 134,3 s | **1,00×** |
-| 85 | 661 | 192,8 s | 194,1 s | 1,01× |
-| 300 | 481 | 140,3 s | 149,5 s | 1,07× |
+**Medido em 09/09**, sobre 60 sementes, o piso de unidades é válido em toda a
+faixa — a onda real mais vazia tem no mínimo **1,63×** o piso suposto:
 
-**Dispersão de 1,00× a 1,22× em toda a faixa de 1 a 300** — contra 0,3× a 9,9×
+| setor | piso suposto | onda real mais vazia |
+|---|---|---|
+| 1 | 13 | 22 |
+| 40 | 16 | 27 |
+| 300 | 23 | 39 |
+
+E o teto nunca fica abaixo do jogador honesto mais rápido CONCEBÍVEL — o que
+limpa cada onda exatamente no piso de tempo, coisa que ninguém consegue:
+
+| setor | honesto (150 s) | teto | folga |
+|---|---|---|---|
+| 1 | 9 | 12 | 1,33× |
+| 40 | 195.357 | 272.335 | 1,39× |
+| 150 | 39.670.053 | 49.664.373 | 1,25× |
+| 300 | 602.963.665 | 803.881.080 | 1,33× |
+
+**Dispersão de 1,25× a 1,41× em toda a faixa de 1 a 300** — contra 0,3× a 9,9×
 da tentativa 2. É a diferença entre uma grandeza estável e uma instável, e é o
 que faltava.
+
+Contra ondas REAIS, que são mais cheias que o piso, a folga é bem maior: 3,9×
+no setor 1, 6,8× no 40 e **522×** no 300. O teto é frouxo no fim da campanha,
+porque lá a onda de chefe paga 12× e o piso de tempo dela é o de uma onda
+comum. Isso é aceitável enquanto ele MEDE; antes de recusar, o chefe precisa
+de piso próprio.
 
 **O desenho que sai disso:**
 

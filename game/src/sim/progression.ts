@@ -225,3 +225,77 @@ export function encounterLabel(e: Encounter): string {
   if (e.kind === 'elite') return 'Guarda de Elite';
   return `Onda ${e.wave}/${WAVES_PER_SECTOR}`;
 }
+
+// ── o que uma onda VALE, sem depender da semente ─────────────────────────────
+
+/**
+ * Quanto concluir esta onda paga de XP.
+ *
+ * ## Por que isto existe, e por que aqui
+ *
+ * A Fase 5 precisa que o SERVIDOR precifique o que o cliente declara. As duas
+ * tentativas anteriores falharam por ESTIMAR o ganho esperado, e a estimativa é
+ * instável porque depende de passar ou não do chefe. Esta função não estima:
+ * ela é a mesma conta que `completeEncounter` faz ao pagar.
+ *
+ * Mora em `sim/` e não no servidor porque a regra é uma só. Uma cópia dela do
+ * outro lado divergiria na primeira vez que alguém mexesse na curva — e o
+ * sintoma seria o servidor recusar ganho honesto, em silêncio.
+ *
+ * ## E por que ela não precisa da semente
+ *
+ * `bounty` de uma onda é `RECOMPENSA_FRACAO × waveHp`, e `waveHp` sai de setor,
+ * onda e tipo. A SEMENTE decide quais inimigos aparecem e em que perfil — não
+ * quanto a onda vale. É o que torna o preço calculável por quem não tem o
+ * universo do jogador na mão.
+ */
+/**
+ * O estado mínimo para PERGUNTAR o preço.
+ *
+ * `buildEncounter` lê do estado uma coisa só: `universe.seed`. E o `bounty`
+ * não depende dela — a semente decide QUAIS inimigos aparecem, não quanto a
+ * onda vale. Um estado de mentira serve, e evita `createState` aqui, que
+ * criaria ciclo com `sim/state.ts`.
+ */
+const ESTADO_DE_PRECO = { universe: { seed: 1 } } as unknown as GameState;
+
+export function xpDaOnda(sector: number, wave: number): number {
+  const e = buildEncounter(ESTADO_DE_PRECO, Math.max(1, Math.floor(sector)), Math.max(1, Math.floor(wave)));
+  // O MESMO multiplicador de `completeEncounter`. Escrever a conta de novo aqui
+  // foi a primeira tentativa, e o teste a derrubou: ela precificava a onda de
+  // CHEFE como onda comum, cinco vezes abaixo. Um teto subestimado recusa jogo
+  // honesto — o defeito exato da tentativa 2 do PLANO.
+  return e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2);
+}
+
+/**
+ * O MENOR número de unidades que uma onda deste setor pode ter.
+ *
+ * O perfil da onda é sorteado, e a densidade dele vai de 0,45 (vanguarda) a 2,4
+ * (enxame). Quem precisa de um piso de tempo tem de supor a onda mais VAZIA
+ * possível — supor a média recusaria quem tirou vanguarda três vezes seguidas.
+ *
+ * O mínimo é lido de `PERFIS_DE_ONDA`, e não escrito à mão: um perfil novo mais
+ * esparso muda este piso sozinho.
+ */
+/**
+ * O arredondamento POR GRUPO derruba a contagem abaixo do alvo teórico.
+ *
+ * `buildEncounter` reparte o alvo entre os tipos por peso de vida e arredonda
+ * cada pedaço, então a soma final fica abaixo de `alvo`. Medido em 09/09 sobre
+ * 60 sementes × 11 setores, a pior razão entre a onda real mais vazia e o alvo
+ * teórico é **0,615** — nas ondas comuns. Este fator fica abaixo disso.
+ *
+ * Não é palpite de segurança: é o que separa um piso VÁLIDO de um piso que
+ * recusa jogo honesto. Se alguém mexer no repartimento, o teste que varre as
+ * sementes quebra.
+ */
+const ARREDONDAMENTO_POR_GRUPO = 0.6;
+
+export function unidadesMinimasDaOnda(sector: number): number {
+  const menor = Math.min(...PERFIS_DE_ONDA.map((p) => p.densidade));
+  return Math.max(1, Math.min(
+    INIMIGOS_POR_ONDA_MAX,
+    Math.floor(densidadeAlvo(Math.max(1, Math.floor(sector))) * menor * ARREDONDAMENTO_POR_GRUPO),
+  ));
+}

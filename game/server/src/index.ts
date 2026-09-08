@@ -22,6 +22,7 @@ import { simDoServidor, type ContextoDoCliente } from './estado';
 import { HULL_BY_ID } from '@data/hulls';
 import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { xpAcumuladoDe } from '@sim/nivel';
+import { excedeuPorReplica } from './replica';
 import type { Item } from '@sim/types';
 
 /**
@@ -1246,9 +1247,12 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
 async function progressoDe(env: Env, usuario: string) {
   const [linha, naves, mats] = await Promise.all([
     env.DB
-      .prepare('SELECT xp, melhor_setor, matriz, casco_em_campo FROM progresso WHERE usuario = ?')
+      .prepare('SELECT xp, melhor_setor, matriz, casco_em_campo, atualizado_em FROM progresso WHERE usuario = ?')
       .bind(usuario)
-      .first<{ xp: number; melhor_setor: number; matriz: string; casco_em_campo: string }>(),
+      .first<{
+        xp: number; melhor_setor: number; matriz: string;
+        casco_em_campo: string; atualizado_em: number;
+      }>(),
     env.DB
       .prepare('SELECT casco, xp FROM naves_progresso WHERE usuario = ?')
       .bind(usuario).all<{ casco: string; xp: number }>(),
@@ -1271,6 +1275,8 @@ async function progressoDe(env: Env, usuario: string) {
      * na frota, como sempre caiu. Ver `migrations/0012-casco-em-campo.sql`.
      */
     cascoEmCampo: linha?.casco_em_campo ?? '',
+    /** O carimbo do último envio, que dá a JANELA sobre a qual o ganho foi declarado. */
+    atualizadoEm: linha?.atualizado_em ?? 0,
     matriz: JSON.parse(linha?.matriz ?? '[]') as string[],
     naves: Object.fromEntries(naves.results.map((n) => [n.casco, n.xp])),
     materiais: Object.fromEntries(mats.results.map((m) => [m.material, m.quantia])),
@@ -1362,6 +1368,32 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
     const mau = conferirMatriz(lista, nivelDoPiloto(xp));
     if (mau) return json({ erro: mau }, 409, origem);
     matriz = lista;
+  }
+
+  /**
+   * O teto por RÉPLICA mede o XP declarado. Ainda não recusa.
+   *
+   * Mesma disciplina de `teto.ts` e do `PLANO` (Fase 5, passo 4): medir antes
+   * de impedir. A diferença é que agora há DOIS tetos registrando lado a lado —
+   * o antigo, por fórmula, e este, que replica o jogo — e a decisão de ligar a
+   * recusa vai sair de qual deles acerta em tráfego real.
+   *
+   * O setor usado é o MELHOR já alcançado, e não o atual: esta rota não recebe
+   * o atual. Como um setor mais alto paga mais, o teto sai generoso — e um teto
+   * generoso demais registra de menos, nunca recusa de mais. Errar para o lado
+   * de deixar passar é o certo enquanto isto só mede.
+   */
+  if (corpo.xp !== undefined) {
+    const janela = atual.atualizadoEm ? Math.max(1, agora - atual.atualizadoEm) : 120;
+    const e = excedeuPorReplica(xp - atual.xp, setor, janela);
+    if (e) {
+      escritas.push(env.DB
+        .prepare(
+          'INSERT INTO excedentes (usuario, em, moeda, motivo, quantia, teto, folga, setor, segundos)'
+          + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .bind(id, agora, 'xp', 'replica', e.quantia, e.teto, e.folga, e.setor, e.segundos));
+    }
   }
 
   escritas.push(env.DB.prepare(`
