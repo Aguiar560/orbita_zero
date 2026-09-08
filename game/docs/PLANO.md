@@ -1100,9 +1100,31 @@ contexto, como `run` e `hull`. Mas é gravada **uma vez e nunca mais**, porque
 o perfil que ela sorteia muda o pagamento em 6× e quem pudesse re-sorteá-la
 ficaria repetindo até cair no melhor.
 
-**Falta para precificar de verdade:** o cliente passar a declarar onda e
-abates em vez de XP, e o servidor pagar. Agora é possível — ele monta a mesma
-onda que o jogador enfrentou.
+#### Passo 6 ✅ — o servidor reproduz EXATAMENTE o que o jogo pagou (09/09)
+
+`precoDoEncontro(estado, setor, onda, abates)` devolve o XP daquele encontro:
+a parcela por abate (a mesma expressão de `premiarAbates`), mais a conclusão
+(a de `completeEncounter`) quando a onda caiu inteira.
+
+O teste que autoriza o próximo passo roda o JOGO — o mesmo `premiarAbates` e o
+mesmo `completeEncounter` — e compara com o que o servidor calcula tendo só a
+semente e o estado. Bate nos setores 1, 8, 40 e 150, nas ondas 1, 3 e final.
+
+**Uma terceira suposição minha caiu no caminho.** `grantXp` multiplica tudo por
+`XP_GANHO_GLOBAL × (1 + xpGanho)`, e `XP_GANHO_GLOBAL` é 24. Sem aplicá-lo, o
+preço sairia **24× abaixo** do que o jogo paga, e o servidor recusaria todo
+ganho honesto — o defeito das duas primeiras tentativas chegando por uma
+terceira porta.
+
+A constante morava em `sim/index.ts`, o que criava ciclo e impedia
+`precoDoEncontro` de usá-la. Ela mudou para `data/balance/curvas.ts`, ao lado
+da curva com que foi calibrada em conjunto — que é onde a regra do projeto diz
+que balanceamento mora.
+
+**Falta para o servidor PAGAR:** o cliente declarar os encontros (setor, onda,
+abates) em vez do XP. O cálculo já está provado; o que resta é a contabilidade
+do cliente — e ela precisa ser completa, senão o jogador perde o XP das fontes
+que ficarem de fora (missões, que ainda não têm preço no servidor).
 
 **O desenho que sai disso:**
 

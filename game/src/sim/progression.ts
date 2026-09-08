@@ -7,9 +7,10 @@ import {
 import {
   CHEFE_BONUS_RECOMPENSA, CHEFE_CICLO, CHEFE_EXIGENCIA, CHEFE_ONDAS, ELITE_ONDAS, PERFIS_DE_ONDA,
   RECOMPENSA_FRACAO, WAVES_PER_SECTOR, curvaDano, curvaHp, curvaIlvl, curvaRecompensa,
-  densidadeAlvo, densidadeParaXp, pressaoAlvo,
+  densidadeAlvo, densidadeParaXp, pressaoAlvo, XP_GANHO_GLOBAL,
 } from '@data/balance/curvas';
 import { INIMIGOS_POR_GRUPO_MAX, INIMIGOS_POR_ONDA_MAX } from '@data/balance/limites';
+import { resolveStats } from './stats';
 import type { EncounterKind, GameState } from './types';
 
 /**
@@ -327,4 +328,57 @@ export function vidasDeOndaComum(sector: number, wave: number): number {
   // iniciais, que é como se recusa jogo legítimo.
   const referencia = buildEncounter(ESTADO_DE_PRECO, s, 1);
   return Math.max(1, encontro.hpPool / Math.max(1, referencia.hpPool));
+}
+
+/**
+ * O que um encontro paga de XP, dado quantos inimigos morreram nele.
+ *
+ * ## Por que abates, e não só "concluí"
+ *
+ * Medido em 09/09, a maior parte do XP NÃO vem de concluir a onda: vem de cada
+ * abate. No setor 1 são **99% do abate** contra 1% da conclusão; na onda de
+ * chefe a proporção se inverte. Precificar "onda concluída" faria o jogador
+ * novo perder quase todo o XP.
+ *
+ * ## Por que ela é exata, e não uma estimativa
+ *
+ * As duas parcelas são as MESMAS de `premiarAbates` e de `completeEncounter` —
+ * é a razão de esta função morar aqui, ao lado delas, e não no servidor. E o
+ * servidor consegue chamá-la porque agora tem a SEMENTE do jogador: com ela,
+ * `buildEncounter` devolve a onda que o jogador de fato enfrentou, com o mesmo
+ * `abatesDeReferencia` e as mesmas `unidades`.
+ *
+ * A conclusão só é paga quando a onda CAIU INTEIRA. Meia onda paga meio abate e
+ * nenhuma conclusão, que é o que o jogo faz.
+ *
+ * ## E o multiplicador do jogador entra aqui
+ *
+ * `grantXp` multiplica tudo por `XP_GANHO_GLOBAL × (1 + stats.xpGanho)`, e
+ * `xpGanho` vem do EQUIPAMENTO. Sem aplicá-lo, o preço ficaria 24× abaixo do
+ * que o jogo pagou e o servidor recusaria ganho honesto — o defeito de sempre.
+ *
+ * O servidor consegue calcular: ele monta o estado com os itens equipados, a
+ * Matriz e o nível, então `resolveStats` devolve o mesmo número que o cliente vê.
+ */
+export function precoDoEncontro(
+  state: GameState,
+  sector: number,
+  wave: number,
+  abates: number,
+): number {
+  const e = buildEncounter(state, sector, wave);
+  const mortos = Math.max(0, Math.min(abates, e.unidades));
+
+  // A mesma expressão de `premiarAbates`: o total da onda é um ORÇAMENTO
+  // repartido entre as cabeças, e não um valor por cabeça.
+  const porAbate = (2 + e.bounty * 0.25) * (e.abatesDeReferencia / Math.max(1, e.unidades)) * mortos;
+
+  // E a mesma de `completeEncounter`, só quando a onda caiu inteira.
+  const concluiu = mortos >= e.unidades;
+  const conclusao = concluiu
+    ? e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2)
+    : 0;
+
+  // O MESMO multiplicador de `grantXp`, e por último, como lá.
+  return (porAbate + conclusao) * XP_GANHO_GLOBAL * (1 + resolveStats(state).xpGanho);
 }

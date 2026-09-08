@@ -115,26 +115,14 @@ import {
 import { aplicarModulacao, type ResultadoDeModulacao } from './modulacao';
 import {
   EFICIENCIA_DA_CENA, NIVEL_MAX, TAXA_DE_ENTRADA,
-  curvaXpNave, curvaXpPersonagem, nivelExigido,
+  curvaXpNave, curvaXpPersonagem, nivelExigido, XP_GANHO_GLOBAL,
 } from '@data/balance/curvas';
 
-/**
- * Multiplicador global de XP.
- *
- * Existe porque a renda de XP das primeiras galáxias era baixa demais para o
- * nível acompanhar o setor: com ela em 1,0, o setor 10 dava nível 7 contra o
- * alvo de 10, e o setor 30 dava 21 contra 30.
- *
- * O valor sai de busca numérica CONJUNTA com a curva de XP do personagem. Mexer
- * só num dos dois não fecha: ajustar a renda sozinha estourava o meio da
- * campanha, e ajustar a curva sozinha não movia o começo. Ver o comentário de
- * `PERSONAGEM_XP_BASE` em `data/balance/curvas.ts` — os dois números são um
- * resultado só e não devem ser mexidos em separado.
- *
- * Fica aqui, num ponto único, e não espalhado pelas fontes de XP: assim missão,
- * baú e Provação herdam o ajuste sem saber que ele existe.
- */
-export const XP_GANHO_GLOBAL = 24;
+// Reexportado porque ele nasceu aqui e meio mundo o importa deste caminho.
+// A definição mora em `data/balance/curvas.ts`, ao lado da curva com que ele
+// foi calibrado em conjunto.
+export { XP_GANHO_GLOBAL };
+
 import { cobrarMorte } from './morte';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';

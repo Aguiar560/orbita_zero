@@ -487,6 +487,28 @@ export const curvaHp = (setor: number): number => poderEsperado(setor) * tempoAl
 export const curvaDano = (setor: number): number => defesaEsperada(setor) / golpesAlvo(setor);
 export const curvaRecompensa = (setor: number): number => RECOMPENSA_FRACAO * curvaHp(setor);
 
+/**
+ * Multiplicador global de XP.
+ *
+ * Existe porque a renda de XP das primeiras galáxias era baixa demais para o
+ * nível acompanhar o setor: com ela em 1,0, o setor 10 dava nível 7 contra o
+ * alvo de 10, e o setor 30 dava 21 contra 30.
+ *
+ * O valor sai de busca numérica CONJUNTA com a curva de XP do personagem. Mexer
+ * só num dos dois não fecha: ajustar a renda sozinha estourava o meio da
+ * campanha, e ajustar a curva sozinha não movia o começo. Ver `PERSONAGEM_XP_BASE`
+ * logo abaixo — os dois números são um resultado só e não devem ser mexidos em
+ * separado, e é para eles ficarem lado a lado que este mudou de arquivo.
+ *
+ * ## Por que ele saiu de `sim/index.ts`
+ *
+ * A regra do projeto: "balanceamento não vive espalhado pelo código". Ele
+ * morava lá por acidente, e isso impedia `precoDoEncontro` de aplicá-lo — o
+ * ciclo `progression → index → progression` não fecha. Sem ele no preço, o
+ * servidor calcularia 24× menos do que o jogo paga e recusaria ganho honesto.
+ */
+export const XP_GANHO_GLOBAL = 24;
+
 /** XP para sair do nível `n` do personagem — o tamanho da faixa desse nível. */
 export const curvaXpPersonagem = (nivel: number): number =>
   Math.ceil(PERSONAGEM_XP_BASE * Math.pow(Math.max(1, nivel), PERSONAGEM_XP_EXPO));
