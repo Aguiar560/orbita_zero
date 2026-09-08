@@ -8,8 +8,43 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.193 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.197 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — a escolha de nave só sobe quando é escolha
+
+O Rafael trocou para a Vetor VC-1, atualizou a página e voltou na Núcleo
+Vektor. Consultando o D1 nos dois momentos: o servidor tinha gravado
+`void_canhao` e depois passou a ter `nucleo_vektor`. **O cliente sobrescreveu a
+escolha.** O save na nuvem estava correto (`hull: void_canhao`, `testMode: 0`)
+— quem mentia era a drenagem.
+
+Ele mesmo isolou o gatilho: "acho que é alguma coisa de cache, pois se eu dou
+ctrl f5 não acontece isso". Uma aba com o pacote antigo.
+
+### O gatilho era o cache; o defeito era outro
+
+A drenagem mandava `state.hull` a cada envio. Só que `state.hull` também muda
+por CONSERTO — `casarCascoComAFrota` o demove quando a frota não tem a nave, e
+ele troca sozinho por falta de combustível. Qualquer ajuste local virava uma
+ordem para o servidor, e o servidor guarda a única cópia que sobrevive à
+recarga.
+
+Agora sobe a INTENÇÃO: `selectHull` diz qual nave foi escolhida, e só esse
+valor viaja. Ele fica pendente até o servidor confirmar — uma requisição que
+falha não pode perder a troca em silêncio — e vive em memória, não no save,
+para uma escolha antiga não ressuscitar depois de o jogador mudar de ideia em
+outro aparelho.
+
+Com isso, o pior que um cliente velho faz é **não mandar nada**.
+
+De quebra, `vercel.json` passou a declarar `must-revalidate` no `index.html`.
+Os pacotes já têm hash no nome; o que pode envelhecer é o HTML que aponta para
+eles, e num jogo idle a aba fica aberta por horas antes de uma recarga.
+
+1.197 testes passando.
 
 ---
 

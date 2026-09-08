@@ -265,7 +265,7 @@ export class Game {
     // ao concluir um setor, e trocar de nave e recarregar antes disso perdia a
     // escolha -- o sintoma que o Rafael relatou como "volta pra nave nucleo
     // vektor".
-    bus.on('casco:emCampo', () => { void drenarProgresso(this.sim); });
+    bus.on('casco:emCampo', ({ casco }) => { void drenarProgresso(this.sim, casco); });
 
     /**
      * Cada galáxia começa com a sua faixa.

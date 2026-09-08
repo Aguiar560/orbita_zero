@@ -44,6 +44,30 @@ interface Remoto {
 let sincronizado = false;
 
 /**
+ * O casco que o jogador ESCOLHEU e o servidor ainda não confirmou.
+ *
+ * ## Por que não se manda `state.hull` direto
+ *
+ * Porque `state.hull` também muda por CONSERTO — `casarCascoComAFrota` o
+ * demove quando a frota não tem a nave, e a nave também troca sozinha por falta
+ * de combustível. Mandar o valor atual a cada drenagem transformava qualquer um
+ * desses ajustes locais numa ordem para o servidor.
+ *
+ * Foi o que aconteceu em 08/09: o Rafael trocou para a Vetor VC-1, o servidor
+ * gravou `void_canhao`, e uma aba com o pacote antigo em cache subiu
+ * `nucleo_vektor` por cima — apagando a escolha no servidor, que é a única
+ * cópia que sobrevive à recarga. Ele mesmo notou: com Ctrl+F5 não acontecia.
+ *
+ * Com a intenção explícita, o pior que um cliente velho faz é não mandar nada.
+ *
+ * Fica em memória, e não no save: se a requisição falhar, a próxima drenagem
+ * tenta de novo; se a aba fechar antes, o jogador escolhe outra vez. Guardar no
+ * save faria uma escolha antiga ressuscitar depois de o jogador mudar de ideia
+ * em outro aparelho.
+ */
+let cascoEscolhido: string | null = null;
+
+/**
  * O último estado que o servidor confirmou, para medir o delta contra ele.
  *
  * Anda SEMPRE junto do espelho, e é por isso que mora ao lado de `adotar`. Na
@@ -158,7 +182,10 @@ export async function sincronizarProgresso(sim: Sim): Promise<boolean> {
  *
  * A Matriz vai inteira, sempre: é pequena e é escolha, não acúmulo.
  */
-export async function drenarProgresso(sim: Sim): Promise<void> {
+export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void> {
+  // A escolha fica pendente até o servidor confirmar: uma requisição que falha
+  // não pode perder a troca de nave em silêncio.
+  if (escolha) cascoEscolhido = escolha;
   if (!sincronizado) { await sincronizarProgresso(sim); return; }
 
   /**
@@ -193,13 +220,13 @@ export async function drenarProgresso(sim: Sim): Promise<void> {
     matriz: s.command.allocated,
     naves: dNaves,
     /**
-     * O casco em campo sobe junto, e só quando é DA PESSOA.
+     * Só a ESCOLHA sobe, e só quando é DA PESSOA.
      *
-     * Mandar o casco do modo de teste seria mandar algo que o servidor vai
-     * recusar — e pior, se ele aceitasse, o modo de teste viraria uma forma de
-     * ganhar nave. `state.fleet` é a frota do servidor, adotada no boot.
+     * `state.fleet` é a frota do servidor, adotada no boot. Mandar um casco de
+     * fora dela seria mandar algo que o servidor recusa — e, se ele aceitasse,
+     * o modo de teste viraria uma forma de ganhar nave.
      */
-    casco: s.fleet.includes(s.hull) ? s.hull : undefined,
+    casco: cascoEscolhido && s.fleet.includes(cascoEscolhido) ? cascoEscolhido : undefined,
     // Materiais ainda não têm marco: eles são gravados como ABSOLUTO pelo
     // caminho antigo e a conversão para delta entra junto do Armazém no
     // servidor. Enviar zero é honesto — não muda nada — até lá.
@@ -208,6 +235,8 @@ export async function drenarProgresso(sim: Sim): Promise<void> {
 
   const r = await chamar(corpo);
   if (!r) return;
+  // O servidor devolve o progresso já gravado, então o que voltar é a verdade.
+  if (corpo.casco && r.cascoEmCampo === corpo.casco) cascoEscolhido = null;
 
   // `adotar` move o marco junto. O marco só anda quando o servidor confirma:
   // andar antes perderia o ganho da requisição que falhou, em silêncio.
