@@ -1,5 +1,7 @@
 import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
+import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { nivelPorXpAcumulado, xpAcumuladoDe } from '@sim/nivel';
 
 import { tokenValido } from './conta';
 
@@ -71,9 +73,34 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
   }
 }
 
+/**
+ * Adota o progresso do servidor, convertendo o modelo dele para o do cliente.
+ *
+ * O servidor guarda XP **acumulado** e o cliente guarda **nível + resto**. A
+ * conversão mora em `@sim/nivel`, uma implementação só para os dois lados —
+ * antes ninguém convertia, e o cliente mandava restos que o servidor somava
+ * como acumulado.
+ *
+ * ## Por que o XP nunca é rebaixado aqui
+ *
+ * `Math.max` e não atribuição: XP não anda para trás. Sem isso, uma leitura do
+ * servidor mais velha que o que o jogador acabou de ganhar apagaria o ganho —
+ * e é exatamente o que aconteceria com as linhas gravadas pelo código antigo,
+ * que estão SUBESTIMADAS (o crédito de ausência gravava o resto por cima do
+ * acumulado). Com o máximo, a próxima drenagem manda a diferença e o servidor
+ * se acerta sozinho.
+ *
+ * Não é fresta nova: o cliente já declara o XP que ganhou, e `conferirDelta`
+ * continua limitando cada envio. O que muda é que uma leitura não destrói o
+ * que ainda não subiu.
+ */
 function adotar(sim: Sim, r: Remoto): void {
-  sim.state.command.xp = r.xp;
-  sim.state.command.nivel = r.nivel;
+  const piloto = nivelPorXpAcumulado(
+    Math.max(r.xp, xpAcumuladoDe(sim.state.command, curvaXpPersonagem)),
+    curvaXpPersonagem,
+  );
+  sim.state.command.xp = piloto.resto;
+  sim.state.command.nivel = piloto.nivel;
   sim.state.command.allocated = [...r.matriz];
   sim.state.universe.bestSectorEver = Math.max(
     sim.state.universe.bestSectorEver,
@@ -82,7 +109,13 @@ function adotar(sim: Sim, r: Remoto): void {
 
   for (const [casco, xp] of Object.entries(r.naves)) {
     const nave = sim.state.naves[casco];
-    if (nave) nave.xp = xp;
+    if (!nave) continue;
+    const v = nivelPorXpAcumulado(
+      Math.max(xp, xpAcumuladoDe(nave, curvaXpNave)),
+      curvaXpNave,
+    );
+    nave.nivel = v.nivel;
+    nave.xp = v.resto;
   }
   sim.state.armazem = { ...r.materiais };
 
@@ -114,11 +147,29 @@ export async function sincronizarProgresso(sim: Sim): Promise<boolean> {
 export async function drenarProgresso(sim: Sim): Promise<void> {
   if (!sincronizado) { await sincronizarProgresso(sim); return; }
 
+  /**
+   * A diferença é entre ACUMULADOS, e era aqui que o progresso se perdia.
+   *
+   * Era `s.command.xp - marco.xp` — diferença de RESTOS. O resto cai toda vez
+   * que se sobe de nível, então a diferença ficava negativa exatamente nas
+   * drenagens em que o jogador mais progrediu, e o servidor recebia um
+   * desconto. O próprio código já sabia disso: o comentário de `MarcoDeSetor`
+   * em `sim/index.ts` diz que "diferença de marco daria número negativo
+   * justamente na hora mais comemorativa" — e por isso o painel de setor tem
+   * acumulador próprio. Este caminho não tinha.
+   *
+   * Medido em 08/09, simulando cinquenta drenagens: com 5.000.000 de XP ganho
+   * o piloto está no nível 39 e o servidor terminava com um valor que derivava
+   * 28. A nave, de curva mais curta, ia a 21 contra 50.
+   *
+   * O marco continua guardando o que o SERVIDOR tem, e não o local: é a
+   * diferença entre os dois que precisa subir.
+   */
   const s = sim.state;
-  const dXp = s.command.xp - marco.xp;
+  const dXp = xpAcumuladoDe(s.command, curvaXpPersonagem) - marco.xp;
   const dNaves: Record<string, number> = {};
   for (const [casco, nave] of Object.entries(s.naves)) {
-    const d = nave.xp - (marco.naves[casco] ?? 0);
+    const d = xpAcumuladoDe(nave, curvaXpNave) - (marco.naves[casco] ?? 0);
     if (d !== 0) dNaves[casco] = d;
   }
 

@@ -8,8 +8,95 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.173 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.182 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — a nave offline farma com o nível e os itens dela
+
+Pedido do Rafael, depois de descobrirmos que a ausência rodava com a nave
+errada: "no offline a nave precisa farmar com os itens que foram deixados
+equipados nela e o nível também".
+
+Os **itens** já funcionavam — `montarEstado` põe cada peça no slot da nave a
+que ela pertence, e `tests/estado-servidor.test.ts` já cobrava isso. O **nível**
+não. E ao ir atrás dele apareceu uma cadeia inteira de contabilidade de XP
+quebrada, que valia muito mais que o pedido original.
+
+### Os dois modelos que ninguém convertia
+
+O cliente guarda progresso como **nível + resto**: `avancarNivel` soma o ganho
+e SUBTRAI a faixa a cada nível que sobe. O servidor guarda **XP acumulado** e
+deriva o nível — está escrito assim em `server/src/progresso.ts`, e a razão é
+boa ("duas cópias de um número divergem").
+
+Os dois modelos são compatíveis, mas alguém precisa converter, e ninguém
+convertia. O cliente mandava a **diferença do resto** e o servidor somava
+aquilo como se fosse acumulado. O próprio código já sabia que isso não pode:
+o comentário de `MarcoDeSetor` diz que "diferença de marco daria número
+negativo justamente na hora mais comemorativa", e é por isso que o painel de
+setor tem acumulador próprio. O caminho do servidor não tinha.
+
+| XP ganho | nível real do piloto | o servidor derivava |
+|---|---|---|
+| 500.000 | 22 | **13** |
+| 5.000.000 | 39 | **28** |
+
+A nave errava mais, porque a curva dela é mais curta: nível real 50 contra 21.
+
+### E `nivelPorXp` lia a curva errado
+
+`while (total >= curva(nivel + 1)) nivel++` — mas `curva(n)` é o **tamanho da
+faixa** do nível n, não o acumulado até ele. O teste que existia fixava por
+escrito a mesma leitura torta (`nivelDoPiloto(curvaXpPersonagem(n)) === n`), e
+por isso teste e código concordavam enquanto os dois erravam.
+
+### O vazamento maior: cada ausência truncava o XP
+
+Depois de simular, o servidor gravava `sim.state.command.xp` e `nave.xp` — os
+**restos** — na coluna que guarda o **acumulado**. Ou seja: todo crédito de
+ausência jogava o jogador de volta para o começo do nível em que estava.
+
+| nível real | nível depois de UM crédito de ausência | XP perdido |
+|---|---|---|
+| piloto 39 | **18** | 95% |
+| piloto 60 | **25** | 97% |
+| nave 39 | **10** | 97% |
+| nave 60 | **13** | 98% |
+
+### O conserto
+
+Uma conversão só, em [`sim/nivel.ts`](../src/sim/nivel.ts), usada pelos dois
+lados — `xpAcumuladoAte`, `nivelPorXpAcumulado` e `xpAcumuladoDe`. Duas cópias
+dessa conta divergiriam na primeira vez que alguém mexesse numa curva, e o
+sintoma seria o nível do jogador mudando ao sincronizar.
+
+A partir dela:
+
+- **o fio leva acumulado**: `drenarProgresso` manda a diferença entre
+  acumulados, e não entre restos;
+- **`adotar` converte de volta** para nível + resto, e **nunca rebaixa** o XP:
+  as linhas gravadas pelo código antigo estão subestimadas, e o máximo faz o
+  servidor se acertar sozinho na próxima drenagem. Não é fresta nova — o
+  cliente já declara o XP que ganha, e `conferirDelta` continua limitando cada
+  envio;
+- **`montarEstado`** deriva nível e resto do MESMO número, para o piloto e para
+  cada nave. O piloto também estava errado: o acumulado ia para o campo do
+  resto, e a simulação subia vários níveis de uma vez;
+- **as escritas pós-ausência** gravam acumulado.
+
+`nivelDaNave` já existia no servidor, escrita exatamente para isto, e **nunca
+era chamada** — o piloto usava a irmã dela e a da nave ficou órfã.
+
+### Medido depois
+
+A nave chega à simulação no nível dela (pedido 60 → montado 60) com os seis
+itens equipados. O ganho de abates não cresce em proporção porque a ausência
+tem teto de ENTRADA de onda — nave mais forte não mata mais rápido do que a
+onda entra; ela morre menos e avança mais quando o setor permite.
+
+1.182 testes passando.
 
 ---
 

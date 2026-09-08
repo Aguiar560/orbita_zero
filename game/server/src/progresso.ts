@@ -1,6 +1,7 @@
-import { NIVEL_MAX, curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { NODE_BY_ID, TREE_ADJACENCY } from '@data/tree';
 import { ROOT, custoDeNo, pointsForLevel } from '@sim/tree';
+import { nivelPorXpAcumulado } from '@sim/nivel';
 
 /**
  * Progressão do lado do servidor: XP, nível, Matriz, setor e materiais.
@@ -28,14 +29,22 @@ import { ROOT, custoDeNo, pointsForLevel } from '@sim/tree';
  * deixa rastro.
  */
 
-/** Nível a partir do XP acumulado. A curva é a mesma que o cliente usa. */
+/**
+ * Nível a partir do XP acumulado. A conta mora em `@sim/nivel`, para o cliente
+ * e o servidor não terem duas versões dela.
+ *
+ * ## O que estava errado
+ *
+ * Era `while (total >= curva(nivel + 1)) nivel++`, e `curva(n)` é o TAMANHO da
+ * faixa do nível n — não o acumulado até ele. Comparar um total contra o
+ * tamanho de uma faixa só conta errado a partir do nível 2, e o erro cresce
+ * com a escada.
+ *
+ * Medido em 08/09: com 5.000.000 de XP o piloto está no nível 39 e esta função
+ * devolvia 28. A nave, cuja curva é mais curta, errava mais — 50 contra 21.
+ */
 export function nivelPorXp(xp: number, curva: (n: number) => number): number {
-  const total = Math.max(0, Number(xp) || 0);
-  // Busca linear até o teto: 300 passos numa conta de multiplicação é barato
-  // demais para justificar busca binária, e linear é conferível de olho.
-  let nivel = 1;
-  while (nivel < NIVEL_MAX && total >= curva(nivel + 1)) nivel++;
-  return nivel;
+  return nivelPorXpAcumulado(xp, curva).nivel;
 }
 
 export const nivelDoPiloto = (xp: number): number => nivelPorXp(xp, curvaXpPersonagem);

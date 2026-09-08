@@ -1,4 +1,6 @@
 import { HULL_BY_ID } from '@data/hulls';
+import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { nivelPorXpAcumulado } from '@sim/nivel';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import type { GameState, Item, SlotId } from '@sim/types';
@@ -55,8 +57,25 @@ export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): Ga
   const estado = createState();
 
   estado.resources = { ...dados.saldos };
-  estado.command.xp = dados.xp;
-  estado.command.nivel = dados.nivel;
+
+  /**
+   * O XP do piloto tambem e ACUMULADO, e o campo do estado e o RESTO.
+   *
+   * Era `estado.command.xp = dados.xp`, com o acumulado indo parar no campo
+   * que o cliente le como resto. Na simulacao, `avancarNivel` tratava aquele
+   * numero como progresso dentro do nivel e subia varios niveis de uma vez --
+   * ate 200 por chamada, que e o teto que existe justamente para isso nao
+   * enfileirar 400 avisos. O nivel do piloto na ausencia era inventado.
+   *
+   * Nível e resto saem do MESMO número, e não de `dados.nivel` mais uma
+   * conta: dois campos que deviam concordar e são preenchidos de origens
+   * diferentes acabam discordando, e aqui isso viraria uma nave simulada com
+   * poder que ninguém consegue explicar. `dados.nivel` continua existindo para
+   * quem confere a Matriz, e deriva do mesmo XP pela mesma função.
+   */
+  const piloto = nivelPorXpAcumulado(dados.xp, curvaXpPersonagem);
+  estado.command.nivel = piloto.nivel;
+  estado.command.xp = piloto.resto;
   estado.command.allocated = [...dados.matriz];
   estado.universe.bestSectorEver = dados.melhorSetor;
   estado.armazem = { ...dados.materiais };
@@ -70,9 +89,23 @@ export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): Ga
     ? desejado
     : (dados.frota[0] ?? estado.hull);
 
+  /**
+   * A nave entra na simulação com o NÍVEL dela, e não no 1.
+   *
+   * Era `{ nivel: 1, xp: <acumulado> }` — duas coisas erradas de uma vez: o
+   * nível fixo e o acumulado guardado num campo que o cliente lê como resto.
+   * `nivelDaNave` já existia aqui do lado, escrita para isto, e nunca era
+   * chamada; o piloto usava a irmã dela e a da nave ficou órfã.
+   *
+   * O nível da nave multiplica os atributos do CASCO (ver `resolveStats`).
+   * Medido em 08/09: uma nave nível 60 com equipamento épico simulava a
+   * ausência com **74% menos dano** do que ela tem. O jogador fechava a aba e
+   * recebia por uma nave que não é a dele.
+   */
   estado.naves = {};
   for (const casco of dados.frota) {
-    estado.naves[casco] = { nivel: 1, xp: dados.naves[casco] ?? 0, equipped: {} };
+    const { nivel, resto } = nivelPorXpAcumulado(dados.naves[casco] ?? 0, curvaXpNave);
+    estado.naves[casco] = { nivel, xp: resto, equipped: {} };
   }
   if (!estado.naves[estado.hull]) {
     estado.naves[estado.hull] = { nivel: 1, xp: 0, equipped: {} };

@@ -21,6 +21,7 @@ import {
 } from '../server/src/progresso';
 import { NIVEL_MAX, curvaXpPersonagem } from '@data/balance/curvas';
 import { ROOT, custoDeNo, pointsForLevel } from '@sim/tree';
+import { xpAcumuladoAte } from '@sim/nivel';
 import { TREE_ADJACENCY, TREE_NODES } from '@data/tree';
 
 describe('o nível é derivado do XP, nunca guardado', () => {
@@ -30,11 +31,23 @@ describe('o nível é derivado do XP, nunca guardado', () => {
   });
 
   it('bate exatamente na fronteira de cada nível', () => {
-    // O caso que um `>` trocado por `>=` quebraria: o XP EXATO do nível N tem de
-    // dar N, e um a menos tem de dar N-1.
+    /**
+     * A fronteira do nível N é o ACUMULADO até N, e não `curvaXpPersonagem(N)`.
+     *
+     * Esta asserção existia com a curva crua, e ela fixava por escrito a
+     * leitura errada: `curvaXpPersonagem(n)` é o TAMANHO da faixa do nível n,
+     * não o total para chegar nele. Como `nivelPorXp` comparava do mesmo jeito
+     * torto, teste e código concordavam — e os dois erravam junto. Medido em
+     * 08/09: com 5.000.000 de XP o piloto está no nível 39 e o servidor
+     * derivava 28.
+     *
+     * O caso que um `>` trocado por `>=` quebraria continua sendo cobrado: o
+     * XP exato da fronteira dá N, e um a menos dá N-1.
+     */
     for (const n of [2, 5, 20, 100]) {
-      expect(nivelDoPiloto(curvaXpPersonagem(n)), `nível ${n}`).toBe(n);
-      expect(nivelDoPiloto(curvaXpPersonagem(n) - 1), `nível ${n} - 1`).toBe(n - 1);
+      const fronteira = xpAcumuladoAte(n, curvaXpPersonagem);
+      expect(nivelDoPiloto(fronteira), `nível ${n}`).toBe(n);
+      expect(nivelDoPiloto(fronteira - 1), `nível ${n} - 1`).toBe(n - 1);
     }
   });
 

@@ -20,6 +20,8 @@ import {
 } from './progresso';
 import { simDoServidor, type ContextoDoCliente } from './estado';
 import { HULL_BY_ID } from '@data/hulls';
+import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { xpAcumuladoDe } from '@sim/nivel';
 import type { Item, SlotId } from '@sim/types';
 
 /**
@@ -1451,7 +1453,10 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
 
   const antes = {
     saldos: { ...sim.state.resources },
-    xp: sim.state.command.xp,
+    // ACUMULADO, não o campo `xp` — ele é o resto dentro do nível, e cai
+    // quando a simulação sobe um nível. A diferença de restos daria um número
+    // negativo justamente na ausência mais generosa.
+    xp: xpAcumuladoDe(sim.state.command, curvaXpPersonagem),
     uids: new Set(sim.state.inventory.map((i) => i.uid)),
   };
 
@@ -1470,12 +1475,21 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     }
   }
 
+  /**
+   * O que se grava é o ACUMULADO, e era isto que vazava.
+   *
+   * A coluna guarda XP acumulado — é dela que o nível é derivado. Mas o campo
+   * `xp` do `GameState` é o RESTO dentro do nível, e estas duas escritas
+   * gravavam o resto por cima do acumulado. Efeito: **cada crédito de ausência
+   * truncava o XP do jogador**, jogando-o de volta para o começo do nível em
+   * que ele estava. Quanto mais alto o nível, mais se perdia.
+   */
   escritas.push(env.DB.prepare(`
     INSERT INTO progresso (usuario, xp, melhor_setor, matriz, atualizado_em) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
       xp = excluded.xp, melhor_setor = excluded.melhor_setor, atualizado_em = excluded.atualizado_em
   `).bind(
-    id, sim.state.command.xp,
+    id, xpAcumuladoDe(sim.state.command, curvaXpPersonagem),
     Math.max(prog.melhorSetor, sim.state.run.sector),
     JSON.stringify(prog.matriz), agora,
   ));
@@ -1484,7 +1498,7 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     escritas.push(env.DB.prepare(`
       INSERT INTO naves_progresso (usuario, casco, xp) VALUES (?, ?, ?)
       ON CONFLICT(usuario, casco) DO UPDATE SET xp = excluded.xp
-    `).bind(id, casco, nave.xp));
+    `).bind(id, casco, xpAcumuladoDe(nave, curvaXpNave)));
   }
 
   for (const [material, quantia] of Object.entries(sim.state.armazem)) {
@@ -1519,7 +1533,7 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     setores: relatorio.sectorsCleared,
     abates: relatorio.kills,
     baus: relatorio.chests,
-    xp: Math.round(sim.state.command.xp - antes.xp),
+    xp: Math.round(xpAcumuladoDe(sim.state.command, curvaXpPersonagem) - antes.xp),
     itensNovos: [...depois].filter((u) => !antes.uids.has(u)).length,
     // A incursão como ficou. O cliente adota — é o que faz morrer perder a
     // carga e concluir o setor guardá-la, igual ao jogo ao vivo.

@@ -23,6 +23,9 @@ import { describe, expect, it } from 'vitest';
 
 import { montarEstado, type DadosDoServidor } from '../server/src/estado';
 import { HULLS } from '@data/hulls';
+import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
+import { nivelPorXpAcumulado, xpAcumuladoAte, xpAcumuladoDe } from '@sim/nivel';
+import { dps, resolveStats } from '@sim/stats';
 import type { Item } from '@sim/types';
 
 const casco = HULLS[0]!.id;
@@ -34,7 +37,9 @@ const peca = (uid: string, slot = 'principal'): Item => ({
 
 const base = (over: Partial<DadosDoServidor> = {}): DadosDoServidor => ({
   saldos: { sucata: 100, nucleo: 50, cristal: 7 },
-  xp: 5000, nivel: 12, matriz: [], melhorSetor: 40,
+  // O par precisa ser POSSÍVEL: 5.000 de XP acumulado não é nível 12, e o
+  // fixture antigo dizia que era. Um estado impossível esconde defeito.
+  xp: xpAcumuladoAte(12, curvaXpPersonagem), nivel: 12, matriz: [], melhorSetor: 40,
   materiais: { ferrita: 30 }, naves: { [casco]: 900 },
   frota: [casco], itens: [], ...over,
 });
@@ -43,15 +48,46 @@ describe('o que o servidor sabe chega ao estado', () => {
   it('saldos, XP, nível e Matriz', () => {
     const e = montarEstado(base({ matriz: ['inicio'] }), {});
     expect(e.resources).toEqual({ sucata: 100, nucleo: 50, cristal: 7 });
-    expect(e.command.xp).toBe(5000);
     expect(e.command.nivel).toBe(12);
     expect(e.command.allocated).toEqual(['inicio']);
+
+    /**
+     * O XP do piloto entra como RESTO, não como acumulado.
+     *
+     * Era `command.xp = dados.xp` — o acumulado no campo que a simulação lê
+     * como progresso dentro do nível. `avancarNivel` então subia vários níveis
+     * de uma vez, e o nível do piloto na ausência era inventado. O acumulado
+     * tem de voltar inteiro na ida e volta, e é isso que se cobra.
+     */
+    expect(e.command.xp).toBeLessThan(curvaXpPersonagem(12));
+    expect(xpAcumuladoDe(e.command, curvaXpPersonagem))
+      .toBe(xpAcumuladoAte(12, curvaXpPersonagem));
   });
 
-  it('materiais e XP por nave', () => {
+  it('materiais e XP por nave — e o NÍVEL que esse XP alcança', () => {
+    /**
+     * O XP guardado é ACUMULADO; o campo `xp` do estado é o resto dentro do
+     * nível. Antes esta montagem punha o acumulado no campo do resto e fixava
+     * `nivel: 1`, e o nível da nave multiplica os atributos do casco — uma
+     * nave nível 60 com equipamento épico simulava a ausência com 74% menos
+     * dano do que tem (medido em 08/09).
+     */
     const e = montarEstado(base(), {});
     expect(e.armazem.ferrita).toBe(30);
-    expect(e.naves[casco]?.xp).toBe(900);
+
+    const esperado = nivelPorXpAcumulado(900, curvaXpNave);
+    expect(esperado.nivel, 'o caso de teste precisa de uma nave acima do nível 1')
+      .toBeGreaterThan(1);
+    expect(e.naves[casco]?.nivel).toBe(esperado.nivel);
+    expect(e.naves[casco]?.xp).toBe(esperado.resto);
+  });
+
+  it('e o nível da nave CHEGA aos atributos, que é o motivo de tudo isto', () => {
+    // Sem esta asserção o teste acima poderia passar com o número certo num
+    // campo que ninguém lê. O que importa é a nave simular mais forte.
+    const forte = montarEstado(base({ naves: { [casco]: 900 } }), { hull: casco });
+    const fraca = montarEstado(base({ naves: { [casco]: 0 } }), { hull: casco });
+    expect(dps(resolveStats(forte))).toBeGreaterThan(dps(resolveStats(fraca)));
   });
 
   it('item equipado vai para o SLOT da nave, não para a mochila', () => {
