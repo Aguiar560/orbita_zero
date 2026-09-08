@@ -221,7 +221,7 @@ export class InventoryPanel implements Panel {
       h('.inv-wrap', {},
         this.tip,
         grade(colunasDaGrade(capacidade), cells)),
-      this.barraDeLote(sim, lote),
+      this.barraDeLote(sim, lote, items),
     );
   }
 
@@ -447,13 +447,25 @@ export class InventoryPanel implements Panel {
     sim.touch();
   }
 
-  private barraDeLote(sim: Sim, lote: Item[]): HTMLElement {
+  private barraDeLote(sim: Sim, lote: Item[], visiveis: Item[]): HTMLElement {
     const quantidade = lote.length;
+    const selecionaveis = visiveis.filter((item) => !item.favorite);
+    const todosVisiveisSelecionados = selecionaveis.length > 0
+      && selecionaveis.every((item) => this.selecionados.has(item.uid));
     return h('.inv-lote-bar', { 'aria-label': 'Ações dos itens selecionados' },
       h('.inv-lote-status', {},
         quantidade
           ? h('strong', { text: `${quantidade} ${quantidade === 1 ? 'ITEM SELECIONADO' : 'ITENS SELECIONADOS'}` })
           : null,
+        h('button.inv-selecionar-todos', {
+          type: 'button',
+          disabled: selecionaveis.length === 0,
+          text: todosVisiveisSelecionados
+            ? 'DESMARCAR TODOS'
+            : `SELECIONAR TODOS (${selecionaveis.length})`,
+          title: 'Seleciona somente os itens exibidos pelos filtros atuais. Itens favoritos permanecem protegidos.',
+          onclick: () => this.alternarTodosVisiveis(sim, selecionaveis, todosVisiveisSelecionados),
+        }),
       ),
       h('.inv-lote-acoes', {},
         h('button.inv-lote-acao.vender', {
@@ -466,6 +478,21 @@ export class InventoryPanel implements Panel {
         }, spriteIcon('recurso/ferrita', 18), h('span', { text: `DESMONTAR${quantidade ? ` (${quantidade})` : ''}` })),
       ),
     );
+  }
+
+  /**
+   * Seleção em lote é um retrato do filtro atual, não uma soma invisível de
+   * filtros usados antes. Limpar primeiro evita vender, sem perceber, uma peça
+   * que ficou marcada e depois desapareceu da grade ao trocar o filtro.
+   */
+  private alternarTodosVisiveis(sim: Sim, visiveis: Item[], desmarcar: boolean): void {
+    this.cancelarCliquePendente();
+    this.selecionados.clear();
+    if (!desmarcar) {
+      for (const item of visiveis) this.selecionados.add(item.uid);
+    }
+    this.tip.classList.add('hidden');
+    sim.touch();
   }
 
   private confirmarVenda(sim: Sim): void {

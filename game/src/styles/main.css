@@ -1142,8 +1142,17 @@ select option:disabled { color: #667991; }
   background: linear-gradient(180deg, rgba(9, 25, 40, .97), rgba(4, 11, 22, .99));
   box-shadow: 0 -9px 20px rgba(0, 0, 0, .42), inset 0 0 18px rgba(53, 183, 226, .06);
 }
-.inv-lote-status { min-width: 0; display: flex; align-items: baseline; }
+.inv-lote-status { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 7px; }
 .inv-lote-status strong { color: #cbefff; font: 700 9px/1.2 'Chakra Petch', sans-serif; letter-spacing: .08em; }
+.inv-selecionar-todos {
+  min-height: 32px; margin-left: auto; padding: 6px 8px;
+  border: 1px solid rgba(255, 214, 92, .62); border-radius: 4px;
+  color: #ffe083; background: rgba(100, 69, 10, .2);
+  font: 700 8px/1.1 'Chakra Petch', sans-serif; letter-spacing: .055em;
+  box-shadow: inset 0 0 11px rgba(255, 203, 55, .08);
+}
+.inv-selecionar-todos:hover:not(:disabled) { filter: brightness(1.25); }
+.inv-selecionar-todos:disabled { cursor: not-allowed; opacity: .3; }
 .inv-lote-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .inv-lote-acao {
   min-width: 0; min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px;
@@ -8589,7 +8598,8 @@ select option:disabled { color: #667991; }
     pointer-events: none;
   }
   .inv-lote-bar { position: static; padding: 9px 112px 9px 8px; }
-  .inv-lote-acao { min-height: 44px; font-size: 9px; }
+  .inv-lote-acao,
+  .inv-selecionar-todos { min-height: 44px; font-size: 9px; }
   .inv-cell.selecionado {
     border-color: #70dcff !important;
     box-shadow: inset 0 0 18px rgba(69, 202, 248, .34), 0 0 12px rgba(69, 202, 248, .35) !important;

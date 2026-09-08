@@ -31,6 +31,16 @@ describe('ações em lote abaixo do inventário', () => {
     expect(painel).toContain('sim.salvage(item.uid)');
   });
 
+  it('seleciona todos os itens permitidos pelo filtro atual', () => {
+    expect(painel).toContain('this.barraDeLote(sim, lote, items)');
+    expect(painel).toContain('visiveis.filter((item) => !item.favorite)');
+    expect(painel).toContain('text: todosVisiveisSelecionados');
+    expect(painel).toContain("'DESMARCAR TODOS'");
+    expect(painel).toContain('`SELECIONAR TODOS (${selecionaveis.length})`');
+    expect(painel).toContain('private alternarTodosVisiveis');
+    expect(painel).toMatch(/alternarTodosVisiveis[\s\S]*?this\.selecionados\.clear\(\)[\s\S]*?for \(const item of visiveis\)/);
+  });
+
   it('reserva o canto do chat sem repetir a explicação da confirmação', () => {
     expect(css).toMatch(/\.inv-lote-bar \{[\s\S]*?padding: 10px 112px 10px 10px/);
     expect(painel).not.toContain('A ação só acontece depois da confirmação.');
@@ -47,6 +57,6 @@ describe('ações em lote abaixo do inventário', () => {
   it('usa apenas o amarelo da célula e mantém as ações tocáveis no celular', () => {
     expect(css).toMatch(/\.inv-cell\.marcado \{[\s\S]*?border-color: #ffd65c !important/);
     expect(css).not.toContain('.inv-lote-toggle');
-    expect(css).toMatch(/\.inv-lote-acao \{ min-height: 44px/);
+    expect(css).toMatch(/\.inv-lote-acao,\s*\.inv-selecionar-todos \{ min-height: 44px/);
   });
 });
