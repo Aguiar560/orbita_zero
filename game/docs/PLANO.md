@@ -1066,6 +1066,44 @@ Nos setores 150 e 300 a folga contra o jogador teórico é 1,00×, e isso não �
 margem espremida: lá a onda de chefe custa 63 vidas de onda comum e não cabe na
 janela de 150 s, então o teto e o honesto param na mesma quinta onda.
 
+#### O passo seguinte descobriu que o XP não vem de onde eu supunha (09/09)
+
+O desenho previa o cliente declarar "limpei a onda W" e o servidor precificar.
+Medindo a composição do XP antes de implementar:
+
+| setor / onda | XP do **abate** | XP da **conclusão** |
+|---|---|---|
+| 1 / onda 1 | **99%** | 1% |
+| 40 / onda 1 | 34% | 66% |
+| 40 / final | 2% | 98% |
+| 300 / onda 1 | 53% | 47% |
+
+**Pagar só por onda concluída faria o jogador novo perder 99% do XP.** A maior
+parte vem de `premiarAbates`, que paga a cada morte, não de `completeEncounter`.
+
+E o componente de abate depende do PERFIL da onda: `abatesDeReferencia` varia
+**6×** entre vanguarda e enxame, e é a semente que sorteia. Sem a semente, o
+servidor não precifica — só limita frouxo.
+
+#### Passo 5 ✅ — a semente do universo é do servidor (09/09)
+
+Fecha dois defeitos de uma vez:
+
+1. **A ausência era simulada em outro mundo.** `montarEstado` chamava
+   `createState()` sem argumento, e a semente saía aleatória a cada
+   requisição — outros inimigos, outra densidade, outra contagem. O ganho
+   saía plausível e errado.
+2. Sem ela, precificar a onda era impossível.
+
+A semente não é poder: decide o LAYOUT do mundo, não atributo nenhum — é
+contexto, como `run` e `hull`. Mas é gravada **uma vez e nunca mais**, porque
+o perfil que ela sorteia muda o pagamento em 6× e quem pudesse re-sorteá-la
+ficaria repetindo até cair no melhor.
+
+**Falta para precificar de verdade:** o cliente passar a declarar onda e
+abates em vez de XP, e o servidor pagar. Agora é possível — ele monta a mesma
+onda que o jogador enfrentou.
+
 **O desenho que sai disso:**
 
 1. O cliente declara PROGRESSO ("limpei o setor S, onda W"), não valor.

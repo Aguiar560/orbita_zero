@@ -1,0 +1,32 @@
+-- A SEMENTE do universo passa a morar no servidor.
+--
+-- ## Os dois defeitos que isto fecha
+--
+-- 1. **A ausência era simulada em outro mundo.** `montarEstado` chamava
+--    `createState()` sem argumento, e a semente saía aleatória a cada
+--    requisição. O servidor montava as ondas do jogador com uma composição que
+--    não era a dele: outros inimigos, outra densidade, outra contagem. O ganho
+--    ficava plausível mas não era o que o jogador teria recebido.
+--
+-- 2. **Sem ela o servidor não consegue PRECIFICAR uma onda.** Medido em 09/09,
+--    a maior parte do XP não vem de concluir a onda — vem de cada abate: no
+--    setor 1, **99%**. E `abatesDeReferencia` varia **6×** conforme o perfil
+--    que a semente sorteia. Sem a semente, o servidor só limita frouxo; com
+--    ela, ele calcula exato, chamando o mesmo `buildEncounter`.
+--
+-- ## Por que ela não é poder, e mesmo assim é imutável
+--
+-- A semente não decide atributo nenhum: ela decide o LAYOUT do mundo — quais
+-- inimigos aparecem e em que perfil. É contexto, como `run` e `hull`.
+--
+-- Ainda assim ela é gravada UMA vez e nunca mais. Trocá-la é re-sortear o
+-- mundo, e como o perfil muda `abatesDeReferencia` em 6×, quem pudesse
+-- re-sortear ficaria repetindo até cair no perfil que paga mais. O primeiro
+-- valor vence; os seguintes são ignorados em silêncio.
+--
+-- ## Zero é "ainda não sei"
+--
+-- Save de antes desta coluna, ou conta que nunca sincronizou. Quem lê cai no
+-- comportamento antigo — semente aleatória — até o cliente informar a dele.
+
+ALTER TABLE progresso ADD COLUMN semente INTEGER NOT NULL DEFAULT 0;

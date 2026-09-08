@@ -1247,11 +1247,11 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
 async function progressoDe(env: Env, usuario: string) {
   const [linha, naves, mats] = await Promise.all([
     env.DB
-      .prepare('SELECT xp, melhor_setor, matriz, casco_em_campo, atualizado_em FROM progresso WHERE usuario = ?')
+      .prepare('SELECT xp, melhor_setor, matriz, casco_em_campo, atualizado_em, semente FROM progresso WHERE usuario = ?')
       .bind(usuario)
       .first<{
         xp: number; melhor_setor: number; matriz: string;
-        casco_em_campo: string; atualizado_em: number;
+        casco_em_campo: string; atualizado_em: number; semente: number;
       }>(),
     env.DB
       .prepare('SELECT casco, xp FROM naves_progresso WHERE usuario = ?')
@@ -1277,6 +1277,14 @@ async function progressoDe(env: Env, usuario: string) {
     cascoEmCampo: linha?.casco_em_campo ?? '',
     /** O carimbo do último envio, que dá a JANELA sobre a qual o ganho foi declarado. */
     atualizadoEm: linha?.atualizado_em ?? 0,
+    /**
+     * A semente do universo. Zero = ainda não sei.
+     *
+     * É ela que faz o servidor montar as MESMAS ondas do jogador. Sem ela, a
+     * ausência era simulada num mundo diferente — outros inimigos, outra
+     * densidade, outra contagem. Ver `migrations/0013-semente.sql`.
+     */
+    semente: linha?.semente ?? 0,
     matriz: JSON.parse(linha?.matriz ?? '[]') as string[],
     naves: Object.fromEntries(naves.results.map((n) => [n.casco, n.xp])),
     materiais: Object.fromEntries(mats.results.map((m) => [m.material, m.quantia])),
@@ -1313,7 +1321,7 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   let corpo: {
     xp?: unknown; setor?: unknown; matriz?: unknown;
     naves?: Record<string, unknown>; materiais?: Record<string, unknown>;
-    casco?: unknown;
+    casco?: unknown; semente?: unknown;
   };
   try {
     corpo = JSON.parse(bruto) as typeof corpo;
@@ -1355,6 +1363,21 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
    * é legítimo, e recusar tudo por causa de um campo faria o jogador perder XP
    * por ter clicado numa nave.
    */
+  /**
+   * A semente é gravada UMA vez, e depois é imutável.
+   *
+   * Ela não decide poder — decide o LAYOUT do mundo. Mas o perfil que ela
+   * sorteia muda `abatesDeReferencia` em 6× (medido em 09/09), então quem
+   * pudesse re-sorteá-la ficaria repetindo até cair no perfil que paga mais.
+   * O primeiro valor vence; os seguintes são ignorados em silêncio, porque
+   * recusar o envio inteiro por causa dele faria o jogador perder progresso
+   * legítimo por um campo que ele nem sabe que existe.
+   */
+  let semente = atual.semente;
+  if (semente === 0 && typeof corpo.semente === 'number' && Number.isFinite(corpo.semente)) {
+    semente = Math.max(0, Math.floor(corpo.semente)) >>> 0;
+  }
+
   let cascoEmCampo = atual.cascoEmCampo;
   if (typeof corpo.casco === 'string' && corpo.casco.length <= 64) {
     const frota = await frotaDe(env, id);
@@ -1397,13 +1420,13 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   }
 
   escritas.push(env.DB.prepare(`
-    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, atualizado_em)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, semente, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
       xp = excluded.xp, melhor_setor = excluded.melhor_setor,
       matriz = excluded.matriz, casco_em_campo = excluded.casco_em_campo,
-      atualizado_em = excluded.atualizado_em
-  `).bind(id, xp, setor, JSON.stringify(matriz), cascoEmCampo, agora));
+      semente = excluded.semente, atualizado_em = excluded.atualizado_em
+  `).bind(id, xp, setor, JSON.stringify(matriz), cascoEmCampo, semente, agora));
 
   // ── XP por nave ───────────────────────────────────────────────────────────
   for (const [casco, valor] of Object.entries(corpo.naves ?? {})) {
@@ -1510,7 +1533,7 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
       saldos: carteira.saldos,
       xp: prog.xp, nivel: prog.nivel, matriz: prog.matriz,
       melhorSetor: prog.melhorSetor, materiais: prog.materiais,
-      naves: prog.naves, frota, itens,
+      naves: prog.naves, frota, itens, semente: prog.semente,
       // Qual nave esta em campo e do servidor desde 08/09. Sem passar isto, a
       // ausencia de quem nao informou nada caia no primeiro casco da frota --
       // quase sempre o do piloto, e nao a nave que o jogador deixou voando.
@@ -1568,8 +1591,8 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
    * que ele estava. Quanto mais alto o nível, mais se perdia.
    */
   escritas.push(env.DB.prepare(`
-    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, atualizado_em)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, semente, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
       xp = excluded.xp, melhor_setor = excluded.melhor_setor, atualizado_em = excluded.atualizado_em
   `).bind(
@@ -1577,7 +1600,7 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     Math.max(prog.melhorSetor, sim.state.run.sector),
     // A ausência não escolhe nave: o `DO UPDATE` acima não toca na coluna, e
     // estes valores só existem para o caso de a linha ainda não existir.
-    JSON.stringify(prog.matriz), prog.cascoEmCampo, agora,
+    JSON.stringify(prog.matriz), prog.cascoEmCampo, prog.semente, agora,
   ));
 
   for (const [casco, nave] of Object.entries(sim.state.naves)) {

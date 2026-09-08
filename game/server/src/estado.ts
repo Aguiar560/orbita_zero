@@ -44,6 +44,8 @@ export interface DadosDoServidor {
   frota: string[];
   /** O casco em campo, guardado. Vazio = nunca escolheu. */
   cascoEmCampo?: string;
+  /** A semente do universo do jogador. Zero = o servidor ainda não a conhece. */
+  semente?: number;
   itens: { item: Item; nave: string | null; slot: string | null }[];
 }
 
@@ -56,7 +58,18 @@ export interface ContextoDoCliente {
 }
 
 export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): GameState {
-  const estado = createState();
+  /**
+   * A SEMENTE do jogador, e não uma nova.
+   *
+   * Era `createState()` sem argumento — semente aleatória a cada requisição.
+   * O servidor montava as ondas do jogador com uma composição que não era a
+   * dele: outros inimigos, outra densidade, outra contagem. O ganho da ausência
+   * saía plausível e errado.
+   *
+   * Zero significa "ainda não sei" (save de antes da coluna), e aí o
+   * comportamento antigo vale até o cliente informar a dele.
+   */
+  const estado = dados.semente ? createState(dados.semente) : createState();
 
   estado.resources = { ...dados.saldos };
 

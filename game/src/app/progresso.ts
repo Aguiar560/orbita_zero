@@ -240,6 +240,13 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
      * o modo de teste viraria uma forma de ganhar nave.
      */
     casco: cascoEscolhido && s.fleet.includes(cascoEscolhido) ? cascoEscolhido : undefined,
+    /**
+     * A semente do universo, para o servidor montar as MESMAS ondas.
+     *
+     * Vai em toda drenagem porque o servidor a grava UMA vez e ignora o resto —
+     * mandar sempre poupa um campo de estado no cliente para saber se já foi.
+     */
+    semente: s.universe.seed,
     // Materiais ainda não têm marco: eles são gravados como ABSOLUTO pelo
     // caminho antigo e a conversão para delta entra junto do Armazém no
     // servidor. Enviar zero é honesto — não muda nada — até lá.
