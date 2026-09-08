@@ -5063,7 +5063,12 @@ select option:disabled { color: #667991; }
 .evt-top h1 { margin: 5px 0 0; color: #ecf8ff; font: 700 30px 'Chakra Petch', sans-serif; letter-spacing: 1px; }
 .evt-top > strong { color: var(--evt-cor); font-size: 11px; letter-spacing: 2px; }
 .evt-top p { max-width: 620px; color: var(--muted); }
-.evt-clock { position: absolute; right: 22px; top: 22px; display: flex; flex-direction: column; text-align: right; }
+/* O relogio era ABSOLUTO no canto do painel, porque havia UM evento.
+ *
+ * Com tres, os tres se empilhavam no mesmo ponto e o texto virava borrao --
+ * apareceu na primeira captura da tela nova. Agora ele fica no fluxo, dentro do
+ * cabecalho do proprio cartao, que e onde ele diz respeito a alguma coisa. */
+.evt-clock { display: flex; flex-direction: column; text-align: right; }
 .evt-clock b { color: #dff7ff; font-variant-numeric: tabular-nums; }
 /* A lista dos TRES eventos ativos.
  *
