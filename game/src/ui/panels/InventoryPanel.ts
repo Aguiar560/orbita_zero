@@ -46,11 +46,6 @@ function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string 
     .join(' + ');
 }
 
-/** No toque, o primeiro gesto escolhe a peça; o segundo confirma o soquete. */
-function usaSelecaoPorToque(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
-}
-
 /**
  * A forma da grade vem de `data/balance/capacidade.ts` (§28).
  *
@@ -215,13 +210,11 @@ export class InventoryPanel implements Panel {
         ),
       ),
 
-      h('p.muted.tiny.hint', { text: usaSelecaoPorToque()
-        ? 'Um toque seleciona (amarelo) · toque duplo equipa · toque também mostra os atributos.'
-        : 'Clique seleciona · duplo clique equipa · arraste para a Anatomia · botão direito favorita.' }),
+      this.botaoSelecionarTodos(sim, items),
       h('.inv-wrap', {},
         this.tip,
         grade(colunasDaGrade(capacidade), cells)),
-      this.barraDeLote(sim, lote, items),
+      this.barraDeLote(sim, lote),
     );
   }
 
@@ -447,25 +440,30 @@ export class InventoryPanel implements Panel {
     sim.touch();
   }
 
-  private barraDeLote(sim: Sim, lote: Item[], visiveis: Item[]): HTMLElement {
-    const quantidade = lote.length;
+  private botaoSelecionarTodos(sim: Sim, visiveis: Item[]): HTMLElement {
     const selecionaveis = visiveis.filter((item) => !item.favorite);
     const todosVisiveisSelecionados = selecionaveis.length > 0
       && selecionaveis.every((item) => this.selecionados.has(item.uid));
+    return h('.inv-selecao-filtro', {},
+      h('button.inv-selecionar-todos', {
+        type: 'button',
+        disabled: selecionaveis.length === 0,
+        text: todosVisiveisSelecionados
+          ? 'DESMARCAR TODOS'
+          : `SELECIONAR TODOS (${selecionaveis.length})`,
+        title: 'Seleciona somente os itens exibidos pelos filtros atuais. Itens favoritos permanecem protegidos.',
+        onclick: () => this.alternarTodosVisiveis(sim, selecionaveis, todosVisiveisSelecionados),
+      }),
+    );
+  }
+
+  private barraDeLote(sim: Sim, lote: Item[]): HTMLElement {
+    const quantidade = lote.length;
     return h('.inv-lote-bar', { 'aria-label': 'Ações dos itens selecionados' },
       h('.inv-lote-status', {},
         quantidade
           ? h('strong', { text: `${quantidade} ${quantidade === 1 ? 'ITEM SELECIONADO' : 'ITENS SELECIONADOS'}` })
           : null,
-        h('button.inv-selecionar-todos', {
-          type: 'button',
-          disabled: selecionaveis.length === 0,
-          text: todosVisiveisSelecionados
-            ? 'DESMARCAR TODOS'
-            : `SELECIONAR TODOS (${selecionaveis.length})`,
-          title: 'Seleciona somente os itens exibidos pelos filtros atuais. Itens favoritos permanecem protegidos.',
-          onclick: () => this.alternarTodosVisiveis(sim, selecionaveis, todosVisiveisSelecionados),
-        }),
       ),
       h('.inv-lote-acoes', {},
         h('button.inv-lote-acao.vender', {

@@ -32,13 +32,18 @@ describe('ações em lote abaixo do inventário', () => {
   });
 
   it('seleciona todos os itens permitidos pelo filtro atual', () => {
-    expect(painel).toContain('this.barraDeLote(sim, lote, items)');
+    expect(painel).toContain('this.botaoSelecionarTodos(sim, items)');
+    expect(painel).toContain('this.barraDeLote(sim, lote)');
     expect(painel).toContain('visiveis.filter((item) => !item.favorite)');
     expect(painel).toContain('text: todosVisiveisSelecionados');
     expect(painel).toContain("'DESMARCAR TODOS'");
     expect(painel).toContain('`SELECIONAR TODOS (${selecionaveis.length})`');
     expect(painel).toContain('private alternarTodosVisiveis');
     expect(painel).toMatch(/alternarTodosVisiveis[\s\S]*?this\.selecionados\.clear\(\)[\s\S]*?for \(const item of visiveis\)/);
+    expect(painel).not.toContain('Clique seleciona · duplo clique equipa');
+    expect(painel).not.toContain('Um toque seleciona (amarelo)');
+    expect(css).toMatch(/\.inv-selecao-filtro \{[^}]*width: 100%/);
+    expect(css).toMatch(/\.inv-selecionar-todos \{[^}]*width: 100%/);
   });
 
   it('reserva o canto do chat sem repetir a explicação da confirmação', () => {
