@@ -285,7 +285,9 @@ export class Sim {
       enemyHitboxOffsetX: enemyBox.offsetX,
       enemyHitboxOffsetY: enemyBox.offsetY,
     }, lab);
-    this.refreshEncounter();
+    // RETOMA, não recomeça: o construtor roda a cada recarga da página, e
+    // `refreshEncounter` zeraria os abates da onda em curso.
+    this.retomarEncontro();
   }
 
   // ── leitura ───────────────────────────────────────────────────────────────
@@ -390,6 +392,56 @@ export class Sim {
   touch(): void {
     this.statsCache = null;
     bus.emit('state:changed');
+  }
+
+  /**
+   * Recompõe o encontro SEM apagar o que já foi abatido.
+   *
+   * ## O defeito
+   *
+   * O construtor chamava `refreshEncounter`, que zera `run.restam`. Recarregar
+   * a página no meio da onda 2 do setor 2 devolvia a onda inteira: os inimigos
+   * já abatidos voltavam. Relatado pelo Rafael em 09/09 — "ao recarregar
+   * deveria parar de onde estava".
+   *
+   * ## Por que só isto basta
+   *
+   * A CENA não precisa saber quem já morreu. O encontro termina por
+   * `run.restam` chegar a zero, e o `WaveDirector` tem `replenish`: quando a
+   * tela esvazia e ainda falta abater, ele repõe. Então retomar é só não
+   * mentir sobre quantos faltam.
+   *
+   * ## O que NÃO é retomado, e por quê
+   *
+   * `elapsed`, que mede o tempo dentro do encontro. O tempo com a aba fechada
+   * já é creditado pela ausência, e somá-lo aqui de novo pagaria duas vezes.
+   *
+   * E os inimigos EM TELA, que não são salvos. Eles voltam do começo da leva —
+   * salvar a cena inteira seria outro assunto, e o que o jogador percebe é o
+   * progresso da onda, não a posição de cada nave.
+   */
+  retomarEncontro(): void {
+    const run = this.state.run;
+    const restavam = run.restam;
+    const unidadesSalvas = run.unidades;
+
+    this.encounterCache = null;
+    const e = this.encounter;
+    run.kind = e.kind;
+    run.unidades = e.unidades;
+
+    /**
+     * Só aproveita o que está salvo se ele pertence a ESTE encontro.
+     *
+     * `unidades` é determinístico a partir de semente, setor e onda — se o
+     * salvo não bate, o save é de antes de um rebalanceamento e o número não
+     * significa mais a mesma coisa. Aí vale a onda inteira, que é o lado seguro
+     * de errar: dá trabalho ao jogador, não presente.
+     */
+    const cabe = Number.isFinite(restavam) && restavam > 0
+      && restavam <= e.unidades && unidadesSalvas === e.unidades;
+    run.restam = cabe ? restavam : e.unidades;
+    run.elapsed = 0;
   }
 
   /** Público para o modo de teste e para os testes automatizados. */
