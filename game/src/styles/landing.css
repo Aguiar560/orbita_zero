@@ -51,6 +51,9 @@
   background: transparent;
   cursor: pointer;
 }
+.landing-art-hotspot:not(.card-naves):not(.card-galaxias):not(.card-comunidade) {
+  transform: translateY(-12%);
+}
 .landing-art-hotspot:hover,
 .landing-art-hotspot:focus-visible {
   outline: 2px solid rgba(70, 220, 255, .8);
