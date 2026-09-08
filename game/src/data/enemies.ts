@@ -1,5 +1,6 @@
 import type { ElementId } from '@sim/types';
 import { getElement } from './elements';
+import { ASSINATURAS_DO_ELEMENTO, ELEMENTO_DA_GALAXIA } from './elemento-da-galaxia';
 import { VOID_ENEMIES } from './fleets';
 import {
   SPACESHIPS2_ELITE_ENEMIES,
@@ -295,6 +296,20 @@ export interface GalaxyEnemyRoster {
   elite: readonly string[];
 }
 
+/**
+ * O elemento de uma galáxia, sem importar `galaxies.ts`.
+ *
+ * Importar de lá criaria ciclo: `galaxies` já é lido por meio mundo, e o
+ * bestiário é uma das primeiras coisas que ele alcança. A tabela mora num
+ * módulo próprio justamente para os dois lados poderem lê-la.
+ *
+ * As profundas (21–30) não estão na tabela — a identidade delas é autoral. Para
+ * o elenco, elas caem no rodízio, que é o que já acontecia.
+ */
+const ELEMENTOS_EM_RODIZIO = ['padrao', 'fogo', 'gelo', 'cosmico', 'raio', 'quimico'] as const;
+const elementoDaGalaxia = (i: number): string =>
+  ELEMENTO_DA_GALAXIA[i] ?? ELEMENTOS_EM_RODIZIO[i % ELEMENTOS_EM_RODIZIO.length]!;
+
 const availableAtGalaxyStart = (enemy: EnemyDef, galaxyIndex: number): boolean => {
   const sector = galaxyIndex * 10 + 1;
   return sector >= enemy.sectors[0] && (enemy.sectors[1] === 0 || sector <= enemy.sectors[1]);
@@ -328,17 +343,58 @@ function buildGalaxyRosters(): GalaxyEnemyRoster[] {
   let previousElite = new Set<string>();
 
   for (let galaxyIndex = 0; galaxyIndex < 30; galaxyIndex++) {
-    const signature = takeRoster(
-      SPACESHIPS2_REGULAR_ENEMIES, 4, galaxyIndex * 4, previousRegular,
+    /**
+     * O elenco começa pelos inimigos do ELEMENTO da galáxia.
+     *
+     * Antes ele era montado só por deslocamento de índice, e o resultado era a
+     * galáxia de fogo sem um único inimigo de fogo. Duas vagas das quatro vão
+     * para o elemento da região; as outras duas, mais as duas de apoio,
+     * continuam variadas.
+     *
+     * DOIS, e não quatro: o catálogo não tem gente suficiente. Gelo tem UM
+     * regular e raio tem dois, contra cinco de químico e cinco de cósmico
+     * (medido em 07/09). Exigir quatro faria a galáxia de gelo repetir a mesma
+     * nave quatro vezes — pior que o problema que se quer resolver. É lacuna de
+     * ARTE, não de código, e está registrada como tal.
+     */
+    const elemento = elementoDaGalaxia(galaxyIndex);
+    /**
+     * As vagas do elemento IGNORAM a regra de "não repetir a galáxia anterior".
+     *
+     * Repetir é o ponto: duas galáxias de gelo seguidas devem mostrar as mesmas
+     * naves de gelo, porque é isso que faz a região ter cara. Aplicar a regra
+     * aqui produziu o defeito na medição — a galáxia 28 usou os cinco cósmicos,
+     * e a 29, também cósmica, ficou com ZERO deles.
+     */
+    const doElemento = takeRoster(
+      SPACESHIPS2_REGULAR_ENEMIES.filter((e) => e.element === elemento),
+      ASSINATURAS_DO_ELEMENTO, galaxyIndex, new Set<string>(),
     );
+    const signature = [
+      ...doElemento,
+      ...takeRoster(
+        SPACESHIPS2_REGULAR_ENEMIES, 4 - doElemento.length, galaxyIndex * 4,
+        previousRegular, new Set(doElemento.map((e) => e.id)),
+      ),
+    ];
     const regularIds = new Set(signature.map((enemy) => enemy.id));
     const supportPool = legacyRegular.filter((enemy) => availableAtGalaxyStart(enemy, galaxyIndex));
     const support = takeRoster(supportPool, 2, galaxyIndex * 7, previousRegular, regularIds);
     const regular = [...signature, ...support];
 
-    const eliteSignature = takeRoster(
-      SPACESHIPS2_ELITE_ENEMIES, 2, galaxyIndex * 2, previousElite,
+    // O elite também: uma vaga das duas vai para o elemento da região.
+    // Mesmo motivo do regular: a vaga do elemento pode repetir.
+    const eliteDoElemento = takeRoster(
+      SPACESHIPS2_ELITE_ENEMIES.filter((e) => e.element === elemento),
+      1, galaxyIndex, new Set<string>(),
     );
+    const eliteSignature = [
+      ...eliteDoElemento,
+      ...takeRoster(
+        SPACESHIPS2_ELITE_ENEMIES, 2 - eliteDoElemento.length, galaxyIndex * 2,
+        previousElite, new Set(eliteDoElemento.map((e) => e.id)),
+      ),
+    ];
     const eliteIds = new Set(eliteSignature.map((enemy) => enemy.id));
     const eliteSupportPool = legacyElite.filter((enemy) => availableAtGalaxyStart(enemy, galaxyIndex));
     const eliteSupport = takeRoster(eliteSupportPool, 1, galaxyIndex * 3, previousElite, eliteIds);

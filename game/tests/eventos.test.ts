@@ -4,6 +4,7 @@ import {
   eventoNoInstante, eventosDoRitmo, janelaDoRitmo, janelasAtivas,
 } from '@data/eventos';
 import { RECURSO_POR_ID } from '@data/recursos';
+import { MINERIOS_POR_ELEMENTO } from '@data/balance/minerio-elemental';
 import { ELEMENTS } from '@data/elements';
 import { aplicarFatoAoEvento, eventosAtivos, progressoDoEvento } from '@sim/eventos';
 import { createState } from '@sim/state';
@@ -24,9 +25,9 @@ import { createState } from '@sim/state';
 describe('os três ritmos', () => {
   it('o diário tem um evento por elemento, e cada um paga o minério dele', () => {
     /**
-     * É o diário que resolve a escassez de gelo. O minério de gelo só existe
-     * nas galáxias 12 e 18, então converter uma peça para gelo antes da 12 era
-     * impossível — a escassez era um MURO. Com o diário, vira agenda.
+     * É o diário que resolve a escassez elemental: sem ele, converter uma peça
+     * para gelo antes da Galáxia 3 era impossível, porque o minério de gelo só
+     * começa lá. A escassez era um MURO; com o diário, vira agenda.
      */
     const diarios = eventosDoRitmo('diario');
     expect(diarios).toHaveLength(ELEMENTS.length);
@@ -38,6 +39,36 @@ describe('os três ritmos', () => {
       const r = RECURSO_POR_ID.get(e.recurso);
       expect(r, e.id).toBeTruthy();
       expect(['minerio', 'exotico'], `${e.id} paga ${r?.familia}`).toContain(r!.familia);
+    }
+  });
+
+  it('e o minério que ele paga É o do elemento que ele pede — o mais raso', () => {
+    /**
+     * O teste que faltava, e a falta custou caro.
+     *
+     * O `recurso` de cada diário é escrito à mão, mas o vínculo minério→elemento
+     * é DERIVADO do elemento da galáxia. Quando os elementos das galáxias foram
+     * reescritos em 07/09, a tabela derivada acompanhou e a lista escrita à mão
+     * não: os SEIS diários passaram a pagar minério de outro elemento — o de
+     * fogo pagava Ferrita, que virou de raio; o de gelo pagava Cromita, que
+     * virou de químico. Medido, seis de seis errados.
+     *
+     * A suíte inteira passou. O único teste que olhava o prêmio do diário
+     * cobrava a FAMÍLIA do recurso ("é minério?"), e minério errado também é
+     * minério. Este cobra o ELO, que é a regra de verdade: o diário existe para
+     * destravar a conversão do elemento que ele pede.
+     *
+     * E cobra o MAIS RASO de propósito. Pagar o minério profundo adiantaria
+     * conteúdo de fim de campanha por 24 horas de caça rasa.
+     */
+    for (const e of eventosDoRitmo('diario')) {
+      const elemento = e.objetivo.filtro?.elemento;
+      const raso = MINERIOS_POR_ELEMENTO[elemento!]?.[0]?.id;
+      expect(raso, `${e.id} pede ${elemento}, que não tem minério`).toBeTruthy();
+      expect(
+        e.recurso,
+        `${e.id} pede ${elemento} e paga ${e.recurso}, que não é minério de ${elemento}`,
+      ).toBe(raso);
     }
   });
 

@@ -1,4 +1,5 @@
 import { Rng, hashString } from '@core/math';
+import { ELEMENTO_DA_GALAXIA } from './elemento-da-galaxia';
 import { ELEMENT_IDS, type ElementId } from '@sim/types';
 import { bossForSector } from './bosses';
 import { FLEET_INFO } from './fleets';
@@ -135,11 +136,15 @@ export function describeGalaxy(index: number): GalaxyInfo {
     fleet: fleet.name,
     identity: profunda?.identity ?? 'Uma fronteira disputada entre frotas, planetas e rotas de coleta.',
     hazard: profunda?.hazard ?? 'A ameaça dominante acompanha o elemento da frota.',
-    // Enquanto as frotas escritas à mão cobrem a região, o elemento é o delas —
-    // a cor da nave e a cor do tiro têm que combinar. Passado esse trecho, os
-    // seis elementos entram em rodízio para nenhuma metade do bestiário ficar
-    // fora de circulação nos setores profundos.
-    element: profunda?.element ?? (index < FLEET_INFO.length * 2 ? fleet.element : ELEMENT_IDS[index % ELEMENT_IDS.length]!),
+    /**
+     * O elemento vem de uma TABELA, e não mais da frota nem de um rodízio.
+     *
+     * Antes as galáxias 1–6 herdavam o elemento da frota e as seguintes
+     * entravam num rodízio por índice. Nenhum dos dois olhava para os INIMIGOS
+     * que a galáxia realmente monta: a galáxia 1 se declarava de fogo e tinha
+     * zero inimigos de fogo. Ver `elemento-da-galaxia.ts`.
+     */
+    element: ELEMENTO_DA_GALAXIA[index] ?? profunda?.element ?? ELEMENT_IDS[index % ELEMENT_IDS.length]!,
     color: profunda?.color ?? COLORS[index % COLORS.length]!,
     firstSector: index * PHASES_PER_GALAXY + 1,
     lastSector: (index + 1) * PHASES_PER_GALAXY,

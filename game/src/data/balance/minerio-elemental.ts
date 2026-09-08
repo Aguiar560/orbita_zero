@@ -13,14 +13,23 @@ import type { ElementId } from '@sim/types';
  * a 24, quase tudo que o jogador minerava era peso morto.
  *
  * A ligação com elemento não precisou de tabela nova: **cada galáxia já tem um
- * elemento**, e o material-assinatura dela o herda. Cromita vem da Galáxia 12,
- * que é de gelo; logo Cromita é minério de gelo.
+ * elemento**, e o material-assinatura dela o herda. Diamantita vem da Galáxia
+ * 3, que é de gelo; logo Diamantita é minério de gelo.
+ *
+ * Por ser DERIVADA, esta tabela se reescreveu sozinha quando os elementos das
+ * galáxias mudaram em 07/09 — e foi de propósito. O que NÃO se reescreveu
+ * sozinho foram os eventos diários, que nomeiam o recurso à mão: os seis
+ * passaram a pagar o minério de outro elemento. Ver `tests/eventos.test.ts`.
  *
  * ## Por que o NÍVEL do item escolhe, e não uma lista fixa
  *
- * Um elemento tem de dois a oito minérios — cósmico tem oito, gelo tem dois.
- * Escolher um por elemento e ignorar o resto deixaria 24 materiais mortos do
- * mesmo jeito, com um nome mais bonito.
+ * Cada elemento tem CINCO minérios, um por galáxia sua. Escolher um por
+ * elemento e ignorar o resto deixaria 24 materiais mortos do mesmo jeito, com
+ * um nome mais bonito.
+ *
+ * Cinco e cinco é consequência, não coincidência: antes de 07/09 o cósmico
+ * tinha oito minérios e o gelo dois, porque o elemento das galáxias saía de um
+ * rodízio por índice. Ver `data/elemento-da-galaxia.ts`.
  *
  * Aqui o minério sai da GALÁXIA compatível com o nível da peça: modular uma
  * peça de nível 250 pede o minério de gelo tardio, não o mesmo da peça de nível
@@ -30,9 +39,9 @@ import type { ElementId } from '@sim/types';
  * ## O piso, e por que ele não é um buraco
  *
  * Uma peça de gelo de nível 5 não encontra galáxia de gelo abaixo dela: a
- * primeira é a 12. Nesse caso vale a MAIS BARATA do elemento — a de galáxia
+ * primeira é a 3. Nesse caso vale a MAIS BARATA do elemento — a de galáxia
  * mais baixa. O jogador não fica travado, mas também não recebe de graça: ele
- * ainda precisa de Cromita, que só cai na Galáxia 12.
+ * ainda precisa de Diamantita, que só cai na Galáxia 3.
  *
  * É essa escassez que o evento diário elemental resolve, transformando "muro"
  * em "agenda". Ver `docs/ECONOMIA-DOS-RECURSOS.md`.

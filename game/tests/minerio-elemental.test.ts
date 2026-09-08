@@ -50,8 +50,9 @@ describe('o minério que cada elemento pede', () => {
   });
 
   it('e uma peça rasa demais cai no minério mais barato do elemento', () => {
-    // Gelo só existe nas galáxias 12 e 18. Uma peça de gelo nível 5 não fica
-    // sem ingrediente — fica com o mais raso, que ainda é escasso para ela.
+    // A primeira galáxia de gelo é a 3, e ela já entrega nível 18. Uma peça de
+    // gelo nível 5 não fica sem ingrediente — fica com o mais raso, que ainda
+    // é escasso para ela.
     expect(minerioParaItem('gelo', 5)).toBe(MINERIOS_POR_ELEMENTO.gelo![0]!.id);
   });
 });
@@ -61,7 +62,11 @@ describe('o custo de modular', () => {
     const c = custoDeModulacao(peca(3, 120, 5, 'gelo'), remoldar, 0);
     expect(c.nucleos).toBeGreaterThan(0);
     expect(c.quantidade).toBeGreaterThan(0);
-    expect(c.minerio).toBe('cromita');
+    // Zircônio é o minério de gelo da Galáxia 13, cujo nível de item é 108: uma
+    // peça de nível 120 alcança esse e não o seguinte (Tântalo, nível 153). Era
+    // Cromita antes de 07/09, quando a Galáxia 12 ainda era de gelo — a tabela é
+    // DERIVADA e acompanhou a reescrita sozinha.
+    expect(c.minerio).toBe('zirconio');
     expect(c.quantidadeDeMinerio).toBeGreaterThan(0);
   });
 

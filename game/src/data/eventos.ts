@@ -76,7 +76,13 @@ export const EVENTOS: readonly EventoDef[] = [
   //
   // Pagam o minério RASO do elemento: o diário existe para DESTRAVAR a
   // conversão elemental, não para adiantar conteúdo profundo. Sem ele, uma peça
-  // de gelo antes da galáxia 12 era impossível — a cromita só cai lá.
+  // de gelo antes da galáxia 3 era impossível — a diamantita só cai lá.
+  //
+  // O `recurso` de cada um não é escolha livre: é o primeiro minério do elemento
+  // que o diário pede, e `tests/eventos.test.ts` cobra isso contra a tabela
+  // derivada. Quando os elementos das galáxias foram reescritos em 07/09, os
+  // SEIS passaram a pagar o minério de outro elemento de uma vez — nenhum
+  // teste viu, porque só se cobrava a família do recurso. Agora se cobra o elo.
   //
   // ## Os alvos são MEDIDOS, e a primeira versão estava errada
   //
@@ -89,14 +95,17 @@ export const EVENTOS: readonly EventoDef[] = [
   // IMPOSSÍVEL: gelo só aparece em quantidade a partir da galáxia 3, e fogo a
   // partir da 2. Agora cada um abre onde o alvo dele existe.
   //
-  // Gelo e raio continuam escassos DE PROPÓSITO — dez e catorze galáxias em
-  // trinta. A descrição avisa: a janela abre, mas é preciso ir onde eles estão.
-  { id: 'pulso_termico', nome: 'Pulso Térmico', subtitulo: 'JANELA DE FOGO', cor: '#ff7a42', ritmo: 'diario', recurso: 'ferrita', quantidade: 24, setorMinimo: 11, modificador: 'Inimigos de fogo +10% dano · minério de fogo aflorado', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'fogo' }, texto: 'Abater 200 inimigos de fogo' }, descricao: 'A crosta de Vega racha por doze horas e devolve ferrita à superfície. Depois fecha.' },
-  { id: 'frente_glacial', nome: 'Frente Glacial', subtitulo: 'JANELA DE GELO', cor: '#7fd8ed', ritmo: 'diario', recurso: 'cromita', quantidade: 20, setorMinimo: 21, modificador: 'Escudos inimigos +15% · veios de cromita expostos', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'gelo' }, texto: 'Abater 200 inimigos de gelo' }, descricao: 'A cromita só existe em duas galáxias, e os inimigos de gelo em dez. Hoje a janela abre — mas você ainda precisa ir onde eles estão.' },
-  { id: 'descarga_maior', nome: 'Descarga Maior', subtitulo: 'JANELA DE RAIO', cor: '#54cfff', ritmo: 'diario', recurso: 'litio', quantidade: 22, setorMinimo: 1, modificador: 'Dano de raio +18% · condutores saturados', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'raio' }, texto: 'Abater 200 inimigos de raio' }, descricao: 'Enquanto a tempestade dura, o lítio aflora nas linhas de descarga. Raio é raro: catorze galáxias em trinta.' },
-  { id: 'mare_corrosiva', nome: 'Maré Corrosiva', subtitulo: 'JANELA QUÍMICA', cor: '#62d7a4', ritmo: 'diario', recurso: 'uranio', quantidade: 22, setorMinimo: 1, modificador: 'Corrosão contínua no casco · depósitos instáveis', objetivo: { fato: 'abate', alvo: 290, filtro: { elemento: 'quimico' }, texto: 'Abater 290 inimigos químicos' }, descricao: 'O que corrói a nave também dissolve a rocha que prende o urânio.' },
-  { id: 'dobra_curta', nome: 'Dobra Curta', subtitulo: 'JANELA CÓSMICA', cor: '#b58cff', ritmo: 'diario', recurso: 'diamantita', quantidade: 20, setorMinimo: 1, modificador: 'Inimigos cósmicos surgem fora de posição · pressão elevada', objetivo: { fato: 'abate', alvo: 220, filtro: { elemento: 'cosmico' }, texto: 'Abater 220 inimigos cósmicos' }, descricao: 'A dobra comprime uma galáxia inteira por um dia. A diamantita vem junto.' },
-  { id: 'silencio_balistico', nome: 'Silêncio Balístico', subtitulo: 'JANELA NEUTRA', cor: '#b8c4cf', ritmo: 'diario', recurso: 'iridio', quantidade: 22, setorMinimo: 1, modificador: 'Sem vantagem elemental · dano normal +12%', objetivo: { fato: 'abate', alvo: 210, filtro: { elemento: 'padrao' }, texto: 'Abater 210 inimigos sem elemento' }, descricao: 'Nada resiste, nada favorece. Só massa contra massa — e o irídio que sobra dela.' },
+  // O gelo continua sendo o mais difícil dos seis, e não por falta de galáxia:
+  // desde 07/09 cada elemento tem CINCO das trinta. É falta de BESTIÁRIO — há um
+  // único inimigo regular de gelo desenhado, contra cinco de químico, então uma
+  // galáxia de gelo chega a 16–21% de presença onde as outras passam de 40%.
+  // É lacuna de ARTE, e o alvo de 200 já conta com ela.
+  { id: 'pulso_termico', nome: 'Pulso Térmico', subtitulo: 'JANELA DE FOGO', cor: '#ff7a42', ritmo: 'diario', recurso: 'pirita', quantidade: 24, setorMinimo: 11, modificador: 'Inimigos de fogo +10% dano · minério de fogo aflorado', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'fogo' }, texto: 'Abater 200 inimigos de fogo' }, descricao: 'O Corte de Ferro reacende por doze horas e a pirita volta a aflorar na crosta. Depois fecha.' },
+  { id: 'frente_glacial', nome: 'Frente Glacial', subtitulo: 'JANELA DE GELO', cor: '#7fd8ed', ritmo: 'diario', recurso: 'diamantita', quantidade: 20, setorMinimo: 21, modificador: 'Escudos inimigos +15% · veios de diamantita expostos', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'gelo' }, texto: 'Abater 200 inimigos de gelo' }, descricao: 'A diamantita se forma quando a cinza do Mar de Cinzas congela. A janela dura um dia.' },
+  { id: 'descarga_maior', nome: 'Descarga Maior', subtitulo: 'JANELA DE RAIO', cor: '#54cfff', ritmo: 'diario', recurso: 'ferrita', quantidade: 22, setorMinimo: 1, modificador: 'Dano de raio +18% · condutores saturados', objetivo: { fato: 'abate', alvo: 200, filtro: { elemento: 'raio' }, texto: 'Abater 200 inimigos de raio' }, descricao: 'Enquanto a tempestade dura, a ferrita aflora nas linhas de descarga do Berço de Vega.' },
+  { id: 'mare_corrosiva', nome: 'Maré Corrosiva', subtitulo: 'JANELA QUÍMICA', cor: '#62d7a4', ritmo: 'diario', recurso: 'titanio', quantidade: 22, setorMinimo: 1, modificador: 'Corrosão contínua no casco · depósitos instáveis', objetivo: { fato: 'abate', alvo: 290, filtro: { elemento: 'quimico' }, texto: 'Abater 290 inimigos químicos' }, descricao: 'O que corrói a nave também dissolve a rocha que prende o titânio do Pálio Verde.' },
+  { id: 'dobra_curta', nome: 'Dobra Curta', subtitulo: 'JANELA CÓSMICA', cor: '#b58cff', ritmo: 'diario', recurso: 'uranio', quantidade: 20, setorMinimo: 1, modificador: 'Inimigos cósmicos surgem fora de posição · pressão elevada', objetivo: { fato: 'abate', alvo: 220, filtro: { elemento: 'cosmico' }, texto: 'Abater 220 inimigos cósmicos' }, descricao: 'A dobra comprime uma galáxia inteira por um dia. O urânio da Fenda vem junto.' },
+  { id: 'silencio_balistico', nome: 'Silêncio Balístico', subtitulo: 'JANELA NEUTRA', cor: '#b8c4cf', ritmo: 'diario', recurso: 'platina', quantidade: 22, setorMinimo: 11, modificador: 'Sem vantagem elemental · dano normal +12%', objetivo: { fato: 'abate', alvo: 210, filtro: { elemento: 'padrao' }, texto: 'Abater 210 inimigos sem elemento' }, descricao: 'Nada resiste, nada favorece. Só massa contra massa — e a platina que sobra dela.' },
 
   // ── MENSAIS · tecnologia de chefe, 30 dias, volta em noventa ──────────────
   //

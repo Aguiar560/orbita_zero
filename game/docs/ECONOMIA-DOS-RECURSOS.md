@@ -71,12 +71,19 @@ elemento sem precisar de tabela nova:
 
 | Elemento | Minérios |
 |---|---|
-| cósmico | 8 — Diamantita (g3), Titânio (g4), Neodímio (g11), Molibdênio (g17), Cristal Quântico (g25), Liga Celestial (g28), Fluxo Dimensional (g29), Matéria Escura (g30) |
-| fogo | 7 — Ferrita (g1), Pirita (g2), Obsidiana (g8), Ródio (g14), Manganês (g20), Escória Estelar (g21), Aço Estelar (g27) |
-| químico | 6 — Urânio (g5), Platina (g6), Cobalto (g10), Níquel (g16), Nanofibra (g23), Nanotubo (g26) |
-| padrão | 4 — Irídio (g7), Zircônio (g13), Tecnécio (g19), Fragmento de Meteoro (g22) |
-| raio | 3 — Lítio (g9), Vanádio (g15), Grafeno (g24) |
-| gelo | 2 — Cromita (g12), Tântalo (g18) |
+| raio | 5 — Ferrita (g1), Ródio (g14), Níquel (g16), Manganês (g20), Grafeno (g24) |
+| fogo | 5 — Pirita (g2), Lítio (g9), Neodímio (g11), Escória Estelar (g21), Aço Estelar (g27) |
+| gelo | 5 — Diamantita (g3), Irídio (g7), Obsidiana (g8), Zircônio (g13), Tântalo (g18) |
+| químico | 5 — Titânio (g4), Cromita (g12), Molibdênio (g17), Nanofibra (g23), Nanotubo (g26) |
+| cósmico | 5 — Urânio (g5), Cristal Quântico (g25), Liga Celestial (g28), Fluxo Dimensional (g29), Matéria Escura (g30) |
+| padrão | 5 — Platina (g6), Cobalto (g10), Vanádio (g15), Tecnécio (g19), Fragmento de Meteoro (g22) |
+
+A tabela acima foi **remedida em 07/09**, depois de o elemento das galáxias
+passar a sair de `data/elemento-da-galaxia.ts`. Antes ela era 8/7/6/4/3/2 —
+consequência do rodízio por índice, não de desenho. Agora são cinco por
+elemento, e o minério raso de cada um cai numa das **seis primeiras galáxias**:
+Ferrita (raio, g1), Pirita (fogo, g2), Diamantita (gelo, g3), Titânio (químico,
+g4), Urânio (cósmico, g5), Platina (padrão, g6).
 
 `usarCargaNoItem` e `usarCargaNaNave` já existem e já convertem elemento. Hoje
 custam uma **carga de serviço comprada na Loja** — e a Loja vai ser reformulada
@@ -90,13 +97,16 @@ Proposta de custo, ancorada na tabela acima:
 - **converter uma NAVE**: a faixa baixa da receita galáctica → **54 a 94
   unidades**. É decisão estratégica e rara; deve doer.
 
-**A consequência que precisa de decisão sua:** o minério de gelo só existe nas
-galáxias 12 e 18. Converter para gelo antes da 12 fica impossível. Isso cria
-exatamente a decisão que `quantidadeDeMaterialGalactico` diz querer preservar —
-"voltar à galáxia correta" — mas é uma trava dura. Duas saídas: aceitar como
-está, ou deixar qualquer minério servir a qualquer elemento com **penalidade de
-quantidade** (3× fora do elemento). Prefiro a primeira: a segunda transforma
-seis materiais distintos num só, com nomes diferentes.
+**A trava que existia aqui morreu em 07/09.** Este parágrafo pedia decisão sobre
+o minério de gelo existir só nas galáxias 12 e 18, o que tornava impossível
+converter para gelo antes da 12. Com o elemento das galáxias reescrito, o
+minério raso de **todos os seis** elementos cai nas seis primeiras galáxias — a
+conversão para qualquer elemento fica disponível cedo, e a escada de custo
+continua sendo o nível da peça.
+
+A alternativa que eu havia listado — qualquer minério servir a qualquer elemento
+com penalidade de 3× — fica descartada de vez: ela transformaria seis materiais
+distintos num só com nomes diferentes, e agora nem resolve problema nenhum.
 
 ### 2. Os gases viram o combustível da recalibração
 
@@ -172,14 +182,15 @@ de `MARCO_DOS_EVENTOS`, uma volta completa em trinta dias.
 
 ## Por que isto melhora a proposta acima, e não só a complica
 
-O item 1 tem uma trava dura que eu registrei como problema: **o minério de gelo
-só existe nas galáxias 12 e 18**, então converter uma peça para gelo antes da
-galáxia 12 é impossível.
+O item 1 tinha uma trava dura: o minério de gelo só existia nas galáxias 12 e
+18, então converter uma peça para gelo antes da 12 era impossível. **A reescrita
+dos elementos das galáxias em 07/09 já desfez isso** — o gelo começa na galáxia
+3, como todo elemento começa numa das seis primeiras.
 
-O evento diário elemental resolve isso sem diluir nada. Se o diário de gelo paga
-minério de gelo, o jogador de galáxia 3 que quer uma peça de gelo tem um caminho
-— esperar o dia certo — em vez de um muro. A escassez vira AGENDA, que é o que
-um jogo idle sabe cobrar, e não bloqueio.
+O evento diário elemental continua valendo, e por um motivo que sobrevive à
+correção: cada diário paga o minério RASO do elemento que ele pede, num volume
+que a mineração normal levaria dias para juntar. A escassez vira AGENDA, que é o
+que um jogo idle sabe cobrar, e não bloqueio.
 
 Isso também remove a necessidade da penalidade de 3× que eu tinha listado como
 alternativa. Ela transformaria seis materiais distintos num só com nomes

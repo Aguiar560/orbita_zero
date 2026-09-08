@@ -8,8 +8,59 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 07/09/2026 · 1.011 testes passando · registro consolidado
+**Última atualização:** 07/09/2026 · 1.163 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 07/09/2026 — a galáxia de fogo passou a ter inimigos de fogo
+
+O rótulo elemental de uma galáxia não descrevia nada. O elemento vinha da FROTA
+(`FLEET_INFO[índice/2]`) nas vinte primeiras e de um rodízio por índice depois; o
+ELENCO de inimigos vinha de outro deslocamento de índice, sem olhar elemento
+nenhum. **Medido: a Galáxia 1 se declarava de fogo e tinha ZERO inimigos de
+fogo** — 1.608 químicos, 843 neutros, 564 cósmicos, 380 de raio.
+
+Agora o elemento sai de uma tabela escrita à mão
+([`data/elemento-da-galaxia.ts`](../src/data/elemento-da-galaxia.ts)), lida tanto
+pelas galáxias quanto pelo bestiário, e o elenco a segue: duas das quatro vagas
+regulares e uma das duas de elite vão para o elemento da região.
+
+| Antes | Depois |
+|---|---|
+| rótulo = elemento dominante em ~0 de 30 galáxias | **16 de 30**, presença média 38% |
+| cósmico em 8 galáxias, gelo em 2 | **5 por elemento**, exatas |
+| minério de gelo só nas galáxias 12 e 18 | **cinco minérios por elemento**, o raso de cada um nas seis primeiras galáxias |
+
+As três primeiras foram escolha do Rafael — Berço de Vega é raio, Corte de Ferro
+é fogo, Mar de Cinzas é gelo. As galáxias 21–30 espelham a identidade autoral
+que já estava escrita em `PROFUNDAS`, em vez de serem sobrescritas para fechar
+uma conta.
+
+### O que a mudança quebrou, e o que ninguém estava vigiando
+
+A tabela `MINERIOS_POR_ELEMENTO` é DERIVADA do elemento da galáxia, então ela se
+reescreveu sozinha — de propósito. **A lista de eventos diários não**, porque
+nomeia o recurso à mão: os SEIS diários passaram a pagar minério de outro
+elemento de uma vez. O de fogo pagava Ferrita, que virou de raio; o de gelo
+pagava Cromita, que virou de químico.
+
+**A suíte inteira passou.** O único teste que olhava o prêmio do diário cobrava a
+FAMÍLIA do recurso — e minério errado também é minério. O elo agora é testado
+contra a tabela derivada em `tests/eventos.test.ts`.
+
+Também mudaram os `setorMinimo` dos diários, remedidos: fogo abre no setor 11,
+gelo no 21, e raio, químico e cósmico no 1.
+
+### A lacuna que o código não resolve
+
+Cinco galáxias de gelo continuam parando em **16–21% de presença**, contra mais
+de 40% nas outras. Não é o algoritmo: **há UM único inimigo regular de gelo
+desenhado, e dois de raio, contra cinco de químico e cinco de cósmico.** Exigir
+quatro vagas do elemento faria a galáxia de gelo repetir a mesma nave quatro
+vezes — pior que o problema. É lacuna de ARTE, e está registrada como tal.
+
+1.163 testes passando.
 
 ---
 
