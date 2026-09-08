@@ -181,6 +181,19 @@ export function createState(
  * sempre migrar. Só um save de versão FUTURA (arquivo mais novo que o código) é
  * recusado, porque aí não há como saber o que fazer.
  */
+/**
+ * Casco em campo tem de estar na frota — a regra, num lugar só.
+ *
+ * Ela existia como uma linha solta dentro de `migrate`, e por isso era cobrada
+ * no único momento em que a frota ainda não era confiável. Sendo função, o
+ * `sincronizarFrota` cobra a MESMA coisa quando a frota do servidor chega, e
+ * não há duas versões da regra para divergirem.
+ */
+export function casarCascoComAFrota(state: GameState): void {
+  if (state.fleet.includes(state.hull)) return;
+  state.hull = state.fleet[0] ?? HULLS[0]!.id;
+}
+
 export function migrate(raw: unknown): GameState | null {
   if (!raw || typeof raw !== 'object') return null;
   const data = raw as Partial<GameState>;
@@ -200,6 +213,19 @@ export function migrate(raw: unknown): GameState | null {
     ? PILOTO_PADRAO
     : (typeof data.piloto === 'string' && PILOTO_POR_ID.has(data.piloto) ? data.piloto : '');
   const fresh = createState(data.universe?.seed, piloto);
+
+  /**
+   * Uma frota VAZIA não é uma frota sem naves — é uma frota que ainda não veio.
+   *
+   * `semODinheiro` sobe `fleet: []` de propósito: a frota mora na tabela
+   * `frota` desde a Fase 3c, e casco é poder, então a lista não pode ser
+   * escrita pelo cliente. `sincronizarFrota` a preenche logo depois do boot.
+   *
+   * A diferença importa porque a regra "casco em campo tem de estar na frota"
+   * era cobrada aqui, contra esse espaço reservado — e trocava a nave do
+   * jogador toda vez que ele voltava. Ver `tests/casco-sobrevive-a-nuvem`.
+   */
+  const frotaAusente = !frotaSa(data.fleet).length;
   const state: GameState = {
     ...fresh,
     ...data,
@@ -365,7 +391,28 @@ export function migrate(raw: unknown): GameState | null {
   });
 
   for (const id of INITIAL_FLEET) if (!state.fleet.includes(id)) state.fleet.push(id);
-  if (!state.fleet.includes(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
+
+  /**
+   * O casco em campo só é demovido por uma frota que EXISTE.
+   *
+   * Relatado pelo Rafael em 08/09: "saio do jogo com a nave Sopro Astral, ao
+   * reconectar o jogo entra com Núcleo Vektor" — o casco de partida do piloto
+   * padrão. A linha era `if (!state.fleet.includes(state.hull))` sem
+   * ressalva, e com a frota da nuvem vazia ela acertava SEMPRE.
+   *
+   * O estrago não parava na tela: `creditarAusencia` manda este `hull` ao
+   * servidor, e é com ele que a ausência inteira é simulada. O jogador ficava
+   * offline com uma nave e recebia o rendimento de outra — e o save seguinte
+   * gravava a troca, então ela não se desfazia sozinha.
+   *
+   * A conferência de verdade continua existindo, e agora acontece onde a
+   * autoridade está: em `sincronizarFrota`, contra a frota do servidor.
+   */
+  if (!frotaAusente) casarCascoComAFrota(state);
+  // Casco que não existe mais no catálogo cai de qualquer jeito: sem isto
+  // `resolveStats` procuraria um casco inexistente e os atributos viriam
+  // indefinidos. É a parte da regra antiga que não depende da frota.
+  if (!hullIds.has(state.hull)) state.hull = state.fleet[0] ?? HULLS[0]!.id;
   state.command.nivel = Math.max(1, Math.floor(state.command.nivel));
   state.vip.expiresAt = Math.max(0, Number.isFinite(state.vip.expiresAt) ? state.vip.expiresAt : 0);
   state.command.allocated = state.command.allocated.filter((id) => typeof id === 'string');

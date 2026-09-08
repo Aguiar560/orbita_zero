@@ -2,6 +2,7 @@ import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
 import type { ComandoDeItem, Item, SlotId } from '@sim/types';
 
+import { casarCascoComAFrota } from '@sim/state';
 import { tokenValido } from './conta';
 
 /**
@@ -219,6 +220,19 @@ export async function sincronizarFrota(sim: Sim): Promise<boolean> {
   const frota = await chamarFrota();
   if (!frota) return false;
   sim.state.fleet = frota;
+  /**
+   * É AQUI que "casco em campo tem de estar na frota" passa a valer.
+   *
+   * A regra morava em `migrate`, e lá ela julgava o casco contra uma frota que
+   * ainda não tinha chegado — o save da nuvem sobe `fleet: []`. O jogador
+   * voltava ao jogo com a nave de partida do piloto padrão, e a ausência era
+   * creditada com ela. Ver `tests/casco-sobrevive-a-nuvem`.
+   *
+   * Esta é a frota do SERVIDOR, que é a autoridade sobre o que o jogador tem.
+   * Quem editou o save para voar com um casco que não comprou perde o casco
+   * aqui, que é onde a checagem tem valor.
+   */
+  casarCascoComAFrota(sim.state);
   sim.touch();
   return true;
 }

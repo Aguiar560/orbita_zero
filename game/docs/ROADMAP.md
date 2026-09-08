@@ -8,8 +8,51 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 07/09/2026 · 1.169 testes passando · registro consolidado
+**Última atualização:** 08/09/2026 · 1.173 testes passando · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08/09/2026 — a nave voltava trocada, e a ausência era paga com a errada
+
+Relato do Rafael: "saio do jogo com a nave Sopro Astral, ao reconectar o jogo
+entra com Núcleo Vektor". Núcleo Vektor é o casco de partida do piloto padrão.
+
+### A cadeia
+
+1. `semODinheiro` sobe `fleet: []` para a nuvem — **de propósito**: a frota mora
+   na tabela `frota` desde a Fase 3c, e casco é poder, então a lista não pode
+   ser escrita pelo cliente.
+2. `migrate` recebia essa frota vazia, caía no padrão (casco do piloto + frota
+   inicial) e então demovia o casco ativo por ele "não estar na frota". A linha
+   era `if (!state.fleet.includes(state.hull))`, sem ressalva — com a frota da
+   nuvem vazia ela acertava **sempre**.
+3. `sincronizarFrota` devolvia a frota verdadeira logo depois. Ninguém devolvia
+   o casco.
+4. `creditarAusencia` manda esse `hull` ao servidor, e `montarEstado` simula a
+   ausência com o casco que o cliente informa.
+
+**A ausência inteira era calculada com a nave errada** — e o save seguinte
+gravava a troca, então ela não se desfazia sozinha. O Rafael desconfiou disso
+antes de eu olhar o código, e estava certo.
+
+### O conserto
+
+A regra "casco em campo tem de estar na frota" continua valendo. O que mudou é
+**quando** ela é cobrada: virou a função `casarCascoComAFrota`, e quem a chama
+é `sincronizarFrota`, contra a frota do **servidor** — que é a autoridade sobre
+o que o jogador tem. Em `migrate` ela só roda quando o save realmente trouxe
+uma frota; o que sobra lá é a parte que não depende dela: casco fora do
+catálogo continua caindo para um que existe.
+
+Quem editou o save para voar com um casco que não comprou perde o casco na
+sincronização, que é onde a checagem tem valor — antes ela era cobrada no único
+momento em que a informação não era confiável.
+
+`tests/casco-sobrevive-a-nuvem.test.ts` percorre o catálogo inteiro, e não só o
+caso do relato: um caso só passaria por acaso se `fleet[0]` já fosse o certo.
+
+1.173 testes passando.
 
 ---
 
