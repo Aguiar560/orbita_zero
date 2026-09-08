@@ -945,6 +945,78 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   .tab.nova { animation: none; }
 }
 
+/* ── nova funcionalidade ──────────────────────────────────────────────────
+ *
+ * Não é toast: permanece até o jogador decidir abrir ou deixar para depois.
+ * Também não congela o combate — o cartão informa sem tomar a tela inteira. */
+.novo-marco {
+  --marco-cor: 89, 216, 255;
+  position: fixed; isolation: isolate; z-index: 80;
+  left: 50%; top: clamp(78px, 12vh, 128px); width: min(430px, calc(100vw - 28px));
+  overflow: hidden; padding: 0 16px 14px;
+  border: 1px solid rgba(var(--marco-cor), .72);
+  background:
+    linear-gradient(115deg, rgba(var(--marco-cor), .12), transparent 38%),
+    linear-gradient(180deg, rgba(8, 19, 32, .985), rgba(3, 9, 18, .985));
+  box-shadow: 0 22px 56px rgba(0, 0, 0, .7), inset 0 0 28px rgba(var(--marco-cor), .07), 0 0 24px rgba(var(--marco-cor), .19);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  transform: translateX(-50%);
+  animation: novo-marco-entra 280ms cubic-bezier(.2, .8, .2, 1);
+}
+.novo-marco::after {
+  content: ''; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 4px, rgba(var(--marco-cor), .035) 4px 5px);
+}
+.novo-marco.saindo { animation: novo-marco-sai 180ms ease-in forwards; pointer-events: none; }
+.novo-marco-feixe {
+  height: 3px; margin: 0 -16px 0;
+  background: linear-gradient(90deg, transparent, rgb(var(--marco-cor)) 22% 78%, transparent);
+  box-shadow: 0 0 13px rgba(var(--marco-cor), .78);
+}
+.novo-marco-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 34px; color: rgb(var(--marco-cor));
+  font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .17em;
+}
+.novo-marco-x {
+  padding: 5px; border: 0; background: transparent; color: #7890a2; cursor: pointer;
+  font: 700 12px/1 sans-serif;
+}
+.novo-marco-x:hover, .novo-marco-x:focus-visible { color: #dff8ff; outline: none; }
+.novo-marco-conteudo { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 14px; }
+.novo-marco-icone {
+  display: grid; place-items: center; width: 70px; height: 70px;
+  border: 1px solid rgba(var(--marco-cor), .36); border-radius: 8px;
+  background: radial-gradient(circle, rgba(var(--marco-cor), .17), rgba(3, 10, 19, .76) 68%);
+  box-shadow: inset 0 0 16px rgba(var(--marco-cor), .09);
+}
+.novo-marco-arte { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(var(--marco-cor), .45)); }
+.novo-marco-texto { min-width: 0; }
+.novo-marco-texto small { color: #ffcf52; font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .15em; }
+.novo-marco-texto h2 { margin: 5px 0 4px; color: #e8faff; font: 700 19px/1.05 'Oxanium', sans-serif; letter-spacing: .045em; text-transform: uppercase; }
+.novo-marco-texto p { margin: 0; color: #9ab2c1; font-size: 11.5px; line-height: 1.4; }
+.novo-marco-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 13px; }
+.novo-marco-acoes button {
+  min-height: 34px; padding: 7px 12px; border-radius: 5px; cursor: pointer;
+  font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .08em;
+}
+.novo-marco-depois { border: 1px solid rgba(123, 154, 176, .27); background: rgba(4, 11, 20, .72); color: #8097a8; }
+.novo-marco-abrir {
+  border: 1px solid rgba(var(--marco-cor), .78); background: rgba(var(--marco-cor), .13); color: #c9f5ff;
+  box-shadow: inset 0 0 12px rgba(var(--marco-cor), .08), 0 0 10px rgba(var(--marco-cor), .12);
+}
+.novo-marco-acoes button:hover, .novo-marco-acoes button:focus-visible { border-color: rgb(var(--marco-cor)); color: #fff; outline: none; }
+@keyframes novo-marco-entra {
+  from { opacity: 0; transform: translate(-50%, -12px) scale(.97); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+@keyframes novo-marco-sai {
+  to { opacity: 0; transform: translate(-50%, -8px) scale(.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .novo-marco, .novo-marco.saindo { animation: none; }
+}
+
 .panel-host { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 14px; scrollbar-width: thin; }
 /* A matriz precisa da altura toda do painel; os outros painéis rolam normalmente. */
 .panel-host:has(.tree-root) { overflow: hidden; }
@@ -8025,6 +8097,18 @@ select option:disabled { color: #667991; }
   .mission-hud-entry > strong { font-size: 9px; }
   .mission-hud-progress, .mission-hud-progress b { font-size: 8px; }
   .toasts { left: 10px; right: 10px; bottom: calc(var(--mobile-dock) + 10px); }
+  .novo-marco {
+    top: max(74px, calc(env(safe-area-inset-top) + 58px));
+    width: calc(100vw - 20px); padding: 0 12px 12px;
+  }
+  .novo-marco-feixe { margin-inline: -12px; }
+  .novo-marco-conteudo { grid-template-columns: 58px minmax(0, 1fr); gap: 10px; }
+  .novo-marco-icone { width: 56px; height: 56px; }
+  .novo-marco-arte { width: 44px; height: 44px; }
+  .novo-marco-texto h2 { font-size: 16px; }
+  .novo-marco-texto p { font-size: 10.5px; }
+  .novo-marco-acoes { display: grid; grid-template-columns: .7fr 1.3fr; }
+  .novo-marco-acoes button { min-width: 0; padding-inline: 7px; }
 
   /* Telas de trabalho ocupam o telefone de verdade. Larguras e molduras de
      desktop dentro dos painéis não podem voltar a criar rolagem horizontal. */

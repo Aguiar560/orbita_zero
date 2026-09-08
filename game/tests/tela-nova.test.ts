@@ -65,6 +65,22 @@ describe('a marca de tela recém-liberada', () => {
     expect(ordem.length).toBeGreaterThan(0); // badge aparece ANTES no ternário
   });
 
+  it('mostra um cartão persistente, com explicação e acesso direto', () => {
+    const shell = fonte('ui', 'Shell.ts');
+    expect(shell).toContain("h('.novo-marco'");
+    expect(shell).toContain("text: 'NOVA FUNCIONALIDADE'");
+    expect(shell).toContain('text: unlock.message');
+    expect(shell).toContain("bus.emit('panel:open', { id: panel.id })");
+    expect(shell).not.toContain('`${panel.title} liberada · Patente ${unlock.level}`');
+  });
+
+  it('enfileira desbloqueios simultâneos em vez de sobrepor cartões', () => {
+    const shell = fonte('ui', 'Shell.ts');
+    expect(shell).toContain('this.marcosPendentes.push({ panel, unlock });');
+    expect(shell).toContain('if (this.marcoHost) return;');
+    expect(shell).toContain('const proximo = this.marcosPendentes.shift();');
+  });
+
   it('e a marca tem estilo, com o pulso desligável', () => {
     /**
      * O pulso é reforço, não o recado: quem pede movimento reduzido continua
@@ -73,6 +89,8 @@ describe('a marca de tela recém-liberada', () => {
     const css = readFileSync(join(process.cwd(), 'src', 'styles', 'main.css'), 'utf8');
     expect(css).toContain('.tab-nova {');
     expect(css).toContain('.tab.nova {');
+    expect(css).toContain('.novo-marco {');
+    expect(css).toContain('.novo-marco-abrir {');
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.tab\.nova \{ animation: none; \}/);
   });
 });

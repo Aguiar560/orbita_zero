@@ -115,6 +115,9 @@ export class Shell {
   private telasNovasNaBarra = '';
   /** Marcos já vistos no save atual: evita repetir o anúncio a cada re-render. */
   private readonly unlocksAnunciados = new Set<string>();
+  /** Desbloqueios simultâneos aparecem em sequência, nunca sobrepostos. */
+  private readonly marcosPendentes: Array<{ panel: Panel; unlock: ScreenUnlock }> = [];
+  private marcoHost: HTMLElement | null = null;
 
   private readonly resourceNodes = new Map<ResourceId, HTMLElement>();
   private leftRail!: LeftRail;
@@ -384,7 +387,7 @@ export class Shell {
       if (!unlock || !this.temAcessoAoPainel(panel, unlock) || this.unlocksAnunciados.has(panel.id)) continue;
       this.unlocksAnunciados.add(panel.id);
       mudou = true;
-      bus.emit('toast', { text: `${panel.title} liberada · Patente ${unlock.level}`, kind: 'epic', icon: panel.icon });
+      this.enfileirarNovoMarco(panel, unlock);
     }
 
     /**
@@ -404,6 +407,69 @@ export class Shell {
       this.telasNovasNaBarra = agora;
       this.buildTabs();
     }
+  }
+
+  /**
+   * Mostra cada central recém-liberada como um cartão persistente.
+   *
+   * Um salto grande de patente pode abrir mais de uma tela no mesmo instante.
+   * A fila é deliberada: empilhar cartões esconderia texto e botões, enquanto
+   * substituir o primeiro faria o jogador nunca saber de um dos desbloqueios.
+   */
+  private enfileirarNovoMarco(panel: Panel, unlock: ScreenUnlock): void {
+    this.marcosPendentes.push({ panel, unlock });
+    this.mostrarProximoMarco();
+  }
+
+  private mostrarProximoMarco(): void {
+    if (this.marcoHost) return;
+    const proximo = this.marcosPendentes.shift();
+    if (!proximo) return;
+    const { panel, unlock } = proximo;
+
+    const fechar = (): void => {
+      const atual = cartao;
+      atual.classList.add('saindo');
+      setTimeout(() => {
+        atual.remove();
+        if (this.marcoHost === atual) this.marcoHost = null;
+        this.mostrarProximoMarco();
+      }, 180);
+    };
+
+    const abrir = (): void => {
+      fechar();
+      bus.emit('panel:open', { id: panel.id });
+    };
+
+    const arte = panel.iconUrl
+      ? h('img.novo-marco-arte', { src: panel.iconUrl, alt: '', 'aria-hidden': true, draggable: false })
+      : spriteIcon(panel.icon, 54, 'novo-marco-arte');
+    const tituloId = `novo-marco-${panel.id}`;
+    const cartao = h('.novo-marco', {
+      role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': tituloId,
+      'aria-live': 'assertive',
+    },
+    h('.novo-marco-feixe', { 'aria-hidden': true }),
+    h('.novo-marco-topo', {},
+      h('span', { text: `PATENTE ${unlock.level} ALCANÇADA` }),
+      h('button.novo-marco-x', { text: '\u2715', 'aria-label': 'Ver depois', onclick: fechar }),
+    ),
+    h('.novo-marco-conteudo', {},
+      h('.novo-marco-icone', {}, arte),
+      h('.novo-marco-texto', {},
+        h('small', { text: 'NOVA FUNCIONALIDADE' }),
+        h(`h2#${tituloId}`, { text: panel.title }),
+        h('p', { text: unlock.message }),
+      ),
+    ),
+    h('.novo-marco-acoes', {},
+      h('button.novo-marco-depois', { text: 'DEPOIS', onclick: fechar }),
+      h('button.novo-marco-abrir', { text: `ABRIR ${panel.title.toUpperCase()}`, onclick: abrir }),
+    ));
+
+    this.marcoHost = cartao;
+    this.root.append(cartao);
   }
 
   private wireEvents(): void {

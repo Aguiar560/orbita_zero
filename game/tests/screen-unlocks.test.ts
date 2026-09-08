@@ -14,4 +14,10 @@ describe('marcos de telas', () => {
     expect(screenUnlockFor('galaxia')).toBeUndefined();
     expect(screenUnlockFor('missoes')).toBeUndefined();
   });
+
+  it('todo desbloqueio explica a funcionalidade liberada', () => {
+    for (const [id, unlock] of Object.entries(SCREEN_UNLOCKS)) {
+      expect(unlock.message.trim().length, id).toBeGreaterThan(24);
+    }
+  });
 });
