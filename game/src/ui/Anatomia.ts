@@ -2,7 +2,8 @@ import { bus, toast } from '@app/Bus';
 import { HULL_BY_ID } from '@data/hulls';
 import { SLOTS, SLOT_BY_ID } from '@data/items';
 import { rarityInfo } from '@data/rarity';
-import { equipamentoDe } from '@sim/stats';
+import { fmt } from '@core/format';
+import { equipamentoDe, powerScore, resolveStats } from '@sim/stats';
 import type { Sim } from '@sim/index';
 import type { SlotId } from '@sim/types';
 import { elementoDaNave } from '@sim/elemento-da-nave';
@@ -154,6 +155,11 @@ export class Anatomia {
     const casco = HULL_BY_ID.get(this.vendo);
     if (!casco) return;
     const emCampo = this.vendo === sim.state.hull;
+    // A Anatomia também monta naves guardadas. Resolve a ficha usando o casco
+    // que está sendo exibido, sem trocar a nave ativa nem alterar o save.
+    const poder = Math.round(powerScore(resolveStats(
+      emCampo ? sim.state : { ...sim.state, hull: this.vendo },
+    )));
 
     clear(this.corpo).append(
       h('.painel-secao', { text: 'ANATOMIA' }),
@@ -181,6 +187,10 @@ export class Anatomia {
       h('.anat-elemento', { title: 'Esta nave só aceita peças neutras ou deste elemento' },
         h('span.tiny.muted', { text: 'ELEMENTO' }),
         elementoComNome(elementoDaNave(sim.state, this.vendo), 15),
+      ),
+      h('.anat-poder', { title: 'Poder total desta nave com os equipamentos atuais' },
+        h('span.tiny.muted', { text: 'PODER DA NAVE' }),
+        h('strong', { text: fmt(poder) }),
       ),
 
       // Nave em campo não ganha rodapé: o quadro já acende com `.em-campo`, e um

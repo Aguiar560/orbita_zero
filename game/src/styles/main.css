@@ -6148,8 +6148,9 @@ select option:disabled { color: #667991; }
 .inv-cell[draggable="true"] { cursor: grab; }
 .inv-cell:active { cursor: grabbing; }
 
-/* Elemento da nave: rótulo à esquerda, valor à direita, numa linha só. */
-.anat-elemento {
+/* Resumo da nave: elemento e poder, cada informação em sua própria linha. */
+.anat-elemento,
+.anat-poder {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px; padding: 5px 8px;
   border: 1px solid rgba(107, 155, 190, .22);
@@ -6158,6 +6159,12 @@ select option:disabled { color: #667991; }
 }
 .anat-elemento .elem-linha { display: flex; align-items: center; gap: 5px; }
 .anat-elemento .elem-linha span { font-size: 12px; font-weight: 600; }
+.anat-poder strong {
+  color: #72dfff;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px rgba(73, 199, 255, .55);
+}
 
 .anat-ir { width: 100%; }
 
@@ -8559,6 +8566,7 @@ select option:disabled { color: #667991; }
   .layout > .anatomia .anat-quadro { width: min(100%, 440px); justify-self: center; }
   .layout > .anatomia .anat-seletor,
   .layout > .anatomia .anat-elemento,
+  .layout > .anatomia .anat-poder,
   .layout > .anatomia .anat-ir,
   .layout > .anatomia .painel-secao { width: min(100%, 440px); justify-self: center; }
   .anat-selecao {
