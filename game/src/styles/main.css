@@ -3210,14 +3210,12 @@ select option:disabled { color: #667991; }
  */
 .mis-especial {
   grid-template-columns: minmax(0, 1fr) minmax(250px, 0.95fr);
-  grid-template-rows: auto auto;
-  align-items: center; gap: 10px 14px;
+  grid-template-rows: auto;
+  align-items: start; gap: 10px 14px;
 }
-.mis-esp-esq { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.mis-esp-esq { grid-column: 1; grid-row: 1; align-self: center; }
 .mis-esp-dir { grid-column: 2; grid-row: 1; }
 .mis-especial > .mis-entregar.esp { grid-column: 2; grid-row: 2; width: 100%; }
-/* Sem botão (missão ainda em andamento), a recompensa ocupa as duas linhas. */
-.mis-especial > .mis-esp-dir:last-child { grid-row: 1 / span 2; }
 
 .mis-esp-txt strong { font-size: 15px; }
 .mis-esp-item { padding: 8px; }
@@ -5735,7 +5733,7 @@ select option:disabled { color: #667991; }
 .mis-card::before, .mis-card::after, .mis-especial::before, .mis-especial::after { content: none; }
 .mis-card.tipo-aliado { border-left-color: #b45cff; }
 .mis-card.tipo-galaxia { border-left-color: #ff6767; }
-.mis-especial { overflow: hidden; border-left-color: #ffb638; }
+.mis-especial { border-left-color: #ffb638; }
 .mis-esp-esq, .mis-esp-dir, .mis-esp-txt, .mis-esp-item, .mis-esp-info { min-width: 0; }
 .mis-card:hover, .mis-especial:hover { background: rgba(12,25,43,.94); border-color: rgba(109,215,255,.55); }
 .mis-card.pronta, .mis-especial.pronta { box-shadow: inset 0 0 0 1px rgba(92,224,138,.42); }
@@ -8110,7 +8108,7 @@ select option:disabled { color: #667991; }
      nelas deixava o conteúdo largo transbordar por cima dos cards seguintes. */
   .camada:has(.mis) .mis-card.mis-especial {
     grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
-    align-items: stretch; gap: 10px; overflow: hidden;
+    align-items: stretch; gap: 10px;
   }
   .camada:has(.mis) .mis-card.mis-especial > .mis-esp-esq,
   .camada:has(.mis) .mis-card.mis-especial > .mis-esp-dir,

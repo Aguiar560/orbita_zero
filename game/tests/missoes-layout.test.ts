@@ -13,6 +13,9 @@ describe('layout dos contratos especiais', () => {
 
     expect(cardEspecial).toContain("...(pronta");
     expect(cardEspecial).not.toContain(": h('span')");
+    expect(css).not.toContain('.mis-especial > .mis-esp-dir:last-child');
+    expect(css).toContain('.mis-esp-esq { grid-column: 1; grid-row: 1;');
+    expect(css).not.toContain('.mis-especial { overflow: hidden;');
   });
 
   it('empilha o contrato especial dentro da propria caixa em tela estreita', () => {
