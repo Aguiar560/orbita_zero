@@ -16,10 +16,13 @@ describe('layout dos contratos especiais', () => {
     expect(css).not.toContain('.mis-especial > .mis-esp-dir:last-child');
     expect(css).toContain('.mis-esp-esq { grid-column: 1; grid-row: 1;');
     expect(css).not.toContain('.mis-especial { overflow: hidden;');
+    expect(css).toMatch(/\.mis-especial \{[\s\S]*?min-height: 154px;/);
+    expect(css).toContain('.mis-especial:has(> .mis-entregar.esp) { min-height: 200px; }');
   });
 
   it('empilha o contrato especial dentro da propria caixa em tela estreita', () => {
     expect(css).toMatch(/\.camada:has\(\.mis\) \.mis-card\.mis-especial \{\s*grid-template-columns: minmax\(0, 1fr\); grid-template-rows: auto;/);
     expect(css).toMatch(/\.mis-card\.mis-especial > \.mis-esp-esq,[\s\S]*?grid-column: 1; grid-row: auto; width: 100%; min-width: 0;/);
+    expect(css).toContain('.mis-card.mis-especial:has(> .mis-entregar.esp) { min-height: 284px; }');
   });
 });
