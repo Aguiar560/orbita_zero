@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { describeGalaxy } from '@data/galaxies';
 import { REGRAS_DE_DROP, afinidadeDoAlvo, resolverDrop, type AlvoDoDrop } from '@data/balance/drops';
 import { Rng } from '@core/math';
+import { bus } from '@app/Bus';
 import { rollItem } from '@sim/loot';
 import { ELEMENTS } from '@data/elements';
 import {
@@ -148,6 +149,25 @@ describe('raridade alta é mais elemental, não menos', () => {
  * primeiro minuto, "guardar ou desmanchar" nunca é uma decisão.
  */
 describe('a carga começa pequena e cresce por conquista', () => {
+  it('avisa a interface assim que a peça entra no inventário', () => {
+    const sim = new Sim(createState(88));
+    sim.state.settings.autoEquip = false;
+    sim.state.settings.autoSalvage = 0;
+    const peca = rollItem(new Rng(88), 1, 0, 0);
+    let visivelAoNotificar = false;
+    const off = bus.on('state:changed', () => {
+      visivelAoNotificar = sim.state.inventory.some((item) => item.uid === peca.uid);
+    });
+
+    try {
+      sim.acquire(peca);
+    } finally {
+      off();
+    }
+
+    expect(visivelAoNotificar).toBe(true);
+  });
+
   it('começa em 15 — grade 5 × 3', () => {
     expect(capacidadeDeItens([])).toBe(CARGA_INICIAL);
     expect(CARGA_INICIAL).toBe(5 * 3);

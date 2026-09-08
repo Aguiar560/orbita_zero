@@ -2186,6 +2186,10 @@ export class Sim {
     }
 
     this.stash(item);
+    // A coleta já alterou o inventário local; avise a interface no mesmo
+    // instante. Sem isto, o painel só redesenhava quando alguma outra ação
+    // emitia `state:changed`, dando a impressão de atraso do servidor.
+    this.touch();
     bus.emit('loot:dropped', { item });
   }
 
