@@ -77,7 +77,7 @@ camada de teste que cubra render e interação, que hoje é zero.
 | Provação | 🟡 funciona; 16 modificadores, restam as artes dos chefes | `data/provacao*.ts` |
 | Matriz | ✅ estável | `sim/tree.ts`, `data/tree.ts` |
 | **Baús** | ✅ reformados; chances próprias, assets e revelação animada | `data/chests.ts`, `ui/panels/ChestsPanel.ts` |
-| **Loja** | ✅ Central de Serviços; logística, cotas e câmbio | `data/shop.ts`, `ui/panels/ShopPanel.ts` |
+| **Loja** | ✅ Central de Serviços; logística, cotas, câmbio, baús, VIP e **compra de cristais por Pix** | `data/shop.ts`, `ui/panels/ShopPanel.ts`, `app/compras.ts`, `server/src/compras.ts` |
 | **Craft de afixos** | ✅ Bancada própria; Prefixos/Sufixos e remodulação de linha | `data/balance/recalibracao.ts`, `ui/panels/AffixCraftPanel.ts` |
 | Códex | ✅ chefes, inimigos/elites, cascos, itens, recursos/fontes e elementos | `ui/panels/CodexPanel.ts` |
 | Conteúdo por galáxia | 🟡 elenco base pronto; falta variedade autoral contínua | `data/enemies.ts`, `hulls.ts`, `bosses.ts` |
@@ -1483,6 +1483,29 @@ O teste guarda as três fronteiras: ganho igual, ausência não avança de setor
 missão só no jogo aberto.
 
 ---
+## A compra de cristais — o que falta para valer dinheiro (09/09/2026)
+
+O código está pronto e testado contra um provedor falso: `/checkout`,
+`/webhook/pagamento`, `/compra`, a varredura de cinco minutos e a tela do Pix.
+Sem credencial, o jogo funciona igual e o `/checkout` responde
+`pagamento_indisponivel`. O que falta não é código:
+
+1. **Destravar o painel do Mercado Pago** e gerar as credenciais.
+2. `wrangler secret put MP_ACCESS_TOKEN` e `wrangler secret put MP_WEBHOOK_SECRET`
+   — **no terminal do Rafael**. Segredo não passa por conversa.
+3. **Configurar a URL do webhook** no painel deles:
+   `…workers.dev/webhook/pagamento`.
+4. **Critério de aceite:** uma cobrança de **R$ 0,01** paga de verdade, com
+   credencial de teste, creditando os cristais na tela sem recarregar; e o livro
+   das recusas sem nenhuma linha de `/webhook/pagamento` no período.
+
+Pendências de política, que são decisão e não implementação:
+
+- **Estorno.** Pix não tem chargeback, então todo estorno é administrativo. A
+  tabela `compras` guarda o que foi vendido, por quanto e quando — falta
+  escrever a política e o caminho de execução.
+- **Nota fiscal.** O CNPJ existe; a emissão não está ligada a nada.
+
 ## Dívidas técnicas conhecidas
 
 Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
@@ -1500,7 +1523,7 @@ Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
 | **A auditoria de teto da carteira nunca gravou** | `registrarExcedentes` lia `SELECT setor FROM progresso`; a coluna é `melhor_setor`. A função engole o próprio erro de propósito (roda depois do pagamento), então não havia sintoma. Corrigido em 08/09, mas **as linhas de `excedentes` daquele período não existem** | ✅ corrigido; o histórico é irrecuperável |
 | **Morte conta por segundo, não por passo** | setor 90 no simulador: 300 mortes contra 1.200 medidas em dez minutos ao vivo | `sim/morte.ts` + o arnês |
 | **`d1_migrations` é uma armadilha** | as migrações 0012–0014 subiram por `--file=`, que não registra. Um `wrangler d1 migrations apply` tentaria reaplicá-las e o `ADD COLUMN` falharia | decidir entre reconciliar a tabela ou abandonar `migrations apply` de vez |
-| **Zero teste de render e interação** | os quatro defeitos de 08/09 eram de interação ou operação; a suíte de 1.379 é toda de regra e dado. Os testes que os pegam hoje leem o **fonte** | precisa de DOM na suíte (jsdom/happy-dom) ou de um arnês de painel |
+| **Zero teste de render e interação** | os quatro defeitos de 08/09 eram de interação ou operação; a suíte de 1.515 é toda de regra e dado. Os testes que os pegam hoje leem o **fonte** | precisa de DOM na suíte (jsdom/happy-dom) ou de um arnês de painel |
 | ~~Erro de JavaScript no navegador é invisível daqui~~ | ✅ resolvido em 09/09: `app/erro-do-cliente.ts` escuta `error` e `unhandledrejection`, e `POST /erro-do-cliente` grava no livro com rota `/cliente`. Sem pilha, saneado dos dois lados, um tipo por sessão | — |
 | **Arte elemental incompleta trava a dominância** | 1 inimigo comum de gelo e 2 de raio; as galáxias desses elementos ficam em 26–29% de presença elemental, contra 62% de média | `data/enemies.ts` + arte |
 

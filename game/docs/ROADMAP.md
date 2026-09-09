@@ -8,8 +8,77 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.413 testes** em 139 arquivos · registro consolidado
+**Última atualização:** 09/09/2026 · **1.515 testes** em 146 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 09/09/2026 — a compra de cristais, do botão ao crédito
+
+O jogo passou a receber dinheiro. O caminho é o que o Rafael definiu: **compra-se
+cristal com dinheiro, e o passe com cristal** — duas transações separadas, com o
+selo "1 PASSE VIP" do pacote Comando valendo o que diz (500 cristais são
+exatamente um passe), sem o webhook conceder passe nenhum.
+
+### O que foi construído
+
+`server/src/compras.ts` é quase todo puro, e isso é decisão: dinheiro de verdade
+é a única área do projeto onde um defeito não se conserta com um deploy. Preço,
+verificação de assinatura e transição de estado moram lá, testáveis sem
+provedor, sem banco e sem sorte. Sobraram duas chamadas de rede e quatro
+consultas em `index.ts`.
+
+A tabela `compras` (`0017`) responde o que o livro-caixa não responde: a
+cobrança criada e nunca paga, que é a maioria. E congela `cristais` e
+`centavos` na criação — entre criar e pagar passam minutos, e o catálogo pode
+mudar; o jogador recebe **o que foi anunciado quando pagou**.
+
+### Os três caminhos, e por que não bastava o webhook
+
+O defeito temido não é o crédito errado — é o crédito **nunca disparado**. O
+webhook depende de uma URL configurada certo no painel de outra empresa, de o
+Worker estar de pé no segundo em que ele sai, e de a assinatura conferir; os
+três falham calados, e o sintoma é *paguei e não recebi*.
+
+| caminho | quem dispara | cobre |
+|---|---|---|
+| webhook | o provedor | o caso normal, em segundos |
+| `POST /compra` | a tela do Pix, de 5 em 5 s | webhook perdido, com o jogador olhando |
+| varredura | o gatilho de 5 min | webhook perdido **e** aba fechada |
+
+Os três desembocam na mesma função e passam pelas mesmas quatro conferências —
+assinatura, estado vindo da API deles, valor conferido contra o cobrado, crédito
+com `origem` = id do pagamento. É por isso, também, que o id do pagamento passou
+a ser guardado **na criação** da cobrança: sem ele não há por onde perguntar, e
+a resposta dependeria da pergunta.
+
+### A tela deixou de dizer EM BREVE
+
+COMPRAR abre a cobrança e a vitrine dá lugar ao QR e ao copia-e-cola **na mesma
+área** — a Loja já é uma camada, e empilhar janela sobre janela é a decisão que
+os Baús já tinham recusado. O laço de espera vive no render, não no clique:
+sair para a aba do VIP e voltar o traz de volta, e fechar o painel o encerra.
+
+Dois consertos vieram de brinde, da mesma família: o botão do passe chamava
+`this.render(sim)` — que monta uma árvore de nós e a joga fora —, então a trava
+e o texto do rodapé só apareciam no quadro seguinte em que outra coisa mudasse;
+e nem a compra do passe nem a do cristal espelhavam o saldo novo em
+`state.resources`, de modo que o topo da Loja mostraria o número antigo **até o
+fim do setor seguinte**.
+
+### Medido
+
+- **1.515 testes em 146 arquivos**, todos passando (eram 1.489 em 144).
+- `tests/o-pix-cai-e-a-tela-sabe.test.ts`: 22 testes, entre eles a simulação dos
+  30 minutos de espera contra o balde `cobranca` — **zero recusas** —, e a
+  prova de que o balde do provedor recusa o laço mesmo assim.
+- Em produção, `POST /webhook/pagamento` sem token responde `{"ok":true} 200` e
+  o livro registrou `/webhook/pagamento · assinatura_ausente`.
+- Na tela, com a conta deslogada, COMPRAR responde **"ENTRE NA CONTA PARA
+  COMPRAR CRISTAIS."** no lugar em que se clicou — a recusa audível funcionando.
+
+Falta o que não é código: credencial do Mercado Pago, a URL do webhook no painel
+deles e uma cobrança de R$ 0,01 paga de verdade. Ver o `PLANO.md`.
 
 ---
 

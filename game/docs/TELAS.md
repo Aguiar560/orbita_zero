@@ -715,9 +715,16 @@ mesma transação.
 - **Câmbio controlado:** apenas sucata → núcleos, com perda e cota crescente.
 - **Baús:** escolha e compra de Prata, Ouro ou Singularidade; a abertura e as
   probabilidades continuam na Câmara de Aquisição.
-- **Cristais:** cinco pacotes com preço em reais, visíveis e desabilitados até o
-  checkout existir.
+- **Cristais:** cinco pacotes com preço em reais e **compra por Pix, dentro do
+  jogo**. COMPRAR abre a cobrança e a vitrine dá lugar ao QR e ao copia-e-cola,
+  na mesma área — a Loja já é uma camada, e uma janela por cima dela seria a
+  segunda. A tela pergunta ao servidor de cinco em cinco segundos e vira
+  RECEBIDO sozinha; fechar não cancela nada. O copia-e-cola tem o mesmo peso do
+  QR porque quem joga no celular não tem uma segunda câmera para ler a própria
+  tela. Recusa aparece **onde se clicou**, em português, e não só no rodapé.
 - **VIP:** passe de 30 dias por 500 cristais, estado e cinco benefícios legíveis.
+  Cristais se compram com dinheiro; o passe, com cristais — o selo "1 PASSE VIP"
+  do pacote Comando é literal: 500 cristais dão exatamente um.
 
 Sorte, XP, cura e renda não são vendidos aqui. A tela reserva cor para moeda,
 serviço e VIP, mantendo fundos escuros e neon nas bordas.

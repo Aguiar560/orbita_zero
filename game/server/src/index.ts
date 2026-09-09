@@ -8,8 +8,8 @@ import {
 } from './carteira';
 import { excedeu } from './teto';
 import {
-  assinaturaConfere, manifestoDoMP, novaCompra, pacotePorId, partesDaAssinatura,
-  podePagar, valorConfere, type Compra,
+  assinaturaConfere, expirou, manifestoDoMP, novaCompra, pacotePorId,
+  partesDaAssinatura, podePagar, valorConfere, type Compra,
 } from './compras';
 import {
   ITENS_POR_POOL, TIPOS, novaSemente, precisaDeLoteNovo,
@@ -357,8 +357,61 @@ export default {
    */
   async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
     await avisarDasRecusas(env);
+    await varrerCobrancas(env);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * Fecha as cobranças que o webhook não fechou.
+ *
+ * ## Por que existe um terceiro caminho
+ *
+ * Já são três, e nenhum dos outros dois cobre este caso. O webhook é rápido e
+ * depende de outra empresa acertar a URL; a tela do Pix pergunta enquanto o
+ * jogador está olhando — e ele fecha a aba. Se o webhook falhar E a aba fechar,
+ * o dinheiro saiu da conta de alguém e nós não sabemos.
+ *
+ * Este laço roda no gatilho de cinco minutos que já existe para os avisos. É o
+ * único caminho que funciona com ninguém olhando.
+ *
+ * ## A janela, e por que ela tem os DOIS lados
+ *
+ * Mais nova que um minuto é trabalho do webhook: perguntar ao provedor sobre
+ * uma cobrança recém-criada dobra o tráfego para não adiantar nada.
+ *
+ * Mais velha que quatro horas vira `expirada` e sai da varredura — senão a
+ * lista só cresce, e a cada cinco minutos perguntaríamos ao Mercado Pago sobre
+ * toda cobrança abandonada da semana. Quatro horas é oito vezes o que a tela
+ * promete, e um Pix pago depois disso ainda é honrado: `podePagar` aceita a
+ * expirada de propósito, e o webhook continua chegando.
+ */
+async function varrerCobrancas(env: Env): Promise<void> {
+  if (!env.MP_ACCESS_TOKEN) return;
+  const agora = Math.floor(Date.now() / 1000);
+  const JANELA = 4 * 60 * 60;
+
+  const { results } = await env.DB.prepare(`
+    SELECT provedor_id FROM compras
+     WHERE estado = 'pendente' AND provedor_id IS NOT NULL
+       AND criada_em BETWEEN ? AND ?
+     ORDER BY criada_em DESC
+     LIMIT 20
+  `).bind(agora - JANELA, agora - 60).all<{ provedor_id: string }>();
+
+  for (const linha of results) {
+    // Uma cobrança que estoura não pode levar as outras junto: a próxima da
+    // lista pode ser a que tem dinheiro parado.
+    try {
+      await creditarPagamento(env, linha.provedor_id);
+    } catch (erro) {
+      await anotarExcecaoDeAuditoria(env, '/varredura/compras', erro);
+    }
+  }
+
+  await env.DB.prepare(
+    "UPDATE compras SET estado = 'expirada' WHERE estado = 'pendente' AND criada_em < ?",
+  ).bind(agora - JANELA).run();
+}
 
 /**
  * Junta o que falta avisar, manda, e só então marca como avisado.
@@ -772,6 +825,10 @@ async function rotear(req: Request, env: Env): Promise<Response> {
 
     if (url.pathname === '/checkout' && req.method === 'POST') {
       return abrirCobranca(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/compra' && req.method === 'POST') {
+      return estadoDaCompra(req, env, usuario.id, origem);
     }
 
     if (url.pathname === '/erro-do-cliente' && req.method === 'POST') {
@@ -1461,6 +1518,21 @@ async function abrirCobranca(
     return json({ erro: 'provedor_indisponivel' }, 502, origem);
   }
 
+  /**
+   * O id do pagamento é guardado AGORA, e não quando o webhook chegar.
+   *
+   * Ele é a única forma de perguntar ao provedor "esta cobrança foi paga?".
+   * Guardá-lo só na chegada do webhook faz a resposta depender da pergunta:
+   * se o webhook nunca chegar — URL mal configurada, nosso Worker fora do ar
+   * nos segundos errados —, não haveria por onde consultar, e o jogador teria
+   * pago sem caminho automático de conserto.
+   *
+   * Com ele aqui, `estadoDaCompra` fecha a compra sozinha na próxima vez que a
+   * tela perguntar.
+   */
+  await env.DB.prepare('UPDATE compras SET provedor_id = ? WHERE id = ?')
+    .bind(cobranca.provedorId, compra.id).run();
+
   return json({
     compra: compra.id,
     cristais: compra.cristais,
@@ -1517,6 +1589,112 @@ async function criarPixNoMP(
     return null;
   }
 }
+
+/**
+ * O estado de uma cobrança, para a tela que espera o Pix cair.
+ *
+ * ## Por que uma leitura ESCREVE
+ *
+ * Porque ela não é só leitura: quando a compra ainda está pendente, esta rota
+ * pergunta ao provedor e credita — exatamente o que o webhook faria.
+ *
+ * O webhook é o caminho rápido e não é garantia de nada. Ele depende de uma
+ * URL configurada certo no painel de outra empresa, de o nosso Worker estar de
+ * pé no segundo em que ele sai, e de a assinatura conferir. Qualquer um dos
+ * três falha calado — e o sintoma é a pior frase que este jogo pode receber:
+ * *paguei e não recebi*.
+ *
+ * Enquanto o jogador olha a tela do Pix, ele mesmo é o gatilho do conserto.
+ *
+ * ## Os dois ritmos
+ *
+ * A tela pergunta a cada cinco segundos (balde `cobranca`) e é respondida do
+ * nosso banco. Sair para a API do Mercado Pago é bem mais raro (balde
+ * `provedor`, ~3/min): a consulta cara é a exceção, a barata é a regra.
+ *
+ * ## Por que POST numa pergunta
+ *
+ * Porque o id da cobrança não tem por que aparecer em URL, histórico ou log de
+ * proxy — e porque a rota muda estado. As duas coisas apontam para o mesmo verbo.
+ */
+async function estadoDaCompra(
+  req: Request, env: Env, usuario: string, origem: string,
+): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, usuario, 'cobranca', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > 2048) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { compra?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const id = typeof corpo.compra === 'string' ? corpo.compra : '';
+  if (!id || id.length > 64) return json({ erro: 'compra_desconhecida' }, 404, origem);
+
+  // `AND usuario = ?` é a autorização inteira: sem isso, um id vazado deixaria
+  // qualquer conta ler a compra de outra pessoa.
+  const linha = await lerCompra(env, id, usuario);
+  if (!linha) return json({ erro: 'compra_desconhecida' }, 404, origem);
+
+  if (linha.estado === 'pendente' && linha.provedor_id) {
+    const podeConsultar = await consumirFicha(env, usuario, 'provedor', agora);
+    if (podeConsultar.pode) await creditarPagamento(env, linha.provedor_id);
+  }
+
+  // Relê SEMPRE: `creditarPagamento` pode ter acabado de marcar a compra como
+  // paga, e responder com a linha de antes mandaria a tela continuar esperando
+  // um dinheiro que já entrou.
+  const atual = await lerCompra(env, id, usuario) ?? linha;
+
+  return json({
+    compra: atual.id,
+    estado: atual.estado,
+    cristais: atual.cristais,
+    centavos: atual.centavos,
+    // Vencida não é recusada: ver `podePagar`. Este campo só diz à tela que
+    // parar de esperar — um Pix pago depois disso continua sendo creditado.
+    expirada: expirou(paraCompra(atual), agora),
+    // A carteira vem junto para a tela não precisar de uma segunda requisição
+    // no exato instante em que o jogador quer ver o saldo novo.
+    carteira: await carteiraDe(env, usuario),
+  }, 200, origem);
+}
+
+interface LinhaDeCompra {
+  id: string; usuario: string; pacote: string; cristais: number; centavos: number;
+  estado: string; provedor_id: string | null; criada_em: number; paga_em: number | null;
+}
+
+/** A linha da compra. Com `usuario`, é também a autorização. */
+async function lerCompra(
+  env: Env, id: string, usuario?: string,
+): Promise<LinhaDeCompra | null> {
+  const q = usuario
+    ? env.DB.prepare('SELECT * FROM compras WHERE id = ? AND usuario = ?').bind(id, usuario)
+    : env.DB.prepare('SELECT * FROM compras WHERE id = ?').bind(id);
+  return (await q.first<LinhaDeCompra>()) ?? null;
+}
+
+/** Da linha do banco para o tipo puro de `compras.ts`. */
+const paraCompra = (l: LinhaDeCompra): Compra => ({
+  id: l.id,
+  usuario: l.usuario,
+  pacote: l.pacote,
+  cristais: l.cristais,
+  centavos: l.centavos,
+  estado: l.estado as Compra['estado'],
+  provedorId: l.provedor_id,
+  criadaEm: l.criada_em,
+  pagaEm: l.paga_em,
+});
 
 /**
  * O provedor avisa que um pagamento mudou de estado.
@@ -1577,30 +1755,13 @@ async function creditarPagamento(env: Env, pagamentoId: string): Promise<void> {
   // Ainda não aprovado é o caminho normal: o MP avisa a cada mudança de estado.
   if (!pago || pago.estado !== 'approved') return;
 
-  const linha = await env.DB
-    .prepare('SELECT * FROM compras WHERE id = ?')
-    .bind(pago.referencia)
-    .first<{
-      id: string; usuario: string; pacote: string; cristais: number; centavos: number;
-      estado: string; provedor_id: string | null; criada_em: number; paga_em: number | null;
-    }>();
-
+  const linha = await lerCompra(env, pago.referencia);
   if (!linha) {
     await anotarMotivo(env, '/webhook/pagamento', 'compra_desconhecida', 404).catch(() => {});
     return;
   }
 
-  const compra: Compra = {
-    id: linha.id,
-    usuario: linha.usuario,
-    pacote: linha.pacote,
-    cristais: linha.cristais,
-    centavos: linha.centavos,
-    estado: linha.estado as Compra['estado'],
-    provedorId: linha.provedor_id,
-    criadaEm: linha.criada_em,
-    pagaEm: linha.paga_em,
-  };
+  const compra = paraCompra(linha);
 
   const recusa = podePagar(compra);
   if (recusa) return; // já encerrada: o reenvio do webhook é o caminho normal

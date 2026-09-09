@@ -79,6 +79,20 @@ function adotar(novo: EstadoDaCarteira): void {
   bus.emit('resources:changed');
 }
 
+/**
+ * Adota um estado de carteira que veio de OUTRA rota.
+ *
+ * `/compra` devolve os saldos junto do estado do Pix, porque o instante em que
+ * o jogador quer ver o saldo novo é exatamente aquele. Sem esta porta, a tela
+ * do Pix teria de disparar um `sincronizar()` logo depois — uma segunda
+ * requisição para saber o que a primeira já respondeu, e uma janela em que a
+ * tela diz "recebido!" com o saldo antigo ainda no topo.
+ *
+ * Continua valendo a regra: o que entra aqui é resposta de SERVIDOR. Nenhum
+ * chamador calcula saldo.
+ */
+export const adotarCarteira = (novo: EstadoDaCarteira): void => adotar(novo);
+
 async function chamar(metodo: 'GET' | 'POST', corpo?: unknown): Promise<EstadoDaCarteira | null> {
   const token = await tokenValido();
   if (!token) return null;

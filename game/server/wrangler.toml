@@ -12,13 +12,20 @@ SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
 # qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
 ORIGENS = "http://localhost:5180,https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
 
-# O gatilho que avisa das recusas. Cinco minutos é o atraso máximo entre um
+# O gatilho de cinco minutos faz DUAS coisas.
+#
+# A primeira é avisar das recusas: cinco minutos é o atraso máximo entre um
 # defeito começar e alguém ficar sabendo — antes disto o atraso era "até alguém
 # reclamar", que em 08/09 foram horas.
 #
+# A segunda é varrer as cobranças Pix que o webhook não fechou. É o único
+# caminho até o crédito que funciona com ninguém olhando: sem ele, um webhook
+# perdido somado a uma aba fechada é um jogador que pagou e não recebeu.
+#
 # O custo é desprezível: 288 execuções por dia contra as 100 mil requisições
 # diárias da camada gratuita, e cada uma faz uma leitura no D1 (leitura tem cota
-# de 5 milhões). Sem `ALERTA_WEBHOOK` configurado, ele volta sem fazer nada.
+# de 5 milhões). Sem `ALERTA_WEBHOOK` e sem `MP_ACCESS_TOKEN` configurados, as
+# duas metades voltam sem fazer nada.
 [triggers]
 crons = ["*/5 * * * *"]
 

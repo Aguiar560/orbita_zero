@@ -155,6 +155,31 @@ export const BALDES = {
    * de verdade, e fecha a porta de quem quer encher a tabela.
    */
   cliente: { refil: 60, capacidade: 5 },
+  /**
+   * A TELA DO PIX perguntando se o dinheiro caiu.
+   *
+   * É o único lugar do jogo em que o jogador fica olhando uma tela esperando
+   * uma resposta que não depende dele. Perguntar de cinco em cinco segundos é
+   * o que qualquer app de pagamento faz, e menos que isso parece travado.
+   *
+   * 5 s com estouro de 15 cobre a espera inteira sem folga para laço: são 12
+   * por minuto sustentados, e a cobrança vive trinta minutos.
+   */
+  cobranca: { refil: 5, capacidade: 15 },
+  /**
+   * O que o SERVIDOR pergunta ao PROVEDOR, e não o que o jogador pergunta a nós.
+   *
+   * Os dois ritmos são diferentes de propósito. A tela pergunta a cada cinco
+   * segundos e é respondida do banco — barato, nosso, instantâneo. Sair para a
+   * API do Mercado Pago a cada uma dessas perguntas seria 12 chamadas por
+   * minuto por jogador esperando, e é assim que se toma um bloqueio do provedor
+   * justamente na hora em que o dinheiro está entrando.
+   *
+   * 20 s com estouro de 3 significa: o webhook continua sendo o caminho rápido,
+   * e este é o que fecha a compra quando ele não chega — com atraso de segundos,
+   * não de horas.
+   */
+  provedor: { refil: 20, capacidade: 3 },
 } as const;
 
 export type NomeDeBalde = keyof typeof BALDES;

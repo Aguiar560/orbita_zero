@@ -947,9 +947,10 @@ teto da linha.
 
 `state.vip.expiresAt` é a única persistência da assinatura. `sim/vip.ts` deriva
 do relógio o teto de tentativas (5/6), o rastreador de missões (4/5), o acesso
-ao controle manual no nível 15+ e as duas automações exclusivas. O cliente não
-concede pacotes de cristais: os preços são catálogo até existir checkout
-validado pelo servidor.
+ao controle manual no nível 15+ e as duas automações exclusivas. O cliente não concede
+pacotes de cristais nem estende o passe: **o servidor debita e o servidor
+carimba a validade**, e a tela só pede. Os cristais, por sua vez, se compram com
+dinheiro de verdade — ver *A compra de cristais*, no §12.
 
 O gate aparece em três lugares e nos três ele é **visível, não silencioso**: o
 botão PILOTAR fica desabilitado com o motivo no `title`, Ajustes desenha a
@@ -1076,7 +1077,7 @@ save.
 
 ---
 
-## 11. Testes — 1.325 aprovados, em 134 arquivos (08/09/2026)
+## 11. Testes — 1.515 aprovados, em 146 arquivos (09/09/2026)
 
 Os maiores, medidos com `vitest run --reporter=json`:
 
@@ -1113,7 +1114,7 @@ vez de apagar o teste**.
 
 ## 12. O servidor — `server/src/`, D1 no Cloudflare
 
-O jogo deixou de ser só cliente. Um Worker de 16 arquivos e 4.441 linhas guarda
+O jogo deixou de ser só cliente. Um Worker de 19 arquivos e 6.259 linhas guarda
 tudo o que vale poder, e **importa `@sim` e `@data` — os mesmos arquivos do
 navegador, nunca uma cópia.** É isso que garante que a regra cobrada é a regra
 aplicada.
@@ -1134,13 +1135,18 @@ aplicada.
 | `POST /ausencia` | o que rendeu com a aba fechada | `sincronia` |
 | `POST /sintetizar` | a fusão | `acao` |
 | `POST /frota` | comprar casco, registrar o do piloto | `acao` |
-| `POST /vip` | o passe | `acao` |
+| `POST /vip` | o passe, pago em cristais | `acao` |
+| `POST /checkout` | abre uma cobrança Pix. **Não credita nada** | `acao` |
+| `POST /compra` | a tela do Pix perguntando se o dinheiro caiu | `cobranca` |
+| `POST /webhook/pagamento` | o provedor avisando. **A única rota sem token** | — |
+| `POST /erro-do-cliente` | o `TypeError` que aconteceu no navegador | `cliente` |
 
-### As tabelas — 14 migrações
+### As tabelas — 17 migrações
 
 `saves` · `apelidos` · `marcas` · `limites` · `contas` · `saldos` ·
 `transacoes` · `assinaturas` · `lotes` · `itens` · `frota` · `progresso` ·
-`naves_progresso` · `materiais` · `excedentes` · `missoes`.
+`naves_progresso` · `materiais` · `excedentes` · `missoes` · `recusas` ·
+`compras`.
 
 **Migração primeiro, deploy depois.** Em 08/09 a `0013` não foi aplicada, o
 Worker subiu lendo `progresso.semente` e a rota inteira passou horas devolvendo
@@ -1198,9 +1204,80 @@ que acontece logo depois de um setor cair, encontrava o chão. Hoje:
   jogador olhando; recusada, é um botão que não funciona.
 - **`marcas`** (120 s, 3) — a rota mais cara: uma chamada vira até 80 linhas.
 - **`apelido`** (300 s, 2) — escolhido uma vez, trocado quase nunca.
+- **`cliente`** (60 s, 5) — o erro de JavaScript. Apertado porque é a única rota
+  em que o CORPO vira conteúdo de uma coluna.
+- **`cobranca`** (5 s, 15) — a tela do Pix perguntando se o dinheiro caiu. É o
+  único lugar do jogo em que o jogador espera olhando, e perguntar de cinco em
+  cinco segundos é o que qualquer app de pagamento faz.
+- **`provedor`** (20 s, 3) — o que NÓS perguntamos ao Mercado Pago. Ritmo
+  separado de propósito: se fosse o mesmo balde, cada pergunta da tela viraria
+  uma chamada à API deles, e é assim que se toma um bloqueio do provedor
+  justamente na hora em que o dinheiro está entrando.
 
 Não afrouxa a cota do D1: **o balde não muda quantas escritas o jogo tenta, só
 quantas ele recusa.**
+
+### A compra de cristais — três caminhos até o mesmo crédito
+
+`compras.ts` (puro), a tabela `compras` (`0017`) e quatro funções em
+`index.ts`. O jogador compra **cristais** com dinheiro; com cristais, compra o
+**passe**. São duas transações separadas, e o selo "1 PASSE VIP" do pacote
+Comando é o que ele diz: 500 cristais dão exatamente um passe.
+
+A regra que organiza tudo: **o jogador nunca é creditado por dizer que pagou.**
+Ele pede a cobrança, o provedor confirma, e só então o livro-caixa registra —
+por isso `movimentar` já recusava `motivo: 'compra'` vindo do cliente com 403,
+muito antes de existir uma compra.
+
+O corpo do `/checkout` traz **só o id do pacote**. Preço e quantidade saem de
+`CRYSTAL_PACKAGES`, que o Worker importa do jogo — a mesma tabela que a tela
+desenha. Aceitar `centavos` do cliente seria deixá-lo dizer quanto vai pagar por
+2.400 cristais. E a linha nasce **antes** de falar com o provedor: se a cobrança
+fosse criada lá e a resposta se perdesse, o webhook chegaria para uma compra
+inexistente — dinheiro pago sem dono.
+
+A ordem do webhook é a segurança inteira:
+
+1. **A assinatura confere** (`crypto.subtle.verify`, tempo constante — comparar
+   hash com `===` vaza a assinatura byte a byte).
+2. **O estado vem da API deles.** O corpo do webhook diz só o id; acreditar nele
+   seria deixar quem forjasse a requisição declarar o próprio pagamento.
+3. **O valor pago é conferido contra o cobrado.** O Pix aceita valor diferente do
+   combinado em várias configurações; sem isso, **um centavo compraria o pacote
+   de R$ 99,90**.
+4. **Credita**, com `origem` = o id do pagamento — e o índice único
+   `(motivo, origem)` do livro recusa o reenvio, que o provedor faz por desenho.
+
+O crédito vem **antes** de marcar a compra como paga. Na ordem inversa, uma
+falha no meio deixaria a compra paga sem os cristais, e o reenvio seria recusado
+por `compra_ja_encerrada`: o jogador pagaria e não receberia, sem conserto
+automático.
+
+#### Por que três caminhos, e não um
+
+O defeito temido tem nome — *paguei e não recebi* —, e ele não acontece por
+crédito errado, e sim por crédito **nunca disparado**. O webhook depende de uma
+URL configurada certo no painel de outra empresa, de o nosso Worker estar de pé
+no segundo em que ele sai, e de a assinatura conferir. Os três falham calados.
+
+| caminho | quem dispara | cobre |
+|---|---|---|
+| webhook | o provedor | o caso normal, em segundos |
+| `POST /compra` | a tela do Pix, de 5 em 5 s | webhook perdido, com o jogador olhando |
+| varredura | o gatilho de 5 min, o mesmo dos avisos | webhook perdido **e** aba fechada |
+
+Os três chegam na mesma função (`creditarPagamento`) e passam pelas mesmas
+quatro conferências. É também por isso que o id do pagamento é guardado **na
+criação** da cobrança, e não quando o webhook chega: sem ele não há por onde
+perguntar, e a resposta dependeria da pergunta.
+
+A validade de 30 minutos é do painel, não do dinheiro: uma cobrança vencida
+**ainda pode ser paga** (`podePagar` aceita de propósito). Recusar o crédito
+transformaria um atraso de meia hora num jogador lesado.
+
+Sem `MP_ACCESS_TOKEN` configurado, o `/checkout` responde
+`pagamento_indisponivel` (503) e o resto do jogo funciona igual — foi o que
+permitiu construir e testar tudo antes de existir conta ativa no provedor.
 
 ### O teto que replica o jogo — Fase 5
 

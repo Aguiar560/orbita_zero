@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS compras (
   -- `pendente` | `paga` | `expirada` | `cancelada`. Só sobe de pendente para
   -- um dos outros três, e nunca volta.
   estado      TEXT NOT NULL DEFAULT 'pendente',
-  -- O id do pagamento no provedor. Nulo até o webhook chegar; é ele que vira
-  -- a `origem` do lançamento.
+  -- O id do pagamento no provedor. Guardado assim que a cobrança é criada lá,
+  -- e não quando o webhook chega: é por ele que se PERGUNTA ao provedor se o
+  -- Pix caiu, e essa pergunta é o que fecha a compra quando o webhook falha.
+  -- É ele, também, que vira a `origem` do lançamento no livro.
   provedor_id TEXT,
   criada_em   INTEGER NOT NULL,
   paga_em     INTEGER
