@@ -12,6 +12,33 @@ segunda metade é a arquitetura proposta para login e servidor.
 > o jogo inteiro migra para o servidor, porque o ranking vai valer prêmio e um
 > save escrito pelo cliente não sustenta um pódio premiado.
 
+## Estado em 09/09/2026 — o que a proposta virou
+
+O Passo 9 chegou à **Fase 5**. Fora do save e no D1: dinheiro, assinatura,
+inventário, frota, XP, Matriz, materiais, setor alcançado, casco em campo,
+semente do universo, missões e confiança. O detalhamento das rotas, das tabelas
+e dos princípios está na **seção 12 do [`SISTEMAS.md`](SISTEMAS.md)**.
+
+**Login.** Conta é obrigatória — não existe mais caminho para jogar sem sessão,
+e o tipo de `Login.mostrar()` é a regra: ele resolve com a sessão, nunca com
+`null`. Duas portas hoje: e-mail/senha e **Google** (Supabase OAuth em pop-up).
+`Entrar` e `Criar conta` são caminhos separados na capa.
+
+**Ritmo.** Dois baldes de fichas por natureza: `sincronia` (20 s, 12) para o que
+o jogo faz sozinho e `acao` (20 s, 5) para o que o jogador clica, mais `marcas`
+e `apelido`. Ver `server/src/ritmo.ts`.
+
+**O que ainda NÃO está fechado, e é o que importa para um pódio premiado:** o
+servidor reproduz o encontro e **precifica** o que o cliente declarou, mas quem
+paga ainda é o número declarado, contido por um teto. A virada da chave é o que
+falta da Fase 5.
+
+**Uma fragilidade operacional, registrada porque custou caro em 08/09:** o
+cliente engole toda recusa do servidor (`if (!r.ok) return null`), então uma
+rota quebrada não produz sintoma nenhum do lado de cá — ela vira um número
+plausível e errado na tela do jogador. Isso é hoje o maior risco do sistema, e
+está como bloqueador 1 na [`AVALIACAO-ALFA.md`](AVALIACAO-ALFA.md).
+
 ## O que está bom, e é bom de verdade
 
 Estes não são elogios de praxe — são medições, e cada um remove uma classe

@@ -20,8 +20,9 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/SEGURANCA-E-CONTA.md`](docs/SEGURANCA-E-CONTA.md) | Auditoria de segurança e a arquitetura de login/servidor |
 | [`docs/CHAT-OPERACAO.md`](docs/CHAT-OPERACAO.md) | O chat em produção: Worker próprio, moderação, retenção |
 | [`docs/PLANO-CHAT.md`](docs/PLANO-CHAT.md) | O desenho do chat e o que falta nele |
-| [`docs/AVALIACAO-ALFA.md`](docs/AVALIACAO-ALFA.md) | Nota por sistema e o que bloqueia o alfa (04/09) |
+| [`docs/AVALIACAO-ALFA.md`](docs/AVALIACAO-ALFA.md) | **Avaliação do jogo:** nota por sistema, censo medido e o que bloqueia o alfa (09/09) |
 | [`docs/ECONOMIA-DOS-RECURSOS.md`](docs/ECONOMIA-DOS-RECURSOS.md) | Os 49 recursos sem uso, os sumidouros propostos e a cadência de eventos (07/09) |
+| [`docs/PLANO-MISSOES-NO-SERVIDOR.md`](docs/PLANO-MISSOES-NO-SERVIDOR.md) | O desenho das missões no D1 e os níveis de validação A/B/C |
 | [`docs/LOGIN-PROVEDORES.md`](docs/LOGIN-PROVEDORES.md) | Passo a passo para ligar Google e Facebook no Supabase |
 
 Registros de momento, que valem como história e **não** como estado atual:
@@ -57,7 +58,7 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run dev` | Vite em `localhost:5180` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | assets + typecheck + build |
-| `npm test` | suíte do Vitest |
+| `npm test` | suíte do Vitest (1.325 testes em 134 arquivos, 08/09/2026) |
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
 | `npm run simular -- ganho 1 300 5` | ganho por segundo, setores limpos e mortes — mede o que o jogador REALMENTE recebe |
 | `npm run simular -- drops 200000` | distribuição real de raridade |
@@ -65,6 +66,22 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run simular -- afixos 30 5` | valor marginal de cada afixo, para o orçamento do §7 |
 
 Os packs crus em `D:\bbb\*` são **somente leitura**. O pipeline nunca escreve neles.
+
+### O servidor, que tem ciclo próprio
+
+O push publica o **cliente** na Vercel sozinho. O Worker **não** vai junto:
+
+```bash
+cd D:\bbb\game\server; npx wrangler d1 execute orbita-zero --remote --file=migrations/NNNN-nome.sql
+cd D:\bbb\game\server; npm run deploy
+```
+
+**Migração primeiro, deploy depois — sempre.** Publicar código que lê coluna
+inexistente derruba a rota, e o cliente disfarça a falha como perda de dado.
+
+`npx wrangler d1 execute orbita-zero --remote --command "SELECT …"` lê a
+produção — use antes de teorizar. `d1_migrations` NÃO registra o que subiu por
+`--file=`; confira pelo `sqlite_master`. `wrangler tail` não funciona daqui.
 
 ## Arquitetura
 
@@ -77,7 +94,10 @@ src/
             elementos, galáxias, baús, biomas
   modes/    VerticalMode (cena de combate), PilotAI, WaveDirector
   ui/       Shell, LeftRail, painéis — SEM regra de jogo
-  app/      Game (loop de passo fixo), Bus
+  app/      Game (loop de passo fixo), Bus e os ESPELHOS do servidor
+            (carteira, inventario, lote, progresso, missoes, ausencia, conta)
+server/     o Worker do Cloudflare + as migrações do D1 — importa @sim e @data,
+            nunca uma cópia deles
 tools/      pipeline de assets (Node + sharp), fora do bundle
 ```
 
@@ -130,6 +150,25 @@ Regras de camada, em ordem de importância:
   sem sintoma. Foi exatamente o defeito encontrado em `sim/morte.ts`. O save que
   sobe para a nuvem tem esses campos ARRANCADOS (`semODinheiro`), para não
   existirem duas verdades no mesmo servidor.
+- **O que mora no servidor não volta para o save.** Item, casco, moeda,
+  material, XP, Matriz, setor alcançado, missão e confiança são do D1 desde o
+  Passo 9. Três regras que cada uma custou um defeito para virar regra: **o item
+  nunca sobe** (o cliente diz quantos pegou, nunca quais); **o nível é
+  derivado** (guardar XP e nível é guardar a mesma coisa duas vezes, e duas
+  cópias divergem — vale igual para a confiança, que é função das entregas);
+  **toda mescla entre aparelhos é monotônica** (passos pelo maior, `iniciada`
+  por OU, entrega pelo primeiro carimbo). Nada de "última escrita vence".
+- **Um comando ruim não derruba o lote.** Equipar recusado volta desequipado,
+  entrega recusada não anula o progresso, coleta grande demais é aparada e
+  contada. Recusar o lote inteiro faz o cliente reenviá-lo para sempre e o
+  espelho nunca converge — medido em 08/09: 29 peças no cliente contra 9 no
+  servidor, e a Fabricação recusando por peça inexistente.
+- **A falha do servidor precisa ser AUDÍVEL.** `src/app/*` devolve `null` em
+  toda recusa e quem chama cai no padrão, então indisponibilidade se disfarça de
+  perda de dado — nível zerado, nave errada, saldo zero, botão mudo. Toda ação
+  do jogador que possa ser recusada mostra o motivo (`toast` + `console.warn`),
+  e o aviso fica acima da `.camada`. **Diante de um sintoma mudo, o primeiro
+  trabalho é dar voz a ele, não deduzir a causa.**
 - **A nave evolui por item, craft e Matriz. Só.** Não existe sistema paralelo de
   upgrade. Já foram removidos por serem um: o menu **Melhorias** (§31) e os
   **Power Ups** de batalha (§30). Qualquer proposta de nova fonte de poder fora

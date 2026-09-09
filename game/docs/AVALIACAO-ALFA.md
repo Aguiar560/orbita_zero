@@ -1,235 +1,213 @@
-# Avaliação para o alfa — 04/09/2026
+# Avaliação do jogo — 09/09/2026
 
-O que o jogo é hoje, com nota por sistema, e o que falta para pôr jogadores
-dentro. Tudo abaixo foi **medido nesta data**, não lido de documento — quando um
-número vem de registro anterior, está dito.
+O que o Órbita Zero é hoje, com nota por sistema e o que ainda bloqueia pôr
+jogadores dentro. Tudo abaixo foi **medido nesta data** com os comandos do
+[`MAPA-DO-PROJETO.md`](MAPA-DO-PROJETO.md) §5 e com consultas ao D1 de produção.
+Quando um número vem de registro anterior, está dito.
 
-> **Veredito, revisto ao fim de 04/09.** Os dois bloqueadores desta avaliação
-> caíram no mesmo dia: a conta virou obrigatória com três portas (e-mail,
-> Google, Facebook), e a dificuldade do setor 4 foi confirmada como
-> **deliberada** pelo Rafael — não era defeito de curva, era o jogo.
+A avaliação de **04/09** continua no fim, como histórico — ela vale como o que
+se sabia naquele dia, não como estado atual.
+
+> **Veredito.** O jogo está **jogável de ponta a ponta e íntegro no essencial**:
+> nada que vale poder é escrito pelo cliente. O que separa isto de um alfa
+> fechado não é mais engenharia de jogo — é **operação**. O dia 08/09 mostrou
+> que o sistema não tem como contar que está quebrado: quatro defeitos ficaram
+> horas no ar sem sintoma no servidor, e o custo não foi o defeito, foi as horas
+> até entender qual era.
 >
-> **Está pronto para um alfa fechado.** O que resta é configuração de painel,
-> não engenharia: ligar os provedores OAuth no Supabase.
+> **Recomendação:** não abrir para testadores antes de fechar a observabilidade
+> (bloqueador 1). Os outros dois são de qualidade, não de risco.
 
 ---
 
-## Censo
+## Censo — medido em 09/09
 
 | | |
 |---|---|
 | Cascos | 53 |
-| Chefes · inimigos | 30 · 68 |
+| Inimigos · chefes | 68 · 30 |
 | Bases de item · afixos · conjuntos | 80 · 35 · 4 |
 | Nós da Matriz · ramos | 177 · 8 |
 | Recursos | 70 |
-| Missões | 21 |
-| Baús · trilhas | 4 · 3 |
-| Testes · bundle | 2.035 · 554 KB JS + 277 KB CSS |
+| Missões | **499** (eram 21 em 04/09; as cadeias geram o volume) |
+| Galáxias × fases | 30 × 10 = **300 setores** · nível máximo 300 |
+| Código | 51.700 linhas de TypeScript, sem dependência de produção |
+| Servidor | 16 arquivos · 4.441 linhas · 14 migrações · 16 rotas |
+| Testes | **1.325** em 134 arquivos · 2.470 asserções |
+| Bundle | 647 KB JS (219 KB gzip) + 324 KB CSS (65 KB gzip) |
 
-Produção no ar: site **200**, API **200**, chat **403** (barrando origem, como
-deve).
+Produção agora: site **200** em 0,27 s, API **200**.
+
+> Nota sobre o número de testes: o registro de 04/09 diz "2.035 testes". A
+> contagem de hoje pelo relatório JSON do Vitest é **1.325 testes / 2.470
+> asserções**. Não persegui a origem da diferença — provavelmente o número
+> antigo contava `expect(`. Fica dito para não parecer regressão.
 
 ---
 
 ## Notas por sistema
 
-### Arquitetura e disciplina de código — 9/10
+### Arquitetura e disciplina de código — 8/10 *(era 9)*
 
-A melhor parte do projeto, com folga. Regras de camada guardadas por teste
-(`sim/` e `data/` sem DOM, o que deixa o mesmo arquivo rodar no navegador, no
-Node e no Worker). Zero dependência de produção. Cultura de medir antes de
-afirmar, com ferramenta própria (`npm run simular`). Comentários que explicam
-*por que a alternativa óbvia não serviu*.
+Continua a melhor parte do projeto. Regras de camada guardadas por teste, zero
+dependência de produção, e o acerto que mais rende: **o Worker importa `@sim` e
+`@data`, os mesmos arquivos do navegador.** A regra que o servidor cobra é
+literalmente a regra que o jogo aplica — não existe cópia para divergir. É o que
+permitiu a Fase 5 *reproduzir* o encontro em vez de estimá-lo.
 
-O que tira o ponto: 2.035 testes concentram-se em regra e dado; quase nada cobre
-render e interação, que é onde os defeitos desta semana apareceram.
+**Por que perdeu um ponto.** O sistema virou distribuído e a disciplina não
+acompanhou em um eixo: **`src/app/*` devolve `null` em toda recusa**, e quem
+chama cai no padrão. Indisponibilidade se disfarça de perda de dado — nível
+zerado, nave errada, saldo zero, botão mudo. Isso não é um bug, é uma decisão de
+desenho que era boa quando o cliente era autônomo e virou dívida quando ele
+passou a depender de dez rotas.
 
-### Progressão e balanceamento — 6/10
+### Integridade e antifraude — 8/10
 
-**O ponto mais fraco, e o que decide o alfa.** Medido hoje, uma hora por setor,
-build representativo:
+Forte, e por princípios explícitos, não por remendos:
+
+- **O item nunca sobe.** O cliente diz quantos pegou, nunca quais.
+- **O nível é derivado**, nunca guardado. Idem a confiança dos contatos.
+- **Toda mescla entre aparelhos é monotônica** — duas máquinas somam.
+- O save que sobe tem dinheiro e frota **arrancados** (`semODinheiro`).
+
+O que falta para 10: a **Fase 5 não virou a chave**. O servidor já reproduz o
+encontro e precifica o que o cliente declarou — com piso de tempo por onda e
+teto por réplica —, mas **quem paga ainda é o número que o cliente manda**. Até
+a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
+
+### Operação e observabilidade — 4/10 · **o elo mais fraco**
+
+A nota mais baixa da avaliação, e a que mudou o veredito.
+
+| o que aconteceu em 08/09 | quanto tempo no ar |
+|---|---|
+| `0013` não aplicada → `/progresso` 100% falho | ~3 h |
+| auditoria de teto gravando zero linhas | desde que subiu |
+| coleta envenenando o lote de comandos | indeterminado |
+
+Nenhum tinha sintoma do lado do servidor, **porque um 409 é uma resposta, não um
+erro**. E as ferramentas não ajudam: `wrangler tail` não resolve o host neste
+ambiente, `d1_migrations` não registra as migrações aplicadas com `--file=`, e
+migração e deploy são dois comandos manuais cuja ordem, se invertida, derruba
+uma rota inteira em silêncio.
+
+O que já melhorou: `o-esquema-do-servidor-existe.test.ts` impede publicar código
+incoerente com as migrações, e toda recusa de fusão agora vira frase na tela
+mais linha no console.
+
+### Progressão e balanceamento — 6/10 *(inalterado)*
+
+Medido hoje. A curva do meio e do fim está **boa**: de 22 a 300, limpar uma onda
+leva de 11 a 35 s e morrer exige de 12 a 26 golpes — a coluna de veredito diz
+`ok` em todas as amostras.
+
+```
+setor    DPS      vida ef.   HP da onda   seg  golpes
+   1      25         193           18    0.7      88   trivial
+  22     731         795        8.25K     11      26   ok
+ 106  67.80K      12.81K        1.89M     28      23   ok
+ 300   2.28M      44.32K       58.24M     26      15   ok
+```
+
+Crescimento composto por setor: DPS 1,0389 contra HP do inimigo 1,0514 —
+divergência de 1,0120, ou **35× em 299 setores**, absorvida pelo equipamento. Do
+lado defensivo, 1,0183 contra 1,0244: **6,0×**.
+
+**O problema é a abertura, e é o mesmo de 04/09.** Amostras de cinco minutos:
 
 | setor | setores limpos | mortes | xp/s |
 |---|---|---|---|
-| 1 | 17 | 0 | 2,40 |
-| 2 | 16 | 0 | 0,09 |
-| 3 | 8 | 8 | 1,32 |
-| **4** | **0** | **54** | 1,06 |
-| **5** | **0** | **123** | 0,49 |
-| 6–12 | 0 | 76 a 168 | 0,47–0,87 |
+| 1 | 1 | 0 | 0,46 |
+| 6 | **0** | 8 | 1,75 |
+| 11 | **0** | 12 | 4,23 |
 
-O jogo abre generoso e **fecha de vez no setor 4**. A amplitude de ganho é de
-26× entre setores vizinhos, e não é monotônica — o setor 2 rende menos que o 1 e
-que o 3.
+O setor 1 é trivial (0,7 s por onda, 88 golpes para morrer) e por volta do 4 ao
+11 o jogador para de avançar. O Rafael já disse que a parede do setor 4 é
+**deliberada**; o que não está resolvido é ela chegar tão cedo e tão seca, e a
+amplitude de 9,2× no ganho dentro dos primeiros doze setores.
 
-Duas ressalvas honestas:
+### Conteúdo — 7/10
 
-1. **A simulação modela quem nunca recua.** `failEncounter` só *oferece* recuar;
-   quem aceita farma abaixo e volta. Medido antes (registrado no `PLANO`): setor
-   5 sem recuo 0 setores/112 mortes, **com recuo 31 setores/6 mortes**. A saída
-   existe e funciona.
-2. Ela depende de o jogador **entender e aceitar** a oferta, que aparece só
-   depois de três quedas no mesmo setor.
+Volume real: 53 cascos com história e curiosidade obrigatórias por teste, 68
+inimigos, 30 chefes, 499 missões, 177 nós, 30 galáxias com elemento derivado por
+tabela. O Códex cobre seis catálogos.
 
-Ou seja: a parede é atravessável, mas o jogo cobra do jogador uma leitura
-correta logo no primeiro obstáculo sério.
+O que segura a nota é **arte**, não regra:
 
-> **A dificuldade é deliberada — confirmado pelo Rafael em 04/09.** A nota subiu
-> de 4 para 6 por isso: o que eu li como defeito de curva é a intenção do jogo,
-> e a oferta de recuo é o mecanismo que a torna atravessável.
->
-> O que ainda tira pontos é a **não-monotonicidade**: o setor 2 render menos que
-> o 1 e que o 3 não serve a desenho nenhum, e atrapalha justamente a leitura de
-> "ficou difícil porque avancei" que uma dificuldade deliberada precisa passar.
-
-### Conteúdo — 8/10
-
-Volume real e bem distribuído: 30 galáxias com elencos que não se repetem, 53
-cascos com arquétipo, calibração e elemento próprios, 177 nós de Matriz.
-
-O que destoa: **21 missões** é pouco para um idle, e são a principal fonte de
-direção fora do combate. Quatro conjuntos de itens também é enxuto para 80 bases.
-
-### Autoridade do servidor — 7/10
-
-Dinheiro, itens, frota, XP, Matriz e materiais moram no D1. Livro-caixa
-append-only com idempotência, coleta determinística por semente (o item nunca
-sobe do cliente), save sem dinheiro dentro.
-
-O que falta: o ganho **ao vivo** ainda é declarado pelo cliente. A Fase 5 passo 4
-já **mede** (tabela `excedentes`, margem de 10× sobre o teto físico), mas não
-recusa — e ligar a recusa depende de dados de jogadores reais, que só o alfa
-produz. É a ordem certa.
-
-### Conta e persistência — 8/10
-
-> **Resolvido em 04/09.** A conta virou **obrigatória** e há três portas:
-> e-mail com senha, Google e Facebook. Não existe mais entrada anônima.
->
-> A decisão de tornar obrigatório só coube porque **ainda não há ninguém
-> jogando** — nenhuma conta anônima ficou órfã. Depois do primeiro jogador isso
-> seria uma migração, não uma escolha.
-
-O que havia antes, e por que era o bloqueador número um: entrar era um clique e
-criava conta anônima de verdade, com id no servidor — mas sem forma de
-vinculá-la a um e-mail. Limpar os dados do navegador apagava o ACESSO a um
-progresso que continuava existindo no D1, sem caminho de volta.
-
-O que sobra hoje: **os provedores precisam ser ligados no painel do Supabase**
-(cliente OAuth no Google e no Facebook, chaves coladas no painel, URL de retorno
-autorizada). Sem isso os dois botões existem e falham — o e-mail funciona
-sozinho, e foi verificado ponta a ponta em 04/09: criar conta devolve token na
-hora, sem confirmação por e-mail no caminho.
-
-### Onboarding — 6/10
-
-O passeio de entrada existe (dez passos) e **catorze telas ganharam guia
-próprio** em 04/09, com zoom, recorte e reabertura pelo "?".
-
-Falta a outra metade do critério, que é de **ritmo**: introduzir uma decisão por
-vez nos primeiros setores e não mostrar aba antes de existir motivo. Hoje o
-jogador novo vê treze abas de uma vez — cinzas, mas visíveis.
+- **1 inimigo comum de gelo e 2 de raio.** As galáxias desses elementos ficam em
+  26–29% de presença elemental, contra 62% de média das demais. É a única
+  limitação do sistema elemental hoje, e é de sprite.
+- Os 100 chefes da Provação usam 6 sprites em rodízio.
 
 ### Interface — 7/10
 
-Densa e consistente, com gramática de painel unificada. Ganhou nesta semana:
-dicas nas linhas elementais, no combustível, na sincronia e na carga; aviso de
-inventário cheio dizendo *o que foi feito com a peça*; confirmação ao abrir baú
-sem espaço; filtro por tipo de peça.
+Onboarding, tutoriais por tela, capa navegável, login separado de cadastro,
+Google, menu de perfil, tooltip própria do jogo. A gramática de painel é
+consistente e a densidade é boa.
 
-Pesa contra: **acessibilidade parou no meio** — há foco visível, navegação por
-teclado e alto contraste, mas nunca houve auditoria de teclado fluxo a fluxo nem
-medição de contraste AA.
+**Perdeu ponto pelo que 08/09 expôs:** um botão `disabled` que engolia o clique,
+um aviso desenhado atrás da camada que o pediu, uma dica que dizia o que fazer
+sem dizer por que não estava feito. Todos os três eram invisíveis para a suíte.
 
-### Áudio — 5/10
+### Som — 6/10
 
-Chegou agora e por isso a nota é baixa por *imaturidade*, não por defeito:
-síntese de disparo e explosão por `AudioContext`, e três faixas de trilha com
-troca pelo jogador e uma por galáxia.
+Síntese determinística de combate com perfil por casco, inimigo e elemento; 130
+chefes com cadência própria; seis explosões elementais. **Música não existe.**
 
-Não foi julgado de ouvido em sessão longa. E o histórico pede cautela: a
-primeira tentativa de som deste projeto foi descartada inteira porque quem a
-escreveu não conseguia ouvi-la.
+### Testes e verificação — 7/10
 
-### Infraestrutura — 6/10
+1.325 testes e uma cultura de medir antes de afirmar que é rara — o arnês em
+Node importa o mesmo arquivo que o navegador roda, então a medição não pode
+divergir do jogo.
 
-Vercel + Cloudflare Workers + D1, tudo no plano gratuito. Medido: ~33 linhas de
-escrita por ciclo de 150 s, cortadas para ~17 pela coleta líquida. Isso dá:
-
-| perfil | jogadores no gratuito |
-|---|---|
-| aba aberta 24 h | **~10** |
-| 2 h por dia | **~122** |
-
-Suficiente para um alfa fechado. O histórico de migrações do D1 se perdeu e foi
-reparado em 04/09 — vale saber que ele *pode* se perder.
+**O buraco é grande e conhecido: zero cobertura de render e interação.** Não há
+DOM na suíte. Os quatro defeitos de 08/09 foram de interação ou de operação, e
+os testes que os pegam hoje leem o **fonte** (`z-index` no CSS, `disabled` no
+painel) — melhor que nada, pior que um DOM.
 
 ---
 
-## O que falta para o alfa
+## O que bloqueia o alfa
 
-### Bloqueadores — resolvidos em 04/09
+**1. Observabilidade — o único que é risco, não qualidade.**
+Sem isso, o próximo defeito custa o mesmo que os de hoje, só que multiplicado
+pelo número de testadores. O mínimo: a recusa do servidor virar aviso em toda
+ação do jogador (feito para a fusão, falta o resto), e algum caminho para saber
+que uma rota está falhando sem depender de alguém reclamar.
 
-1. ~~**Vincular a conta a um e-mail.**~~ ✅ Resolvido por decisão, e ela era
-   melhor que a solução: em vez de dar saída à conta anônima, a **conta virou
-   obrigatória**. Três portas — e-mail com senha, Google e Facebook — e nenhuma
-   entrada sem dono. Só coube porque ainda não há ninguém jogando.
+**2. A abertura do jogo — do setor 1 ao 12.**
+O 1 é trivial e o 4 ao 11 é parede. Um testador novo passa a primeira hora
+nesses doze setores; é a única parte do jogo que a maioria vai ver.
 
-2. ~~**A parede do setor 4.**~~ ✅ Não era bloqueador: **a dificuldade é
-   deliberada**. A oferta de recuo é o mecanismo previsto para atravessá-la.
+**3. A virada da chave da Fase 5.**
+Enquanto o servidor precifica mas não paga, o ranking premiado está apoiado num
+teto. Não impede um alfa fechado entre conhecidos; impede um pódio que vale
+prêmio.
 
-### O que falta ANTES de convidar alguém
-
-3. **Ligar Google e Facebook no painel do Supabase.** O código está pronto e os
-   botões existem; medido em 04/09, `/authorize?provider=google` responde **400**
-   porque o provedor está desligado. É trabalho de painel:
-
-   - criar cliente OAuth no Google Cloud Console e app no Facebook Developers;
-   - colar client id e secret em *Supabase → Authentication → Providers*;
-   - autorizar a URL de retorno em *URL Configuration* — a de produção **e** a
-     de desenvolvimento, senão só uma das duas funciona.
-
-   Enquanto isso não acontece, o e-mail sustenta o alfa sozinho: verificado
-   ponta a ponta, cria conta e devolve token na hora, sem confirmação no meio.
-
-4. **`slot_secundaria.webp` não existe** — o único dos dez soquetes sem arte.
-   Responde 404 em produção, deixando um buraco na Anatomia.
-
-5. **Oito arquivos de `public/assets` não têm fonte** em `assets-static` (sete
-   SVGs de elemento e o troféu do ranking). Somem no próximo `npm run assets` de
-   quem for. Já sumiram uma vez em 04/09.
-
-### Vale ter, não bloqueia
-
-6. Ritmo de onboarding (esconder aba sem motivo, uma decisão por vez).
-7. Auditoria de teclado e contraste AA.
-8. Mais missões — 21 é pouco para sustentar direção num idle.
-
-### Não fazer antes do alfa
-
-- **Ligar a recusa do teto de ganho.** Ela depende de dados que só jogador real
-  produz, e um teto calibrado em laboratório recusa o jogador novo na segunda.
-- **Anunciar ranking premiado.** Decidido em 03/09 e continua certo: anunciar
-  prêmio antes da Fase 6 convida exatamente quem sabe quebrar o que ainda não
-  está protegido.
-- **Plano pago do Cloudflare.** Com ~122 jogadores no perfil de 2 h/dia, o
-  gratuito segura um alfa fechado. Reavaliar se aparecer gente deixando a aba
-  aberta a noite toda.
+Fora dos bloqueadores, na ordem em que eu faria: **a fusão não cobra os núcleos
+que anuncia** (dívida de economia, decisão do Rafael), os inimigos comuns de
+gelo e raio, e uma camada de teste com DOM.
 
 ---
 
-## Nota geral
+## Histórico — a avaliação de 04/09/2026
 
-**7,5/10 como jogo · 8,5/10 como projeto.**
+O documento anterior está preservado abaixo por valer como registro do que se
+sabia naquele dia.
 
-As notas subiram ao fim do dia porque os dois pontos baixos deixaram de ser
-problema: a conta virou obrigatória com três portas, e a dificuldade do setor 4
-foi confirmada como intenção, não como defeito.
+> **Veredito de 04/09.** Os dois bloqueadores daquela avaliação caíram no mesmo
+> dia: a conta virou obrigatória com três portas, e a dificuldade do setor 4 foi
+> confirmada como **deliberada** pelo Rafael — não era defeito de curva, era o
+> jogo. "Está pronto para um alfa fechado. O que resta é configuração de painel,
+> não engenharia: ligar os provedores OAuth no Supabase."
+>
+> Notas daquele dia: arquitetura 9/10, progressão e balanceamento 6/10. O censo
+> registrava 21 missões e um bundle de 554 KB JS + 277 KB CSS.
 
-A distância que sobra entre os dois números continua sendo o resumo honesto: a
-engenharia está à frente do produto. O que separa o jogo de um beta não é
-código — são missões, ritmo de onboarding e uma passada de acessibilidade.
-
-Para o **alfa fechado**, falta ligar Google e Facebook no painel do Supabase e
-desenhar um ícone de soquete que nunca existiu.
+O que mudou entre 04/09 e 09/09: o Passo 9 avançou da Fase 3 até a Fase 5
+(inventário, frota, progressão, casco em campo, semente, missões e confiança
+saíram do save), a capa e o login foram refeitos com Google, a onda passou a
+retomar de onde parou, a vida parou de curar na recarga, os elementos das
+galáxias foram redistribuídos — e os quatro defeitos mudos de 08/09 foram
+encontrados e corrigidos.

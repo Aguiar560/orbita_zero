@@ -139,6 +139,78 @@ Abrir por código: `bus.emit('panel:open', { id })`.
 
 ---
 
+## Capa e entrada — antes de tudo
+
+`ui/Landing.ts` · `ui/Login.ts` · `app/conta.ts` · `styles/landing.css`
+
+A primeira coisa que existe. A **capa** é navegável sem conta, com quatro
+páginas comerciais — `O JOGO`, `NAVES`, `GALÁXIAS`, `COMUNIDADE` — cada uma
+sobre uma arte aprovada em `/assets/landing/`. Os botões são **pontos clicáveis
+posicionados em porcentagem sobre a arte**, e não elementos desenhados por cima:
+a arte é a composição, e ancorar em proporção faz eles acompanharem qualquer
+largura sem media query. As demais artes são pré-carregadas depois da primeira,
+para trocar de página não piscar.
+
+`Entrar` e `Criar conta` ficam no topo e **são caminhos separados**. O
+formulário só aparece depois da escolha explícita — a capa fica limpa para quem
+só está olhando.
+
+### Não existe mais "jogar sem conta", e o tipo é a regra
+
+`Login.mostrar()` resolve com a **sessão**; não há caminho para `null`. Quem
+chama não trata "entrou sem conta" porque isso deixou de ser possível.
+
+Havia um recuo: se o cadastro anônimo falhasse, dava para jogar só com o save do
+navegador. Ele valia enquanto o loot rolava no cliente — sem conta o jogo
+funcionava, só não sincronizava. Depois da Fase 3, a mesma linha significa outra
+coisa: `garantirLote` desiste sem token, o pote nunca chega e **nenhum item cai,
+nunca**. Abate, XP e recurso continuam entrando, então nada *parece* quebrado.
+Entrar sem sessão virou jogar um jogo que não é o jogo.
+
+### Google
+
+`entrarComProvedor('google')` abre o Supabase numa janela pop-up e recolhe a
+sessão da URL de volta. Quem entra pela primeira vez por ali **reinicia o
+onboarding**: é conta nova, e herdar o tutorial de outra pessoa no mesmo
+navegador seria pior que repeti-lo. Passo a passo de configuração em
+[`LOGIN-PROVEDORES.md`](LOGIN-PROVEDORES.md).
+
+---
+
+## Menu de perfil — `ui/PerfilMenu.ts`
+
+No canto superior esquerdo, sobre o trilho. Mostra **quem eu sou no jogo, onde
+estou na campanha e se o progresso está sincronizado**: apelido público, id
+abreviado, validade da sessão, melhor setor, patente, tamanho da frota, tempo de
+jogo e a última subida do save. Um menu de conta que só oferece "sair" não vale
+o clique.
+
+Dois cuidados que vieram de defeito:
+
+- **Dado de conta não aparece de graça.** O menu pode cair numa transmissão ou
+  numa captura de tela, então e-mail e id ficam protegidos até a pessoa pedir.
+- **Ele escuta a troca de conta.** A ordem do boot não deixa alternativa: a
+  barra é montada e só então o login aparece por cima dela — quando este menu
+  leu `sessaoGuardada()` a primeira vez, leu `null`. Sem escutar o aviso, entrar
+  pelo Google deixava "Sem conta" escrito no topo até a próxima recarga.
+
+---
+
+## Eventos — `id: 'eventos'`
+
+`ui/panels/EventosPanel.ts` · `data/eventos.ts` · `sim/eventos.ts`
+
+Os eventos diários e o que cada um paga. O mineral do dia sai do **elemento da
+galáxia**, derivado da tabela em `data/elemento-da-galaxia.ts` — e não de uma
+lista escrita à mão ao lado dela. Foi assim que 6 de 6 eventos passaram a pagar
+o mineral errado quando as galáxias foram redistribuídas: a tabela derivada
+seguiu, a lista à mão não. Hoje há teste amarrando um ao outro.
+
+O progresso dos eventos viaja pelo servidor junto das missões, então ele é o
+mesmo em qualquer máquina.
+
+---
+
 ## Escolha de personagem — a primeira tela
 
 `ui/EscolhaDePiloto.ts` · `data/pilotos.ts` · aparece **uma vez** por save
@@ -365,8 +437,38 @@ borda lateral, sem um retângulo atrás da porcentagem.
 > batem dentro de 1% do anunciado — e se a rolagem falha, o resultado é a
 > **raridade dos itens sacrificados**, não perda total.
 
-- **Lê:** `state.armazem`, `state.inventory`, `data/balance/fusao.ts`
-- **Escreve:** `sim.gastarMaterial()`, `sim.acquire()`, remove os sacrificados
+### A fusão é do SERVIDOR, e a tela diz quando ela é recusada
+
+Desde a Fase 3c quem funde é `POST /sintetizar`. Era a última porta por onde um
+item nascia no cliente: dez peças entravam e uma saía de `rollItem` local, então
+bastava fundir lixo até o resultado agradar. `faltaParaFundir` continua aqui —
+ela só DIZ o que falta, para a tela não gastar uma requisição à toa.
+
+Em 08/09 esta tela apareceu como **"clico em FABRICAR e não acontece nada"**, e
+custou quatro diagnósticos. Três coisas somadas:
+
+1. **O botão era `disabled`.** Um botão `disabled` não recebe clique nenhum — o
+   navegador engole o evento antes de qualquer código rodar. Hoje é
+   `aria-disabled` mais a classe `.inerte`: continua apagado, o leitor de tela
+   continua sabendo, e **o clique chega para poder explicar**.
+2. **A recusa do servidor virava `null`,** e `null` virava nada. Hoje cada
+   recusa vira frase, e as não previstas dizem que **nenhuma peça foi perdida**
+   — a fusão é destrutiva e o silêncio deixa a dúvida no pior lugar.
+3. **O aviso era desenhado atrás do painel.** `.toasts` estava em `z-index: 40`
+   e a `.camada` em `60`, então toda tela sobreposta escondia a mensagem por
+   inteiro. Justamente onde o jogador toma ações que podem ser recusadas.
+
+Três arestas menores no mesmo caminho: a fila do inventário **sobe antes** da
+fusão (o servidor recusa o lote se um `uid` ainda não chegou lá); o anel **só
+esvazia quando a fusão acontece**; e a dica traz número em vez de instrução —
+"Faltam 2 no anel — há 6 Comuns na mochila" separa *falta pôr* de *falta ter*.
+
+- **Lê:** `state.inventory`, `sim.faltaParaFundir()`, `data/balance/fusao.ts`
+- **Escreve:** nada localmente — `POST /sintetizar` consome as peças e devolve
+  o item e a mochila nova
+- **Dívida conhecida:** o custo em núcleos e material é **exibido e conferido,
+  mas não cobrado** por ninguém. O débito saiu junto com `fundirItens()` na Fase
+  3c e não foi refeito no servidor. Está no `PLANO.md`.
 
 ---
 
@@ -986,4 +1088,7 @@ não um modal que tira o jogador da cena.
 | Códex | ✅ seis arquivos completos; revisar somente ao entrar conteúdo novo |
 | Provação | arte dedicada dos 100 chefes (6 sprites em rodízio hoje) |
 | Combate | arte de projétil elemental (revertida; "depois nós tratamos isso") |
+| Combate | **inimigo comum de gelo (1 sprite) e de raio (2)** — as galáxias desses elementos ficam presas em 26–29% de dominância elemental por falta de arte, não por regra |
+| Fabricação | a fusão **não cobra** os núcleos nem o material que anuncia |
 | Geral | auditoria final de teclado e contraste AA por fluxo (base pronta: foco visível, rótulos, alto contraste e navegação de abas) |
+| Geral | **nenhum teste cobre render nem interação.** Os 1.325 são de regra e dado, e os defeitos de 08/09 foram todos de interação: botão `disabled`, aviso atrás da camada, espelho não copiado. Os testes que os pegam hoje leem o FONTE, que é melhor que nada e pior que um DOM |

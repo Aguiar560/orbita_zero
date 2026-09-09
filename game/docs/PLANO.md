@@ -46,17 +46,21 @@ Um idle/progression shooter **completo e lançável**: 300 setores de campanha, 
 pisos de Provação, 30 galáxias, progressão por item / craft / Matriz, e um laço
 ocioso que recompensa voltar sem exigir que o jogador fique olhando.
 
-**O que já está de pé:** as fundações. Combate elemental, itemização com
-prefixo/sufixo e tiers, curvas calibradas contra o jogador real, morte, missões,
-Provação, Laboratório de calibração, mais de 24.500 linhas de TypeScript e 527
-testes. O registro da sessão de 24/08 está em
-[`ATUALIZACAO-2026-08-24.md`](ATUALIZACAO-2026-08-24.md).
+**O que já está de pé:** as fundações e o servidor. Combate elemental,
+itemização com prefixo/sufixo e tiers, curvas calibradas contra o jogador real,
+morte, missões, Provação, Laboratório, som de combate sintetizado, onboarding,
+capa e login com Google — **51.700 linhas de TypeScript e 1.325 testes**
+(medido em 08/09/2026).
 
-**O que falta:** conteúdo em volume (sobretudo as artes dedicadas dos chefes da
-Provação), som e onboarding — e, acima de tudo, o **Passo 9: mover o jogo para o
-servidor**. Ele deixou de ser opcional quando o ranking passou a valer prêmio:
-hoje o save é escrito pelo cliente, então recurso, cristal, VIP, item e nave são
-editáveis pelo console, e um pódio premiado em cima disso não se sustenta.
+O **Passo 9** deixou de ser a dívida principal: item, casco, moeda, material,
+XP, Matriz, setor alcançado, missão e confiança **moram no D1** e o save guarda
+só o espelho. A Fase 5 fecha o último buraco — o servidor deixou de *estimar* se
+um ganho é plausível e passou a **reproduzir o encontro** com a mesma semente.
+
+**O que falta:** conteúdo em volume (as artes dedicadas dos chefes da Provação e
+os inimigos comuns de gelo e raio), a **virada da chave da Fase 5** — o servidor
+já precifica o que o cliente declara, mas ainda não é ele quem paga —, e uma
+camada de teste que cubra render e interação, que hoje é zero.
 
 ---
 
@@ -78,8 +82,15 @@ editáveis pelo console, e um pódio premiado em cima disso não se sustenta.
 | Códex | ✅ chefes, inimigos/elites, cascos, itens, recursos/fontes e elementos | `ui/panels/CodexPanel.ts` |
 | Conteúdo por galáxia | 🟡 elenco base pronto; falta variedade autoral contínua | `data/enemies.ts`, `hulls.ts`, `bosses.ts` |
 | **Escada de cascos** | ✅ os 29 Spaceships 2.0 com setor, custo e escala medidos | `data/balance/cascos.ts` |
-| **Som** | 🔴 **não existe** | — |
-| **Onboarding** | 🔴 **não existe** | — |
+| **Som** | ✅ combate sintetizado, 53 cascos e 130 chefes com perfil; **falta música** | `render/SinteseSonora.ts` |
+| **Onboarding** | ✅ passos, tutoriais por tela e cartão de destrave | `data/onboarding.ts`, `ui/Tour.ts` |
+| **Capa e login** | ✅ capa navegável, e-mail e Google; sem conta não se joga | `ui/Landing.ts`, `ui/Login.ts`, `app/conta.ts` |
+| **Servidor — dinheiro, item, casco** | ✅ D1; o item nunca sobe | `server/src/`, migrações 0005–0009 |
+| **Servidor — progressão** | ✅ XP, Matriz, materiais, casco em campo; nível derivado | `server/src/progresso.ts`, 0010/0012 |
+| **Servidor — missões e confiança** | ✅ fatia 1, validação B, mescla monotônica | `server/src/missoes.ts`, 0014 |
+| **Servidor — Fase 5 (réplica)** | 🟡 o servidor já **precifica** o que o cliente declara; falta **virar a chave** e passar a pagar | `server/src/replica.ts`, `encontros.ts` |
+| **Ritmo do servidor** | ✅ dois baldes: `sincronia` e `acao` | `server/src/ritmo.ts` |
+| **Teste de render e interação** | 🔴 **não existe** — sem DOM na suíte | — |
 | **Acessibilidade** | 🟡 base pronta; falta auditoria fluxo a fluxo | `ui/Shell.ts`, `ui/panels/SettingsPanel.ts` |
 | **Personagens jogáveis** | ✅ quatro, com nave própria e 1,58% de dispersão de poder | `data/pilotos.ts`, `ui/EscolhaDePiloto.ts` |
 | **Equipamento por nave** | ✅ cada casco com o próprio conjunto | `sim/stats.ts`, `ui/Anatomia.ts` |
@@ -1485,12 +1496,18 @@ Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
 | **Mortes acumulam muito no fim** | 141 mortes até o setor 13 numa corrida do zero | ligado à decisão 2 |
 | **Nave nua trava em onda de elite** | setor 4: 90 min, 67 mortes, 0 itens — inimigos escapam pela base e a onda é reposta com vida cheia | `WaveDirector` |
 | **`sharp` com CVE de libvips** | `npm audit`. É ferramenta de build, não entra no bundle | etapa própria |
+| **A fusão não cobra nada** | a receita pede 40 núcleos e 40 de ferrita, o painel exibe e `faltaParaFundir` confere — mas **ninguém debita**. O motivo `'craft'` existe no tipo do livro-caixa e não é emitido por ninguém; o débito saiu junto com `fundirItens()` na Fase 3c e não foi refeito | `server/src/index.ts` (`sintetizar`), junto do consumo das peças — muda economia, decisão do Rafael |
+| **A auditoria de teto da carteira nunca gravou** | `registrarExcedentes` lia `SELECT setor FROM progresso`; a coluna é `melhor_setor`. A função engole o próprio erro de propósito (roda depois do pagamento), então não havia sintoma. Corrigido em 08/09, mas **as linhas de `excedentes` daquele período não existem** | ✅ corrigido; o histórico é irrecuperável |
+| **Morte conta por segundo, não por passo** | setor 90 no simulador: 300 mortes contra 1.200 medidas em dez minutos ao vivo | `sim/morte.ts` + o arnês |
+| **`d1_migrations` é uma armadilha** | as migrações 0012–0014 subiram por `--file=`, que não registra. Um `wrangler d1 migrations apply` tentaria reaplicá-las e o `ADD COLUMN` falharia | decidir entre reconciliar a tabela ou abandonar `migrations apply` de vez |
+| **Zero teste de render e interação** | os quatro defeitos de 08/09 eram de interação ou operação; a suíte de 1.325 é toda de regra e dado. Os testes que os pegam hoje leem o **fonte** | precisa de DOM na suíte (jsdom/happy-dom) ou de um arnês de painel |
+| **Arte elemental incompleta trava a dominância** | 1 inimigo comum de gelo e 2 de raio; as galáxias desses elementos ficam em 26–29% de presença elemental, contra 62% de média | `data/enemies.ts` + arte |
 
 ---
 
 ## Como não estragar o que já está de pé
 
-Cinco regras que vieram de erro real, não de teoria.
+Oito regras que vieram de erro real, não de teoria.
 
 1. **Meça antes de consertar, e desconfie do instrumento.** Três "defeitos"
    registrados no roadmap eram artefatos de medição, não bugs do jogo.
@@ -1504,3 +1521,16 @@ Cinco regras que vieram de erro real, não de teoria.
    da banda; só apareceu quando o medidor ficou honesto.
 5. **Toda constante nova mora em `data/balance/`.** Um número mágico dentro de um
    `if` é bug de arquitetura.
+6. **Diante de um sintoma mudo, o primeiro trabalho é dar voz — não deduzir.**
+   Em 08/09 a Fabricação "não fazia nada" e custou quatro diagnósticos; os três
+   primeiros vieram de leitura de código mais dado indireto, e os três estavam
+   errados sobre a causa. O que resolveu foi o jogo passar a dizer o motivo:
+   primeiro `rapido_demais`, depois `itens_nao_sao_seus`. Fazer a falha se
+   anunciar é mais barato que a segunda hipótese errada.
+7. **Migração primeiro, deploy depois — e conferir pelo `sqlite_master`.**
+   Publicar código que lê coluna inexistente derruba a rota inteira, e o cliente
+   disfarça a queda como perda de dado. `d1_migrations` não registra o que sobe
+   por `--file=`, então ela não serve de conferência.
+8. **Um comando ruim nunca derruba o lote.** Recusar o lote inteiro por causa de
+   uma linha faz o cliente reenviá-lo para sempre, e o espelho dele nunca mais
+   converge. Apare, conte o que faltou, e devolva o resto aplicado.

@@ -71,18 +71,32 @@ arrays exportados.)*
 
 ```
 src/
-  core/     3 arq · matemática, RNG determinístico (mulberry32), pools, formatação
-  render/   6 arq · Assets, Surface (canvas 2D), Parallax, Particles, Anim, Atlas
-  sim/     16 arq · estado, atributos, progressão, loot, matriz — SEM DOM, SEM canvas
-  data/    39 arq · tabelas puras + `balance/` com as curvas e limites
-  modes/    4 arq · VerticalMode (cena de combate), PilotAI, WaveDirector, entities
-  ui/      22 arq · Shell, LeftRail, painéis e componentes — SEM regra de jogo
-  app/      4 arq · Game (laço de passo fixo), Bus, Loop e persistência admin
-tools/     32 arq · pipeline de assets e o arnês de balanceamento, fora do bundle
-tests/          · 570 testes passando + 1 todo (verificado em 25/08/2026)
+  core/     3 arq ·   242 linhas · matemática, RNG determinístico, pools, formatação
+  render/  10 arq · 1.621 linhas · Assets, Surface (canvas 2D), Parallax, Particles
+  sim/     22 arq · 7.987 linhas · estado, atributos, progressão, loot, matriz
+  data/    57 arq · 12.174 linhas · tabelas puras + `balance/` com curvas e limites
+  modes/    5 arq · 4.585 linhas · VerticalMode, PilotAI, WaveDirector, entities
+  ui/      35 arq · 11.433 linhas · Shell, LeftRail, painéis — SEM regra de jogo
+  app/     16 arq · 3.896 linhas · Game, Bus, Loop e OS ESPELHOS DO SERVIDOR
+  styles/   3 arq · 9.357 linhas
+server/    16 arq · 4.441 linhas · o Worker do Cloudflare e as 14 migrações do D1
+tools/           · pipeline de assets e o arnês de balanceamento, fora do bundle
+tests/  134 arq · 17.417 linhas · 1.325 testes passando (conferido em 08/09/2026)
 ```
 
 **Aliases:** `@core @render @sim @data @ui @modes @app`
+
+### A camada que o desenho original não tinha: `server/`
+
+O jogo deixou de ser só cliente. Desde o Passo 9, **dinheiro, item, casco,
+progressão e missão moram no D1** e o `GameState` guarda apenas o ESPELHO deles.
+`server/src/` é um Worker do Cloudflare que importa `@sim` e `@data` — os mesmos
+arquivos do navegador, nunca uma cópia — e por isso a regra que ele cobra é a
+mesma que o jogo aplica.
+
+`src/app/` cresceu de 4 para 16 arquivos por causa disso: cada assunto que saiu
+do save ganhou ali o módulo que fala com a rota dele (`carteira`, `inventario`,
+`lote`, `progresso`, `missoes`, `ausencia`, `conta`, `nuvem`, `placar`).
 
 ### As quatro regras de camada, em ordem de importância
 
@@ -156,6 +170,30 @@ Violar qualquer um destes é regressão, não escolha.
   preservados quando há migração conhecida; save de versão futura é recusado de
   modo seguro, pois o código não pode inventar campos que ainda não conhece.
 
+**Servidor** — acrescentados pelo Passo 9, e cada um custou um defeito para virar regra
+- **O item nunca sobe.** O cliente diz QUANTOS pegou de cada tipo, nunca QUAIS.
+  O servidor tem a semente e o cursor, e deriva. O que não trafega não pode ser
+  forjado. Vale igual para casco, moeda e material.
+- **O nível é DERIVADO, nunca guardado.** Guardar XP e nível é guardar a mesma
+  informação duas vezes, e duas cópias de um número divergem. A confiança dos
+  contatos segue a mesma regra: é função pura das entregas e não tem coluna.
+- **Toda mescla entre aparelhos é MONOTÔNICA.** Passos pelo maior, `iniciada`
+  por OU, entrega pelo primeiro carimbo, `melhor_setor` pelo maior. É isso que
+  faz duas máquinas em paralelo **somarem** em vez de uma vencer. Não existe
+  "última escrita vence" em lugar nenhum — foi o defeito que a Matriz e o casco
+  em campo tiveram, cada um do seu jeito.
+- **Um comando ruim não derruba o lote.** Equipar recusado volta desequipado,
+  entrega recusada não anula o progresso, coleta grande demais é aparada e
+  contada. Recusar o lote inteiro faz o cliente reenviá-lo para sempre, e o
+  espelho dele nunca mais converge — medido em 08/09: 29 peças no cliente
+  contra 9 no servidor.
+- **A falha do servidor precisa ser AUDÍVEL.** `src/app/*` devolve `null` em
+  toda recusa e quem chama cai no padrão, então indisponibilidade se disfarça de
+  perda de dado: nível zerado, nave errada, saldo zero, botão mudo. Toda ação do
+  jogador que possa ser recusada mostra o motivo (`toast` + `console.warn`), e o
+  aviso fica acima da `.camada` — senão ele é desenhado atrás do painel que o
+  pediu.
+
 **Arte**
 - Os packs crus em `D:\bbb\*` são **somente leitura**. O pipeline lê de lá e
   escreve em `game/public/assets`. Nunca o contrário.
@@ -189,10 +227,35 @@ O terminal do Rafael é **PowerShell 5.1**, que **não aceita `&&`** — use `;`
 | `npm run dev` | Vite em `localhost:5180` (porta fixa) |
 | `npm run assets` | Fatia os packs crus de `D:\bbb\*` em `public/assets` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | suíte do Vitest (570 testes + 1 `todo`, conferidos em 25/08/2026) |
+| `npm test` | suíte do Vitest (**1.325 testes em 134 arquivos**, 08/09/2026) |
 | `npm run build` | assets + typecheck + build |
 
 Se mexeu em arte: `npm run assets; npm run dev`.
+
+### O servidor tem ciclo próprio, e a ORDEM importa
+
+```bash
+cd D:\bbb\game\server; npx wrangler d1 execute orbita-zero --remote --file=migrations/NNNN-nome.sql
+cd D:\bbb\game\server; npm run deploy
+```
+
+**Migração primeiro, deploy depois — sempre.** Publicar código que lê uma coluna
+que ainda não existe derruba a rota inteira, e o cliente disfarça: em 08/09 a
+`0013` não subiu, `/progresso` passou horas devolvendo `no such column: semente`
+e o sintoma no jogo foi *nível zerado e nave errada em campo*.
+`tests/o-esquema-do-servidor-existe.test.ts` monta o esquema em memória e manda
+o SQLite preparar cada consulta do Worker, então o par (código, migrações) não
+sai mais incoerente — mas ele **não** sabe se a migração foi aplicada lá fora.
+
+O push para `main` publica o CLIENTE na Vercel sozinho. O Worker **não** vai
+junto: mudança em `server/` só entra com `npm run deploy`.
+
+`npx wrangler d1 execute orbita-zero --remote --command "SELECT …"` consulta a
+produção e é a forma mais rápida de trocar palpite por evidência. Duas
+armadilhas: `d1_migrations` só registra o que subiu por `migrations apply`, e as
+migrações aplicadas com `--file=` **não aparecem lá** — confira coluna e tabela
+pelo `sqlite_master`/`PRAGMA`. E `wrangler tail` não resolve o host neste
+ambiente: para saber por que uma rota falhou, faça o cliente reportar.
 
 ---
 

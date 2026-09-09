@@ -1076,29 +1076,157 @@ save.
 
 ---
 
-## 11. Testes — 468 aprovados, em 20 arquivos
+## 11. Testes — 1.325 aprovados, em 134 arquivos (08/09/2026)
+
+Os maiores, medidos com `vitest run --reporter=json`:
 
 | arquivo | testes | cobre |
 |---|---|---|
-| `balanceamento.test.ts` | 42 | curvas, raridades, ritmo, anel elemental, limites |
-| `drops.test.ts` | 37 | sorteio de item, pesos, elementos |
-| `provacao.test.ts` | 32 | geração dos 100 pisos |
-| `provacao-progresso.test.ts` | 28 | tentativas, marcos, recompensa |
+| `drops.test.ts` | 111 | sorteio de item, pesos, elementos |
+| `tiers.test.ts` | 57 | T1–T10, distribuição, teto por raridade |
+| `balanceamento.test.ts` | 43 | curvas, raridades, ritmo, anel elemental, limites |
+| `provacao.test.ts` | 34 | geração dos 100 pisos |
+| `provacao-progresso.test.ts` | 29 | tentativas, marcos, recompensa |
+| `onboarding.test.ts` | 28 | os passos e o que cada um destrava |
 | `provacao-combate.test.ts` | 25 | especiais, modificadores, encontro |
-| `tiers.test.ts` | 22 | T1–T10, distribuição, teto por raridade |
-| `missoes.test.ts` | 20 | funil de fatos, requisitos, entrega |
-| `fusao.test.ts` | 19 | probabilidade anunciada × real |
-| `provacao-chefes.test.ts` | 19 | 100 chefes únicos, arquétipos, especiais |
-| `contatos.test.ts` | 17 | confiança, escada, catálogo |
-| `morte.test.ts` | 17 | perda de XP, nível, Matriz, sucata |
-| `progressao.test.ts` | 17 | setores, ondas, encontros |
-| `save.test.ts` | 11 | migração, save malformado |
-| `afixos.test.ts` | 5 | prefixo/sufixo, piso, identidade de slot |
-| `itens-novos.test.ts` | 5 | atlas e ícones |
-| `arte-elemental.test.ts` | 4 | tintura elemental |
-| `modo-teste.test.ts` | 3 | destravas não destrutivas |
+| `lote.test.ts` | 23 | o pote do setor, páginas, cursor |
+| `missoes.test.ts` | 22 | funil de fatos, requisitos, entrega |
+| `carteira.test.ts` | 21 | espelho, fila de movimentos, passe |
+| `combustivel.test.ts` | 21 | consumo, recarga, limites |
+| `contatos.test.ts` · `provacao-chefes.test.ts` · `save.test.ts` | 19 cada | confiança · 100 chefes únicos · migração |
+| `arte-elemental.test.ts` · `progresso-servidor.test.ts` | 18 cada | tintura elemental · XP, nível derivado, Matriz |
+
+**O que a suíte NÃO cobre, e é onde os defeitos aparecem.** Os 1.325 são de
+regra e dado. Não há DOM na suíte, então render e interação ficam de fora — e os
+quatro defeitos de 08/09 foram todos de interação ou de operação: uma migração
+não aplicada, um espelho não copiado, um botão `disabled` que engolia o clique e
+um aviso desenhado atrás do painel. Os testes que os pegam hoje leem o **fonte**
+(`o-esquema-do-servidor-existe`, `a-fabricacao-diz-por-que-nao`), o que é melhor
+que nada e pior que um DOM de verdade.
 
 Os testes incluem blocos de **linha de base** que fixam por escrito o quanto o
 balanceamento está quebrado. **Falhar é sinal de sucesso** — quer dizer que uma
 etapa mexeu nas curvas. Ao corrigir, **troque a asserção pela faixa saudável em
 vez de apagar o teste**.
+
+---
+
+## 12. O servidor — `server/src/`, D1 no Cloudflare
+
+O jogo deixou de ser só cliente. Um Worker de 16 arquivos e 4.441 linhas guarda
+tudo o que vale poder, e **importa `@sim` e `@data` — os mesmos arquivos do
+navegador, nunca uma cópia.** É isso que garante que a regra cobrada é a regra
+aplicada.
+
+### As rotas
+
+| rota | o quê | balde |
+|---|---|---|
+| `GET /saude` | o Worker está de pé |
+| `GET·PUT /save` | o blob do save, **sem dinheiro e sem frota** (`semODinheiro`) | — |
+| `PUT /apelido` | nome público, único por forma normalizada | `apelido` |
+| `PUT /marcas` · `GET /placar` · `GET /online` | ranking e presença | `marcas` |
+| `GET·POST /carteira` | saldos e a fila de movimentos | `sincronia` |
+| `POST /lote` | o pote de itens do setor, rolado pelo servidor | `sincronia` |
+| `GET·POST /inventario` | mochila, equipado e o lote de comandos | `sincronia` |
+| `GET·POST /progresso` | XP, Matriz, melhor setor, casco em campo, semente | `sincronia` |
+| `GET·POST /missoes` | passos, entrega e a confiança derivada | `sincronia` |
+| `POST /ausencia` | o que rendeu com a aba fechada | `sincronia` |
+| `POST /sintetizar` | a fusão | `acao` |
+| `POST /frota` | comprar casco, registrar o do piloto | `acao` |
+| `POST /vip` | o passe | `acao` |
+
+### As tabelas — 14 migrações
+
+`saves` · `apelidos` · `marcas` · `limites` · `contas` · `saldos` ·
+`transacoes` · `assinaturas` · `lotes` · `itens` · `frota` · `progresso` ·
+`naves_progresso` · `materiais` · `excedentes` · `missoes`.
+
+**Migração primeiro, deploy depois.** Em 08/09 a `0013` não foi aplicada, o
+Worker subiu lendo `progresso.semente` e a rota inteira passou horas devolvendo
+`no such column`. Nenhum sintoma no servidor; no jogo, "meu nível zerou e minha
+nave trocou". `tests/o-esquema-do-servidor-existe.test.ts` monta o esquema em
+memória e manda o SQLite **preparar** cada consulta do Worker — mesmo motor do
+D1, mesmos motivos de falha. Ele achou um segundo defeito na primeira execução:
+`registrarExcedentes` lia `SELECT setor FROM progresso`, e a coluna se chama
+`melhor_setor`; como a função engole o próprio erro de propósito (roda depois do
+pagamento), a auditoria de teto **nunca gravou nada** desde que subiu.
+
+### Os quatro princípios, e o defeito que cada um custou
+
+**1. O item nunca sobe.** O cliente diz QUANTOS pegou de cada tipo, nunca QUAIS.
+O servidor tem a semente e o cursor, e deriva. O que não trafega não pode ser
+forjado. Vale igual para casco (`frota`), moeda (`transacoes`) e material.
+
+**2. O nível é derivado, nunca guardado.** Guardar XP e nível é guardar a mesma
+informação duas vezes, e duas cópias de um número divergem. A **confiança** dos
+contatos segue a mesma regra: é `Σ confiancaDaMissao` sobre o que foi entregue,
+e por isso não tem coluna.
+
+**3. Toda mescla entre aparelhos é monotônica.** Passos pelo maior, `iniciada`
+por OU, entrega pelo primeiro carimbo, `melhor_setor` pelo maior. É o que faz
+duas máquinas em paralelo **somarem** em vez de uma vencer. Não existe "última
+escrita vence" — foi o defeito que a Matriz e o casco em campo tiveram.
+
+**4. Um comando ruim não derruba o lote.** Custou o dia 08/09 inteiro:
+`derivarColeta` devolvia `null` quando o pedido passava do pote, isso virava
+`409`, e o 409 derrubava o lote de comandos **inteiro** — a coleta, os descartes
+e os equipamentos junto. O cliente devolvia tudo à fila e reenviava o mesmo lote
+envenenado, para sempre. Medido: **29 peças no cliente contra 9 no servidor**, o
+cursor do lote parado, e a Fabricação recusando por peça que nunca existiu lá.
+Hoje ela apara e conta (`faltaram` sobe na resposta), como `planejarEquipar` e a
+entrega de missão já faziam.
+
+### O ritmo — dois baldes, por natureza e não por rota
+
+`ritmo.ts`. Um balde de fichas por assunto: refil constante, capacidade que
+define a rajada. O balde nasceu único, chamado `carteira`, medido para UMA rota
+(~20 depósitos/hora). Foram penduradas nele mais oito, e o nome ficou junto com
+o dimensionamento. Contado no cliente:
+
+| momento | rotas que disparam juntas |
+|---|---|
+| boot | ausência, carteira, lote, inventário, progresso, missões = **6** |
+| fim de setor (~3 min) | carteira, inventário, progresso, missões = **4** |
+
+Com capacidade 6, um boot esvaziava o balde — e a ação deliberada do jogador,
+que acontece logo depois de um setor cair, encontrava o chão. Hoje:
+
+- **`sincronia`** (20 s, 12) — o que o jogo faz sozinho. Recusada, tenta de novo
+  e ninguém vê. Cabe dois boots seguidos, que é o caso de quem testa recarregando.
+- **`acao`** (20 s, 5) — fundir, comprar casco, comprar passe. Acontece com o
+  jogador olhando; recusada, é um botão que não funciona.
+- **`marcas`** (120 s, 3) — a rota mais cara: uma chamada vira até 80 linhas.
+- **`apelido`** (300 s, 2) — escolhido uma vez, trocado quase nunca.
+
+Não afrouxa a cota do D1: **o balde não muda quantas escritas o jogo tenta, só
+quantas ele recusa.**
+
+### O teto que replica o jogo — Fase 5
+
+O servidor não *estima* o quanto um ganho é plausível: ele **reproduz o
+encontro**. `replica.ts` monta a onda com `buildEncounter` e deriva o piso de
+tempo e o teto de XP dela; `encontros.ts` precifica o que o cliente declarou ter
+abatido. A semente do universo saiu do save e virou coluna (`0013`) justamente
+para as duas metades montarem o MESMO mundo — antes disso a ausência era
+simulada com semente aleatória, num universo diferente do jogado.
+
+Medições da fase: o piso do chefe cortou a folga do teto de **522× para 1,3×**;
+o piso de tempo ficou entre **1,25× e 1,41×** do real, contra 0,3×–9,9× da
+fórmula anterior; e 99% do XP do setor 1 vem de abate, não de conclusão.
+
+### O cliente engole o erro — e por que isso é um problema de sistema
+
+Todo módulo de `src/app/` fala com o Worker por um `chamar()` que faz
+`if (!r.ok) return null` e `catch { return null }`. Quem chama transforma `null`
+em "usa o que já tinha". É bom para rede instável e **péssimo para diagnóstico**:
+o jogador nunca vê "o servidor falhou", vê nível zerado, nave errada, saldo zero
+ou um botão mudo.
+
+Em 08/09 três defeitos diferentes chegaram com esse mesmo disfarce, e cada um
+custou horas até alguém entender que era indisponibilidade e não perda de dado.
+A regra que ficou: **toda ação do jogador que possa ser recusada mostra o motivo**
+— `toast` para quem joga, `console.warn` com status e motivo para quem conserta,
+porque o toast some em segundos e o console fica. E o aviso precisa estar acima
+da `.camada`: `.toasts` viveu em `z-index: 40` contra os 60 dela, e nenhuma
+mensagem de nenhuma tela sobreposta era vista.

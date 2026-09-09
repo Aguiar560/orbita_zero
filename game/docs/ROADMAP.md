@@ -8,8 +8,239 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 08/09/2026 · 1.205 testes passando · registro consolidado
+**Última atualização:** 09/09/2026 · **1.325 testes** em 134 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 08–09/09/2026 — a noite dos defeitos mudos
+
+Quatro defeitos num dia, com a **mesma forma**: o servidor recusava, o cliente
+engolia a recusa e a tela mostrava um número plausível e errado. Nenhum deles
+tinha sintoma no servidor, porque nenhum deles era um erro do servidor — eram
+respostas.
+
+O relato que abriu tudo foi "cliquei em FABRICAR e não acontece nada". Ele
+custou **quatro diagnósticos, três errados**, e a lição que ficou vale mais que
+os consertos: *diante de um sintoma mudo, o primeiro trabalho é dar voz a ele,
+não deduzir a causa.*
+
+### 1. A migração que não subiu
+
+`progressoDe` ganhou a coluna `semente` junto da migração `0013`. O Worker foi
+publicado; **a migração não**. De lá em diante toda chamada a `/progresso`
+respondia `no such column: semente`.
+
+A prova está no próprio banco: nenhuma linha de `progresso` foi escrita depois
+das 19h51 UTC — a última é de 19h50, minutos antes do deploy. No jogo, o sintoma
+foi *nível do piloto zerado e Núcleo Vektor em campo no lugar da nave deixada*,
+porque `src/app/progresso.ts` engole a falha e cai no padrão.
+
+Consertado aplicando a `0013`; o código já estava certo.
+
+**O teste.** `o-esquema-do-servidor-existe.test.ts` monta o esquema em memória
+(`schema.sql` mais cada migração, em ordem) e manda o SQLite **preparar** cada
+consulta do Worker. Preparar valida tabela e coluna sem executar nada — é o
+mesmo motor do D1 falhando pelos mesmos motivos, não uma imitação. Com a `0013`
+fora da pasta ele acusa `index.ts:1362 — no such column: semente`.
+
+**E achou um segundo defeito na primeira execução.** `registrarExcedentes` lia
+`SELECT setor FROM progresso`; a coluna se chama `melhor_setor`. Como a função
+engole o próprio erro de propósito — ela roda depois do pagamento e não pode
+derrubá-lo —, a **auditoria de teto da carteira nunca gravou uma linha** desde
+que subiu. As 17 linhas de `excedentes` vinham todas de `replica` e `encontros`,
+que é outro caminho.
+
+### 2. O saldo do servidor não chegava à tela
+
+O boot fazia, nesta ordem:
+
+```
+await sincronizarCarteira();   // enche o espelho e marca "pronta"
+await drenarCarteira(sim);     // if (!fila.length && carteiraPronta()) return;
+```
+
+A primeira linha era **exatamente a condição** que fazia a segunda desistir. E a
+cópia do espelho para `state.resources` — de onde o topo, a Loja e a Fabricação
+leem — morava depois dessa guarda.
+
+Com a fila vazia, que é o caso de toda sessão que começa, a cópia nunca
+acontecia. Medido: **2.582 núcleos no servidor, 0/0/0 na tela.** O passe tinha o
+mesmo destino, e pior — quem pagou entrava sem ele.
+
+A cópia virou `espelharNoSim`, chamada sempre. Ela só escreve com o espelho
+pronto: *"ainda não sei"* e *"você tem zero"* não são a mesma coisa, e espelhar
+vazio zeraria o saldo do save. Conferido que progressão, inventário e missões
+não têm o mesmo formato — neles o `adotar` escreve direto no estado, então não
+existe espelho paralelo para ficar para trás.
+
+### 3. O aviso era desenhado atrás do painel que o pediu
+
+O mais simples e o mais caro. `.toasts` estava em `z-index: 40`; a `.camada` —
+toda tela sobreposta — em `60`.
+
+Fabricação, Loja, Baús, Provação, Modulação: **exatamente as telas onde o
+jogador toma uma ação que pode ser recusada esconderiam a recusa por inteiro.**
+Foi isso que fez a correção anterior parecer não ter funcionado — o clique
+chegava, o aviso era emitido, e ninguém nunca o viu.
+
+Um aviso invisível é pior que nenhum: dá a quem o escreveu a impressão de que
+avisou. Hoje `2000`, acima do tooltip do cockpit (1600), com `pointer-events:
+none` intacto, e teste comparando as duas camadas.
+
+Junto entrou o resto do caminho mudo: o FABRICAR deixou de ser `disabled` — um
+botão `disabled` não recebe clique nenhum, o navegador engole o evento antes de
+qualquer código rodar — e virou `aria-disabled` mais `.inerte`, para o clique
+chegar e poder explicar. A dica passou a ter número ("Faltam 2 no anel — há 6
+Comuns na mochila") em vez de instrução. E sessão vencida deixou de ser saída
+silenciosa.
+
+### 4. Um balde de fichas dimensionado para outro jogo
+
+Com a tela finalmente falando, veio: **`rapido_demais`**.
+
+O balde nasceu em 03/09 chamado `carteira`, medido para UMA rota — um depósito
+por setor, ~20 por hora. Desde então foram penduradas nele mais oito. O nome
+ficou, e o dimensionamento também. Contado no cliente:
+
+| momento | rotas que disparam juntas |
+|---|---|
+| boot | ausência, carteira, lote, inventário, progresso, missões = **6** |
+| fim de setor (~3 min) | carteira, inventário, progresso, missões = **4** |
+
+Com capacidade **6**, um boot esvaziava o balde inteiro. E o jogador abre a
+Fabricação logo depois de um setor cair — que é o momento natural, porque é
+quando as peças chegam — e encontrava o chão.
+
+Agora são dois, **separados por natureza e não por rota**:
+
+- **`sincronia`** (20 s, 12) — o que o jogo faz sozinho. Recusada, tenta de novo
+  e ninguém vê. Cabe **dois boots seguidos**, que é o caso de quem testa
+  recarregando; o mesmo 429 deixava o espelho do inventário parado, e foi metade
+  do "meus itens sumiram" do dia.
+- **`acao`** (20 s, 5) — fundir, comprar casco, comprar passe. Acontece com o
+  jogador olhando; recusada, é um botão que não funciona.
+
+Não afrouxa a cota do D1: **o balde não muda quantas escritas o jogo tenta, só
+quantas ele recusa.**
+
+### 5. A causa raiz — uma coleta grande demais envenenava o lote para sempre
+
+Com o 429 fora do caminho veio a recusa verdadeira: **`itens_nao_sao_seus`**.
+
+`derivarColeta` devolvia `null` quando o pedido passava do que o pote tinha, com
+o argumento de que *"aparar em silêncio esconderia um cliente contando errado"*.
+O argumento está certo sobre **esconder** e errado sobre **recusar**.
+
+Esse `null` virava `409`, e o 409 derrubava o **lote de comandos inteiro** — a
+coleta, os descartes e os equipamentos junto. O cliente devolvia tudo à fila e
+reenviava o mesmo lote envenenado. Para sempre.
+
+Medido no D1, na conta que estava jogando:
+
+| | |
+|---|---|
+| Inventário no cliente | **29 peças** |
+| Tabela `itens` no servidor | **9 peças** |
+| Cursor do lote | parado |
+| Fabricação | recusando por peça que nunca existiu lá |
+
+Agora ela dá o que o pote tem e conta o que faltou (`faltaram` sobe na resposta
+e o cliente registra no console). O desencontro continua aparecendo — que era o
+objetivo real — sem destruir o resto do lote. E não afrouxa a Fase 3a: o
+servidor continua derivando da semente dele, e **aparar só pode entregar
+menos**; há teste varrendo pedidos de 1 a 999 para fixar isso.
+
+É a mesma lição que `planejarEquipar` já tinha aprendido no arquivo ao lado —
+*"uma peça recusada aparece desequipada, que é a verdade"* — e que a entrega de
+missão aprendeu depois. A coleta nunca tinha aprendido.
+
+### O que isto ensinou sobre método
+
+O custo não foi o defeito: foi as horas até alguém entender qual era. Três
+diagnósticos publicados como conclusão vieram de leitura de código mais dado
+indireto, e os três estavam errados sobre a causa. O que resolveu foi o jogo
+passar a **dizer o motivo em voz alta**.
+
+Ficou como regra 6 do `PLANO.md`, e como invariante no `MAPA-DO-PROJETO.md`: a
+falha do servidor precisa ser audível, porque `src/app/*` devolve `null` em toda
+recusa e quem chama cai no padrão — indisponibilidade se disfarça de perda de
+dado, sempre.
+
+---
+
+## 08/09/2026 — missões e confiança no servidor: fatia 1, validação B
+
+`missoes` e `confianca` viajavam dentro do bloco do save, e a reconciliação
+escolhe UM bloco pelo maior `playtime`: duas máquinas em paralelo terminavam com
+o de uma delas. E `resgatarMissao` rodava inteiro no cliente — marcar uma missão
+como pronta no save fazia o servidor pagar.
+
+**A descoberta que cortou metade do trabalho: a confiança é função pura das
+entregas.** No cliente ela é `min(MAX, atual + confiancaDaMissao(def))`,
+concedida uma vez por entrega, e `confiancaDaMissao` é tabela. Logo ela DERIVA e
+**não precisa de coluna** — o mesmo argumento que o nível já usava.
+
+As regras de mescla são o coração da tabela `missoes` (migração `0014`):
+
+| campo | regra | por quê |
+|---|---|---|
+| `passos` | MAX elemento a elemento | progresso só sobe |
+| `iniciada` | OU | aceitar em qualquer aparelho vale |
+| `entregue_em` | o primeiro vence | entrega é irreversível |
+
+Todas monotônicas — é isso que faz duas máquinas em paralelo **somarem** sem
+código de mescla, e é o que torna a semeadura dos saves atuais segura, porque
+semear duas vezes dá o mesmo resultado.
+
+A **validação B** confere o que o servidor sabe sozinho: a missão existe, ainda
+não foi entregue, e os passos alcançam o alvo do catálogo — que é `@data`, o
+mesmo arquivo do cliente, sem cópia da regra. Uma entrega recusada **não derruba
+o envio**: o progresso continua valendo. O que ela não cobre, e está escrito
+assim, é se os passos foram merecidos — isso é o nível C, e é a Fase 5 inteira.
+
+15 testes em `missoes-no-servidor.test.ts`.
+
+---
+
+## 08/09/2026 — a onda retoma de onde parou
+
+O construtor do `Sim` chamava `refreshEncounter`, que zera `run.restam` — e como
+ele roda a cada recarga, a onda voltava inteira. Retomar era só **não mentir
+sobre quantos faltam**: o encontro termina por `restam` chegar a zero, e o
+`WaveDirector` já tem `replenish`.
+
+Dois cuidados em teste: `elapsed` **não** é retomado (o tempo com a aba fechada
+já é pago pela ausência; somá-lo pagaria duas vezes), e um save de antes de um
+rebalanceamento cai na onda inteira, porque ali o número salvo não significa
+mais a mesma coisa. **Errar dando trabalho é melhor que errar dando presente.**
+
+Continua não voltando o que está em cena — os inimigos não são salvos. O que se
+retoma é o progresso da onda.
+
+---
+
+## 08/09/2026 — a capa, o login separado e a porta do Google
+
+Trabalho do Rafael, registrado aqui porque muda a primeira tela do jogo.
+
+A **capa** virou navegável sem conta, com quatro páginas comerciais sobre artes
+aprovadas, e os botões ancorados **em porcentagem sobre a arte** — a arte é a
+composição, e ancorar em proporção faz eles acompanharem qualquer largura sem
+media query. `Entrar` e `Criar conta` viraram caminhos separados, e o formulário
+só aparece após a escolha explícita.
+
+Entrou a porta do **Google** (`entrarComProvedor`), com pop-up do Supabase e
+recolhimento da sessão pela URL. Quem entra por ali pela primeira vez
+**reinicia o onboarding**: é conta nova, e herdar o tutorial de outra pessoa no
+mesmo navegador seria pior que repeti-lo. Apagar o progresso passou a
+desconectar junto.
+
+E o **menu de perfil** ganhou o que faltava: apelido público, e proteção dos
+dados de conta — a superfície pode cair numa transmissão ou captura. Ele também
+passou a escutar a troca de conta: a barra é montada antes do login aparecer por
+cima dela, então quem entrava pelo Google lia "Sem conta" no topo até a próxima
+recarga.
 
 ---
 
@@ -2100,51 +2331,6 @@ mostrar o nome da conta.
 
 ---
 
-## 08/09/2026 — a migração que não subiu, e o teste que a teria pego
-
-O Rafael entrou no jogo e a nave estava sem itens, com o nível do piloto
-zerado. Não era perda de dados: era **indisponibilidade que o cliente disfarça**.
-
-`progressoDe` passou a selecionar a coluna `semente` junto da migração `0013`.
-O Worker foi publicado às 19h51 UTC; a migração **nunca foi aplicada** em
-produção. De lá em diante toda chamada a `/progresso` respondia
-`no such column: semente`. A prova está no próprio banco: nenhuma linha de
-`progresso` foi escrita depois daquele horário — a última é de 19h50.
-
-O sintoma no jogo é outro porque o cliente engole a falha (`catch { return
-null }`) e cai no padrão. Quem joga não vê "o servidor falhou", vê o nível
-zerado e a Núcleo Vektor em campo no lugar da nave que deixou. Foi por isso que
-o mesmo relato apareceu três vezes com explicações diferentes.
-
-**A correção da produção foi só a migração** — nada a publicar, porque o código
-já estava certo.
-
-### O teste
-
-[`tests/o-esquema-do-servidor-existe.test.ts`](../tests/o-esquema-do-servidor-existe.test.ts)
-monta o esquema em memória (`schema.sql` mais cada migração, em ordem) e manda o
-SQLite **preparar** cada consulta que o Worker tem. Preparar já valida tabela e
-coluna sem executar nada, então é o mesmo motor do D1 falhando pelos mesmos
-motivos — não uma imitação. Conferido: com a `0013` fora da pasta, ele acusa
-exatamente `index.ts:1362 — no such column: semente`.
-
-Ele **não** garante que a migração foi aplicada lá fora. Garante que existe uma
-para aplicar, que era o que faltava.
-
-### O segundo defeito, achado pelo teste na primeira execução
-
-`registrarExcedentes` lia `SELECT setor FROM progresso` — a coluna se chama
-`melhor_setor`. A consulta erra ao ser preparada, e a função **engole o próprio
-erro de propósito**, porque roda depois do pagamento e não pode derrubá-lo.
-
-Resultado: a auditoria de teto da carteira nunca gravou uma linha desde que
-subiu, e não havia como perceber. As 17 linhas em `excedentes` vêm todas de
-`replica` e `encontros`, que são outro caminho. Corrigido para `melhor_setor`.
-
-É o argumento do teste em uma frase: **o `catch` que protege o jogador do erro
-também esconde o erro de quem escreveu o código.**
-
----
 
 ## Dívidas conhecidas
 
