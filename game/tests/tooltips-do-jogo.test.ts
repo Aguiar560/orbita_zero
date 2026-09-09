@@ -30,10 +30,11 @@ describe('tooltips dentro do jogo', () => {
     expect(css).toContain('white-space: pre-line');
   });
 
-  it('não deixa atribuição direta de title na interface principal', () => {
+  it('não exibe explicação ao passar o mouse na alça da anatomia', () => {
     const anatomia = ler('src/ui/Anatomia.ts');
     expect(anatomia).not.toMatch(/\.title\s*=/);
-    expect(anatomia).toContain('dataset.gameTip');
+    expect(anatomia).not.toContain('dataset.gameTip');
+    expect(anatomia).toContain("'aria-label': 'Abrir ou fechar a anatomia'");
   });
 
   it('não exibe explicações ao passar o mouse nas abas do menu superior', () => {

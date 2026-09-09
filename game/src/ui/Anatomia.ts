@@ -137,7 +137,6 @@ export class Anatomia {
     const sim = this.sim;
     this.root.classList.toggle('fechada', !this.aberta);
     this.alca.textContent = this.aberta ? '›' : '‹';
-    this.alca.dataset.gameTip = this.aberta ? 'Fechar a anatomia' : 'Abrir a anatomia';
     if (!this.aberta) return;
     // Segue a nave em campo enquanto o jogador não escolher outra: abrir a
     // coluna e ver o conjunto de uma nave guardada seria desorientador.
