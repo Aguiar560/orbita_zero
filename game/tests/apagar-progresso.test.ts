@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, afterEach } from 'vitest';
 import { createState } from '@sim/state';
 
@@ -70,6 +71,27 @@ function rede(respostaDoPut: { status: number }): Chamada[] {
 }
 
 describe('apagar o progresso', () => {
+  it('desconecta a conta somente depois de apagar a nuvem e o save local', () => {
+    /**
+     * `sair` dispara a troca de conta, e o jogo tenta salvar antes de
+     * recarregar. Por isso `clearStorage` precisa vir antes: sua trava impede
+     * que esse salvamento de despedida recrie o progresso recém-apagado.
+     */
+    const painel = readFileSync('src/ui/panels/SettingsPanel.ts', 'utf8');
+    const inicio = painel.indexOf('const limpou = await apagarNaNuvem');
+    const trecho = painel.slice(inicio, inicio + 1_400);
+    const nuvem = trecho.indexOf('await apagarNaNuvem');
+    const local = trecho.indexOf('clearStorage();');
+    const logout = trecho.indexOf('sair();');
+    const recarga = trecho.indexOf('location.reload();');
+
+    expect(inicio).toBeGreaterThan(0);
+    expect(nuvem).toBeGreaterThanOrEqual(0);
+    expect(local).toBeGreaterThan(nuvem);
+    expect(logout).toBeGreaterThan(local);
+    expect(recarga).toBeGreaterThan(logout);
+  });
+
   it('sem apagar na nuvem, o save antigo desce de volta no boot seguinte', async () => {
     /**
      * O defeito, escrito com o mecanismo de verdade.

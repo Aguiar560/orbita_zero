@@ -3,7 +3,7 @@ import { RARITIES } from '@data/rarity';
 import { allowSaving, clearStorage, createState, exportSave, importSave } from '@sim/state';
 import { ehAdmin } from '@app/admin';
 import { apagarNaNuvem } from '@app/nuvem';
-import { sessaoGuardada } from '@app/conta';
+import { sair, sessaoGuardada } from '@app/conta';
 import { bus, toast } from '@app/Bus';
 import { MUSICAS } from '@data/musicas';
 import { pilotoDe } from '@data/pilotos';
@@ -385,14 +385,17 @@ export class SettingsPanel implements Panel {
     const comConta = sessaoGuardada() !== null;
 
     const aviso = comConta
-      ? 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Apaga também a cópia da sua conta na nuvem. Não há como desfazer.'
+      ? 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Apaga também a cópia da sua conta na nuvem e desconecta sua conta. Não há como desfazer.'
       : 'Apagar remove tudo: progresso, frota, inventário e o personagem escolhido. Não há como desfazer, e não há cópia em outro lugar.';
 
     const botao = h('button.btn.danger', {},
       h('span', { text: 'Apagar progresso' })) as HTMLButtonElement;
 
     botao.onclick = () => {
-      if (!confirm('Apagar todo o progresso? Isso não tem volta.')) return;
+      const confirmacao = comConta
+        ? 'Apagar todo o progresso e sair da conta? Isso não tem volta.'
+        : 'Apagar todo o progresso? Isso não tem volta.';
+      if (!confirm(confirmacao)) return;
       botao.disabled = true;
       botao.textContent = 'Apagando…';
 
@@ -411,6 +414,10 @@ export class SettingsPanel implements Panel {
         }
 
         clearStorage();
+        // Sair só DEPOIS de limpar a nuvem e travar o save local. O evento de
+        // troca de conta tenta salvar o estado que ainda está na memória; a
+        // trava de `clearStorage` impede que ele recrie o progresso apagado.
+        sair();
         location.reload();
       })();
     };
