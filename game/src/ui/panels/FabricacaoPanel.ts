@@ -359,7 +359,12 @@ export class FabricacaoPanel implements Panel {
               this.render(sim);
               void sintetizar(sim, cheios).then((r) => {
                 this.fundindo = false;
-                this.slots = this.slots.map(() => null);
+                // O anel só esvazia quando a fusão ACONTECEU. Esvaziá-lo numa
+                // recusa faz o jogador reescolher dez peças à toa — e, como as
+                // peças continuam lá, ele reescolhe as mesmas para tomar a
+                // mesma recusa. O anel cheio é o que deixa "tentar de novo"
+                // ser um clique.
+                if (r) this.slots = this.slots.map(() => null);
                 if (r) {
                   // Onde o item parou depende dos ajustes de automação: `acquire`
                   // pode equipar na hora, guardar, ou desmanchar por raridade

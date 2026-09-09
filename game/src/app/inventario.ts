@@ -178,7 +178,24 @@ export async function sintetizar(
   uids: readonly string[],
 ): Promise<{ item: Item; receita: string } | null> {
   const token = await tokenValido();
-  if (!token) return null;
+  // Sessão vencida era a última saída muda que restava neste caminho.
+  if (!token) { toast('Sessão expirada. Recarregue a página para fundir.', 'bad'); return null; }
+
+  /**
+   * A fila VAI antes da fusão, e não depois.
+   *
+   * O servidor carrega as peças do banco pelo `uid` e recusa o lote inteiro se
+   * faltar uma (`itens_nao_sao_seus`) — não por zelo, mas porque não sabe
+   * distinguir "ainda não chegou" de "não é sua". Uma peça coletada há segundos
+   * ainda está na fila do inventário, e fundir com ela dentro do anel é o caso
+   * mais fácil de encontrar: o jogador pega, abre a Fabricação e funde.
+   *
+   * Drenar aqui troca uma recusa por uma ida a mais ao servidor. Numa ação
+   * deliberada e destrutiva, que acontece uma vez a cada muitos minutos, é a
+   * troca certa.
+   */
+  await drenarInventario(sim);
+
   try {
     const r = await fetch(`${API_URL}/sintetizar`, {
       method: 'POST',
@@ -223,6 +240,10 @@ async function explicarRecusa(r: Response): Promise<void> {
   try {
     erro = ((await r.json()) as { erro?: string }).erro ?? '';
   } catch { /* corpo vazio ou não-JSON: o status ainda vale como resposta */ }
+
+  // O toast some em segundos; o console fica. É o que dá para copiar e colar
+  // quando o motivo precisa chegar a quem vai consertar.
+  console.warn(`[fusão] recusada — HTTP ${r.status} · ${erro || 'sem motivo no corpo'}`);
 
   toast(
     RECUSA_DA_FUSAO[erro] ?? `A fusão foi recusada (${erro || r.status}). Nenhuma peça foi perdida.`,

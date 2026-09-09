@@ -1813,7 +1813,23 @@ select option:disabled { color: #667991; }
 .switch.on .knob { transform: translateX(19px); background: var(--accent); }
 
 /* ── toasts ──────────────────────────────────────────────────────────────── */
-.toasts { position: fixed; right: 390px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 40; pointer-events: none; }
+/*
+ * O toast fica ACIMA de tudo, e isto não é preferência — é a razão de ele
+ * existir.
+ *
+ * Ele estava em `z-index: 40`, abaixo da `.camada` (60). Toda tela sobreposta —
+ * Fabricação, Loja, Baús, Provação, Modulação — o escondia por inteiro. Ou
+ * seja: exatamente nas telas onde o jogador toma uma ação que pode ser
+ * recusada, a recusa era desenhada atrás do painel.
+ *
+ * Foi o que fez a Fabricação parecer quebrada em 08/09: o clique chegava, o
+ * aviso era emitido, e ninguém nunca o viu. Um aviso invisível é pior que
+ * nenhum, porque dá a quem o escreveu a impressão de que avisou.
+ *
+ * 2000 fica acima do tooltip do cockpit (1600), que é o teto anterior.
+ * `pointer-events: none` continua valendo, então nada aqui rouba clique.
+ */
+.toasts { position: fixed; right: 390px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 2000; pointer-events: none; }
 .toast {
   --aviso-rgb: 255, 208, 66;
   --aviso-nucleo: #fff7c7;

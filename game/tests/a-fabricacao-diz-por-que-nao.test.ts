@@ -115,6 +115,46 @@ describe('a recusa do servidor chega ao jogador', () => {
   });
 });
 
+describe('o aviso é VISÍVEL onde a ação acontece', () => {
+  /**
+   * O defeito mais caro do dia, e o mais simples.
+   *
+   * `.toasts` estava em `z-index: 40` e `.camada` em `60`. Toda tela sobreposta
+   * — Fabricação, Loja, Baús, Provação, Modulação — desenhava o aviso ATRÁS de
+   * si. Exatamente nas telas onde o jogador toma uma ação que pode ser
+   * recusada, a recusa era invisível.
+   *
+   * Foi isso que fez a correção anterior parecer não ter funcionado: o clique
+   * chegava, o aviso era emitido, e ninguém nunca o viu. Um aviso invisível é
+   * pior que nenhum — dá a quem escreveu a impressão de que avisou.
+   */
+  const css = readFileSync(new URL('../src/styles/main.css', import.meta.url), 'utf8');
+
+  const camadaDe = (seletor: string): number => {
+    const i = css.indexOf(`\n${seletor} {`);
+    expect(i, `${seletor} sumiu do CSS`).toBeGreaterThan(0);
+    const bloco = css.slice(i, css.indexOf('}', i));
+    const m = /z-index:\s*(\d+)/.exec(bloco);
+    expect(m, `${seletor} ficou sem z-index`).not.toBeNull();
+    return Number(m![1]);
+  };
+
+  it('o toast fica acima de toda tela sobreposta', () => {
+    expect(camadaDe('.toasts')).toBeGreaterThan(camadaDe('.camada'));
+  });
+
+  it('e acima do tooltip do cockpit, que era o teto anterior', () => {
+    expect(camadaDe('.toasts')).toBeGreaterThan(camadaDe('.game-tooltip'));
+  });
+
+  it('e continua sem roubar clique', () => {
+    // Subir de camada sem isto transformaria a faixa dos avisos numa parede
+    // invisível sobre o canto inferior da tela.
+    const i = css.indexOf('\n.toasts {');
+    expect(css.slice(i, css.indexOf('}', i))).toContain('pointer-events: none');
+  });
+});
+
 describe('a receita', () => {
   it('pede dez peças no primeiro degrau — é o número que a dica precisa dizer', () => {
     // Fixa o que o Rafael encontrou: oito peças na mochila e um anel de dez.
