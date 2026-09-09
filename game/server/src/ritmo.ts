@@ -90,18 +90,56 @@ export const BALDES = {
    */
   apelido: { refil: 300, capacidade: 2 },
   /**
-   * Carteira: um depósito por setor concluído, mais missões e Provação.
+   * SINCRONIZAÇÃO DE FUNDO: carteira, inventário, progressão, missões, lote e
+   * ausência. Tudo que o jogo faz sozinho, no relógio dele.
    *
-   * Medido no jogo em 03/09: cinco ondas por setor, cerca de três minutos por
-   * setor — **20 depósitos por hora** no ritmo normal. É baixo porque o ganho
-   * de combate entra em `run.carga` e só é bancado quando o setor inteiro cai;
-   * abate não deposita nada.
+   * ## Por que os números cresceram
    *
-   * Um a cada 30 s com estouro de 6 dá folga de 9× sobre o ritmo real, o que
-   * cobre missão e Provação caindo junto do setor, e ainda assim recusa um
-   * laço que chame a rota em série.
+   * Este balde nasceu em 03/09 chamado `carteira`, medido para UMA rota: um
+   * depósito por setor, ~20 por hora. Desde então ele passou a carregar seis, e
+   * o nome ficou para trás junto com o dimensionamento.
+   *
+   * Contado no cliente, não estimado:
+   *
+   * | momento | rotas que disparam juntas |
+   * |---|---|
+   * | boot | ausência, carteira, lote, inventário, progresso, missões = **6** |
+   * | fim de setor (~3 min) | carteira, inventário, progresso, missões = **4** |
+   *
+   * Com `capacidade: 6`, um boot esvaziava o balde inteiro — e o segundo boot
+   * dentro de meio minuto era recusado em bloco. É o que deixava o espelho do
+   * inventário parado enquanto se recarrega a página para testar, e foi metade
+   * do "meus itens sumiram" de 08/09.
+   *
+   * 20 s com estouro de 12 cabe DOIS boots seguidos e ainda dá 3/min
+   * sustentados contra 1,3/min do ritmo real. E não afrouxa a cota: o balde não
+   * muda quantas escritas o jogo tenta, só quantas ele recusa — o custo médio
+   * continua sendo o ritmo do jogo.
    */
-  carteira: { refil: 30, capacidade: 6 },
+  sincronia: { refil: 20, capacidade: 12 },
+  /**
+   * AÇÃO DELIBERADA do jogador: fundir, comprar casco, comprar passe.
+   *
+   * ## Por que não pode dividir balde com a sincronização
+   *
+   * São coisas de naturezas opostas. A sincronização é automática, invisível e
+   * tolerante — recusada, ela tenta de novo no próximo ciclo e ninguém percebe.
+   * A ação deliberada acontece com o jogador olhando: recusada, ela é um botão
+   * que não funciona.
+   *
+   * Dividindo o balde, a segunda pagava pela primeira. O jogador abria a
+   * Fabricação logo depois de um setor cair — que é o momento natural, porque é
+   * quando as peças chegam — e encontrava o balde no chão. Foi exatamente o
+   * relato de 08/09: FABRICAR aceso, dez peças no anel, e
+   * `rapido_demais` na volta.
+   *
+   * ## Os números
+   *
+   * Uma mão humana clica isto uma vez a cada muitos minutos. 20 s com estouro
+   * de 5 dá 3/min sustentados — larguíssimo para quem joga, e ainda recusa o
+   * laço. E a fusão se limita sozinha: cada uma consome dez peças.
+   */
+  acao: { refil: 20, capacidade: 5 },
 } as const;
 
 export type NomeDeBalde = keyof typeof BALDES;

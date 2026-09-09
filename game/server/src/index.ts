@@ -433,7 +433,7 @@ async function carteiraDe(env: Env, usuario: string): Promise<{ saldos: Record<M
  */
 async function movimentar(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -556,7 +556,7 @@ async function registrarExcedentes(
  */
 async function comprarVip(env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'acao', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -885,7 +885,7 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
  */
 async function entregarLote(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -973,7 +973,7 @@ async function inventarioDe(env: Env, usuario: string) {
  */
 async function aplicarComandos(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -1143,7 +1143,7 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
  */
 async function sintetizar(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'acao', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -1203,7 +1203,7 @@ async function frotaDe(env: Env, usuario: string): Promise<string[]> {
  */
 async function adquirirCasco(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'acao', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -1297,7 +1297,7 @@ async function missoesDe(env: Env, usuario: string) {
  */
 async function gravarMissoes(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -1422,7 +1422,7 @@ async function progressoDe(env: Env, usuario: string) {
  */
 async function gravarProgresso(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
@@ -1649,7 +1649,7 @@ const AUSENCIA_MIN = 120;
  */
 async function creditarAusencia(req: Request, env: Env, id: string, origem: string): Promise<Response> {
   const agora = Math.floor(Date.now() / 1000);
-  const permissao = await consumirFicha(env, id, 'carteira', agora);
+  const permissao = await consumirFicha(env, id, 'sincronia', agora);
   if (!permissao.pode) {
     return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
   }
