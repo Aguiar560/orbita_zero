@@ -222,22 +222,18 @@ export class Login {
         // acabou de fechar removendo o sink do `h()`.
         h(`p.login-recado${this.recado ? '' : '.hidden'}`, { text: this.recado }),
 
-        // O OAuth do Google usa uma única porta para entrar e cadastrar: a API
-        // não oferece um `não crie usuário` por tentativa. Portanto ele fica
-        // somente no fluxo explícito de CRIAÇÃO. Em Entrar, aceitar Google
-        // cadastraria silenciosamente quem ainda não existe — exatamente o
-        // oposto do que o botão promete.
-        ...(modo === 'criar' ? [
-          h('.login-ou', {}, h('span', { text: 'ou' })),
-          h('.login-provedores', {},
-            ...(Object.keys(NOME_DO_PROVEDOR) as Provedor[]).map((p) =>
-              h(`button.login-provedor.p-${p}`, {
-                text: `Criar conta com ${NOME_DO_PROVEDOR[p]}`,
-                disabled: this.ocupado,
-                onclick: () => { void comProvedor(p); },
-              })),
-          ),
-        ] : []),
+        // Conta criada pelo Google não possui uma senha do jogo. O mesmo
+        // provedor precisa, portanto, aparecer também em Entrar: ele é a chave
+        // permanente dessa conta, não apenas um atalho usado no cadastro.
+        h('.login-ou', {}, h('span', { text: 'ou' })),
+        h('.login-provedores', {},
+          ...(Object.keys(NOME_DO_PROVEDOR) as Provedor[]).map((p) =>
+            h(`button.login-provedor.p-${p}`, {
+              text: `${modo === 'criar' ? 'Criar conta' : 'Entrar'} com ${NOME_DO_PROVEDOR[p]}`,
+              disabled: this.ocupado,
+              onclick: () => { void comProvedor(p); },
+            })),
+        ),
         h('button.login-pular', {
           type: 'button',
           text: modo === 'criar' ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta',

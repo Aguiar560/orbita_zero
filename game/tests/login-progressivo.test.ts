@@ -27,12 +27,11 @@ describe('entrada progressiva na conta', () => {
     expect(login).toContain('this.modo = null;');
   });
 
-  it('não oferece cadastro implícito no fluxo Entrar', () => {
+  it('permite voltar a entrar em uma conta criada pelo Google', () => {
     const login = fonte('ui', 'Login.ts');
-    expect(login).toContain("...(modo === 'criar' ? [");
-    expect(login).toContain('text: `Criar conta com ${NOME_DO_PROVEDOR[p]}`');
+    expect(login).toContain("`${modo === 'criar' ? 'Criar conta' : 'Entrar'} com ${NOME_DO_PROVEDOR[p]}`");
+    expect(login).not.toContain("...(modo === 'criar' ? [");
     expect(login).toContain("modo === 'criar' ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta'");
-    expect(login).not.toContain('text: `Continuar com ${NOME_DO_PROVEDOR[p]}`');
     expect(login).toContain("const r = modo === 'criar' ? await cadastrar(e, s) : await entrar(e, s);");
   });
 

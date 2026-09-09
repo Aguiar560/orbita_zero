@@ -8750,9 +8750,9 @@ select option:disabled { color: #667991; }
 
 /* ── entrar com provedor ────────────────────────────────────────────────────
  *
- * Vêm abaixo do formulário, separados por um "ou": quem já tem conta no jogo
- * chega para digitar e-mail e senha, e pôr Google no topo faria a ação mais
- * comum ser a de baixo. */
+ * Vêm abaixo do formulário, separados por um "ou". O botão permanece tanto
+ * no cadastro quanto na entrada: contas Google não possuem senha do jogo e
+ * usam o próprio provedor toda vez que voltam. */
 .login-ou {
   display: flex; align-items: center; gap: 10px;
   margin: 14px 0 10px; color: var(--muted); font-size: 11px; letter-spacing: .12em;
