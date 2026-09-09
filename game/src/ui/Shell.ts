@@ -296,9 +296,6 @@ export class Shell {
       const badge = panel.badge?.(this.sim) ?? 0;
       const nova = this.telaNova(panel);
       const tab = h(`button.tab${panel === this.active ? '.active' : ''}${locked ? '.locked' : ''}${nova ? '.nova' : ''}`, {
-        title: locked
-          ? `${panel.title} · libera na patente ${unlock!.level}`
-          : nova ? `${panel.title} · liberada agora, você ainda não entrou` : panel.title,
         'aria-label': panel.title,
         'aria-current': panel === this.active ? 'page' : undefined,
         'aria-disabled': locked ? 'true' : undefined,

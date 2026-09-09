@@ -35,4 +35,15 @@ describe('tooltips dentro do jogo', () => {
     expect(anatomia).not.toMatch(/\.title\s*=/);
     expect(anatomia).toContain('dataset.gameTip');
   });
+
+  it('não exibe explicações ao passar o mouse nas abas do menu superior', () => {
+    const shell = ler('src/ui/Shell.ts');
+    const inicio = shell.indexOf('private buildTabs(): void');
+    const fim = shell.indexOf('\n  /**', inicio);
+    const buildTabs = shell.slice(inicio, fim);
+
+    expect(buildTabs).not.toContain('title:');
+    expect(buildTabs).not.toContain('data-game-tip');
+    expect(buildTabs).toContain("'aria-label': panel.title");
+  });
 });
