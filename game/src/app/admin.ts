@@ -36,6 +36,25 @@ export function ehAdmin(): boolean {
 }
 
 /**
+ * As telas que só existem para quem administra.
+ *
+ * ## Por que uma lista aqui, e não em cada lugar que precisa dela
+ *
+ * Ela já existia escrita à mão dentro do `Shell`, e ia passar a existir também
+ * no teste de tutoriais — que precisa saber quais telas NÃO devem explicar
+ * nada, porque explicar uma ferramenta interna ao jogador é anunciar uma tela
+ * que ele não deve abrir.
+ *
+ * Duas listas da mesma coisa divergem na terceira tela de admin que entrar, e
+ * o sintoma seria o teste cobrando tutorial para um painel que o jogador nunca
+ * vê. Uma só, e quem a lê pergunta em vez de lembrar.
+ */
+export const PAINEIS_DE_ADMIN: ReadonlySet<string> = new Set([
+  'laboratorio',
+  'admin-dashboard',
+]);
+
+/**
  * Devolve o jogo ao normal para quem não é admin.
  *
  * Escreve, e de propósito: é o único caminho de saída para um save que já

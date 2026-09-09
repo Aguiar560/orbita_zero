@@ -22,6 +22,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { TUTORIAIS, temTutorial } from '@data/tutoriais';
+import { PAINEIS_DE_ADMIN } from '@app/admin';
 
 /** Ids declarados pelos painéis, lidos da fonte — é onde eles moram de fato. */
 function idsDosPaineis(): string[] {
@@ -46,19 +47,41 @@ const SEM_TUTORIAL: Readonly<Record<string, string>> = {
   // e é de lá que se reabre o passeio de entrada. Um guia sobre a tela de
   // configuração seria configuração sobre configuração.
   ajustes: 'a própria tela já é texto explicativo, e é de onde os guias se reabrem',
-  // Ferramenta interna, restrita a contas administrativas. Quem chega nela sabe
-  // o que está fazendo — e explicá-la ao jogador comum seria anunciar uma tela
-  // que ele não deve abrir.
-  laboratorio: 'ferramenta interna, só para conta administrativa',
 };
+
+/**
+ * A tela de admin não explica nada, e a isenção é ESTRUTURAL.
+ *
+ * `laboratorio` estava na lista à mão acima com o motivo escrito — e quando o
+ * painel administrativo entrou, em 09/09, a regra cobrou tutorial de uma tela
+ * que só uma pessoa no mundo abre. Anotar de novo resolveria até a terceira.
+ *
+ * `PAINEIS_DE_ADMIN` é a mesma lista que o `Shell` usa para decidir quem
+ * enxerga esses painéis. Derivar dela em vez de repeti-la tem duas
+ * consequências boas: a próxima tela de admin já nasce isenta, e se alguém
+ * TIRAR o portão de uma delas, a exigência de tutorial volta sozinha — que é
+ * exatamente o momento em que ela passa a fazer falta.
+ */
+const isento = (id: string): boolean => id in SEM_TUTORIAL || PAINEIS_DE_ADMIN.has(id);
 
 describe('cada tela tem tutorial', () => {
   it('nenhum painel fica sem explicação', () => {
-    const faltando = idsDosPaineis()
-      .filter((id) => !temTutorial(id) && !(id in SEM_TUTORIAL));
+    const faltando = idsDosPaineis().filter((id) => !temTutorial(id) && !isento(id));
     // A mensagem cita os ids porque o erro chega para quem acabou de criar o
     // painel, e o conserto é acrescentar uma entrada em `TUTORIAIS`.
     expect(faltando, `sem tutorial: ${faltando.join(', ')}`).toEqual([]);
+  });
+
+  it('e toda tela isenta EXISTE — senão a isenção esconde um erro de digitação', () => {
+    /**
+     * Uma isenção com id errado não falha: ela simplesmente não isenta nada, e
+     * a tela de verdade continua cobrada. Pior é o contrário — um id de admin
+     * mal escrito isentaria um painel que ninguém pretendia isentar.
+     */
+    const paineis = new Set(idsDosPaineis());
+    const fantasmas = [...Object.keys(SEM_TUTORIAL), ...PAINEIS_DE_ADMIN]
+      .filter((id) => !paineis.has(id));
+    expect(fantasmas, `isenção sem painel: ${fantasmas.join(', ')}`).toEqual([]);
   });
 
   it('e nenhum tutorial aponta para uma tela que não existe', () => {

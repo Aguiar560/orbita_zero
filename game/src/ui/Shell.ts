@@ -34,7 +34,7 @@ import { RankingPanel } from './panels/RankingPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { LaboratorioPanel } from './panels/LaboratorioPanel';
 import { AdminDashboardPanel } from './panels/AdminDashboardPanel';
-import { ehAdmin } from '@app/admin';
+import { PAINEIS_DE_ADMIN, ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
 import { ChatPanel } from './ChatPanel';
 import { instalarTooltipsDoJogo } from './TooltipDoJogo';
@@ -274,7 +274,7 @@ export class Shell {
    */
   private ajustarPaineisDeAdmin(): void {
     const deveTer = ehAdmin();
-    const idsAdmin = new Set(['laboratorio', 'admin-dashboard']);
+    const idsAdmin = PAINEIS_DE_ADMIN;
     const tem = this.panels.some((p) => p.id === 'admin-dashboard');
     if (deveTer === tem) return;
 

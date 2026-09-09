@@ -53,7 +53,11 @@ describe('o que a conta destrava, depois que a conta chega', () => {
     const metodo = shell.slice(shell.indexOf('private ajustarPaineisDeAdmin'));
     const corpo = metodo.slice(0, metodo.indexOf('\n  private buildTabs'));
 
-    expect(corpo).toContain("const idsAdmin = new Set(['laboratorio', 'admin-dashboard']);");
+    // A lista mora em `@app/admin` desde 09/09: o teste de tutoriais também
+    // precisa dela — para isentar de explicação a tela que só o admin abre — e
+    // duas cópias divergiriam na terceira tela administrativa que entrasse.
+    expect(corpo).toContain('const idsAdmin = PAINEIS_DE_ADMIN;');
+    expect(fonte('ui', 'Shell.ts')).toContain("import { PAINEIS_DE_ADMIN, ehAdmin } from '@app/admin';");
     expect(corpo).toContain('if (idsAdmin.has(this.active.id)) this.voltarDaCamada();');
     expect(corpo).toContain('this.panels = this.panels.filter((p) => !idsAdmin.has(p.id));');
     // E redesenha a barra: sem isto a aba continua na tela depois de removida.
