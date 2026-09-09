@@ -1,40 +1,47 @@
-import './styles/main.css';
-import { Game } from '@app/Game';
-import { bus } from '@app/Bus';
-import { finalizarLoginEmPopup } from '@app/conta';
-import { vigiarErrosDoCliente } from '@app/erro-do-cliente';
+const rootEncontrado = document.getElementById('app');
+if (!rootEncontrado) throw new Error('#app não encontrado');
+const root: HTMLElement = rootEncontrado;
 
-/**
- * A janela do login fecha ANTES de qualquer coisa carregar.
- *
- * O provedor devolve para a URL do jogo, entao esta MESMA pagina roda dentro
- * da janelinha do login. Sem esta guarda ela carregaria o jogo inteiro —
- * assets, som, cena — so para ser fechada meio segundo depois.
- */
-if (finalizarLoginEmPopup()) {
-  // Nao ha mais pagina: qualquer coisa abaixo rodaria num documento fechando.
-  throw new Error('janela de login encerrada');
+async function iniciar(): Promise<void> {
+  // A wiki compartilha o domínio, mas não deve baixar a simulação, áudio e
+  // renderização do jogo. A importação dinâmica mantém as duas experiências
+  // isoladas em bundles próprios.
+  if (location.pathname === '/wiki' || location.pathname.startsWith('/wiki/')) {
+    const { montarWiki } = await import('./wiki/WikiApp');
+    montarWiki(root);
+    return;
+  }
+
+  await import('./styles/main.css');
+  const [
+    { Game },
+    { bus },
+    { finalizarLoginEmPopup },
+    { vigiarErrosDoCliente },
+  ] = await Promise.all([
+    import('@app/Game'),
+    import('@app/Bus'),
+    import('@app/conta'),
+    import('@app/erro-do-cliente'),
+  ]);
+
+  /**
+   * O provedor devolve para a URL do jogo dentro da janelinha do login. Esta
+   * guarda fecha a janela antes de montar a cena completa.
+   */
+  if (finalizarLoginEmPopup()) return;
+
+  vigiarErrosDoCliente();
+  const game = new Game(root);
+
+  // A faixa muda a altura útil da cena vertical, então trocar sua visibilidade
+  // exige recalcular o layout — não é só um `display: none`.
+  bus.on('state:changed', () => game.relayout());
+  await game.start();
+
+  if (import.meta.env.DEV) {
+    (window as unknown as Record<string, unknown>).oz = game;
+  }
 }
 
-/**
- * Antes de qualquer coisa que possa quebrar.
- *
- * Um `TypeError` durante o boot é o pior de todos — a tela nem chega a existir
- * — e é justamente o que um tratador instalado depois do `Game` perderia.
- */
-vigiarErrosDoCliente();
-
-const root = document.getElementById('app');
-if (!root) throw new Error('#app não encontrado');
-
-const game = new Game(root);
-
-// A faixa muda a altura útil da cena vertical, então trocar sua visibilidade
-// exige recalcular o layout — não é só um `display: none`.
-bus.on('state:changed', () => game.relayout());
-
-void game.start().catch((err: unknown) => console.error('[boot]', err));
-
-if (import.meta.env.DEV) {
-  (window as unknown as Record<string, unknown>).oz = game;
-}
+void iniciar().catch((err: unknown) => console.error('[boot]', err));
