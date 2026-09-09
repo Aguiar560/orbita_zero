@@ -12,12 +12,22 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { casaComPadrao } from '../server/src/index';
 
 const PADRAO = 'https://orbita-zero-*.vercel.app';
 
 describe('origem por padrão', () => {
+  it('autoriza o domínio oficial nos dois Workers durante a migração', () => {
+    const api = readFileSync('server/wrangler.toml', 'utf8');
+    const chat = readFileSync('server/wrangler.chat.toml', 'utf8');
+    for (const origem of ['https://orbitazero.com.br', 'https://www.orbitazero.com.br']) {
+      expect(api).toContain(origem);
+      expect(chat).toContain(origem);
+    }
+  });
+
   it('aceita um preview do projeto', () => {
     for (const bom of [
       'https://orbita-zero-a1b2c3.vercel.app',

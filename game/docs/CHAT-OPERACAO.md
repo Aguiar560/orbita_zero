@@ -50,7 +50,7 @@ Antes de publicar:
 1. Definir responsável e usuários moderadores (UUID Supabase). Usar `CHAT_MODERADORES`, separado da lista de admins do frontend. **Não confiar no controle de interface como autorização.**
 2. Criar um D1 **novo** `orbita-zero-chat` na conta Cloudflare; substituir o placeholder no arquivo exclusivo do chat. Rever plano/cotas e configurar alertas de consumo. Não usar o id do banco econômico como `CHAT_DB`.
 3. Aplicar `chat-schema.sql` somente no D1 social. O schema do jogo não é uma migração social.
-4. Cadastrar origens exatas autorizadas em `ORIGENS` (produção `https://orbita-zero.vercel.app`, homologação com URL explícita). Não misturar previews/desenvolvimento com o histórico de produção.
+4. Cadastrar origens exatas autorizadas em `ORIGENS` (produção `https://orbitazero.com.br`, `www` e homologação com URL explícita). Não misturar previews/desenvolvimento com o histórico de produção.
 5. Implantar inicialmente em ambiente de homologação com bancos e namespace DO próprios. Ativar `CHAT_ENABLED=true` nesse ambiente. Definir `VITE_CHAT_URL` no build de teste com a URL HTTPS do Worker social, sem barra final.
 6. Repetir aceite com contas reais de teste, dispositivos Android/iOS, interrupções de rede, suspensão/hibernação e carga representativa do público. Os testes locais não provam comportamento de suspensão do Safari nem custo real.
 7. Validar política de privacidade/retenção/idade do público, exclusão de conta e procedimento de resposta a denúncias. Aprovar atendimento humano antes de abrir para todos.

@@ -15,7 +15,7 @@ o erro mais comum.
 | Onde cola | Valor |
 |---|---|
 | **No Google e no Facebook** (callback) | `https://vzsiorkeykcbcpmismyy.supabase.co/auth/v1/callback` |
-| **No Supabase** (redirect) | `http://localhost:5180/` e `https://orbita-zero.vercel.app/` |
+| **No Supabase** (redirect) | `https://orbitazero.com.br/` (produção), além de localhost e previews |
 
 O primeiro é para onde o *provedor* devolve — sempre o Supabase, nunca o jogo. O
 segundo é para onde o *Supabase* devolve — o jogo.
@@ -102,19 +102,22 @@ Para um alfa fechado, deixar em Desenvolvimento e cadastrar os testadores em
 
 *Authentication* → **URL Configuration**:
 
-- **Site URL**: `https://orbita-zero.vercel.app`
+- **Site URL**: `https://orbitazero.com.br`
 - **Redirect URLs**, uma por linha:
 
   ```
   http://localhost:5180/
+  https://orbitazero.com.br/
+  https://www.orbitazero.com.br/
   https://orbita-zero.vercel.app/
   https://orbita-zero-*.vercel.app/**
   ```
 
-As três são necessárias por motivos diferentes: a primeira para você desenvolver,
-a segunda para o site, e a **terceira para os deploys de preview da Vercel**, que
-ganham um host novo a cada build — sem ela, testar login numa branch nunca
-funciona e parece defeito intermitente.
+O domínio raiz é o endereço canônico. `www` redireciona para ele, mas também é
+autorizado para não quebrar um login iniciado antes do redirecionamento. O host
+antigo da Vercel fica temporariamente como contingência, e o padrão final cobre
+os deploys de preview — sem ele, testar login numa branch nunca funciona e
+parece defeito intermitente.
 
 > O código manda `location.origin + location.pathname`, que na raiz termina em
 > `/`. Por isso as URLs acima têm a barra final. Sem ela o Supabase recusa o
@@ -144,7 +147,8 @@ cair no login, o endereço de retorno não está autorizado.
 
 ## O que NÃO precisa mudar
 
-- `ORIGENS` no `server/wrangler.toml` já cobre os três hosts. Ela governa o CORS
+- `ORIGENS` no `server/wrangler.toml` já cobre produção, `www`, o host antigo e
+  os previews. Ela governa o CORS
   da API do jogo, que é outra coisa do login — mas as listas coincidem, e vale
   lembrar de mexer nas duas se um host novo aparecer.
 - A chave `anon` em `data/servidor.ts` continua pública por desenho. Ela permite

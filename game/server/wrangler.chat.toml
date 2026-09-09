@@ -4,7 +4,7 @@ compatibility_date = "2026-08-01"
 
 [vars]
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
-ORIGENS = "https://orbita-zero.vercel.app"
+ORIGENS = "https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app"
 CHAT_ENABLED = "true"
 # Rafael / Aguiar560 — mesma conta administrativa já cadastrada no jogo.
 CHAT_MODERADORES = "8d4be4e6-52d6-437c-ad4e-556cca3aa43b"

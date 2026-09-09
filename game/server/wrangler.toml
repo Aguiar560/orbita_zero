@@ -7,10 +7,10 @@ compatibility_date = "2026-08-01"
 # Worker, e essa é a vantagem de verificar o token com chave pública.
 [vars]
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
-# O terceiro e o padrao dos deploys de PREVIEW da Vercel, que ganham um host
+# O quinto e o padrao dos deploys de PREVIEW da Vercel, que ganham um host
 # por build. Exige o PREFIXO do projeto: `https://*.vercel.app` deixaria
 # qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
-ORIGENS = "http://localhost:5180,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
+ORIGENS = "http://localhost:5180,https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
 
 # O gatilho que avisa das recusas. Cinco minutos é o atraso máximo entre um
 # defeito começar e alguém ficar sabendo — antes disto o atraso era "até alguém
