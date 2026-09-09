@@ -450,6 +450,74 @@ async function anotarMotivo(
   `).bind(rota.slice(0, 64), motivo, horaDe(agora), n).run();
 }
 
+/**
+ * O erro de JavaScript que aconteceu no navegador do jogador.
+ *
+ * ## Por que existe
+ *
+ * Era o último buraco. O servidor conta tudo o que ELE recusa e avisa a cada
+ * cinco minutos; um `TypeError` num painel acontece inteiro do outro lado, a
+ * tela quebra, o jogador fecha a aba, e aqui não sobra rastro nenhum. É a
+ * classe **mais visível para quem joga e menos visível para quem conserta** — e
+ * os quatro defeitos de 08/09 foram todos de interação.
+ *
+ * ## O que esta rota NÃO aceita
+ *
+ * Pilha, mensagem crua, URL, nome de arquivo. O cliente já manda o motivo
+ * saneado (letras e pontuação, sem dígito e sem símbolo), e aqui ele é saneado
+ * **de novo** — o cliente é a parte do sistema que não se confia, e essa é a
+ * regra que sustenta a Fase 3 inteira. Sem isso, esta seria a única rota do
+ * jogo capaz de escrever texto arbitrário numa coluna.
+ *
+ * Não há coluna `usuario`, como no resto do livro: a pergunta é "o que está
+ * quebrado", nunca "quem quebrou".
+ */
+async function receberErroDoCliente(
+  req: Request, env: Env, id: string, origem: string,
+): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'cliente', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  // Mil vezes menor que o teto normal: o que cabe aqui é uma frase.
+  if (bruto.length > 2048) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { motivo?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const motivo = motivoSaneado(String(corpo.motivo ?? ''));
+  if (!motivo) return json({ erro: 'motivo_invalido' }, 400, origem);
+
+  await anotarMotivo(env, '/cliente', motivo, 500)
+    .catch(() => { /* o livro nunca derruba nada */ });
+
+  return json({ ok: true }, 200, origem);
+}
+
+/**
+ * O motivo, saneado do lado de cá também.
+ *
+ * O cliente já sane, e mesmo assim: **o cliente é a parte que não se confia.**
+ * Um envio forjado passaria direto pelo saneador dele, e esta é a única coluna
+ * do banco alimentada por texto que veio de fora.
+ */
+export function motivoSaneado(bruto: string): string {
+  const limpo = bruto
+    .replace(/[^A-Za-z ,.:'()_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+  // Uma letra só não descreve erro nenhum; é ruído ou tentativa.
+  return limpo.length >= 3 ? limpo : '';
+}
+
 /** As recusas que vieram dentro de um 200, cada uma com a contagem dela. */
 async function anotarVarias(
   env: Env, rota: string, itens: readonly { motivo: string; n: number }[],
@@ -600,6 +668,10 @@ async function rotear(req: Request, env: Env): Promise<Response> {
     if (url.pathname === '/progresso') {
       if (req.method === 'GET') return json(await progressoDe(env, usuario.id), 200, origem);
       if (req.method === 'POST') return gravarProgresso(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/erro-do-cliente' && req.method === 'POST') {
+      return receberErroDoCliente(req, env, usuario.id, origem);
     }
 
     if (url.pathname === '/ausencia' && req.method === 'POST') {

@@ -35,8 +35,8 @@ se sabia naquele dia, não como estado atual.
 | Missões | **499** (eram 21 em 04/09; as cadeias geram o volume) |
 | Galáxias × fases | 30 × 10 = **300 setores** · nível máximo 300 |
 | Código | 51.700 linhas de TypeScript, sem dependência de produção |
-| Servidor | 19 arquivos · 4.870 linhas · 16 migrações · 16 rotas + 1 gatilho |
-| Testes | **1.399** em 138 arquivos |
+| Servidor | 19 arquivos · 4.960 linhas · 16 migrações · 17 rotas + 1 gatilho |
+| Testes | **1.413** em 139 arquivos |
 | Bundle | 647 KB JS (219 KB gzip) + 324 KB CSS (65 KB gzip) |
 
 Produção agora: site **200** em 0,27 s, API **200**.
@@ -85,7 +85,7 @@ encontro e precifica o que o cliente declarou — com piso de tempo por onda e
 teto por réplica —, mas **quem paga ainda é o número que o cliente manda**. Até
 a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 
-### Operação e observabilidade — 8/10 *(era 4 pela manhã)*
+### Operação e observabilidade — 9/10 *(era 4 pela manhã)*
 
 > **Atualizado no mesmo dia, os três níveis.** O cliente **relata** toda recusa
 > (`app/recusa.ts`), o servidor mantém o **livro** (`recusas`, migração `0015`)
@@ -116,9 +116,8 @@ a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 > **O que segura os 2 pontos que faltam é operação, não observação.** Migração e
 > deploy continuam sendo dois comandos manuais cuja ordem, se invertida, derruba
 > uma rota em silêncio; `d1_migrations` não registra o que sobe por `--file=`; e
-> **erro de JavaScript no navegador do jogador continua invisível daqui** — um
-> painel que estoura é a classe de defeito mais visível para quem joga e a menos
-> visível para quem conserta.
+> o **erro de JavaScript do navegador** passou a chegar também
+> (`POST /erro-do-cliente`), sem pilha e com um tipo por sessão.
 >
 > Ligar o aviso é um passo manual, uma vez: `wrangler secret put
 > ALERTA_WEBHOOK` com a URL de um webhook de Discord ou Slack. Sem ele o gatilho
@@ -241,7 +240,9 @@ silêncio, e um delta novo de 4 avisou só os 4. Foi aí que apareceu um defeito
 que a leitura do código não pegou — um erro contínuo era marcado `NOVO` em todo
 aviso da primeira hora de vida dele.
 
-O que ainda não é visto daqui: **erro de JavaScript no navegador do jogador**.
+E o **erro de JavaScript do navegador** fechou o ciclo: `error` e
+`unhandledrejection` viram linha no mesmo livro, com a mensagem saneada dos dois
+lados e um tipo por sessão. A pilha nunca sobe — ela carrega dado do jogador.
 
 **2. A abertura do jogo — do setor 1 ao 12.**
 O 1 é trivial e o 4 ao 11 é parede. Um testador novo passa a primeira hora

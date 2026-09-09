@@ -77,11 +77,11 @@ src/
   data/    57 arq · 12.174 linhas · tabelas puras + `balance/` com curvas e limites
   modes/    5 arq · 4.585 linhas · VerticalMode, PilotAI, WaveDirector, entities
   ui/      35 arq · 11.433 linhas · Shell, LeftRail, painéis — SEM regra de jogo
-  app/     17 arq · 4.020 linhas · Game, Bus, Loop e OS ESPELHOS DO SERVIDOR
+  app/     18 arq · 4.140 linhas · Game, Bus, Loop e OS ESPELHOS DO SERVIDOR
   styles/   3 arq · 9.357 linhas
 server/    19 arq · 4.870 linhas · o Worker do Cloudflare e as 16 migrações do D1
 tools/           · pipeline de assets e o arnês de balanceamento, fora do bundle
-tests/  138 arq · 18.300 linhas · 1.399 testes passando (conferido em 09/09/2026)
+tests/  139 arq · 18.500 linhas · 1.413 testes passando (conferido em 09/09/2026)
 ```
 
 **Aliases:** `@core @render @sim @data @ui @modes @app`
@@ -227,7 +227,7 @@ O terminal do Rafael é **PowerShell 5.1**, que **não aceita `&&`** — use `;`
 | `npm run dev` | Vite em `localhost:5180` (porta fixa) |
 | `npm run assets` | Fatia os packs crus de `D:\bbb\*` em `public/assets` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | suíte do Vitest (**1.399 testes em 138 arquivos**, 09/09/2026) |
+| `npm test` | suíte do Vitest (**1.413 testes em 139 arquivos**, 09/09/2026) |
 | `npm run build` | assets + typecheck + build |
 
 Se mexeu em arte: `npm run assets; npm run dev`.

@@ -140,6 +140,21 @@ export const BALDES = {
    * laço. E a fusão se limita sozinha: cada uma consome dez peças.
    */
   acao: { refil: 20, capacidade: 5 },
+  /**
+   * ERRO DO CLIENTE: o `TypeError` que aconteceu no navegador do jogador.
+   *
+   * Apertado de propósito, e por dois motivos que apontam para o mesmo lado.
+   *
+   * O cliente já se trava sozinho — cada erro distinto sobe uma vez por sessão,
+   * no máximo dez —, então o uso legítimo é de alguns envios por sessão e nunca
+   * chega perto disto. Se chegar, ou o cliente está quebrado de um jeito novo,
+   * ou alguém está usando a rota para escrever no meu banco.
+   *
+   * E é a única rota do jogo onde o CORPO vira conteúdo de uma coluna. Um
+   * minuto entre envios não atrapalha ninguém que esteja relatando um defeito
+   * de verdade, e fecha a porta de quem quer encher a tabela.
+   */
+  cliente: { refil: 60, capacidade: 5 },
 } as const;
 
 export type NomeDeBalde = keyof typeof BALDES;

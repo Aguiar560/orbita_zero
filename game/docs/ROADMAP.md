@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.399 testes** em 138 arquivos · registro consolidado
+**Última atualização:** 09/09/2026 · **1.413 testes** em 139 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---

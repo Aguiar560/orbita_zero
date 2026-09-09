@@ -1326,6 +1326,41 @@ missão** sem ninguém saber. Vira `passos_ilegiveis`.
 `catch` faça uma de três coisas: devolver erro, anotar, ou explicar por escrito
 ali mesmo por que não faz nem uma nem outra.
 
+### O erro do navegador — `POST /erro-do-cliente`
+
+O último buraco. O servidor conta tudo o que ELE recusa; um `TypeError` num
+painel acontece inteiro na máquina do jogador — a tela quebra, ele fecha a aba,
+e aqui não sobra rastro. É a classe **mais visível para quem joga e menos
+visível para quem conserta**, e os quatro defeitos de 08/09 foram todos de
+interação.
+
+`app/erro-do-cliente.ts` escuta `error` e `unhandledrejection` — as duas, porque
+num código cheio de `await` de rede a promessa sem tratamento é a mais comum das
+duas — e manda o motivo para a rota, que grava no mesmo livro com rota
+`/cliente`. Instalado em `main.ts` **acima do `Game`**: um erro durante o boot é
+o pior de todos, e um tratador instalado depois perderia justo esse.
+
+Três decisões carregam o desenho:
+
+**A pilha nunca sobe.** Ela carrega dado do jogador — o conteúdo de uma variável
+aparece em mensagem de erro o tempo todo. Sobe o nome e a mensagem **saneada**:
+letras e pontuação, sem dígito e sem símbolo. `Cannot read properties of
+undefined (reading 'hull')` sobrevive; um id, um e-mail ou uma URL não. E o
+servidor **saneia de novo**, porque o cliente é a parte do sistema que não se
+confia — esta é a única coluna do banco alimentada por texto que vem de fora.
+
+**Cada erro distinto sobe uma vez por sessão**, no máximo dez tipos. Um erro
+dentro do laço de quadros dispara sessenta vezes por segundo; sem a trava, a
+primeira tela quebrada gastaria a cota de escrita do dia. Mesmo raciocínio do
+livro, que agrega em vez de gravar ocorrência a ocorrência. O balde `cliente`
+(60 s, 5) é o mais apertado do servidor, pelo mesmo motivo.
+
+**O relator nunca estoura.** Um erro dentro do tratador de erros vira laço
+infinito — é o único lugar do projeto onde engolir é a resposta certa e final.
+
+`keepalive: true` no envio: a aba pode estar fechando, e é justamente o erro que
+a derrubou que mais interessa.
+
 ### A exceção que nunca virava resposta
 
 `anotarRecusa` só enxerga o que VIRA resposta. Uma exceção não tratada escapava

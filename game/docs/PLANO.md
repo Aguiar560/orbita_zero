@@ -1501,7 +1501,7 @@ Medidas e registradas. Não bloqueiam, mas não somem sozinhas.
 | **Morte conta por segundo, não por passo** | setor 90 no simulador: 300 mortes contra 1.200 medidas em dez minutos ao vivo | `sim/morte.ts` + o arnês |
 | **`d1_migrations` é uma armadilha** | as migrações 0012–0014 subiram por `--file=`, que não registra. Um `wrangler d1 migrations apply` tentaria reaplicá-las e o `ADD COLUMN` falharia | decidir entre reconciliar a tabela ou abandonar `migrations apply` de vez |
 | **Zero teste de render e interação** | os quatro defeitos de 08/09 eram de interação ou operação; a suíte de 1.379 é toda de regra e dado. Os testes que os pegam hoje leem o **fonte** | precisa de DOM na suíte (jsdom/happy-dom) ou de um arnês de painel |
-| **Erro de JavaScript no navegador é invisível daqui** | o servidor conta as recusas dele desde 09/09 e avisa a cada cinco minutos, mas um painel que estoura na máquina do jogador não deixa rastro nenhum. É a classe mais visível para quem joga e a menos visível para quem conserta | uma rota que recebe `window.onerror`, com ritmo próprio e sem pilha (pode carregar dado do jogador) — grava no mesmo livro `recusas` |
+| ~~Erro de JavaScript no navegador é invisível daqui~~ | ✅ resolvido em 09/09: `app/erro-do-cliente.ts` escuta `error` e `unhandledrejection`, e `POST /erro-do-cliente` grava no livro com rota `/cliente`. Sem pilha, saneado dos dois lados, um tipo por sessão | — |
 | **Arte elemental incompleta trava a dominância** | 1 inimigo comum de gelo e 2 de raio; as galáxias desses elementos ficam em 26–29% de presença elemental, contra 62% de média | `data/enemies.ts` + arte |
 
 ---

@@ -2,6 +2,7 @@ import './styles/main.css';
 import { Game } from '@app/Game';
 import { bus } from '@app/Bus';
 import { finalizarLoginEmPopup } from '@app/conta';
+import { vigiarErrosDoCliente } from '@app/erro-do-cliente';
 
 /**
  * A janela do login fecha ANTES de qualquer coisa carregar.
@@ -14,6 +15,14 @@ if (finalizarLoginEmPopup()) {
   // Nao ha mais pagina: qualquer coisa abaixo rodaria num documento fechando.
   throw new Error('janela de login encerrada');
 }
+
+/**
+ * Antes de qualquer coisa que possa quebrar.
+ *
+ * Um `TypeError` durante o boot é o pior de todos — a tela nem chega a existir
+ * — e é justamente o que um tratador instalado depois do `Game` perderia.
+ */
+vigiarErrosDoCliente();
 
 const root = document.getElementById('app');
 if (!root) throw new Error('#app não encontrado');
