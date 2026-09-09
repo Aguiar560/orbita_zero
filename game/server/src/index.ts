@@ -28,6 +28,7 @@ import {
   IGNORADOS, acumular, horaDe, motivoDaResposta, novoLivro,
 } from './recusas';
 import { enviarAviso, montarAviso, type LinhaDeRecusa } from './alerta';
+import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corpo';
 import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
@@ -178,16 +179,38 @@ async function consumirFicha(
   return { pode: true };
 }
 
-const json = (dados: unknown, status = 200, origem = ''): Response =>
-  new Response(JSON.stringify(dados), {
+const json = (dados: unknown, status = 200, origem = ''): Response => {
+  /**
+   * A recusa que viaja DENTRO de um 200 também vai para o livro.
+   *
+   * Quatro rotas respondem "deu certo" carregando o que NÃO deu: `/inventario`
+   * devolve `recusados` e `faltaram`, `/missoes` devolve `recusadas`, `/marcas`
+   * idem, e `/progresso` conta encontros recusados. É de propósito — um comando
+   * ruim não pode derrubar o lote —, mas isso as tornava invisíveis duas vezes:
+   * o status é 200, então `anotarRecusa` não olhava, e o cliente ignorava os
+   * campos. Erro escondido dentro de sucesso é o pior lugar para um erro estar.
+   *
+   * O cabeçalho é montado AQUI porque aqui o objeto ainda é objeto: contar as
+   * recusas custa um `for`, enquanto reabrir o corpo lá na frente custaria um
+   * `JSON.parse` em toda resposta — inclusive nos 512 KB do save.
+   *
+   * E fica num lugar só. Marcar rota por rota seria dezenas de chamadas para
+   * alguém esquecer na próxima que entrar, e a esquecida seria justo a que
+   * ninguém ia procurar. Ver `CAMPOS_DE_RECUSA`.
+   */
+  const marcadas = contarRecusas(dados);
+
+  return new Response(JSON.stringify(dados), {
     status,
     headers: {
       'content-type': 'application/json',
       ...cabecalhosDeOrigem(origem),
       // O save é dado de conta: nenhum intermediário deve guardá-lo.
       'cache-control': 'no-store',
+      ...(marcadas ? { [CABECALHO_DE_RECUSA]: marcadas } : {}),
     },
   });
+};
 
 /**
  * CORS por lista, nunca `*`.
@@ -276,9 +299,26 @@ export default {
      * `waitUntil` porque o livro não pode atrasar a resposta do jogador: ele é
      * ferramenta de quem conserta, não do jogo.
      */
+    const rota = new URL(req.url).pathname;
+
     if (resposta.status >= 400) {
-      ctx.waitUntil(anotarRecusa(env, new URL(req.url).pathname, resposta));
+      ctx.waitUntil(anotarRecusa(env, rota, resposta));
     }
+
+    /**
+     * E a recusa que vem DENTRO de um 200 também.
+     *
+     * Quatro rotas respondem "deu certo" carregando o que não deu — equipar
+     * recusado, entrega barrada pela validação B, marca implausível, pote que
+     * deu menos. É de propósito: um comando ruim não derruba o lote. Mas o
+     * status 200 fazia o livro não olhar e o cliente ignorar o campo, e erro
+     * escondido dentro de sucesso é o pior lugar para um erro estar.
+     *
+     * O cabeçalho vem contado de `json()`, onde o corpo ainda era objeto — ler
+     * aqui não custa um `JSON.parse` por resposta. Ver `recusa-no-corpo.ts`.
+     */
+    const noCorpo = lerRecusas(resposta.headers.get(CABECALHO_DE_RECUSA));
+    if (noCorpo.length) ctx.waitUntil(anotarVarias(env, rota, noCorpo));
 
     return resposta;
   },
@@ -383,16 +423,60 @@ async function anotarRecusa(env: Env, rota: string, resposta: Response): Promise
     // a caminho do jogador.
     try { corpo = await resposta.clone().json(); } catch { /* corpo não-JSON */ }
 
-    const motivo = motivoDaResposta(corpo, resposta.status);
-    const agora = Math.floor(Date.now() / 1000);
-    const n = acumular(LIVRO_DE_RECUSAS, { rota, motivo, status: resposta.status }, agora);
-    if (!n) return;
-
-    await env.DB.prepare(`
-      INSERT INTO recusas (rota, motivo, hora, n) VALUES (?, ?, ?, ?)
-      ON CONFLICT(rota, motivo, hora) DO UPDATE SET n = recusas.n + excluded.n
-    `).bind(rota.slice(0, 64), motivo, horaDe(agora), n).run();
+    await anotarMotivo(env, rota, motivoDaResposta(corpo, resposta.status), resposta.status);
   } catch { /* ver o cabeçalho */ }
+}
+
+/**
+ * Escreve UM motivo no livro, respeitando o acúmulo em memória.
+ *
+ * Existe porque três caminhos chegam aqui — a resposta ≥ 400, a recusa dentro
+ * de um 200, e a exceção que uma auditoria engoliu — e escrever a mesma coisa
+ * em três lugares seria três chances de divergir na próxima mudança.
+ *
+ * Ver `recusas.ts` para o porquê de o acúmulo existir: uma tempestade não pode
+ * gastar a cota de escrita registrando a si mesma.
+ */
+async function anotarMotivo(
+  env: Env, rota: string, motivo: string, status: number, vezes = 1,
+): Promise<void> {
+  const agora = Math.floor(Date.now() / 1000);
+  const n = acumular(LIVRO_DE_RECUSAS, { rota, motivo, status }, agora, vezes);
+  if (!n) return;
+
+  await env.DB.prepare(`
+    INSERT INTO recusas (rota, motivo, hora, n) VALUES (?, ?, ?, ?)
+    ON CONFLICT(rota, motivo, hora) DO UPDATE SET n = recusas.n + excluded.n
+  `).bind(rota.slice(0, 64), motivo, horaDe(agora), n).run();
+}
+
+/** As recusas que vieram dentro de um 200, cada uma com a contagem dela. */
+async function anotarVarias(
+  env: Env, rota: string, itens: readonly { motivo: string; n: number }[],
+): Promise<void> {
+  try {
+    for (const i of itens) await anotarMotivo(env, rota, i.motivo, 200, i.n);
+  } catch { /* o livro nunca derruba nada */ }
+}
+
+/**
+ * A exceção que uma auditoria engoliu — porque engolir continua sendo o certo.
+ *
+ * `registrarExcedentes` e a precificação de encontros rodam DEPOIS do
+ * pagamento: uma exceção delas não pode virar erro para quem já recebeu. Só que
+ * engolir em silêncio foi exatamente o que deixou a auditoria de teto rodando
+ * meses sem gravar uma linha, com um `SELECT setor` numa coluna chamada
+ * `melhor_setor`.
+ *
+ * Agora ela continua sendo engolida para o jogador e passa a ser CONTADA para
+ * quem conserta. É o único jeito de as duas coisas serem verdade ao mesmo tempo.
+ */
+async function anotarExcecaoDeAuditoria(
+  env: Env, rota: string, erro: unknown,
+): Promise<void> {
+  const nome = erro instanceof Error ? erro.name : 'erro';
+  await anotarMotivo(env, rota, `auditoria_${nome}`.slice(0, 48), 500)
+    .catch(() => { /* nem isto pode estourar: seria trocar cegueira por queda */ });
 }
 
 async function rotear(req: Request, env: Env): Promise<Response> {
@@ -697,9 +781,14 @@ async function registrarExcedentes(
         .bind(id, agora, l.moeda, l.motivo, e.quantia, e.teto, e.folga, e.setor, e.segundos));
     }
     if (escritas.length) await env.DB.batch(escritas);
-  } catch {
+  } catch (erro) {
     // Ver o cabeçalho: o pagamento já aconteceu, e a auditoria não pode
     // transformar um erro dela num erro dele.
+    //
+    // Mas ENGOLIR EM SILÊNCIO foi o que deixou esta função meses sem gravar uma
+    // linha, com um `SELECT setor` numa coluna chamada `melhor_setor`. Continua
+    // engolida para o jogador, e passa a ser contada para quem conserta.
+    await anotarExcecaoDeAuditoria(env, '/carteira:excedentes', erro);
   }
 }
 
@@ -1434,9 +1523,28 @@ async function missoesDe(env: Env, usuario: string) {
 
   const missoes: Record<string, LinhaDeMissao> = {};
   const entregues: string[] = [];
+  /**
+   * Linhas cujo `passos` não abriu — e por que isso não podia ser silencioso.
+   *
+   * O `catch` cai para `[]`, que é o certo: uma linha corrompida não pode
+   * derrubar as missões inteiras do jogador. Mas cair para `[]` **apaga o
+   * progresso daquela missão**, e sem contar ninguém saberia — nem o jogador,
+   * que veria a barra voltar a zero, nem quem conserta.
+   *
+   * Achado pela varredura de `tests/o-erro-escondido-no-sucesso.test.ts`, que
+   * cobra que todo `catch` do servidor reporte, devolva erro, ou explique por
+   * escrito por que não faz nem uma coisa nem outra.
+   */
+  let ilegiveis = 0;
+
   for (const l of results) {
     let passos: number[] = [];
-    try { passos = JSON.parse(l.passos) as number[]; } catch { passos = []; }
+    try {
+      passos = JSON.parse(l.passos) as number[];
+    } catch { // contado em `ilegiveis`, e vira `passos_ilegiveis` no livro
+      passos = [];
+      ilegiveis++;
+    }
     missoes[l.missao] = {
       passos: Array.isArray(passos) ? passos : [],
       iniciada: l.iniciada === 1,
@@ -1444,6 +1552,12 @@ async function missoesDe(env: Env, usuario: string) {
     };
     if (l.entregue_em !== null) entregues.push(l.missao);
   }
+
+  if (ilegiveis) {
+    await anotarMotivo(env, '/missoes', 'passos_ilegiveis', 500, ilegiveis)
+      .catch(() => { /* o livro nunca derruba a leitura */ });
+  }
+
   return { missoes, confianca: confiancaDerivada(entregues) };
 }
 
@@ -1696,6 +1810,9 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
    * Uma divergência aqui é exatamente o XP que o jogador perderia se a chave
    * virasse hoje. Por isso ela é medida antes, e não depois.
    */
+  /** Encontros declarados que nao correspondem a onda nenhuma daquele mundo. */
+  let recusados = 0;
+
   if (corpo.encontros && typeof corpo.encontros === 'object') {
     try {
       const [frota, itens] = await Promise.all([frotaDe(env, id), inventarioDe(env, id)]);
@@ -1709,6 +1826,16 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
         { hull: cascoEmCampo },
       );
       const preco = precificarEncontros(corpo.encontros, estado, atual.melhorSetor);
+      /**
+       * O encontro que NÃO cabe no mundo era calculado e jogado fora.
+       *
+       * `precificarEncontros` recusa em silêncio a chave que não corresponde a
+       * nenhuma onda daquela semente — cliente adulterado, ou save de antes de
+       * um rebalanceamento. O número existia e morria dentro da função: nem o
+       * jogador via, nem o livro contava. Agora ele sobe na resposta e o
+       * cabeçalho de `json()` o leva para o livro.
+       */
+      recusados = preco.recusados;
       const declarado = xp - atual.xp;
       // Só registra quando a diferença é grande: 1,2× é ruído de item fora de
       // sincronia; 40× é outra coisa. A folga é a mesma leitura de sempre.
@@ -1721,9 +1848,10 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
           )
           .bind(id, agora, 'xp', 'encontros', declarado, preco.xp, folga, setor, preco.encontros));
       }
-    } catch {
+    } catch (erro) {
       // Precificar é auditoria: uma falha aqui não pode custar o progresso
-      // legítimo que veio no mesmo envio.
+      // legítimo que veio no mesmo envio — mas some do radar se for calada.
+      await anotarExcecaoDeAuditoria(env, '/progresso:encontros', erro);
     }
   }
 
@@ -1774,7 +1902,7 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   }
 
   await env.DB.batch(escritas);
-  return json(await progressoDe(env, id), 200, origem);
+  return json({ ...(await progressoDe(env, id)), recusados }, 200, origem);
 }
 // ── ausência: o servidor simula o que aconteceu ─────────────────────────────
 

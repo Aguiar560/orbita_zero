@@ -92,8 +92,9 @@ export async function creditarAusencia(sim: Sim): Promise<RelatorioDeAusencia | 
       }),
     });
     if (!r.ok) { await relatarFalha('/ausencia', 'fundo', r); return null; }
-    relatarSucesso('/ausencia');
-    return (await r.json()) as RelatorioDeAusencia;
+    const dados = (await r.json()) as RelatorioDeAusencia;
+    relatarSucesso('/ausencia', dados);
+    return dados;
   } catch {
     await relatarFalha('/ausencia', 'fundo', null);
     return null;

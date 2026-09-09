@@ -53,8 +53,9 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
       ...(body ? { body } : {}),
     });
     if (!r.ok) { await relatarFalha('/missoes', 'fundo', r); return null; }
-    relatarSucesso('/missoes');
-    return (await r.json()) as Remoto;
+    const dados = (await r.json()) as Remoto;
+    relatarSucesso('/missoes', dados);
+    return dados;
   } catch {
     await relatarFalha('/missoes', 'fundo', null);
     return null;

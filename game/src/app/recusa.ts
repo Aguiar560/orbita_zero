@@ -62,9 +62,43 @@ const FRASES: Record<string, string> = {
 /** Quantas vezes seguidas cada rota falhou. Zerado no primeiro sucesso. */
 const seguidas = new Map<string, number>();
 
-/** Deu certo: a rota volta a poder avisar se falhar de novo mais tarde. */
-export function relatarSucesso(rota: string): void {
+/**
+ * Os campos que o servidor usa para dizer "deu certo, MENOS isto".
+ *
+ * `/inventario` devolve `recusados` (equipar barrado) e `faltaram` (o pote deu
+ * menos); `/missoes` e `/marcas` devolvem `recusadas`; `/progresso` conta
+ * encontros recusados. Todos dentro de um **200**, de propósito — um comando
+ * ruim não derruba o lote —, e todos ignorados pelo cliente até 09/09.
+ *
+ * Erro escondido dentro de sucesso é o pior lugar para um erro estar.
+ */
+const CAMPOS_DE_RECUSA = ['recusados', 'recusadas', 'faltaram'] as const;
+
+/**
+ * Deu certo: a rota volta a poder avisar se falhar de novo mais tarde.
+ *
+ * Recebe o corpo porque um 200 pode carregar recusa dentro. É o ponto único que
+ * já existia no caminho de êxito de TODOS os módulos — pendurar a conferência
+ * aqui evita seis chamadas novas para alguém esquecer a sétima.
+ */
+export function relatarSucesso(rota: string, dados?: unknown): void {
   seguidas.delete(rota);
+  if (!dados || typeof dados !== 'object') return;
+
+  const corpo = dados as Record<string, unknown>;
+  for (const campo of CAMPOS_DE_RECUSA) {
+    const valor = corpo[campo];
+    if (valor === undefined || valor === null) continue;
+
+    const vazio = Array.isArray(valor)
+      ? !valor.length
+      : typeof valor === 'number' ? !(valor > 0) : !Object.keys(valor).length;
+    if (vazio) continue;
+
+    // Console e não `toast`: nada disso quebra o jogo do jogador, e a maioria é
+    // um comando obsoleto sendo descartado. O que não pode é sumir.
+    console.warn(`[${rota}] o servidor aceitou, mas recusou parte — ${campo}:`, valor);
+  }
 }
 
 /**

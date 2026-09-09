@@ -94,8 +94,9 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
       ...(body ? { body } : {}),
     });
     if (!r.ok) { await relatarFalha('/progresso', 'fundo', r); return null; }
-    relatarSucesso('/progresso');
-    return (await r.json()) as Remoto;
+    const dados = (await r.json()) as Remoto;
+    relatarSucesso('/progresso', dados);
+    return dados;
   } catch {
     await relatarFalha('/progresso', 'fundo', null);
     return null;

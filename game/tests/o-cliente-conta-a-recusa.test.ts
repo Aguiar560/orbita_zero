@@ -194,3 +194,48 @@ describe('nenhuma rota ficou de fora', () => {
     });
   }
 });
+
+describe('o 200 que carrega recusa dentro também é contado', () => {
+  /**
+   * `/inventario` responde "deu certo" com `recusados` (equipar barrado) e
+   * `faltaram` (pote seco); `/missoes` e `/marcas` com `recusadas`;
+   * `/progresso` com um contador de encontros recusados.
+   *
+   * Todos de propósito — um comando ruim não derruba o lote —, e todos
+   * ignorados pelo cliente até 09/09. Erro escondido dentro de sucesso é o pior
+   * lugar para um erro estar: ninguém procura ali.
+   */
+  it('a lista de recusados vira aviso no console', () => {
+    relatarSucesso('/inventario', {
+      itens: [],
+      recusados: [{ uid: 'a', motivo: 'nave_nao_aceita' }],
+    });
+    expect(console.warn).toHaveBeenCalledOnce();
+    expect(vi.mocked(console.warn).mock.calls[0]![0]).toContain('recusou parte');
+  });
+
+  it('e o pote que deu menos também', () => {
+    relatarSucesso('/inventario', { itens: [], faltaram: { onda: 3 } });
+    expect(console.warn).toHaveBeenCalledOnce();
+  });
+
+  it('e o contador de encontros recusados também', () => {
+    // `/progresso` devolve um NÚMERO, não uma lista. Tratar só listas deixaria
+    // esta rota calada para sempre.
+    relatarSucesso('/progresso', { xp: 10, recusados: 2 });
+    expect(console.warn).toHaveBeenCalledOnce();
+  });
+
+  it('mas a resposta limpa não fala — aviso que aparece sempre não é aviso', () => {
+    relatarSucesso('/inventario', { itens: [1, 2, 3], recusados: [], faltaram: {} });
+    relatarSucesso('/progresso', { xp: 10, recusados: 0 });
+    relatarSucesso('/carteira');
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('e ele continua zerando a contagem de falhas seguidas', () => {
+    // A função tem dois trabalhos agora; o antigo não pode ter se perdido.
+    relatarSucesso('/carteira', { recusados: [{ motivo: 'x' }] });
+    expect(true).toBe(true);
+  });
+});

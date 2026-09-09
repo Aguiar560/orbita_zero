@@ -35,8 +35,8 @@ se sabia naquele dia, não como estado atual.
 | Missões | **499** (eram 21 em 04/09; as cadeias geram o volume) |
 | Galáxias × fases | 30 × 10 = **300 setores** · nível máximo 300 |
 | Código | 51.700 linhas de TypeScript, sem dependência de produção |
-| Servidor | 18 arquivos · 4.700 linhas · 16 migrações · 16 rotas + 1 gatilho |
-| Testes | **1.379** em 137 arquivos |
+| Servidor | 19 arquivos · 4.870 linhas · 16 migrações · 16 rotas + 1 gatilho |
+| Testes | **1.399** em 138 arquivos |
 | Bundle | 647 KB JS (219 KB gzip) + 324 KB CSS (65 KB gzip) |
 
 Produção agora: site **200** em 0,27 s, API **200**.
@@ -96,6 +96,14 @@ a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 > Fechou junto a brecha que sobrava: uma exceção não tratada escapava do `fetch`
 > inteiro, então **a falha que ninguém previu era a única invisível**. Hoje ela
 > vira `excecao_<nome>` no livro e é tratada como urgente.
+>
+> E uma auditoria de "o que ainda pode se esconder" achou mais **oito**: cinco
+> recusas que viajavam dentro de um **200** (equipar barrado, pote seco, entrega
+> barrada, marca implausível, encontro fora do mundo — este último era calculado
+> e jogado fora), dois `catch` de auditoria que engoliam sem contar, e um
+> `JSON.parse` que apagava o progresso de uma missão em silêncio. Todos contados
+> agora, e `tests/o-erro-escondido-no-sucesso.test.ts` varre o servidor para
+> cobrar que nenhum `catch` volte a ser mudo.
 >
 > A consulta continua respondendo na hora:
 >

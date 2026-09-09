@@ -94,8 +94,9 @@ async function chamar(metodo: 'GET' | 'POST', corpo?: unknown): Promise<EstadoDa
       ...(body ? { body } : {}),
     });
     if (!r.ok) { await relatarFalha('/carteira', 'fundo', r); return null; }
-    relatarSucesso('/carteira');
-    return (await r.json()) as EstadoDaCarteira;
+    const dados = (await r.json()) as EstadoDaCarteira;
+    relatarSucesso('/carteira', dados);
+    return dados;
   } catch {
     // Rede fora não é erro de jogo. O espelho continua valendo, e o jogador
     // segue vendo o último saldo confirmado em vez de um zero assustador.

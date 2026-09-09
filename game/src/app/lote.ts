@@ -80,8 +80,8 @@ export async function garantirLote(sim: Sim, setor: number): Promise<boolean> {
       }),
     });
     if (!r.ok) { await relatarFalha('/lote', 'fundo', r); return false; }
-    relatarSucesso('/lote');
     const dados = (await r.json()) as Resposta;
+    relatarSucesso('/lote', dados);
     sim.receberLote(dados.lote as never);
     setorEmMaos = setor;
     return true;

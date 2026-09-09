@@ -1279,6 +1279,53 @@ Sem `ALERTA_WEBHOOK` o gatilho não faz nada e o livro continua consultável.
 A carga leva `content` e `text` juntos: a primeira o Discord lê, a segunda o
 Slack.
 
+### O erro escondido dentro do sucesso
+
+Auditoria de 09/09 sobre "o que ainda pode se esconder". Cinco lugares, todos no
+mesmo formato: **a resposta é 200 e a recusa vai dentro dela**.
+
+| rota | campo | o que sumia |
+|---|---|---|
+| `/inventario` | `recusados` | equipar barrado — peça não é sua, nave não aceita, slot errado |
+| `/inventario` | `faltaram` | o pote deu menos do que o cliente pediu |
+| `/missoes` | `recusadas` | entrega barrada pela validação B |
+| `/marcas` | `recusadas` | marca de ranking implausível |
+| `/progresso` | `recusados` | encontro declarado que não cabe naquele mundo — **era calculado e jogado fora** |
+
+Todas de propósito: um comando ruim não derruba o lote. Só que isso as escondia
+duas vezes — o status 200 fazia o livro não olhar, e o cliente ignorava os
+campos.
+
+`json()` conta as recusas **enquanto o corpo ainda é objeto** e carimba
+`x-oz-recusas: motivo=n,…`; o interceptador lê o cabeçalho. Contar ali custa um
+`for`; reabrir o corpo na frente custaria um `JSON.parse` em toda resposta,
+inclusive nos 512 KB do save, que não tem recusa nenhuma para achar. E fica num
+lugar só, pelo mesmo motivo de sempre.
+
+A forma é decidida pelo **valor**, não declarada por campo: `recusados` é vetor
+em `/inventario` e número em `/progresso`, e fixar a forma faria uma das duas
+ser ignorada em silêncio.
+
+Do lado do cliente, `relatarSucesso(rota, dados)` — que **já era chamado em todo
+caminho de êxito** — passou a conferir o corpo. Um ponto único que já existia,
+em vez de seis chamadas novas para alguém esquecer a sétima.
+
+### Os `catch` que engoliam sem contar
+
+Dois rodam **depois do pagamento** e por isso precisam mesmo engolir:
+`registrarExcedentes` e a precificação de encontros. Engolir é o certo; engolir
+**em silêncio** foi o que deixou a auditoria de teto meses sem gravar uma linha,
+com um `SELECT setor` numa coluna chamada `melhor_setor`. Hoje continuam
+engolidos para o jogador e contados como `auditoria_<nome>` no livro.
+
+Um terceiro apareceu na varredura: `JSON.parse(l.passos)` em `missoesDe` caía
+para `[]` quando a linha estava corrompida — o que **apaga o progresso daquela
+missão** sem ninguém saber. Vira `passos_ilegiveis`.
+
+`tests/o-erro-escondido-no-sucesso.test.ts` varre o servidor e cobra que todo
+`catch` faça uma de três coisas: devolver erro, anotar, ou explicar por escrito
+ali mesmo por que não faz nem uma nem outra.
+
 ### A exceção que nunca virava resposta
 
 `anotarRecusa` só enxerga o que VIRA resposta. Uma exceção não tratada escapava
