@@ -27,7 +27,9 @@ import { precificarEncontros } from './encontros';
 import {
   IGNORADOS, acumular, horaDe, motivoDaResposta, novoLivro,
 } from './recusas';
-import { enviarAviso, hostDoAviso, montarAviso, type LinhaDeRecusa } from './alerta';
+import {
+  enviarAviso, formaDoValor, hostDoAviso, montarAviso, type LinhaDeRecusa,
+} from './alerta';
 import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corpo';
 import { lerPainelAdmin, podeLerPainelAdmin } from './painel-admin';
 import {
@@ -394,11 +396,15 @@ async function avisarDasRecusas(env: Env): Promise<void> {
      * CAMINHO é que carrega o token do webhook, e ele nunca sai do segredo.
      */
     const host = hostDoAviso(env.ALERTA_WEBHOOK);
-    const alvo = host ? host.replace(/[^a-z0-9.]/gi, '') : 'url_invalida';
+    // Não sendo URL, o que interessa é a FORMA do valor: é ela que diz se a
+    // colagem trouxe aspas, BOM ou espaço. Nenhum caractere do segredo sai.
+    const alvo = host
+      ? `alvo_${host.replace(/[^a-z0-9.]/gi, '')}`
+      : `valor_${formaDoValor(env.ALERTA_WEBHOOK)}`;
 
     await Promise.all([
       anotarMotivo(env, '/alerta', `envio_${status}`, 500),
-      anotarMotivo(env, '/alerta', `alvo_${alvo}`.slice(0, 48), 500),
+      anotarMotivo(env, '/alerta', alvo.slice(0, 48), 500),
     ]).catch(() => { /* o livro nunca derruba o gatilho */ });
     return;
   }
@@ -429,12 +435,25 @@ async function responder(req: Request, env: Env): Promise<Response> {
   try {
     return await rotear(req, env);
   } catch (erro) {
+    /**
+     * O nome sozinho não diagnostica nada.
+     *
+     * Em 09/09 apareceu `/admin/painel · excecao_Error` — uma linha que prova
+     * que houve exceção e não diz uma palavra sobre qual. Rodar cada consulta
+     * do painel à mão contra a produção não achou nada, e aí o rastro acabou.
+     *
+     * A mensagem entra **saneada**, com a mesma régua do erro do navegador:
+     * letras e pontuação, sem dígito e sem símbolo. Aqui a mensagem é do NOSSO
+     * código, não do jogador, mas o cuidado é o mesmo — um id ou um token pode
+     * ter sido interpolado nela por alguém que não pensou nisso.
+     *
+     * A pilha continua fora, sempre.
+     */
     const nome = erro instanceof Error ? erro.name : 'erro';
-    return json(
-      { erro: `excecao_${nome}`.slice(0, 64) },
-      500,
-      origemPermitida(req, env),
-    );
+    const msg = erro instanceof Error ? erro.message : '';
+    const motivo = motivoSaneado(`excecao ${nome} ${msg}`) || `excecao_${nome}`;
+
+    return json({ erro: motivo.slice(0, 64) }, 500, origemPermitida(req, env));
   }
 }
 

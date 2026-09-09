@@ -197,3 +197,31 @@ export function hostDoAviso(url: string): string {
     return '';
   }
 }
+
+/**
+ * A FORMA do valor guardado, quando ele não é uma URL.
+ *
+ * ## Por que isto precisou existir
+ *
+ * `alvo_url_invalida` disse que o valor não é uma URL, e aí o diagnóstico
+ * parou: sem saber POR QUE não é, a única saída era o Rafael tentar de novo às
+ * cegas — que foi o método que este dia inteiro serviu para abandonar.
+ *
+ * O segredo não pode sair daqui, mas a forma dele pode: aspas, espaço, tamanho
+ * absurdo e prefixo errado são as quatro maneiras de uma colagem de terminal
+ * dar errado, e nenhuma delas revela um caractere do token.
+ *
+ * Nunca devolve pedaço do valor. Só o nome do problema.
+ */
+export function formaDoValor(bruto: string): string {
+  if (!bruto) return 'vazio';
+  // BOM e caracteres de controle: o suspeito número um numa canalização do
+  // PowerShell, e invisível em qualquer conferência a olho.
+  if (/^﻿/.test(bruto)) return 'comeca_com_bom';
+  if (/[ -]/.test(bruto)) return 'tem_controle';
+  if (/["']/.test(bruto)) return 'tem_aspas';
+  if (/\s/.test(bruto.trim())) return 'tem_espaco_no_meio';
+  if (!bruto.trim().startsWith('http')) return 'nao_comeca_com_http';
+  if (bruto.trim().length < 40) return 'curta_demais';
+  return 'formato_desconhecido';
+}

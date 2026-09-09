@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  LIMIAR_URGENTE, LINHAS_MAX, corpoDoAviso, enviarAviso, hostDoAviso, montarAviso,
+  LIMIAR_URGENTE, LINHAS_MAX, corpoDoAviso, enviarAviso, formaDoValor, hostDoAviso,
+  montarAviso,
   type LinhaDeRecusa,
 } from '../server/src/alerta';
 
@@ -226,9 +227,9 @@ describe('o gatilho, e a brecha que ele fecha', () => {
      * sem um `catch` escrito à mão — era a única invisível.
      */
     const i = fonte.indexOf('async function responder');
-    const bloco = fonte.slice(i, i + 700);
+    const bloco = fonte.slice(i, i + 1600);
     expect(bloco).toContain('return await rotear(req, env);');
-    expect(bloco).toContain('excecao_');
+    expect(bloco).toContain('motivoSaneado(');
     expect(bloco, 'a pilha pode carregar dado do jogador').not.toContain('.stack');
   });
 
@@ -270,5 +271,38 @@ describe('o host do destino, que é a parte que pode ser gravada', () => {
     const h = hostDoAviso('https://discord.com/api/webhooks/1547/uNEatPLPZyBQ');
     expect(h).not.toContain('uNEat');
     expect(h).not.toContain('/');
+  });
+});
+
+describe('a forma do valor, quando ele não é uma URL', () => {
+  /**
+   * `alvo_url_invalida` dizia que o valor não é uma URL — e o diagnóstico
+   * parava aí. Sem saber POR QUE não é, a única saída era tentar de novo às
+   * cegas, que é o método que este dia inteiro serviu para abandonar.
+   *
+   * O segredo não sai daqui; a forma dele, sim.
+   */
+  it('nomeia as quatro maneiras de uma colagem de terminal dar errado', () => {
+    expect(formaDoValor('')).toBe('vazio');
+    expect(formaDoValor('﻿https://discord.com/x')).toBe('comeca_com_bom');
+    expect(formaDoValor('"https://discord.com/x"')).toBe('tem_aspas');
+    expect(formaDoValor('https://discord.com/ x')).toBe('tem_espaco_no_meio');
+    expect(formaDoValor('discord.com/api/webhooks/1/x')).toBe('nao_comeca_com_http');
+    expect(formaDoValor('https://x')).toBe('curta_demais');
+  });
+
+  it('e o controle invisível vem antes do resto — é o mais difícil de ver', () => {
+    // Um `\r` no fim é invisível em qualquer conferência a olho, e sobra
+    // quando o valor passa por arquivo ou por canalização do PowerShell.
+    expect(formaDoValor('https://discord.com/api/webhooks/1/abcdefghijklmnop\r'))
+      .toBe('tem_controle');
+  });
+
+  it('e NUNCA devolve pedaço do valor — só o nome do problema', () => {
+    const segredo = '"https://discord.com/api/webhooks/1547/uNEatPLPZyBQGnxgLxLOgNvYWOg"';
+    const forma = formaDoValor(segredo);
+    expect(forma).not.toContain('uNEat');
+    expect(forma).not.toContain('discord');
+    expect(forma).toMatch(/^[a-z_]+$/);
   });
 });
