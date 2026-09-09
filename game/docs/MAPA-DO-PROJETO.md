@@ -79,9 +79,9 @@ src/
   ui/      35 arq · 11.433 linhas · Shell, LeftRail, painéis — SEM regra de jogo
   app/     17 arq · 4.020 linhas · Game, Bus, Loop e OS ESPELHOS DO SERVIDOR
   styles/   3 arq · 9.357 linhas
-server/    17 arq · 4.560 linhas · o Worker do Cloudflare e as 15 migrações do D1
+server/    18 arq · 4.700 linhas · o Worker do Cloudflare e as 16 migrações do D1
 tools/           · pipeline de assets e o arnês de balanceamento, fora do bundle
-tests/  136 arq · 17.800 linhas · 1.362 testes passando (conferido em 09/09/2026)
+tests/  137 arq · 18.000 linhas · 1.379 testes passando (conferido em 09/09/2026)
 ```
 
 **Aliases:** `@core @render @sim @data @ui @modes @app`
@@ -227,7 +227,7 @@ O terminal do Rafael é **PowerShell 5.1**, que **não aceita `&&`** — use `;`
 | `npm run dev` | Vite em `localhost:5180` (porta fixa) |
 | `npm run assets` | Fatia os packs crus de `D:\bbb\*` em `public/assets` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | suíte do Vitest (**1.362 testes em 136 arquivos**, 09/09/2026) |
+| `npm test` | suíte do Vitest (**1.379 testes em 137 arquivos**, 09/09/2026) |
 | `npm run build` | assets + typecheck + build |
 
 Se mexeu em arte: `npm run assets; npm run dev`.

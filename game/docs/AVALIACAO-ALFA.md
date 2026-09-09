@@ -15,10 +15,11 @@ se sabia naquele dia, não como estado atual.
 > horas no ar sem sintoma no servidor, e o custo não foi o defeito, foi as horas
 > até entender qual era.
 >
-> **Atualização do fim do dia:** o bloqueador 1 caiu. O cliente relata toda
-> recusa e o servidor mantém o livro `recusas`, então uma rota quebrada deixa de
-> precisar de alguém reclamando para aparecer. Restam os dois de qualidade: a
-> abertura do jogo e a virada da chave da Fase 5.
+> **Atualização do fim do dia: o bloqueador 1 caiu, nos três níveis.** O cliente
+> relata toda recusa, o servidor mantém o livro `recusas` e um gatilho de tempo
+> avisa a cada cinco minutos. O atraso entre um defeito começar e alguém saber
+> saiu de *"até alguém reclamar"* — horas, em 08/09 — para **cinco minutos**.
+> Restam os dois de qualidade: a abertura do jogo e a virada da chave da Fase 5.
 
 ---
 
@@ -34,16 +35,17 @@ se sabia naquele dia, não como estado atual.
 | Missões | **499** (eram 21 em 04/09; as cadeias geram o volume) |
 | Galáxias × fases | 30 × 10 = **300 setores** · nível máximo 300 |
 | Código | 51.700 linhas de TypeScript, sem dependência de produção |
-| Servidor | 17 arquivos · 4.560 linhas · 15 migrações · 16 rotas |
-| Testes | **1.362** em 136 arquivos |
+| Servidor | 18 arquivos · 4.700 linhas · 16 migrações · 16 rotas + 1 gatilho |
+| Testes | **1.379** em 137 arquivos |
 | Bundle | 647 KB JS (219 KB gzip) + 324 KB CSS (65 KB gzip) |
 
 Produção agora: site **200** em 0,27 s, API **200**.
 
 > Nota sobre o número de testes: o registro de 04/09 diz "2.035 testes". A
 > contagem de hoje pelo relatório JSON do Vitest é **1.325 testes / 2.470
-> asserções** (1.362 depois do trabalho do fim do dia). Não persegui a origem da diferença — provavelmente o número
-> antigo contava `expect(`. Fica dito para não parecer regressão.
+> asserções** — 1.379 depois do trabalho do fim do dia. Não persegui a origem da
+> diferença; provavelmente o número antigo contava `expect(`. Fica dito para não
+> parecer regressão.
 
 ---
 
@@ -83,12 +85,19 @@ encontro e precifica o que o cliente declarou — com piso de tempo por onda e
 teto por réplica —, mas **quem paga ainda é o número que o cliente manda**. Até
 a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 
-### Operação e observabilidade — 6/10 *(era 4 pela manhã)*
+### Operação e observabilidade — 8/10 *(era 4 pela manhã)*
 
-> **Atualizado no mesmo dia.** Os níveis 1 e 2 do plano abaixo foram feitos:
-> existe o **livro das recusas** (`recusas`, migração `0015`) e o cliente
-> **relata** toda recusa. O que falta para 8 é o nível 3 — alguém ser avisado
-> sem precisar consultar. Enquanto isso, a consulta responde em cinco segundos:
+> **Atualizado no mesmo dia, os três níveis.** O cliente **relata** toda recusa
+> (`app/recusa.ts`), o servidor mantém o **livro** (`recusas`, migração `0015`)
+> e um **gatilho de tempo avisa** a cada cinco minutos (`alerta.ts`, migração
+> `0016`). O atraso máximo entre um defeito começar e alguém saber caiu de
+> *"até alguém reclamar"* — que em 08/09 foram horas — para **cinco minutos**.
+>
+> Fechou junto a brecha que sobrava: uma exceção não tratada escapava do `fetch`
+> inteiro, então **a falha que ninguém previu era a única invisível**. Hoje ela
+> vira `excecao_<nome>` no livro e é tratada como urgente.
+>
+> A consulta continua respondendo na hora:
 >
 > ```sql
 > SELECT rota, motivo, SUM(n) FROM recusas
@@ -96,9 +105,16 @@ a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 >  GROUP BY rota, motivo ORDER BY 3 DESC;
 > ```
 >
-> Continua valendo: migração e deploy são dois comandos manuais cuja ordem, se
-> invertida, derruba uma rota em silêncio; `d1_migrations` não registra o que
-> sobe por `--file=`; e `wrangler tail` não resolve o host neste ambiente.
+> **O que segura os 2 pontos que faltam é operação, não observação.** Migração e
+> deploy continuam sendo dois comandos manuais cuja ordem, se invertida, derruba
+> uma rota em silêncio; `d1_migrations` não registra o que sobe por `--file=`; e
+> **erro de JavaScript no navegador do jogador continua invisível daqui** — um
+> painel que estoura é a classe de defeito mais visível para quem joga e a menos
+> visível para quem conserta.
+>
+> Ligar o aviso é um passo manual, uma vez: `wrangler secret put
+> ALERTA_WEBHOOK` com a URL de um webhook de Discord ou Slack. Sem ele o gatilho
+> não faz nada e o livro continua consultável.
 
 Era a nota mais baixa da avaliação, e a que mudou o veredito.
 
@@ -194,8 +210,8 @@ painel) — melhor que nada, pior que um DOM.
 
 **1. Observabilidade — ✅ resolvido no mesmo dia.**
 Era o único que era risco, e não qualidade: sem isso o próximo defeito custaria
-o mesmo que os de hoje, multiplicado pelo número de testadores. Foram os dois
-níveis mais baratos, nesta ordem:
+o mesmo que os de hoje, multiplicado pelo número de testadores. Foram três
+níveis, nesta ordem:
 
 - **O cliente conta** (`app/recusa.ts`). Toda recusa vira `console.warn` com
   rota, status e motivo. Vira **aviso na tela** sempre que for ação deliberada,
@@ -205,9 +221,19 @@ níveis mais baratos, nesta ordem:
   resposta ≥ 400 é anotada num lugar só, agregada por rota, motivo e hora, com
   teto de escrita para o livro não se afogar no incidente que veio registrar.
 
-Falta o nível 3 — **alguém ser avisado** em vez de precisar consultar. Só vale
-quando houver testadores de verdade: hoje o Rafael é o único jogador e responde
-mais rápido que qualquer alerta.
+- **Alguém é avisado** (`alerta.ts` + `crons = ["*/5 * * * *"]`, migração
+  `0016`). O gatilho lê o que ainda não foi contado e manda um **resumo** — um
+  por ciclo, com todos os tipos e a contagem de cada um. Marca urgente o que é
+  `http_5xx`, o que é inédito e o que passa de 30. A coluna `avisado` só sobe
+  depois do envio confirmado, então um aviso perdido reaparece.
+
+Conferido de ponta a ponta com o gatilho rodando de verdade contra um D1 local e
+um webhook próprio: primeiro disparo avisou os três tipos, o segundo ficou em
+silêncio, e um delta novo de 4 avisou só os 4. Foi aí que apareceu um defeito
+que a leitura do código não pegou — um erro contínuo era marcado `NOVO` em todo
+aviso da primeira hora de vida dele.
+
+O que ainda não é visto daqui: **erro de JavaScript no navegador do jogador**.
 
 **2. A abertura do jogo — do setor 1 ao 12.**
 O 1 é trivial e o 4 ao 11 é parede. Um testador novo passa a primeira hora

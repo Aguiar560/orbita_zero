@@ -58,7 +58,7 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run dev` | Vite em `localhost:5180` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | assets + typecheck + build |
-| `npm test` | suíte do Vitest (1.362 testes em 136 arquivos, 09/09/2026) |
+| `npm test` | suíte do Vitest (1.379 testes em 137 arquivos, 09/09/2026) |
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
 | `npm run simular -- ganho 1 300 5` | ganho por segundo, setores limpos e mortes — mede o que o jogador REALMENTE recebe |
 | `npm run simular -- drops 200000` | distribuição real de raridade |
@@ -82,6 +82,16 @@ inexistente derruba a rota, e o cliente disfarça a falha como perda de dado.
 `npx wrangler d1 execute orbita-zero --remote --command "SELECT …"` lê a
 produção — use antes de teorizar. `d1_migrations` NÃO registra o que subiu por
 `--file=`; confira pelo `sqlite_master`. `wrangler tail` não funciona daqui.
+
+**O que está quebrado agora** sai do livro das recusas, e não de log:
+
+```bash
+cd D:\bbb\game\server; npx wrangler d1 execute orbita-zero --remote --command "SELECT rota, motivo, SUM(n) FROM recusas WHERE hora > strftime('%s','now') - 86400 GROUP BY rota, motivo ORDER BY 3 DESC"
+```
+
+Um gatilho de tempo manda o resumo a cada cinco minutos quando há
+`ALERTA_WEBHOOK` configurado (`wrangler secret put`). Ver a seção 12 do
+`SISTEMAS.md`.
 
 ## Arquitetura
 

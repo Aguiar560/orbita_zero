@@ -12,6 +12,16 @@ SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
 # qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
 ORIGENS = "http://localhost:5180,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
 
+# O gatilho que avisa das recusas. Cinco minutos é o atraso máximo entre um
+# defeito começar e alguém ficar sabendo — antes disto o atraso era "até alguém
+# reclamar", que em 08/09 foram horas.
+#
+# O custo é desprezível: 288 execuções por dia contra as 100 mil requisições
+# diárias da camada gratuita, e cada uma faz uma leitura no D1 (leitura tem cota
+# de 5 milhões). Sem `ALERTA_WEBHOOK` configurado, ele volta sem fazer nada.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "orbita-zero"

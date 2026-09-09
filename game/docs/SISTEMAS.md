@@ -1242,6 +1242,55 @@ nunca "quem tomou erro".
 
 Uma tabela vazia aqui é uma boa notícia legível.
 
+### O aviso — o ciclo fechado
+
+O livro respondia "o que está quebrado" em cinco segundos, mas continuava
+dependendo de alguém **suspeitar e ir olhar**. `alerta.ts` mais um gatilho de
+tempo (`crons = ["*/5 * * * *"]`) tiram essa dependência: a cada cinco minutos o
+Worker lê o que ainda não foi avisado e manda um resumo.
+
+**Resumo, não uma mensagem por erro.** "Todo erro precisa ser avisado" e "toda
+ocorrência vira uma mensagem" são coisas diferentes, e a segunda destrói a
+primeira: uma rota quebrada gera milhares de recusas por hora, e mil mensagens
+avisam MENOS que uma, porque ninguém lê a milésima e o canal deixa de ser
+olhado. Todo **tipo** entra, sempre; o que se agrupa é a repetição, e a contagem
+vai junto porque "40 vezes" e "4 vezes" pedem reações diferentes.
+
+Três coisas tornam um aviso **urgente**, e cada uma veio de 08/09:
+
+| gatilho | por quê |
+|---|---|
+| `http_5xx` | exceção que ninguém previu — a mais provável de derrubar a rota |
+| motivo **NOVO** | a assinatura de "um deploy quebrou algo" — foi assim que `no such column: semente` apareceu |
+| volume ≥ 30 | um erro conhecido saindo do normal |
+
+`NOVO` exige **nunca ter sido avisado** (`avisado = 0`) além de não ter balde
+anterior. Sem isso um erro contínuo era marcado NOVO em todos os avisos da
+primeira hora de vida — achado rodando o gatilho de verdade, não lendo o código.
+
+A coluna `avisado` (migração `0016`) guarda **até onde já foi contado**, e o
+aviso é sobre `n - avisado`. Um relógio de "avisei até tal instante" reavisaria
+a mesma linha doze vezes, porque os baldes são de uma hora e o gatilho roda a
+cada cinco minutos. E ela **só sobe depois do envio confirmado**: é a disciplina
+da fila da carteira, e um aviso perdido reaparece no ciclo seguinte em vez de
+sumir com a marca de "já avisei".
+
+Sem `ALERTA_WEBHOOK` o gatilho não faz nada e o livro continua consultável.
+A carga leva `content` e `text` juntos: a primeira o Discord lê, a segunda o
+Slack.
+
+### A exceção que nunca virava resposta
+
+`anotarRecusa` só enxerga o que VIRA resposta. Uma exceção não tratada escapava
+do `fetch` inteiro: o runtime devolvia o erro dele, o livro não registrava nada
+e o aviso nunca saía. Ou seja, **a falha que ninguém previu — a única sem um
+`catch` escrito à mão — era a única invisível.**
+
+`responder()` envolve o roteador e transforma o que escapar em `excecao_<nome>`
+com status 500, que o livro registra e o aviso trata como urgente. O nome do
+erro entra; a pilha, não — ela pode carregar dado do jogador, e um livro de
+operação não é lugar para isso.
+
 ### O cliente engole o erro — e por que isso é um problema de sistema
 
 Todo módulo de `src/app/` fala com o Worker por um `chamar()` que faz

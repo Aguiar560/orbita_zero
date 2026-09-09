@@ -27,6 +27,7 @@ import { precificarEncontros } from './encontros';
 import {
   IGNORADOS, acumular, horaDe, motivoDaResposta, novoLivro,
 } from './recusas';
+import { enviarAviso, montarAviso, type LinhaDeRecusa } from './alerta';
 import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
@@ -66,6 +67,17 @@ export interface Env {
   SUPABASE_URL: string;
   /** Origens que podem chamar esta API, separadas por vírgula. */
   ORIGENS: string;
+  /**
+   * Para onde mandar o aviso de recusas. SEGREDO, e opcional.
+   *
+   * Opcional porque o livro `recusas` vale por si: sem esta variável o gatilho
+   * de tempo não faz nada e a consulta ao D1 continua respondendo tudo. Ligar o
+   * aviso é `wrangler secret put ALERTA_WEBHOOK`.
+   *
+   * É segredo de verdade — quem tem a URL escreve no canal —, então ela nunca
+   * entra em `wrangler.toml`, que é versionado.
+   */
+  ALERTA_WEBHOOK?: string;
 }
 
 // O ritmo de gravação mora em `ritmo.ts`: é um balde de fichas, não um
@@ -252,7 +264,7 @@ const LIVRO_DE_RECUSAS = novoLivro();
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const resposta = await rotear(req, env);
+    const resposta = await responder(req, env);
 
     /**
      * TODA recusa passa por aqui, e é de propósito que seja um lugar só.
@@ -270,7 +282,89 @@ export default {
 
     return resposta;
   },
+
+  /**
+   * O gatilho de tempo: lê o que ainda não foi avisado e conta a alguém.
+   *
+   * É a peça que fecha o ciclo aberto em 08/09. O livro `recusas` respondeu "o
+   * que está quebrado" em cinco segundos, mas continuava dependendo de alguém
+   * SUSPEITAR e ir olhar. Aqui o sistema deixa de depender de quem olha.
+   *
+   * Sem `ALERTA_WEBHOOK` configurado ele não faz nada, de propósito: o livro
+   * continua sendo escrito e consultável, e ligar o aviso é colar uma URL.
+   */
+  async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
+    await avisarDasRecusas(env);
+  },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * Junta o que falta avisar, manda, e só então marca como avisado.
+ *
+ * A ordem é a disciplina da fila da carteira: só se apaga o que se confirmou
+ * ter entregado. Um aviso perdido por rede fora reaparece no ciclo seguinte —
+ * porque o defeito continua lá, e sumir com a marca seria o pior dos mundos.
+ */
+async function avisarDasRecusas(env: Env): Promise<void> {
+  if (!env.ALERTA_WEBHOOK) return;
+
+  /**
+   * `primeiraHora` vem de uma subconsulta, e é ela que marca o motivo NOVO.
+   *
+   * Um par rota+motivo que nunca existiu antes é a assinatura de "um deploy
+   * quebrou alguma coisa" — foi exatamente assim que `no such column: semente`
+   * apareceu. Sem isso, um erro inédito chegaria com o mesmo peso de um
+   * conhecido.
+   */
+  const { results } = await env.DB.prepare(`
+    SELECT r.rota, r.motivo, r.hora, r.n, r.avisado,
+           (SELECT MIN(p.hora) FROM recusas p
+             WHERE p.rota = r.rota AND p.motivo = r.motivo) AS primeiraHora
+      FROM recusas r
+     WHERE r.n > r.avisado
+     ORDER BY r.hora DESC
+     LIMIT 200
+  `).all<LinhaDeRecusa>();
+
+  const aviso = montarAviso(results);
+  if (!aviso) return;
+
+  if (!(await enviarAviso(env.ALERTA_WEBHOOK, aviso))) return;
+
+  await env.DB.batch(results.map((l) => env.DB
+    .prepare('UPDATE recusas SET avisado = ? WHERE rota = ? AND motivo = ? AND hora = ?')
+    .bind(l.n, l.rota, l.motivo, l.hora)));
+}
+
+/**
+ * Roteia, e transforma em resposta o que escapar como exceção.
+ *
+ * ## A brecha que isto fecha
+ *
+ * `anotarRecusa` só enxerga o que VIRA resposta. Uma exceção não tratada dentro
+ * de uma rota escapava do `fetch` inteiro: o runtime devolvia o erro dele, o
+ * livro não registrava nada e o aviso nunca saía.
+ *
+ * Ou seja, justamente a falha que ninguém previu — a única que não tem um
+ * `catch` escrito à mão em algum lugar — era a única invisível. Agora ela vira
+ * `http_500` no livro, com o nome da exceção junto, e o aviso a trata como
+ * urgente.
+ *
+ * O nome do erro entra; a pilha, não. Ela pode carregar dado do jogador, e um
+ * livro de operação não é lugar para isso.
+ */
+async function responder(req: Request, env: Env): Promise<Response> {
+  try {
+    return await rotear(req, env);
+  } catch (erro) {
+    const nome = erro instanceof Error ? erro.name : 'erro';
+    return json(
+      { erro: `excecao_${nome}`.slice(0, 64) },
+      500,
+      origemPermitida(req, env),
+    );
+  }
+}
 
 /**
  * Grava a recusa, agregada por rota, motivo e hora.
