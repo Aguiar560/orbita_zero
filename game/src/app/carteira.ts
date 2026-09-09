@@ -174,17 +174,47 @@ export function esquecer(): void {
  */
 export async function drenarCarteira(sim: Sim): Promise<void> {
   const fila = sim.state.pendentes;
-  if (!fila.length && carteiraPronta()) return;
 
-  const enviando = fila.splice(0, fila.length);
-  const ok = enviando.length ? await movimentar(enviando) : await sincronizar();
+  // Só fala com a rede quando há o que dizer, ou quando ainda não sabe o saldo.
+  // O ESPELHAR, porém, acontece de qualquer jeito — ver `espelharNoSim`.
+  if (fila.length || !carteiraPronta()) {
+    const enviando = fila.splice(0, fila.length);
+    const ok = enviando.length ? await movimentar(enviando) : await sincronizar();
 
-  if (!ok) {
-    // Volta ao INÍCIO da fila: a ordem dos lançamentos é o que o livro-caixa
-    // vai contar depois, e reordenar torna a auditoria mais difícil de ler.
-    fila.unshift(...enviando);
-    return;
+    if (!ok) {
+      // Volta ao INÍCIO da fila: a ordem dos lançamentos é o que o livro-caixa
+      // vai contar depois, e reordenar torna a auditoria mais difícil de ler.
+      fila.unshift(...enviando);
+      return;
+    }
   }
+
+  espelharNoSim(sim);
+}
+
+/**
+ * Copia o espelho para `state.resources`, que é de onde a TELA lê.
+ *
+ * ## Por que isto é uma função, e não o fim de `drenarCarteira`
+ *
+ * Porque era o fim de `drenarCarteira`, e a saída antecipada pulava por cima.
+ * O boot faz `sincronizarCarteira()` e depois `drenarCarteira(sim)` — e a
+ * primeira chamada era exatamente o que fazia a segunda desistir, porque com a
+ * fila vazia a guarda `!fila.length && carteiraPronta()` já estava satisfeita.
+ *
+ * Resultado: quem abria o jogo num navegador novo via ZERO em tudo, com o
+ * dinheiro inteiro guardado no servidor. O sintoma que apareceu não foi
+ * "saldo errado" — foi **"a fabricação não faz nada"**, porque com núcleo zero
+ * o botão FABRICAR nasce desabilitado.
+ *
+ * ## Por que a guarda de `carteiraPronta`
+ *
+ * "Ainda não sei" e "você tem zero" são coisas diferentes. Espelhar um espelho
+ * vazio escreveria zero por cima do saldo do save, e o conserto viraria um
+ * defeito pior que o consertado.
+ */
+export function espelharNoSim(sim: Sim): void {
+  if (!carteiraPronta()) return;
 
   const c = carteira();
   sim.state.resources.sucata = c.saldos.sucata;

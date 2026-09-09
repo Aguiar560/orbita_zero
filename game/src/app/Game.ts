@@ -22,7 +22,7 @@ import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
 import { comAsFilasDaqui, progressoDe, reconciliar, subirSave } from './nuvem';
 import { enviarMarcas } from './placar';
-import { drenarCarteira, sincronizar as sincronizarCarteira } from './carteira';
+import { drenarCarteira, espelharNoSim, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota } from './inventario';
 import { drenarProgresso, sincronizarProgresso } from './progresso';
@@ -351,6 +351,10 @@ export class Game {
       drenarInventario(this.sim),
       sincronizarProgresso(this.sim),
     ]);
+    // `sincronizarCarteira` enche o espelho; quem desenha lê `state.resources`.
+    // Sem esta linha o relatório da ausência anuncia um ganho que o topo da
+    // tela só mostra no fim do setor seguinte. Ver `espelharNoSim`.
+    espelharNoSim(this.sim);
 
     // A incursão volta como o servidor a deixou: a carga que sobreviveu à
     // ausência, e a onda em que a nave parou. Ver `adotarIncursao`.
