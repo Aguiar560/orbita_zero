@@ -6,6 +6,11 @@
   "outputDirectory": "dist",
   "headers": [
     {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "orbita-zero.vercel.app" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
       "source": "/",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
