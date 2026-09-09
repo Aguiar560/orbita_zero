@@ -1021,6 +1021,14 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
   const nascidosEMortos = new Set<string>();
   /** O que nasceu NESTE lote e ainda não está no banco. */
   const nascidos = new Map<string, Item>();
+  /**
+   * Quanto o cliente pediu além do que o pote tinha.
+   *
+   * Sobe na resposta em vez de virar 409. Ver `derivarColeta`: o 409 derrubava
+   * o lote inteiro e o cliente reenviava o mesmo lote envenenado para sempre,
+   * o que deixava o inventário dele permanentemente à frente do servidor.
+   */
+  let faltaram: Partial<Record<TipoDeDrop, number>> = {};
 
   // ── coletar ───────────────────────────────────────────────────────────────
   const pedido = comandos.coletar ?? {};
@@ -1050,7 +1058,7 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
     for (const t of TIPOS) relativo[t] = Math.max(0, cursor[t] - base);
 
     const coleta = derivarColeta(rolado, relativo, pedido);
-    if (!coleta) return json({ erro: 'lote_esgotado' }, 409, origem);
+    faltaram = coleta.faltaram;
 
     for (const item of coleta.itens) {
       // Caiu e já foi descartado neste mesmo lote: não grava.
@@ -1119,7 +1127,9 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
   // Os recusados vão na resposta em vez de derrubarem o lote. O cliente adota a
   // lista que volta, então uma peça recusada simplesmente aparece desequipada —
   // que é a verdade.
-  return json({ itens: await inventarioDe(env, id), recusados: plano.recusados }, 200, origem);
+  return json({
+    itens: await inventarioDe(env, id), recusados: plano.recusados, faltaram,
+  }, 200, origem);
 }
 // ── síntese e frota ─────────────────────────────────────────────────────────
 

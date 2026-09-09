@@ -81,26 +81,63 @@ export function conferirComandos(c: Comandos): RecusaDeInventario | null {
 /**
  * Quais itens o jogador tirou do lote, dado o cursor.
  *
- * Devolve `null` quando o pedido passa do que o lote tem. Recusar é melhor que
- * aparar em silêncio: aparar esconderia um cliente que está contando errado, e
- * contar errado sobre item é exatamente o que interessa aparecer.
+ * ## Aparava? Não. Recusava — e recusar era o defeito
+ *
+ * Isto devolvia `null` quando o pedido passava do que o lote tem, com o
+ * argumento de que "aparar esconderia um cliente contando errado". O argumento
+ * está certo sobre ESCONDER e errado sobre RECUSAR, e a diferença custou o dia
+ * 08/09 inteiro.
+ *
+ * O `null` virava `409` na rota, e o 409 derrubava o LOTE DE COMANDOS INTEIRO
+ * — a coleta, os descartes e os equipamentos junto. O cliente devolvia tudo à
+ * fila e reenviava o mesmo lote envenenado, para sempre. Efeitos medidos na
+ * conta do Rafael:
+ *
+ * - inventário do cliente com 29 peças contra **9 no servidor**;
+ * - o cursor do lote parado, então o pote nunca mais andava;
+ * - e a Fabricação recusando com `itens_nao_sao_seus`, porque as peças do anel
+ *   nunca chegaram a existir lá.
+ *
+ * Nada disso tinha sintoma no servidor. É a mesma lição que `planejarEquipar`
+ * já tinha aprendido ao lado ("uma peça recusada aparece desequipada, que é a
+ * verdade") e que a entrega de missão aprendeu depois. A coleta não tinha
+ * aprendido.
+ *
+ * ## O que faz agora
+ *
+ * Dá o que o pote TEM e conta o que faltou. `faltaram` sobe na resposta, então
+ * o cliente contando errado continua aparecendo — que era o objetivo real —
+ * sem que a discordância destrua o resto do lote.
+ *
+ * E não afrouxa nada: o servidor continua derivando os itens da semente dele, e
+ * aparar só pode entregar MENOS. Não há pedido que renda mais do que rendia.
  */
 export function derivarColeta(
   lote: Lote,
   cursor: Record<TipoDeDrop, number>,
   pedido: Partial<Record<TipoDeDrop, number>>,
-): { itens: Item[]; cursor: Record<TipoDeDrop, number> } | null {
+): {
+  itens: Item[];
+  cursor: Record<TipoDeDrop, number>;
+  faltaram: Partial<Record<TipoDeDrop, number>>;
+} {
   const novo = { ...cursor };
   const itens: Item[] = [];
+  const faltaram: Partial<Record<TipoDeDrop, number>> = {};
+
   for (const tipo of TIPOS) {
     const n = pedido[tipo] ?? 0;
     if (n <= 0) continue;
     const de = cursor[tipo];
-    if (de + n > lote[tipo].length) return null;
-    itens.push(...lote[tipo].slice(de, de + n));
-    novo[tipo] = de + n;
+    const cabem = Math.max(0, Math.min(n, lote[tipo].length - de));
+
+    if (cabem < n) faltaram[tipo] = n - cabem;
+    if (cabem === 0) continue;
+
+    itens.push(...lote[tipo].slice(de, de + cabem));
+    novo[tipo] = de + cabem;
   }
-  return { itens, cursor: novo };
+  return { itens, cursor: novo, faltaram };
 }
 
 /**

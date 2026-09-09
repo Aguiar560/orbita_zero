@@ -24,7 +24,7 @@ const ZERO = { onda: 0, elite: 0, chefe: 0 };
 
 describe('a coleta é derivada, não recebida', () => {
   it('devolve os itens a partir do cursor', () => {
-    const r = derivarColeta(LOTE, ZERO, { onda: 3 })!;
+    const r = derivarColeta(LOTE, ZERO, { onda: 3 });
     expect(r.itens).toHaveLength(3);
     expect(r.itens.map((i) => i.uid)).toEqual(LOTE.onda.slice(0, 3).map((i) => i.uid));
     expect(r.cursor.onda).toBe(3);
@@ -33,28 +33,69 @@ describe('a coleta é derivada, não recebida', () => {
   it('o cursor impede pegar o mesmo item duas vezes', () => {
     // É a regra inteira contra duplicação. Sem ela, repetir a requisição —
     // por retentativa de rede, inclusive — dobraria o loot.
-    const primeira = derivarColeta(LOTE, ZERO, { onda: 3 })!;
-    const segunda = derivarColeta(LOTE, primeira.cursor, { onda: 3 })!;
+    const primeira = derivarColeta(LOTE, ZERO, { onda: 3 });
+    const segunda = derivarColeta(LOTE, primeira.cursor, { onda: 3 });
     const uids = new Set([...primeira.itens, ...segunda.itens].map((i) => i.uid));
     expect(uids.size).toBe(6);
   });
 
-  it('pedir além do lote é RECUSADO, não aparado', () => {
-    // Aparar em silêncio esconderia um cliente contando errado — e contar
-    // errado sobre item é exatamente o que interessa aparecer.
-    expect(derivarColeta(LOTE, ZERO, { onda: 999 })).toBeNull();
-    expect(derivarColeta(LOTE, { ...ZERO, onda: 11 }, { onda: 2 })).toBeNull();
+  it('pedir além do lote é aparado e CONTADO — nunca recusado em bloco', () => {
+    /**
+     * Isto devolvia `null`, com o argumento de que aparar em silêncio
+     * esconderia um cliente contando errado. O argumento está certo sobre
+     * ESCONDER e errado sobre RECUSAR.
+     *
+     * O `null` virava 409 na rota, e o 409 derrubava o LOTE DE COMANDOS
+     * INTEIRO — a coleta, os descartes e os equipamentos junto. O cliente
+     * devolvia tudo à fila e reenviava o mesmo lote envenenado para sempre.
+     * Medido na conta do Rafael em 08/09: 29 peças no cliente contra 9 no
+     * servidor, o cursor do lote parado, e a Fabricação recusando com
+     * `itens_nao_sao_seus` porque as peças do anel nunca existiram lá.
+     *
+     * Agora dá o que tem e conta o que faltou. O desencontro continua
+     * aparecendo — que era o objetivo real —, sem destruir o resto do lote.
+     */
+    const demais = derivarColeta(LOTE, ZERO, { onda: 999 });
+    expect(demais.itens).toHaveLength(LOTE.onda.length);
+    expect(demais.cursor.onda).toBe(LOTE.onda.length);
+    expect(demais.faltaram.onda).toBe(999 - LOTE.onda.length);
+
+    // Pote seco: entrega nada, não anda o cursor, e diz que faltaram os dois.
+    const seco = derivarColeta(LOTE, { ...ZERO, onda: LOTE.onda.length }, { onda: 2 });
+    expect(seco.itens).toEqual([]);
+    expect(seco.cursor.onda).toBe(LOTE.onda.length);
+    expect(seco.faltaram.onda).toBe(2);
+  });
+
+  it('e aparar nunca entrega MAIS do que entregava', () => {
+    // A garantia que mantém a Fase 3a de pé: o servidor deriva da semente
+    // dele, e aparar só pode dar menos. Não existe pedido que renda a mais.
+    for (const pedido of [1, 5, 12, 40, 999]) {
+      const r = derivarColeta(LOTE, ZERO, { onda: pedido });
+      expect(r.itens.length).toBeLessThanOrEqual(pedido);
+      expect(r.itens.length).toBeLessThanOrEqual(LOTE.onda.length);
+      expect(r.itens.map((i) => i.uid))
+        .toEqual(LOTE.onda.slice(0, r.itens.length).map((i) => i.uid));
+    }
+  });
+
+  it('e o que sobrou de um tipo não é tirado de outro', () => {
+    // Aparar por engano no pote errado transformaria um pedido de chefe em
+    // itens de onda comum, que é o degrau de raridade inteiro de graça.
+    const r = derivarColeta(LOTE, ZERO, { onda: 999, chefe: 1 });
+    expect(r.cursor.chefe).toBe(1);
+    expect(r.faltaram.chefe).toBeUndefined();
   });
 
   it('cada tipo tem cursor próprio', () => {
     // Um cursor só faria pegar do chefe consumir o pote da onda comum.
-    const r = derivarColeta(LOTE, ZERO, { onda: 2, chefe: 1 })!;
+    const r = derivarColeta(LOTE, ZERO, { onda: 2, chefe: 1 });
     expect(r.cursor).toEqual({ onda: 2, elite: 0, chefe: 1 });
     expect(r.itens).toHaveLength(3);
   });
 
   it('pedir zero não mexe no cursor', () => {
-    const r = derivarColeta(LOTE, { onda: 5, elite: 0, chefe: 0 }, { onda: 0 })!;
+    const r = derivarColeta(LOTE, { onda: 5, elite: 0, chefe: 0 }, { onda: 0 });
     expect(r.cursor.onda).toBe(5);
     expect(r.itens).toEqual([]);
   });

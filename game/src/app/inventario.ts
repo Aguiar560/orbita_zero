@@ -56,7 +56,21 @@ async function chamar(metodo: 'GET' | 'POST', corpo?: unknown): Promise<LinhaRem
       ...(body ? { body } : {}),
     });
     if (!r.ok) return null;
-    const dados = (await r.json()) as { itens: LinhaRemota[] };
+    const dados = (await r.json()) as {
+      itens: LinhaRemota[];
+      faltaram?: Record<string, number>;
+    };
+    /**
+     * O servidor deu menos do que se pediu — e é isso que interessa aparecer.
+     *
+     * A rota recusava o lote inteiro nesse caso (409), e o cliente reenviava o
+     * mesmo lote para sempre. Agora ela apara e conta; o desencontro fica
+     * visível aqui, sem destruir os descartes e os equipamentos que vieram
+     * junto. Ver `derivarColeta`.
+     */
+    if (dados.faltaram && Object.keys(dados.faltaram).length) {
+      console.warn('[inventário] o pote deu menos do que o pedido:', dados.faltaram);
+    }
     return dados.itens ?? [];
   } catch {
     return null;
