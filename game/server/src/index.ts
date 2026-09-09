@@ -8,6 +8,10 @@ import {
 } from './carteira';
 import { excedeu } from './teto';
 import {
+  assinaturaConfere, manifestoDoMP, novaCompra, pacotePorId, partesDaAssinatura,
+  podePagar, valorConfere, type Compra,
+} from './compras';
+import {
   ITENS_POR_POOL, TIPOS, novaSemente, precisaDeLoteNovo,
   rolarDoCursor, setorValido, sorteValida,
   type TipoDeDrop,
@@ -83,6 +87,20 @@ export interface Env {
    * entra em `wrangler.toml`, que é versionado.
    */
   ALERTA_WEBHOOK?: string;
+  /**
+   * As credenciais do provedor de pagamento. SEGREDOS, e opcionais.
+   *
+   * Opcionais porque o jogo inteiro funciona sem elas: sem `MP_ACCESS_TOKEN` a
+   * rota de checkout responde `pagamento_indisponivel` e a vitrine continua
+   * mostrando os pacotes. É o que permite construir e testar tudo antes de
+   * existir uma conta ativa.
+   *
+   * `MP_WEBHOOK_SECRET` é a chave que verifica a assinatura do webhook — sem
+   * ela, NENHUM pagamento é aceito, porque a alternativa seria aceitar qualquer
+   * requisição que chegue naquela URL.
+   */
+  MP_ACCESS_TOKEN?: string;
+  MP_WEBHOOK_SECRET?: string;
 }
 
 // O ritmo de gravação mora em `ritmo.ts`: é um balde de fichas, não um
@@ -614,6 +632,23 @@ async function rotear(req: Request, env: Env): Promise<Response> {
       return json({ ok: true, agora: new Date().toISOString() }, 200, origem);
     }
 
+    /**
+     * O webhook do provedor de pagamento — a ÚNICA rota sem token de jogador.
+     *
+     * Ela precisa vir antes da checagem de autenticação porque quem chama não é
+     * um jogador: é o Mercado Pago, de um servidor que não tem sessão nenhuma.
+     * A prova de identidade dela é a **assinatura HMAC** do corpo, verificada em
+     * `receberPagamento`, e não um JWT.
+     *
+     * Estar aqui em cima é deliberado e perigoso na mesma medida: qualquer erro
+     * neste caminho é uma porta aberta para creditar cristais de graça. Por isso
+     * a verificação é a primeira coisa que ela faz, e por isso o valor pago é
+     * conferido contra o valor cobrado mesmo depois de a assinatura passar.
+     */
+    if (url.pathname === '/webhook/pagamento' && req.method === 'POST') {
+      return receberPagamento(req, env);
+    }
+
     const usuario = await usuarioDoToken(req.headers.get('authorization'), env.SUPABASE_URL);
     if (!usuario) return json({ erro: 'nao_autenticado' }, 401, origem);
 
@@ -733,6 +768,10 @@ async function rotear(req: Request, env: Env): Promise<Response> {
     if (url.pathname === '/progresso') {
       if (req.method === 'GET') return json(await progressoDe(env, usuario.id), 200, origem);
       if (req.method === 'POST') return gravarProgresso(req, env, usuario.id, origem);
+    }
+
+    if (url.pathname === '/checkout' && req.method === 'POST') {
+      return abrirCobranca(req, env, usuario.id, origem);
     }
 
     if (url.pathname === '/erro-do-cliente' && req.method === 'POST') {
@@ -1362,6 +1401,281 @@ async function cursorDoLote(env: Env, id: string): Promise<Record<TipoDeDrop, nu
     elite: Math.max(0, l?.usados_elite ?? 0),
     chefe: Math.max(0, l?.usados_chefe ?? 0),
   } as Record<TipoDeDrop, number>;
+}
+
+// ── compra de cristais ──────────────────────────────────────────────────────
+
+/**
+ * Abre uma cobrança Pix. NÃO credita nada.
+ *
+ * ## O que o cliente escolhe, e o que ele não escolhe
+ *
+ * Ele escolhe o PACOTE, pelo id. O preço e a quantidade de cristais saem de
+ * `CRYSTAL_PACKAGES`, que é tabela do jogo e o Worker importa — a mesma que a
+ * tela desenha, sem cópia. Aceitar `centavos` do corpo seria deixar o jogador
+ * dizer quanto vai pagar por 2.400 cristais.
+ *
+ * ## Por que o balde é o da AÇÃO
+ *
+ * Abrir cobrança é clique deliberado, com o jogador olhando — recusada, é um
+ * botão que não funciona. Mesma natureza de fundir e comprar casco.
+ */
+async function abrirCobranca(
+  req: Request, env: Env, id: string, origem: string,
+): Promise<Response> {
+  const agora = Math.floor(Date.now() / 1000);
+  const permissao = await consumirFicha(env, id, 'acao', agora);
+  if (!permissao.pode) {
+    return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+  }
+
+  const bruto = await req.text();
+  if (bruto.length > 2048) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { pacote?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const pacote = pacotePorId(corpo.pacote);
+  if (!pacote) return json({ erro: 'pacote_desconhecido' }, 400, origem);
+
+  if (!env.MP_ACCESS_TOKEN) return json({ erro: 'pagamento_indisponivel' }, 503, origem);
+
+  const compra = novaCompra(crypto.randomUUID(), id, pacote, agora);
+
+  // A linha nasce ANTES de falar com o provedor. Se a cobrança for criada lá e
+  // a resposta se perder no caminho, o webhook ainda encontra a compra por
+  // `external_reference` — o contrário deixaria dinheiro pago sem dono.
+  await env.DB.prepare(`
+    INSERT INTO compras (id, usuario, pacote, cristais, centavos, estado, criada_em)
+    VALUES (?, ?, ?, ?, ?, 'pendente', ?)
+  `).bind(compra.id, id, compra.pacote, compra.cristais, compra.centavos, agora).run();
+
+  const cobranca = await criarPixNoMP(env, compra);
+  if (!cobranca) {
+    await env.DB.prepare("UPDATE compras SET estado = 'cancelada' WHERE id = ?")
+      .bind(compra.id).run();
+    return json({ erro: 'provedor_indisponivel' }, 502, origem);
+  }
+
+  return json({
+    compra: compra.id,
+    cristais: compra.cristais,
+    centavos: compra.centavos,
+    ...cobranca,
+  }, 200, origem);
+}
+
+/**
+ * Cria o Pix no Mercado Pago e devolve o que a tela precisa mostrar.
+ *
+ * `X-Idempotency-Key` é o nosso id da compra: uma retentativa de rede não pode
+ * virar duas cobranças para o mesmo jogador.
+ *
+ * Devolve o QR e o copia-e-cola, que é como se paga um Pix — nada de redirecionar
+ * o jogador para fora do jogo.
+ */
+async function criarPixNoMP(
+  env: Env, compra: { id: string; centavos: number; cristais: number },
+): Promise<{ qr: string; copiaECola: string; provedorId: string } | null> {
+  try {
+    const r = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.MP_ACCESS_TOKEN ?? ''}`,
+        'content-type': 'application/json',
+        'X-Idempotency-Key': compra.id,
+      },
+      body: JSON.stringify({
+        transaction_amount: compra.centavos / 100,
+        description: `Órbita Zero — ${compra.cristais} cristais`,
+        payment_method_id: 'pix',
+        external_reference: compra.id,
+        payer: { email: 'comprador@orbitazero.dev' },
+      }),
+    });
+    if (!r.ok) {
+      // Token vencido, conta suspensa, valor recusado: o jogador vê um botão
+      // que não funciona, e do lado de cá isto precisa ter nome.
+      await anotarMotivo(env, '/mp/criar', `http_${r.status}`, 502).catch(() => {});
+      return null;
+    }
+
+    const d = await r.json() as {
+      id?: number | string;
+      point_of_interaction?: { transaction_data?: { qr_code_base64?: string; qr_code?: string } };
+    };
+    const t = d.point_of_interaction?.transaction_data;
+    if (!d.id || !t?.qr_code) return null;
+
+    return { qr: t.qr_code_base64 ?? '', copiaECola: t.qr_code, provedorId: String(d.id) };
+  } catch { // contado como `sem_resposta`: provedor fora do ar é fato operacional
+    await anotarMotivo(env, '/mp/criar', 'sem_resposta', 502).catch(() => {});
+    return null;
+  }
+}
+
+/**
+ * O provedor avisa que um pagamento mudou de estado.
+ *
+ * ## A ordem aqui é a segurança inteira
+ *
+ * 1. **Assinatura** — é a única prova de que quem chama é o provedor.
+ * 2. **Busca o pagamento NA API DELES** — o corpo do webhook diz só o id. Quem
+ *    responde "foi pago, e de quanto" é a consulta autenticada, não o corpo que
+ *    chegou pela rede.
+ * 3. **Confere o valor** contra o que foi cobrado. Pix aceita valor diferente
+ *    do combinado em várias configurações; sem isto, pagar um centavo pelo
+ *    pacote de R$ 99,90 creditaria 2.400 cristais.
+ * 4. **Credita** com `motivo: 'compra'` e `origem` = o id do pagamento. O
+ *    índice único do livro recusa o segundo — e o provedor REENVIA por desenho.
+ *
+ * Responde 200 mesmo quando ignora: um 4xx faz o Mercado Pago reenviar por
+ * horas. O que interessa registrar fica no livro das recusas.
+ */
+async function receberPagamento(req: Request, env: Env): Promise<Response> {
+  const ok = json({ ok: true }, 200, '');
+
+  const partes = partesDaAssinatura(req.headers.get('x-signature'));
+  const requestId = req.headers.get('x-request-id') ?? '';
+  const bruto = await req.text();
+  if (bruto.length > 8192) return ok;
+
+  let corpo: { data?: { id?: unknown } };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return ok;
+  }
+
+  const dataId = String(corpo.data?.id ?? '');
+  if (!partes || !dataId || !env.MP_WEBHOOK_SECRET) {
+    await anotarMotivo(env, '/webhook/pagamento', 'assinatura_ausente', 400).catch(() => {});
+    return ok;
+  }
+
+  const confere = await assinaturaConfere(
+    env.MP_WEBHOOK_SECRET, manifestoDoMP(dataId, requestId, partes.ts), partes.v1,
+  );
+  if (!confere) {
+    // Alguém tentando creditar de graça, ou o segredo configurado errado. As
+    // duas coisas precisam aparecer no aviso de cinco minutos.
+    await anotarMotivo(env, '/webhook/pagamento', 'assinatura_invalida', 401).catch(() => {});
+    return ok;
+  }
+
+  await creditarPagamento(env, dataId);
+  return ok;
+}
+
+/** Consulta o pagamento no provedor e credita, se for o caso. */
+async function creditarPagamento(env: Env, pagamentoId: string): Promise<void> {
+  const pago = await lerPagamentoNoMP(env, pagamentoId);
+  // Ainda não aprovado é o caminho normal: o MP avisa a cada mudança de estado.
+  if (!pago || pago.estado !== 'approved') return;
+
+  const linha = await env.DB
+    .prepare('SELECT * FROM compras WHERE id = ?')
+    .bind(pago.referencia)
+    .first<{
+      id: string; usuario: string; pacote: string; cristais: number; centavos: number;
+      estado: string; provedor_id: string | null; criada_em: number; paga_em: number | null;
+    }>();
+
+  if (!linha) {
+    await anotarMotivo(env, '/webhook/pagamento', 'compra_desconhecida', 404).catch(() => {});
+    return;
+  }
+
+  const compra: Compra = {
+    id: linha.id,
+    usuario: linha.usuario,
+    pacote: linha.pacote,
+    cristais: linha.cristais,
+    centavos: linha.centavos,
+    estado: linha.estado as Compra['estado'],
+    provedorId: linha.provedor_id,
+    criadaEm: linha.criada_em,
+    pagaEm: linha.paga_em,
+  };
+
+  const recusa = podePagar(compra);
+  if (recusa) return; // já encerrada: o reenvio do webhook é o caminho normal
+
+  if (!valorConfere(compra, pago.centavos)) {
+    await anotarMotivo(env, '/webhook/pagamento', 'valor_divergente', 409).catch(() => {});
+    return;
+  }
+
+  const agora = Math.floor(Date.now() / 1000);
+
+  /**
+   * O crédito vem ANTES de marcar a compra como paga.
+   *
+   * Se a ordem fosse a inversa e a escrita do livro falhasse, a compra ficaria
+   * marcada como paga sem os cristais terem entrado — e um reenvio do webhook
+   * seria recusado por `compra_ja_encerrada`. O jogador pagaria e não receberia,
+   * sem caminho de conserto automático.
+   *
+   * Nesta ordem, uma falha entre as duas deixa o crédito feito e a compra ainda
+   * pendente: o reenvio tenta de novo, o livro recusa por `repetido` — é o
+   * índice único fazendo o trabalho dele — e a marcação se completa.
+   */
+  const r = await lancar(env, {
+    usuario: compra.usuario,
+    moeda: 'cristal',
+    quantia: compra.cristais,
+    motivo: 'compra',
+    origem: pagamentoId,
+    em: agora,
+  });
+
+  if (!r.ok && r.erro !== 'repetido') {
+    await anotarMotivo(env, '/webhook/pagamento', `credito_${r.erro}`, 500).catch(() => {});
+    return;
+  }
+
+  await env.DB.prepare(
+    "UPDATE compras SET estado = 'paga', provedor_id = ?, paga_em = ? WHERE id = ?",
+  ).bind(pagamentoId, agora, compra.id).run();
+}
+
+/** O estado e o valor de um pagamento, direto da API do provedor. */
+async function lerPagamentoNoMP(
+  env: Env, id: string,
+): Promise<{ estado: string; centavos: number; referencia: string } | null> {
+  if (!env.MP_ACCESS_TOKEN) return null;
+  try {
+    const r = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(id)}`, {
+      headers: { authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
+    });
+    if (!r.ok) {
+      /**
+       * Aqui é pior que no criar: alguém PAGOU e nós não conseguimos confirmar.
+       * O provedor reenvia o webhook por horas, então o crédito ainda sai — mas
+       * se não sair, esta linha é a única pista de que houve dinheiro parado.
+       */
+      await anotarMotivo(env, '/mp/consultar', `http_${r.status}`, 502).catch(() => {});
+      return null;
+    }
+
+    const d = await r.json() as {
+      status?: string; transaction_amount?: number; external_reference?: string;
+    };
+    return {
+      estado: String(d.status ?? ''),
+      // Reais viram centavos INTEIROS aqui, no ponto de entrada. Deixar o
+      // decimal circular pelo resto do código é como um centavo se perde.
+      centavos: Math.round((Number(d.transaction_amount) || 0) * 100),
+      referencia: String(d.external_reference ?? ''),
+    };
+  } catch { // contado como `sem_resposta`: ver o `if (!r.ok)` acima
+    await anotarMotivo(env, '/mp/consultar', 'sem_resposta', 502).catch(() => {});
+    return null;
+  }
 }
 
 // ── inventário ──────────────────────────────────────────────────────────────
