@@ -88,6 +88,7 @@
 .admin-lista-tabela { overflow: auto; }
 .admin-linha { display: grid; grid-template-columns: minmax(190px, 1.7fr) 78px 56px 62px 58px 70px 68px 78px 160px 112px; align-items: center; min-width: 1040px; min-height: 54px; border-bottom: 1px solid rgba(88, 148, 162, .17); }
 .admin-linha:not(.admin-cabecalho):hover { background: rgba(45, 178, 168, .07); }
+.admin-linha:not(.admin-cabecalho) { cursor: pointer; }
 .admin-linha > span, .admin-linha > strong { padding: 0 9px; color: #d1e5e8; font-size: 12px; }
 .admin-linha > strong { color: #eafff8; font-family: 'Chakra Petch', sans-serif; }
 .admin-cabecalho { min-height: 32px; background: rgba(10, 32, 39, .7); }
@@ -104,11 +105,19 @@
 .admin-mensagem strong { color: #d9fff5; font: 700 20px 'Chakra Petch', sans-serif; }
 .admin-mensagem span { max-width: 430px; color: #849da6; font-size: 12px; }
 .admin-duas-colunas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.admin-tres-colunas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.admin-coluna-inteira { grid-column: 1 / -1; }
+.admin-kpis-curtos { grid-template-columns: repeat(3, minmax(110px, 1fr)); align-content: start; margin: 0; }
 .admin-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 7px; padding: 10px; }
 .admin-dado { display: grid; gap: 5px; padding: 11px; border: 1px solid rgba(88, 181, 183, .24); background: rgba(4, 18, 25, .75); }
 .admin-dado span { color: #86adb4; font: 700 9px 'Chakra Petch', sans-serif; letter-spacing: .08em; }
 .admin-dado strong { color: #e0fff9; font: 700 17px 'Chakra Petch', sans-serif; }
 .admin-dado small { color: #78939d; font-size: 11px; }
+.admin-detalhe-piloto { padding: 10px; border-bottom: 1px solid rgba(98, 218, 202, .28); background: linear-gradient(90deg, rgba(19, 70, 68, .34), rgba(3, 13, 19, .88)); }
+.admin-detalhe-titulo { display: flex; align-items: baseline; gap: 10px; padding: 0 4px 5px; }
+.admin-detalhe-titulo strong { color: #dffff6; font: 700 15px 'Chakra Petch', sans-serif; }
+.admin-detalhe-titulo span { color: #75959d; font: 10px 'Chakra Petch', sans-serif; }
+.admin-detalhe-linha { margin: 5px 4px 0; color: #8eabb1; font-size: 11px; overflow-wrap: anywhere; }
 
 @media (max-width: 980px) {
   .admin-kpis { grid-template-columns: repeat(4, minmax(110px, 1fr)); }
@@ -123,6 +132,7 @@
   .admin-lista-topo { align-items: stretch; flex-direction: column; }
   .admin-filtro { width: 100%; box-sizing: border-box; }
   .admin-duas-colunas { grid-template-columns: 1fr; }
+  .admin-tres-colunas { grid-template-columns: 1fr; }
 }
 
 * { box-sizing: border-box; }

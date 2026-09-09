@@ -17,10 +17,18 @@ describe('painel administrativo', () => {
     const db = {
       prepare: (sql: string) => ({
         all: async () => {
-          if (sql === 'SELECT usuario FROM contas') return { results: [{ usuario: primeiro }, { usuario: segundo }] };
+          if (sql === 'SELECT usuario, primeiro_em FROM contas') return { results: [{ usuario: primeiro, primeiro_em: 900 }, { usuario: segundo, primeiro_em: 900 }] };
           if (sql.includes('FROM apelidos')) return { results: [{ usuario: primeiro, apelido: 'Vetor' }] };
-          if (sql.includes('FROM progresso')) return { results: [{ usuario: primeiro, xp: 0, melhor_setor: 12 }, { usuario: segundo, xp: 0, melhor_setor: 2 }] };
-          if (sql.includes('FROM saves')) return { results: [{ usuario: primeiro, atualizado_em: 990 }] };
+          if (sql.includes('FROM progresso')) return { results: [{ usuario: primeiro, xp: 0, melhor_setor: 12, casco_em_campo: 'nucleo_vektor' }, { usuario: segundo, xp: 0, melhor_setor: 2, casco_em_campo: '' }] };
+          if (sql.includes('FROM saves')) return { results: [{ usuario: primeiro, atualizado_em: 990, estado: JSON.stringify({ playtime: 120, stats: { kills: 4 } }) }] };
+          if (sql.includes('FROM saldos')) return { results: [{ usuario: primeiro, moeda: 'sucata', quantia: 25 }, { usuario: segundo, moeda: 'cristal', quantia: 3 }] };
+          if (sql.includes('FROM materiais')) return { results: [{ usuario: primeiro, material: 'ferro', quantia: 7 }] };
+          if (sql.includes('FROM transacoes')) return { results: [{ moeda: 'sucata', entradas: 40, saidas: 10, operacoes: 3 }] };
+          if (sql.includes('WHERE casco_em_campo')) return { results: [{ casco: 'nucleo_vektor', total: 1 }] };
+          if (sql.includes('json_extract')) return { results: [{ raridade: 2, total: 5, equipados: 2 }] };
+          if (sql.includes('SUM(CASE WHEN iniciada')) return { results: [{ iniciadas: 4, entregues: 2, em_andamento: 2 }] };
+          if (sql.includes('ORDER BY total DESC LIMIT 12')) return { results: [{ missao: 'm1', total: 2 }] };
+          if (sql.includes('SELECT casco, COUNT(*)')) return { results: [{ casco: 'nucleo_vektor', total: 3 }] };
           if (sql.includes('FROM frota')) return { results: [{ usuario: primeiro, total: 3 }, { usuario: segundo, total: 1 }] };
           if (sql.includes('FROM itens')) return { results: [{ usuario: primeiro, itens_mochila: 8, itens_equipados: 10 }, { usuario: segundo, itens_mochila: 1, itens_equipados: 0 }] };
           return { results: [{ usuario: primeiro, total: 4 }] };

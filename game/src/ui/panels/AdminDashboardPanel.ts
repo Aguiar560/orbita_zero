@@ -1,4 +1,4 @@
-import { buscarPainelAdmin, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin } from '@app/painel-admin';
+import { buscarPainelAdmin, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin, type PainelAdmin } from '@app/painel-admin';
 import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import type { Sim } from '@sim/index';
@@ -26,7 +26,8 @@ export class AdminDashboardPanel implements Panel {
   private estado: EstadoDoPainelAdmin = { fase: 'nunca' };
   private filtro = '';
   private atualizando = false;
-  private aba: 'visao' | 'pilotos' | 'economia' | 'galaxias' = 'visao';
+  private aba: 'visao' | 'pilotos' | 'atividade' | 'progressao' | 'economia' | 'frota' | 'missoes' | 'saude' = 'visao';
+  private pilotoAberto: string | null = null;
 
   render(_sim: Sim): HTMLElement {
     this.garantirDados();
@@ -70,14 +71,20 @@ export class AdminDashboardPanel implements Panel {
         }),
       ),
       h('.admin-abas', {}, ...[
-        ['visao', 'VISÃO GERAL'], ['pilotos', 'PILOTOS'], ['economia', 'ECONOMIA E FROTA'], ['galaxias', 'GALÁXIAS'],
+        ['visao', 'VISÃO GERAL'], ['pilotos', 'PILOTOS'], ['atividade', 'ATIVIDADE'],
+        ['progressao', 'PROGRESSÃO'], ['economia', 'ECONOMIA'], ['frota', 'FROTA E ITENS'],
+        ['missoes', 'MISSÕES'], ['saude', 'SAÚDE'],
       ].map(([id, nome]) => h(`button.admin-aba${this.aba === id ? '.ativa' : ''}`, {
         text: nome, onclick: () => { this.aba = id as typeof this.aba; bus.emit('state:changed'); },
       }))),
       ...(this.aba === 'visao' ? [this.visao(dados)] : []),
       ...(this.aba === 'pilotos' ? [this.pilotos(jogadores, campo, dados.geradoEm)] : []),
+      ...(this.aba === 'atividade' ? [this.atividadeGeral(dados)] : []),
+      ...(this.aba === 'progressao' ? [this.progressao(dados)] : []),
       ...(this.aba === 'economia' ? [this.economia(dados)] : []),
-      ...(this.aba === 'galaxias' ? [this.galaxias(dados)] : []),
+      ...(this.aba === 'frota' ? [this.frota(dados)] : []),
+      ...(this.aba === 'missoes' ? [this.missoes(dados)] : []),
+      ...(this.aba === 'saude' ? [this.saude(dados)] : []),
     );
   }
 
@@ -93,6 +100,9 @@ export class AdminDashboardPanel implements Panel {
           ['NAVES', dados.resumo.naves],
           ['ITENS NA CARGA', dados.resumo.itensNaMochila],
           ['TEMPO TOTAL', this.tempo(dados.resumo.tempoDeJogo)],
+          ['TEMPO MÉDIO', this.tempo(dados.resumo.tempoMedio)],
+          ['NOVOS · 7D', dados.resumo.novos7d],
+          ['ATIVOS · 30D', dados.resumo.ativos30d],
         ].map(([rotulo, valor]) => h('.admin-kpi', {},
           h('span', { text: String(rotulo) }), h('strong', { text: typeof valor === 'string' ? valor : fmt(Number(valor)) }),
         )),
@@ -100,6 +110,7 @@ export class AdminDashboardPanel implements Panel {
   }
 
   private pilotos(jogadores: JogadorDoPainelAdmin[], campo: HTMLInputElement, agora: number): HTMLElement {
+    const selecionado = jogadores.find((jogador) => jogador.codigo === this.pilotoAberto) ?? null;
     return h('.admin-dashboard-lista', {},
         h('.admin-lista-topo', {},
           h('.admin-lista-texto', {},
@@ -108,6 +119,7 @@ export class AdminDashboardPanel implements Panel {
           ),
           campo,
         ),
+        ...(selecionado ? [this.detalheDoPiloto(selecionado)] : []),
         h('.admin-lista-tabela', { role: 'table', 'aria-label': 'Jogadores e progresso' },
           h('.admin-linha.admin-cabecalho', { role: 'row' },
             h('span', { text: 'PILOTO' }), h('span', { text: 'STATUS' }),
@@ -122,35 +134,86 @@ export class AdminDashboardPanel implements Panel {
       );
   }
 
-  private economia(dados: Extract<EstadoDoPainelAdmin, { fase: 'pronto' }>['dados']): HTMLElement {
+  private economia(dados: PainelAdmin): HTMLElement {
     const recursos = dados.economia.recursos.map((r) => h('.admin-dado', {},
       h('span', { text: r.moeda.toUpperCase() }), h('strong', { text: fmt(r.quantia) }),
     ));
-    const cascos = dados.frota.cascos.length
-      ? dados.frota.cascos.map((n) => h('.admin-dado', {},
-        h('span', { text: n.casco.replaceAll('_', ' ').toUpperCase() }), h('strong', { text: fmt(n.total) }),
-      ))
-      : [h('.admin-vazio', { text: 'Nenhuma nave registrada.' })];
+    const materiais = dados.economia.materiais.map((m) => h('.admin-dado', {},
+      h('span', { text: m.material.replaceAll('_', ' ').toUpperCase() }), h('strong', { text: fmt(m.quantia) }),
+    ));
+    const movimentos = dados.economia.movimentacao.map((m) => h('.admin-dado.admin-movimento', {},
+      h('span', { text: m.moeda.toUpperCase() }), h('strong', { text: `+${fmt(m.entradas)} / −${fmt(m.saidas)}` }),
+      h('small', { text: `${fmt(m.operacoes)} lançamentos` }),
+    ));
     return h('.admin-duas-colunas', {},
       h('.admin-dashboard-lista', {},
         h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'RECURSOS NO SERVIDOR' }), h('small', { text: 'Carteiras atuais de todos os pilotos.' }))),
         h('.admin-cartoes', {}, ...recursos),
       ),
       h('.admin-dashboard-lista', {},
-        h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'FROTA POR CASCO' }), h('small', { text: 'Naves liberadas no servidor.' }))),
-        h('.admin-cartoes', {}, ...cascos),
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'MATERIAIS' }), h('small', { text: 'Estoque de fabricação no servidor.' }))),
+        h('.admin-cartoes', {}, ...materiais),
+      ),
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'FLUXO ECONÔMICO' }), h('small', { text: 'Entradas, saídas e volume do livro-caixa.' }))),
+        h('.admin-cartoes', {}, ...movimentos),
       ),
     );
   }
 
-  private galaxias(dados: Extract<EstadoDoPainelAdmin, { fase: 'pronto' }>['dados']): HTMLElement {
+  private progressao(dados: PainelAdmin): HTMLElement {
     const cartoes = dados.galaxias.map((g) => h('.admin-dado', {},
       h('span', { text: `GALÁXIA ${g.indice}` }), h('strong', { text: `${g.jogadores} pilotos` }), h('small', { text: `Maior setor: ${g.maiorSetor}` }),
     ));
-    return h('.admin-dashboard-lista', {},
-      h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'PROGRESSÃO POR GALÁXIA' }), h('small', { text: 'Pilotos agrupados pela galáxia mais distante alcançada.' }))),
-      h('.admin-cartoes', {}, ...cartoes),
+    const niveis = dados.niveis.map((n) => h('.admin-dado', {}, h('span', { text: `NÍVEL ${n.faixa}` }), h('strong', { text: `${n.jogadores} pilotos` })));
+    return h('.admin-duas-colunas', {},
+      h('.admin-dashboard-lista', {}, h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'POR GALÁXIA' }), h('small', { text: 'Galáxia mais distante alcançada.' }))), h('.admin-cartoes', {}, ...cartoes)),
+      h('.admin-dashboard-lista', {}, h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'POR NÍVEL' }), h('small', { text: 'Distribuição atual da base.' }))), h('.admin-cartoes', {}, ...niveis)),
     );
+  }
+
+  private atividadeGeral(dados: PainelAdmin): HTMLElement {
+    return h('.admin-kpis', {}, ...[
+      ['ONLINE · 5 MIN', dados.resumo.online], ['ATIVOS · 24H', dados.resumo.ativos24h],
+      ['ATIVOS · 7D', dados.resumo.ativos7d], ['ATIVOS · 30D', dados.resumo.ativos30d],
+      ['NOVOS · 24H', dados.resumo.novos24h], ['NOVOS · 7D', dados.resumo.novos7d],
+      ['TEMPO TOTAL', this.tempo(dados.resumo.tempoDeJogo)], ['TEMPO MÉDIO', this.tempo(dados.resumo.tempoMedio)],
+    ].map(([r, v]) => this.cartao(String(r), typeof v === 'string' ? v : fmt(Number(v)))));
+  }
+
+  private frota(dados: PainelAdmin): HTMLElement {
+    const cascos = dados.frota.cascos.map((n) => this.cartao(n.casco.replaceAll('_', ' ').toUpperCase(), fmt(n.total), 'liberadas'));
+    const campo = dados.frota.emCampo.map((n) => this.cartao(n.casco.replaceAll('_', ' ').toUpperCase(), fmt(n.total), 'em campo'));
+    const raridades = dados.frota.raridades.map((r) => this.cartao(`RARIDADE ${r.raridade}`, fmt(r.total), `${r.equipados} equipados`));
+    return h('.admin-tres-colunas', {},
+      this.grupo('NAVES LIBERADAS', 'Quantidade de cada casco no servidor.', cascos),
+      this.grupo('NAVES EM CAMPO', 'Preferência atual dos pilotos.', campo),
+      this.grupo('INVENTÁRIO POR RARIDADE', 'Total existente e peças equipadas.', raridades),
+    );
+  }
+
+  private missoes(dados: PainelAdmin): HTMLElement {
+    const populares = dados.missoes.maisEntregues.map((m) => this.cartao(m.missao.replaceAll('_', ' ').toUpperCase(), fmt(m.total), 'entregas'));
+    return h('.admin-duas-colunas', {},
+      h('.admin-kpis.admin-kpis-curtos', {}, this.cartao('INICIADAS', fmt(dados.missoes.iniciadas)), this.cartao('EM ANDAMENTO', fmt(dados.missoes.emAndamento)), this.cartao('ENTREGUES', fmt(dados.missoes.entregues))),
+      this.grupo('MAIS CONCLUÍDAS', 'Missões com maior número de entregas.', populares),
+    );
+  }
+
+  private saude(dados: PainelAdmin): HTMLElement {
+    return h('.admin-kpis', {},
+      this.cartao('CADASTROS PENDENTES', fmt(dados.saude.semApelido), 'sem apelido'),
+      this.cartao('SEM SAVE', fmt(dados.saude.semSave), 'contas sem sincronização'),
+      this.cartao('SAVES INVÁLIDOS', fmt(dados.saude.savesInvalidos), 'JSON que não pôde ser lido'),
+    );
+  }
+
+  private grupo(titulo: string, subtitulo: string, conteudo: HTMLElement[]): HTMLElement {
+    return h('.admin-dashboard-lista', {}, h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: titulo }), h('small', { text: subtitulo }))), h('.admin-cartoes', {}, ...conteudo));
+  }
+
+  private cartao(rotulo: string, valor: string, detalhe?: string): HTMLElement {
+    return h('.admin-dado', {}, h('span', { text: rotulo }), h('strong', { text: valor }), ...(detalhe ? [h('small', { text: detalhe })] : []));
   }
 
   private garantirDados(): void {
@@ -177,7 +240,12 @@ export class AdminDashboardPanel implements Panel {
   }
 
   private linha(jogador: JogadorDoPainelAdmin, agora: number): HTMLElement {
-    return h(`.admin-linha${jogador.online ? '.online' : ''}`, { role: 'row' },
+    return h(`.admin-linha${jogador.online ? '.online' : ''}`, {
+      role: 'row', tabindex: '0', onclick: () => {
+        this.pilotoAberto = this.pilotoAberto === jogador.codigo ? null : jogador.codigo;
+        bus.emit('state:changed');
+      },
+    },
       h('.admin-piloto', {},
         h('strong', { text: jogador.apelido ?? 'Piloto sem apelido' }),
         h('small', { text: `ID · ${jogador.codigo}` }),
@@ -191,6 +259,26 @@ export class AdminDashboardPanel implements Panel {
       h('span', { text: this.tempo(jogador.tempoDeJogo) }),
       h('span', { text: this.recursos(jogador.recursos) }),
       h('span.admin-atividade', { text: this.atividade(jogador.ultimaAtividade, agora) }),
+    );
+  }
+
+  private detalheDoPiloto(jogador: JogadorDoPainelAdmin): HTMLElement {
+    const recursos = Object.entries(jogador.recursos).map(([id, valor]) => `${id}: ${fmt(valor)}`).join(' · ') || 'sem saldo';
+    const materiais = Object.entries(jogador.materiais).map(([id, valor]) => `${id}: ${fmt(valor)}`).join(' · ') || 'sem materiais';
+    return h('.admin-detalhe-piloto', {},
+      h('.admin-detalhe-titulo', {}, h('strong', { text: jogador.apelido ?? 'Cadastro pendente' }), h('span', { text: `ID ${jogador.codigo}` })),
+      h('.admin-cartoes', {},
+        this.cartao('NAVE EM CAMPO', (jogador.cascoEmCampo ?? 'não definida').replaceAll('_', ' ')),
+        this.cartao('GALÁXIA', String(Math.floor((jogador.melhorSetor - 1) / 10) + 1), `setor ${jogador.melhorSetor}`),
+        this.cartao('ABATES', fmt(jogador.abates), `${fmt(jogador.chefesAbatidos)} chefes`),
+        this.cartao('MORTES', fmt(jogador.mortes)),
+        this.cartao('ITENS ENCONTRADOS', fmt(jogador.itensEncontrados)),
+        this.cartao('BAÚS ABERTOS', fmt(jogador.bausAbertos)),
+        this.cartao('MEDALHAS', fmt(jogador.medalhas)),
+        this.cartao('PRIMEIRO REGISTRO', jogador.primeiroAcesso ? this.data(jogador.primeiroAcesso) : 'desconhecido'),
+      ),
+      h('p.admin-detalhe-linha', { text: `Recursos · ${recursos}` }),
+      h('p.admin-detalhe-linha', { text: `Materiais · ${materiais}` }),
     );
   }
 
@@ -211,6 +299,10 @@ export class AdminDashboardPanel implements Panel {
     if (segundos < 3_600) return `${Math.floor(segundos / 60)} min`;
     if (segundos < 86_400) return `${Math.floor(segundos / 3_600)} h`;
     return `${Math.floor(segundos / 86_400)} d`;
+  }
+
+  private data(epoch: number): string {
+    return new Date(epoch * 1000).toLocaleDateString('pt-BR');
   }
 
   private mensagem(titulo: string, detalhe: string, atualizar = false): HTMLElement {

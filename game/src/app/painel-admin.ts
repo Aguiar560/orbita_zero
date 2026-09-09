@@ -12,6 +12,15 @@ export interface JogadorDoPainelAdmin {
   missoesConcluidas: number;
   tempoDeJogo: number;
   recursos: Record<string, number>;
+  materiais: Record<string, number>;
+  primeiroAcesso: number | null;
+  cascoEmCampo: string | null;
+  abates: number;
+  chefesAbatidos: number;
+  mortes: number;
+  itensEncontrados: number;
+  bausAbertos: number;
+  medalhas: number;
   online: boolean;
   ultimaAtividade: number | null;
 }
@@ -32,10 +41,31 @@ export interface PainelAdmin {
     itensEquipados: number;
     missoesConcluidas: number;
     tempoDeJogo: number;
+    tempoMedio: number;
+    novos24h: number;
+    novos7d: number;
+    ativos30d: number;
+    cadastrosPendentes: number;
   };
-  economia: { recursos: { moeda: string; quantia: number }[] };
-  frota: { cascos: { casco: string; total: number }[] };
+  economia: {
+    recursos: { moeda: string; quantia: number }[];
+    materiais: { material: string; quantia: number }[];
+    movimentacao: { moeda: string; entradas: number; saidas: number; operacoes: number }[];
+  };
+  frota: {
+    cascos: { casco: string; total: number }[];
+    emCampo: { casco: string; total: number }[];
+    raridades: { raridade: number; total: number; equipados: number }[];
+  };
   galaxias: { indice: number; jogadores: number; maiorSetor: number }[];
+  niveis: { faixa: string; jogadores: number }[];
+  missoes: {
+    iniciadas: number;
+    entregues: number;
+    emAndamento: number;
+    maisEntregues: { missao: string; total: number }[];
+  };
+  saude: { semApelido: number; semSave: number; savesInvalidos: number };
   jogadores: JogadorDoPainelAdmin[];
 }
 
