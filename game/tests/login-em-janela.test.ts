@@ -40,6 +40,7 @@ function plantar(nome: string, valor: unknown): void {
 let armazem: Map<string, string>;
 let janela: JanelaFalsa;
 let aberturas: number;
+let eventos: string[];
 
 /**
  * Monta o mundo mínimo que `conta.ts` toca.
@@ -50,6 +51,7 @@ let aberturas: number;
 function montar(abrir: () => JanelaFalsa | null): void {
   armazem = new Map();
   aberturas = 0;
+  eventos = [];
 
   plantar('localStorage', {
     getItem: (k: string) => armazem.get(k) ?? null,
@@ -72,6 +74,7 @@ function montar(abrir: () => JanelaFalsa | null): void {
     open: (): JanelaFalsa | null => { aberturas += 1; return abrir(); },
     addEventListener: () => {},
     removeEventListener: () => {},
+    dispatchEvent: (evento: Event) => { eventos.push(evento.type); return true; },
   });
 }
 
@@ -118,6 +121,7 @@ describe('a espera pela janela do Google', () => {
     const r = await promessa;
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.sessao.usuarioId).toBe('u-1');
+    expect(eventos).toContain('oz:conta');
   }, 8000);
 
   it('e clicar de novo reaponta a mesma janela, sem criar uma segunda espera', async () => {

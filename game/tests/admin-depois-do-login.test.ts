@@ -64,12 +64,13 @@ describe('o que a conta destrava, depois que a conta chega', () => {
     expect(perfil).toContain("window.addEventListener('oz:conta', () => { this.render(); this.carregarApelido(); olharOnline(); });");
   });
 
-  it('e o aviso continua sendo disparado nas duas pontas', () => {
+  it('e o aviso é disparado ao entrar, sair e receber a sessão da janela Google', () => {
     /**
      * Escutar não vale nada se ninguém falar. `guardar` cobre entrar; `sair`
-     * cobre o inverso, que é o caso que tira a ferramenta da mão errada.
+     * cobre o inverso; e a terceira emissão leva à página principal a sessão
+     * que foi gravada pela janela auxiliar do Google.
      */
     const conta = fonte('app', 'conta.ts');
-    expect(conta.split("window.dispatchEvent(new Event('oz:conta'))").length - 1).toBe(2);
+    expect(conta.split("window.dispatchEvent(new Event('oz:conta'))").length - 1).toBe(3);
   });
 });

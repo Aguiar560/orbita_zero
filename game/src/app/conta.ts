@@ -289,6 +289,11 @@ export function entrarComProvedor(provedor: Provedor): Promise<ResultadoDeConta>
       pendente = null;
       window.removeEventListener('storage', aoStorage);
       clearInterval(vigia);
+      // A sessão foi gravada na JANELA AUXILIAR. `storage` avisa esta página,
+      // mas não dispara o evento interno que troca o slot do save. Sem este
+      // aviso, o boot continuava com a partida "sem conta", herdava piloto,
+      // setor e tutoriais vistos e só depois percebia que havia outro dono.
+      if (r.ok) window.dispatchEvent(new Event('oz:conta'));
       resolve(r);
     };
 
