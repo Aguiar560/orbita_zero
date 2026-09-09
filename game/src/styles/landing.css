@@ -62,9 +62,7 @@
   pointer-events: auto;
 }
 .landing-art-hotspot.marca,
-.landing-art-hotspot[class*='nav-'],
-.landing-art-hotspot.acao-principal,
-.landing-art-hotspot.acao-naves {
+.landing-art-hotspot[class*='nav-'] {
   transform: translateY(-12%);
 }
 .landing-art-hotspot:hover,
@@ -92,11 +90,11 @@
 .landing-art-hotspot.nav-comunidade { top: .5%; left: 54.5%; width: 10.6%; height: 6.2%; }
 .landing-art-hotspot.conta-entrar { top: 2.1%; left: 73.8%; width: 8.7%; height: 4.6%; }
 .landing-art-hotspot.conta-criar { top: 2%; left: 83%; width: 9.7%; height: 4.8%; }
-.landing-art-hotspot.acao-principal { top: 36.2%; left: 9.6%; width: 19.3%; height: 7%; }
+.landing-art-hotspot.acao-principal { top: 36.4%; left: 9.6%; width: 19.3%; height: 6.6%; }
 .landing-art-hotspot.card-naves { top: 64.2%; left: 1.8%; width: 31.4%; height: 29.6%; }
 .landing-art-hotspot.card-galaxias { top: 64.2%; left: 34.1%; width: 31.4%; height: 29.6%; }
 .landing-art-hotspot.card-comunidade { top: 64.2%; left: 66.5%; width: 31.6%; height: 29.6%; }
-.landing-art-hotspot.acao-naves { top: 53.5%; left: 74.2%; width: 22%; height: 6.2%; }
+.landing-art-hotspot.acao-naves { top: 53.7%; left: 74.2%; width: 22%; height: 5.8%; }
 .landing-art-hotspot.acao-galaxias { top: 76.9%; left: 67%; width: 28.6%; height: 5.8%; }
 .landing-art-hotspot.acao-comunidade { top: 90.1%; left: 37.3%; width: 25.3%; height: 5.8%; }
 .landing-shell button { font-family: 'Chakra Petch', sans-serif; }

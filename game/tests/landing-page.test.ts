@@ -55,6 +55,8 @@ describe('landing navegável antes do login', () => {
     expect(css).toContain('.landing-art-hotspot.conta-entrar { top: 2.1%');
     expect(css).toContain('.landing-art-hotspot.acao-galaxias { top: 76.9%');
     expect(css).toContain('.landing-art-hotspot.acao-comunidade { top: 90.1%');
+    expect(css).toContain('.landing-art-hotspot.acao-principal { top: 36.4%');
+    expect(css).toContain('.landing-art-hotspot.acao-naves { top: 53.7%');
   });
 
   it('é responsiva e deixa a landing rolar no celular', () => {
