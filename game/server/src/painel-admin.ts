@@ -50,66 +50,118 @@ export interface PainelAdmin {
   jogadores: JogadorDoPainelAdmin[];
 }
 
-interface LinhaBruta {
+interface RegistroBase {
   usuario: string;
-  apelido: string | null;
+}
+
+interface RegistroDeApelido extends RegistroBase {
+  apelido: string;
+}
+
+interface RegistroDeProgresso extends RegistroBase {
   xp: number;
   melhor_setor: number;
-  ultima_atividade: number;
-  naves: number;
+}
+
+interface RegistroDeAtividade extends RegistroBase {
+  atualizado_em: number;
+}
+
+interface RegistroDeContagem extends RegistroBase {
+  total: number;
+}
+
+interface RegistroDeItens extends RegistroBase {
   itens_mochila: number;
   itens_equipados: number;
-  missoes_concluidas: number;
+}
+
+interface AcumuladoDoJogador {
+  apelido: string | null;
+  xp: number;
+  melhorSetor: number;
+  ultimaAtividade: number | null;
+  naves: number;
+  itensNaMochila: number;
+  itensEquipados: number;
+  missoesConcluidas: number;
 }
 
 /**
  * Retrato operacional de cada pessoa que o jogo já viu.
  *
- * `contas` sozinho não basta: jogadores anteriores à tabela e contas que só
- * têm um save precisam aparecer também. A união evita que um deles desapareça
- * justamente do painel usado para encontrar migrações ou falhas de entrada.
- * As contagens entram como subconsultas para não multiplicar naves × itens ×
- * missões num `JOIN` e reportar números falsos.
+ * Cada fonte é lida separadamente e reunida no Worker. Isso evita dois
+ * problemas importantes: contagens falsas de um `JOIN` (naves × itens ×
+ * missões) e o limite de termos compostos que o D1 aplica quando uma grande
+ * união é expandida por subconsultas correlacionadas. Contas antigas que só
+ * possuem um save continuam entrando no retrato.
  */
 export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Promise<PainelAdmin> {
-  const { results } = await env.DB.prepare(`
-    WITH jogadores AS (
-      SELECT usuario FROM contas
-      UNION SELECT usuario FROM saves
-      UNION SELECT usuario FROM progresso
-      UNION SELECT usuario FROM frota
-      UNION SELECT usuario FROM itens
-      UNION SELECT usuario FROM missoes
-    )
-    SELECT j.usuario,
-           a.apelido,
-           COALESCE(p.xp, 0) AS xp,
-           COALESCE(p.melhor_setor, 1) AS melhor_setor,
-           COALESCE(s.atualizado_em, 0) AS ultima_atividade,
-           (SELECT COUNT(*) FROM frota f WHERE f.usuario = j.usuario) AS naves,
-           (SELECT COUNT(*) FROM itens i WHERE i.usuario = j.usuario AND i.nave IS NULL) AS itens_mochila,
-           (SELECT COUNT(*) FROM itens i WHERE i.usuario = j.usuario AND i.nave IS NOT NULL) AS itens_equipados,
-           (SELECT COUNT(*) FROM missoes m WHERE m.usuario = j.usuario AND m.entregue_em IS NOT NULL) AS missoes_concluidas
-      FROM jogadores j
-      LEFT JOIN apelidos a ON a.usuario = j.usuario
-      LEFT JOIN progresso p ON p.usuario = j.usuario
-      LEFT JOIN saves s ON s.usuario = j.usuario
-     ORDER BY ultima_atividade DESC, j.usuario ASC
-  `).all<LinhaBruta>();
+  const [contas, apelidos, progressos, atividades, naves, itens, missoes] = await Promise.all([
+    env.DB.prepare('SELECT usuario FROM contas').all<RegistroBase>(),
+    env.DB.prepare('SELECT usuario, apelido FROM apelidos').all<RegistroDeApelido>(),
+    env.DB.prepare('SELECT usuario, xp, melhor_setor FROM progresso').all<RegistroDeProgresso>(),
+    env.DB.prepare('SELECT usuario, atualizado_em FROM saves').all<RegistroDeAtividade>(),
+    env.DB.prepare('SELECT usuario, COUNT(*) AS total FROM frota GROUP BY usuario').all<RegistroDeContagem>(),
+    env.DB.prepare(`
+      SELECT usuario,
+             SUM(CASE WHEN nave IS NULL THEN 1 ELSE 0 END) AS itens_mochila,
+             SUM(CASE WHEN nave IS NOT NULL THEN 1 ELSE 0 END) AS itens_equipados
+        FROM itens
+       GROUP BY usuario
+    `).all<RegistroDeItens>(),
+    env.DB.prepare(`
+      SELECT usuario, COUNT(*) AS total
+        FROM missoes
+       WHERE entregue_em IS NOT NULL
+       GROUP BY usuario
+    `).all<RegistroDeContagem>(),
+  ]);
+
+  const porUsuario = new Map<string, AcumuladoDoJogador>();
+  const garantir = (usuario: string): AcumuladoDoJogador => {
+    let jogador = porUsuario.get(usuario);
+    if (!jogador) {
+      jogador = {
+        apelido: null, xp: 0, melhorSetor: 1, ultimaAtividade: null,
+        naves: 0, itensNaMochila: 0, itensEquipados: 0, missoesConcluidas: 0,
+      };
+      porUsuario.set(usuario, jogador);
+    }
+    return jogador;
+  };
+
+  for (const linha of contas.results ?? []) garantir(linha.usuario);
+  for (const linha of apelidos.results ?? []) garantir(linha.usuario).apelido = linha.apelido;
+  for (const linha of progressos.results ?? []) {
+    const jogador = garantir(linha.usuario);
+    jogador.xp = Number(linha.xp) || 0;
+    jogador.melhorSetor = Math.max(1, Math.floor(Number(linha.melhor_setor) || 1));
+  }
+  for (const linha of atividades.results ?? []) garantir(linha.usuario).ultimaAtividade = Number(linha.atualizado_em) || null;
+  for (const linha of naves.results ?? []) garantir(linha.usuario).naves = Math.max(0, Number(linha.total) || 0);
+  for (const linha of itens.results ?? []) {
+    const jogador = garantir(linha.usuario);
+    jogador.itensNaMochila = Math.max(0, Number(linha.itens_mochila) || 0);
+    jogador.itensEquipados = Math.max(0, Number(linha.itens_equipados) || 0);
+  }
+  for (const linha of missoes.results ?? []) garantir(linha.usuario).missoesConcluidas = Math.max(0, Number(linha.total) || 0);
 
   const desdeOnline = agora - JANELA_ONLINE_SEGUNDOS;
-  const jogadores = (results ?? []).map((linha): JogadorDoPainelAdmin => ({
-    codigo: linha.usuario.slice(0, 8),
-    apelido: linha.apelido,
-    nivel: nivelDoPiloto(Number(linha.xp) || 0),
-    melhorSetor: Math.max(1, Math.floor(Number(linha.melhor_setor) || 1)),
-    naves: Math.max(0, Number(linha.naves) || 0),
-    itensNaMochila: Math.max(0, Number(linha.itens_mochila) || 0),
-    itensEquipados: Math.max(0, Number(linha.itens_equipados) || 0),
-    missoesConcluidas: Math.max(0, Number(linha.missoes_concluidas) || 0),
-    online: Number(linha.ultima_atividade) > desdeOnline,
-    ultimaAtividade: Number(linha.ultima_atividade) || null,
-  }));
+  const jogadores = [...porUsuario.entries()]
+    .map(([usuario, linha]): JogadorDoPainelAdmin => ({
+      codigo: usuario.slice(0, 8),
+      apelido: linha.apelido,
+      nivel: nivelDoPiloto(linha.xp),
+      melhorSetor: linha.melhorSetor,
+      naves: linha.naves,
+      itensNaMochila: linha.itensNaMochila,
+      itensEquipados: linha.itensEquipados,
+      missoesConcluidas: linha.missoesConcluidas,
+      online: (linha.ultimaAtividade ?? 0) > desdeOnline,
+      ultimaAtividade: linha.ultimaAtividade,
+    }))
+    .sort((a, b) => (b.ultimaAtividade ?? 0) - (a.ultimaAtividade ?? 0) || a.codigo.localeCompare(b.codigo));
 
   const resumo = jogadores.reduce<PainelAdmin['resumo']>((total, jogador) => {
     total.jogadores++;

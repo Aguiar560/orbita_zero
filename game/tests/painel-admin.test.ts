@@ -12,19 +12,21 @@ describe('painel administrativo', () => {
   });
 
   it('consolida a telemetria sem expor e-mail ou save bruto', async () => {
-    const linhas = [
-      {
-        usuario: '12345678-aaaa-bbbb-cccc-123456789abc', apelido: 'Vetor', xp: 0,
-        melhor_setor: 12, ultima_atividade: 990, naves: 3, itens_mochila: 8,
-        itens_equipados: 10, missoes_concluidas: 4,
-      },
-      {
-        usuario: '87654321-aaaa-bbbb-cccc-123456789abc', apelido: null, xp: 0,
-        melhor_setor: 2, ultima_atividade: 0, naves: 1, itens_mochila: 1,
-        itens_equipados: 0, missoes_concluidas: 0,
-      },
-    ];
-    const db = { prepare: () => ({ all: async () => ({ results: linhas }) }) };
+    const primeiro = '12345678-aaaa-bbbb-cccc-123456789abc';
+    const segundo = '87654321-aaaa-bbbb-cccc-123456789abc';
+    const db = {
+      prepare: (sql: string) => ({
+        all: async () => {
+          if (sql === 'SELECT usuario FROM contas') return { results: [{ usuario: primeiro }, { usuario: segundo }] };
+          if (sql.includes('FROM apelidos')) return { results: [{ usuario: primeiro, apelido: 'Vetor' }] };
+          if (sql.includes('FROM progresso')) return { results: [{ usuario: primeiro, xp: 0, melhor_setor: 12 }, { usuario: segundo, xp: 0, melhor_setor: 2 }] };
+          if (sql.includes('FROM saves')) return { results: [{ usuario: primeiro, atualizado_em: 990 }] };
+          if (sql.includes('FROM frota')) return { results: [{ usuario: primeiro, total: 3 }, { usuario: segundo, total: 1 }] };
+          if (sql.includes('FROM itens')) return { results: [{ usuario: primeiro, itens_mochila: 8, itens_equipados: 10 }, { usuario: segundo, itens_mochila: 1, itens_equipados: 0 }] };
+          return { results: [{ usuario: primeiro, total: 4 }] };
+        },
+      }),
+    };
     const painel = await lerPainelAdmin({ DB: db as never }, 1_000);
 
     expect(painel.resumo.jogadores).toBe(2);
