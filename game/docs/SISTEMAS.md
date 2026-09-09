@@ -1215,6 +1215,33 @@ Medições da fase: o piso do chefe cortou a folga do teto de **522× para 1,3×
 o piso de tempo ficou entre **1,25× e 1,41×** do real, contra 0,3×–9,9× da
 fórmula anterior; e 99% do XP do setor 1 vem de abate, não de conclusão.
 
+### O livro das recusas — como o servidor conta que está quebrado
+
+`recusas.ts` + migração `0015`. Toda resposta com status ≥ 400 passa por **um
+lugar só**, no `fetch`: anotar dentro de cada rota seriam dezenas de chamadas
+para esquecer uma na próxima que entrasse, e a esquecida seria justo a que
+ninguém ia procurar. Roda em `waitUntil`, então nunca atrasa o jogador.
+
+```sql
+SELECT rota, motivo, SUM(n) FROM recusas
+ WHERE hora > strftime('%s','now') - 86400
+ GROUP BY rota, motivo ORDER BY 3 DESC;
+```
+
+**Agregado, e não uma linha por recusa.** A cota do D1 é de escrita, e é
+justamente numa tempestade de recusas que se escreveria mais — um livro que se
+afoga no incidente que veio registrar não serve. A chave é `(rota, motivo,
+hora)` com contador, e o isolado ainda acumula em memória e descarrega no máximo
+uma vez por minuto por chave. A **primeira** de cada chave desce na hora: algo
+que nunca falhava começar a falhar é exatamente o que se quer saber cedo.
+
+`401` e `404` ficam de fora. Token vencido acontece com todo mundo o tempo todo
+e rota inexistente é varredura de robô; os dois enchem o livro de ruído que
+esconde o sinal. Não há coluna `usuario`: a pergunta é "o que está quebrado",
+nunca "quem tomou erro".
+
+Uma tabela vazia aqui é uma boa notícia legível.
+
 ### O cliente engole o erro — e por que isso é um problema de sistema
 
 Todo módulo de `src/app/` fala com o Worker por um `chamar()` que faz
@@ -1230,3 +1257,20 @@ A regra que ficou: **toda ação do jogador que possa ser recusada mostra o moti
 porque o toast some em segundos e o console fica. E o aviso precisa estar acima
 da `.camada`: `.toasts` viveu em `z-index: 40` contra os 60 dela, e nenhuma
 mensagem de nenhuma tela sobreposta era vista.
+
+Isso virou `app/recusa.ts`, e a decisão que ele carrega é **ação × fundo**:
+
+| | recusada, o que acontece | o que a tela faz |
+|---|---|---|
+| **ação** — fundir, comprar casco, comprar passe | um botão que não funciona | fala **sempre**, na primeira vez |
+| **fundo** — carteira, inventário, lote, progresso, missões, ausência | tenta de novo no ciclo seguinte e ninguém percebe | fala **uma vez**, na 3ª falha seguida |
+
+A armadilha de consertar isso é avisar sempre: um aviso a cada oscilação de rede
+treina o jogador a ignorar avisos, e aí o que importa passa junto. O
+`console.warn` sai em todos os casos — ele não incomoda ninguém e é o que se
+copia e cola. Um sucesso zera a contagem, e cada rota conta sozinha.
+
+`tests/o-cliente-conta-a-recusa.test.ts` **varre `src/app/`** e cobra que todo
+`if (!r.ok)` relate. As duas exceções — `nuvem.ts`, que guarda em `ultimoErro`, e
+`placar.ts`, que devolve a falha descrita — estão numa lista explícita com o
+motivo escrito, e o teste confere que elas continuam descrevendo a falha.

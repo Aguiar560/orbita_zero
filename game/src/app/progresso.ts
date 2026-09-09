@@ -4,6 +4,7 @@ import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { nivelPorXpAcumulado, xpAcumuladoDe } from '@sim/nivel';
 
 import { tokenValido } from './conta';
+import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
  * A progressão, que mora no servidor.
@@ -92,9 +93,11 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
       },
       ...(body ? { body } : {}),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { await relatarFalha('/progresso', 'fundo', r); return null; }
+    relatarSucesso('/progresso');
     return (await r.json()) as Remoto;
   } catch {
+    await relatarFalha('/progresso', 'fundo', null);
     return null;
   }
 }

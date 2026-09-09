@@ -25,6 +25,9 @@ import { xpAcumuladoDe } from '@sim/nivel';
 import { excedeuPorReplica } from './replica';
 import { precificarEncontros } from './encontros';
 import {
+  IGNORADOS, acumular, horaDe, motivoDaResposta, novoLivro,
+} from './recusas';
+import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
 } from './missoes';
@@ -238,8 +241,67 @@ export function casaComPadrao(origem: string, padrao: string): boolean {
     && /^[a-z0-9-]+$/i.test(origem.slice(antes.length, origem.length - depois.length));
 }
 
+/**
+ * O livro das recusas deste isolado. Ver `recusas.ts`.
+ *
+ * Módulo e não campo: o Workers recicla isolados, e o acumulado morrer junto
+ * com um deles é aceitável — o que se perde é a contagem exata de um minuto,
+ * nunca o fato de que algo está falhando.
+ */
+const LIVRO_DE_RECUSAS = novoLivro();
+
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const resposta = await rotear(req, env);
+
+    /**
+     * TODA recusa passa por aqui, e é de propósito que seja um lugar só.
+     *
+     * Anotar dentro de cada rota seria dezenas de chamadas para esquecer uma na
+     * próxima rota que entrar — e a que faltasse seria justamente a que ninguém
+     * ia procurar. Aqui não há como escapar.
+     *
+     * `waitUntil` porque o livro não pode atrasar a resposta do jogador: ele é
+     * ferramenta de quem conserta, não do jogo.
+     */
+    if (resposta.status >= 400) {
+      ctx.waitUntil(anotarRecusa(env, new URL(req.url).pathname, resposta));
+    }
+
+    return resposta;
+  },
+} satisfies ExportedHandler<Env>;
+
+/**
+ * Grava a recusa, agregada por rota, motivo e hora.
+ *
+ * Engole o próprio erro — e desta vez é a escolha certa, pelo motivo contrário
+ * ao de `registrarExcedentes`: aqui não há pagamento nenhum acontecido, e um
+ * livro de operação que derrube a resposta do jogador é pior que a cegueira que
+ * ele veio curar.
+ */
+async function anotarRecusa(env: Env, rota: string, resposta: Response): Promise<void> {
+  try {
+    if (IGNORADOS.has(resposta.status)) return;
+
+    let corpo: unknown = null;
+    // `clone` porque ler o corpo consome o fluxo, e este é o corpo que já está
+    // a caminho do jogador.
+    try { corpo = await resposta.clone().json(); } catch { /* corpo não-JSON */ }
+
+    const motivo = motivoDaResposta(corpo, resposta.status);
+    const agora = Math.floor(Date.now() / 1000);
+    const n = acumular(LIVRO_DE_RECUSAS, { rota, motivo, status: resposta.status }, agora);
+    if (!n) return;
+
+    await env.DB.prepare(`
+      INSERT INTO recusas (rota, motivo, hora, n) VALUES (?, ?, ?, ?)
+      ON CONFLICT(rota, motivo, hora) DO UPDATE SET n = recusas.n + excluded.n
+    `).bind(rota.slice(0, 64), motivo, horaDe(agora), n).run();
+  } catch { /* ver o cabeçalho */ }
+}
+
+async function rotear(req: Request, env: Env): Promise<Response> {
     const origem = origemPermitida(req, env);
     const url = new URL(req.url);
 
@@ -367,8 +429,7 @@ export default {
     }
 
     return json({ erro: 'nao_encontrado' }, 404, origem);
-  },
-} satisfies ExportedHandler<Env>;
+}
 
 // ── carteira ────────────────────────────────────────────────────────────────
 

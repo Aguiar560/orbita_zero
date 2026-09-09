@@ -15,8 +15,10 @@ se sabia naquele dia, não como estado atual.
 > horas no ar sem sintoma no servidor, e o custo não foi o defeito, foi as horas
 > até entender qual era.
 >
-> **Recomendação:** não abrir para testadores antes de fechar a observabilidade
-> (bloqueador 1). Os outros dois são de qualidade, não de risco.
+> **Atualização do fim do dia:** o bloqueador 1 caiu. O cliente relata toda
+> recusa e o servidor mantém o livro `recusas`, então uma rota quebrada deixa de
+> precisar de alguém reclamando para aparecer. Restam os dois de qualidade: a
+> abertura do jogo e a virada da chave da Fase 5.
 
 ---
 
@@ -32,15 +34,15 @@ se sabia naquele dia, não como estado atual.
 | Missões | **499** (eram 21 em 04/09; as cadeias geram o volume) |
 | Galáxias × fases | 30 × 10 = **300 setores** · nível máximo 300 |
 | Código | 51.700 linhas de TypeScript, sem dependência de produção |
-| Servidor | 16 arquivos · 4.441 linhas · 14 migrações · 16 rotas |
-| Testes | **1.325** em 134 arquivos · 2.470 asserções |
+| Servidor | 17 arquivos · 4.560 linhas · 15 migrações · 16 rotas |
+| Testes | **1.362** em 136 arquivos |
 | Bundle | 647 KB JS (219 KB gzip) + 324 KB CSS (65 KB gzip) |
 
 Produção agora: site **200** em 0,27 s, API **200**.
 
 > Nota sobre o número de testes: o registro de 04/09 diz "2.035 testes". A
 > contagem de hoje pelo relatório JSON do Vitest é **1.325 testes / 2.470
-> asserções**. Não persegui a origem da diferença — provavelmente o número
+> asserções** (1.362 depois do trabalho do fim do dia). Não persegui a origem da diferença — provavelmente o número
 > antigo contava `expect(`. Fica dito para não parecer regressão.
 
 ---
@@ -58,9 +60,14 @@ permitiu a Fase 5 *reproduzir* o encontro em vez de estimá-lo.
 **Por que perdeu um ponto.** O sistema virou distribuído e a disciplina não
 acompanhou em um eixo: **`src/app/*` devolve `null` em toda recusa**, e quem
 chama cai no padrão. Indisponibilidade se disfarça de perda de dado — nível
-zerado, nave errada, saldo zero, botão mudo. Isso não é um bug, é uma decisão de
-desenho que era boa quando o cliente era autônomo e virou dívida quando ele
-passou a depender de dez rotas.
+zerado, nave errada, saldo zero, botão mudo. Não era um bug; era uma decisão de
+desenho boa enquanto o cliente era autônomo, que virou dívida quando ele passou
+a depender de dez rotas.
+
+O `null` continua — e deve continuar, porque tentar de novo no ciclo seguinte é
+o comportamento certo. O que mudou no fim do dia é que ele deixou de ser
+**silencioso**: `app/recusa.ts` relata toda recusa antes de devolvê-la, e há
+teste varrendo `src/app/` para cobrar que nenhuma rota nova esqueça.
 
 ### Integridade e antifraude — 8/10
 
@@ -76,9 +83,24 @@ encontro e precifica o que o cliente declarou — com piso de tempo por onda e
 teto por réplica —, mas **quem paga ainda é o número que o cliente manda**. Até
 a virada, o pódio premiado repousa sobre um teto, não sobre uma conta.
 
-### Operação e observabilidade — 4/10 · **o elo mais fraco**
+### Operação e observabilidade — 6/10 *(era 4 pela manhã)*
 
-A nota mais baixa da avaliação, e a que mudou o veredito.
+> **Atualizado no mesmo dia.** Os níveis 1 e 2 do plano abaixo foram feitos:
+> existe o **livro das recusas** (`recusas`, migração `0015`) e o cliente
+> **relata** toda recusa. O que falta para 8 é o nível 3 — alguém ser avisado
+> sem precisar consultar. Enquanto isso, a consulta responde em cinco segundos:
+>
+> ```sql
+> SELECT rota, motivo, SUM(n) FROM recusas
+>  WHERE hora > strftime('%s','now') - 86400
+>  GROUP BY rota, motivo ORDER BY 3 DESC;
+> ```
+>
+> Continua valendo: migração e deploy são dois comandos manuais cuja ordem, se
+> invertida, derruba uma rota em silêncio; `d1_migrations` não registra o que
+> sobe por `--file=`; e `wrangler tail` não resolve o host neste ambiente.
+
+Era a nota mais baixa da avaliação, e a que mudou o veredito.
 
 | o que aconteceu em 08/09 | quanto tempo no ar |
 |---|---|
@@ -170,11 +192,22 @@ painel) — melhor que nada, pior que um DOM.
 
 ## O que bloqueia o alfa
 
-**1. Observabilidade — o único que é risco, não qualidade.**
-Sem isso, o próximo defeito custa o mesmo que os de hoje, só que multiplicado
-pelo número de testadores. O mínimo: a recusa do servidor virar aviso em toda
-ação do jogador (feito para a fusão, falta o resto), e algum caminho para saber
-que uma rota está falhando sem depender de alguém reclamar.
+**1. Observabilidade — ✅ resolvido no mesmo dia.**
+Era o único que era risco, e não qualidade: sem isso o próximo defeito custaria
+o mesmo que os de hoje, multiplicado pelo número de testadores. Foram os dois
+níveis mais baratos, nesta ordem:
+
+- **O cliente conta** (`app/recusa.ts`). Toda recusa vira `console.warn` com
+  rota, status e motivo. Vira **aviso na tela** sempre que for ação deliberada,
+  e só na terceira falha seguida quando for sincronização de fundo — avisar a
+  cada oscilação de rede treinaria o jogador a ignorar avisos.
+- **O servidor conta sozinho** (tabela `recusas`, migração `0015`). Toda
+  resposta ≥ 400 é anotada num lugar só, agregada por rota, motivo e hora, com
+  teto de escrita para o livro não se afogar no incidente que veio registrar.
+
+Falta o nível 3 — **alguém ser avisado** em vez de precisar consultar. Só vale
+quando houver testadores de verdade: hoje o Rafael é o único jogador e responde
+mais rápido que qualquer alerta.
 
 **2. A abertura do jogo — do setor 1 ao 12.**
 O 1 é trivial e o 4 ao 11 é parede. Um testador novo passa a primeira hora

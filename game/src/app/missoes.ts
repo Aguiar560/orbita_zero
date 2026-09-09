@@ -2,6 +2,7 @@ import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
 
 import { tokenValido } from './conta';
+import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
  * As missões e a confiança, agora do servidor.
@@ -51,9 +52,11 @@ async function chamar(corpo?: unknown): Promise<Remoto | null> {
       },
       ...(body ? { body } : {}),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { await relatarFalha('/missoes', 'fundo', r); return null; }
+    relatarSucesso('/missoes');
     return (await r.json()) as Remoto;
   } catch {
+    await relatarFalha('/missoes', 'fundo', null);
     return null;
   }
 }

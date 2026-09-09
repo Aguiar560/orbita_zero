@@ -58,7 +58,7 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run dev` | Vite em `localhost:5180` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | assets + typecheck + build |
-| `npm test` | suíte do Vitest (1.325 testes em 134 arquivos, 08/09/2026) |
+| `npm test` | suíte do Vitest (1.362 testes em 136 arquivos, 09/09/2026) |
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
 | `npm run simular -- ganho 1 300 5` | ganho por segundo, setores limpos e mortes — mede o que o jogador REALMENTE recebe |
 | `npm run simular -- drops 200000` | distribuição real de raridade |

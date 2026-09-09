@@ -6,6 +6,7 @@ vi.mock('@app/conta', () => ({ tokenValido: async () => 'token-de-teste' }));
 
 import { bus } from '@app/Bus';
 import { sintetizar } from '@app/inventario';
+import { esquecerRecusas } from '@app/recusa';
 import { RECEITAS } from '@data/balance/fusao';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
@@ -58,7 +59,7 @@ describe('o botão FABRICAR', () => {
 });
 
 describe('a recusa do servidor chega ao jogador', () => {
-  beforeEach(() => { vi.unstubAllGlobals(); calar(); });
+  beforeEach(() => { vi.unstubAllGlobals(); calar(); esquecerRecusas(); });
 
   it('o limite de ritmo vira uma frase, e não silêncio', async () => {
     /**
@@ -88,7 +89,9 @@ describe('a recusa do servidor chega ao jogador', () => {
     const ditos = ouvirToast();
     await sintetizar(new Sim(createState(3)), ['a']);
 
-    expect(ditos[0]).toContain('Nenhuma peça foi perdida');
+    // A frase virou compartilhada em `recusa.ts`: a garantia é a mesma, e uma
+    // tabela só evita duas versões da mesma promessa.
+    expect(ditos[0]).toContain('Nada foi perdido');
   });
 
   it('e rede fora também, em vez de um clique morto', async () => {

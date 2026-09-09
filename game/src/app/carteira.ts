@@ -3,6 +3,7 @@ import type { Sim } from '@sim/index';
 import type { ResourceId } from '@sim/types';
 
 import { tokenValido } from './conta';
+import { relatarFalha, relatarSucesso } from './recusa';
 import { bus } from './Bus';
 
 /**
@@ -92,11 +93,13 @@ async function chamar(metodo: 'GET' | 'POST', corpo?: unknown): Promise<EstadoDa
       },
       ...(body ? { body } : {}),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { await relatarFalha('/carteira', 'fundo', r); return null; }
+    relatarSucesso('/carteira');
     return (await r.json()) as EstadoDaCarteira;
   } catch {
     // Rede fora não é erro de jogo. O espelho continua valendo, e o jogador
     // segue vendo o último saldo confirmado em vez de um zero assustador.
+    await relatarFalha('/carteira', 'fundo', null);
     return null;
   }
 }
@@ -143,10 +146,11 @@ export async function comprarVip(): Promise<boolean> {
       method: 'POST',
       headers: { authorization: `Bearer ${token}` },
     });
-    if (!r.ok) return false;
+    if (!r.ok) { await relatarFalha('/vip', 'acao', r); return false; }
     adotar((await r.json()) as EstadoDaCarteira);
     return true;
   } catch {
+    await relatarFalha('/vip', 'acao', null);
     return false;
   }
 }

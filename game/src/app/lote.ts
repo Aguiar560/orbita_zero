@@ -2,6 +2,7 @@ import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
 
 import { tokenValido } from './conta';
+import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
  * O lote de itens do setor, rolado pelo servidor.
@@ -78,7 +79,8 @@ export async function garantirLote(sim: Sim, setor: number): Promise<boolean> {
         universo: sim.state.universe.index,
       }),
     });
-    if (!r.ok) return false;
+    if (!r.ok) { await relatarFalha('/lote', 'fundo', r); return false; }
+    relatarSucesso('/lote');
     const dados = (await r.json()) as Resposta;
     sim.receberLote(dados.lote as never);
     setorEmMaos = setor;
@@ -86,6 +88,7 @@ export async function garantirLote(sim: Sim, setor: number): Promise<boolean> {
   } catch {
     // Rede fora não é erro de jogo: o pote atual continua valendo, e o que
     // faltar fica devendo até a próxima tentativa.
+    await relatarFalha('/lote', 'fundo', null);
     return false;
   } finally {
     buscando = false;

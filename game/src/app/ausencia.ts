@@ -3,6 +3,7 @@ import type { Sim } from '@sim/index';
 import type { OfflineReport } from '@sim/index';
 
 import { tokenValido } from './conta';
+import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
  * O crédito de ausência, que agora é calculado pelo servidor.
@@ -90,9 +91,11 @@ export async function creditarAusencia(sim: Sim): Promise<RelatorioDeAusencia | 
         carga: sim.state.run.carga,
       }),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { await relatarFalha('/ausencia', 'fundo', r); return null; }
+    relatarSucesso('/ausencia');
     return (await r.json()) as RelatorioDeAusencia;
   } catch {
+    await relatarFalha('/ausencia', 'fundo', null);
     return null;
   }
 }
