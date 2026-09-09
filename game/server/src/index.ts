@@ -1071,6 +1071,18 @@ async function subirSave(req: Request, env: Env, id: string, origem: string): Pr
     return json({ erro: 'corpo_incompleto' }, 400, origem);
   }
 
+  // Estado sem piloto é o save técnico inicial, permitido para a conta poder
+  // abrir em outro aparelho. A partir do momento que existe uma nave escolhida,
+  // contudo, não há jogo sem identidade: o apelido precisa estar no servidor,
+  // e não apenas escondido por uma tela do cliente.
+  const piloto = typeof corpo.estado === 'object' && corpo.estado !== null
+    ? (corpo.estado as { piloto?: unknown }).piloto
+    : null;
+  if (typeof piloto === 'string' && piloto.trim()) {
+    const temApelido = await env.DB.prepare('SELECT 1 FROM apelidos WHERE usuario = ?').bind(id).first();
+    if (!temApelido) return json({ erro: 'apelido_obrigatorio' }, 403, origem);
+  }
+
   const agora = Math.floor(Date.now() / 1000);
   const atual = await env.DB
     .prepare('SELECT versao_servidor, fichas, fichas_em, estado, atualizado_em FROM saves WHERE usuario = ?')

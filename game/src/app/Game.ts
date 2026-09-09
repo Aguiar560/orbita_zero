@@ -18,10 +18,11 @@ import { VerticalMode, registerMinions } from '@modes/vertical/VerticalMode';
 import { VIEW, fitView } from '@modes/vertical/entities';
 import { Shell } from '@ui/Shell';
 import { EscolhaDePiloto } from '@ui/EscolhaDePiloto';
+import { IdentidadeObrigatoria } from '@ui/IdentidadeObrigatoria';
 import { Login } from '@ui/Login';
 import { desligarModoDeTesteSeNaoForAdmin } from './admin';
 import { comAsFilasDaqui, progressoDe, reconciliar, subirSave } from './nuvem';
-import { enviarMarcas } from './placar';
+import { apelidoAtual, buscarMeuApelido, enviarMarcas } from './placar';
 import { drenarCarteira, espelharNoSim, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota } from './inventario';
@@ -205,6 +206,12 @@ export class Game {
     // pendente enquanto não houver sessão, então este `await` segura o início
     // da partida de propósito.
     await new Login().mostrar(this.rootEl);
+
+    // A identidade vem antes do primeiro save, do inventário e da escolha de
+    // nave. Assim uma conta não entra em nenhuma tela do jogo — nem cria
+    // progresso na nuvem — sem o apelido que a representa publicamente.
+    await buscarMeuApelido();
+    if (!apelidoAtual()) await new IdentidadeObrigatoria(this.rootEl).mostrar();
 
     // Com a conta resolvida dá para juntar o save local ao da nuvem. Antes da
     // escolha de piloto porque um save que desce troca o estado inteiro, e

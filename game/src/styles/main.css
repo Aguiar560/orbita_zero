@@ -6581,6 +6581,9 @@ select option:disabled { color: #667991; }
   font: 600 13px/1 'Chakra Petch', sans-serif;
 }
 .escolha-apelido-campo:focus { outline: none; border-color: var(--accent); }
+.escolha-identidade-corpo { width: min(480px, 92vw); justify-items: center; }
+.escolha-identidade-corpo .escolha-apelido { width: min(390px, 100%); }
+.escolha-apelido-obrigatorio { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
 
 
 /* ═══ Ajustes em abas ══════════════════════════════════════════════════════ */

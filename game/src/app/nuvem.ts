@@ -154,6 +154,7 @@ export async function baixarSave(): Promise<DaNuvem> {
 export type ResultadoDeSubida =
   | { fase: 'subiu' }
   | { fase: 'cedo'; esperar: number }
+  | { fase: 'sem-apelido' }
   | { fase: 'conflito'; doServidor: GameState | null; versaoServidor: number }
   | { fase: 'falhou' };
 
@@ -190,6 +191,16 @@ export async function subirSave(estado: GameState, saindo = false): Promise<Resu
     } catch {
       return { fase: 'falhou' };
     }
+  }
+
+  if (r.status === 403) {
+    try {
+      const dados = await r.json() as { erro?: string };
+      if (dados.erro === 'apelido_obrigatorio') {
+        nuvem.ultimoErro = 'Defina o apelido para sincronizar o progresso.';
+        return { fase: 'sem-apelido' };
+      }
+    } catch { /* resposta inválida segue como falha comum */ }
   }
 
   if (!r.ok) {

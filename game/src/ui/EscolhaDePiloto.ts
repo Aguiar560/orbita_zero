@@ -3,8 +3,6 @@ import { describeGalaxy } from '@data/galaxies';
 import { getElement } from '@data/elements';
 import { PILOTOS, type PilotoDef } from '@data/pilotos';
 import { registrarPiloto } from '@app/inventario';
-import { apelidoAtual, definirApelido } from '@app/placar';
-import { sessaoGuardada } from '@app/conta';
 import type { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import { dps, effectiveHp, powerScore, resolveStats } from '@sim/stats';
@@ -38,9 +36,6 @@ import { clear, h, portraitIcon, spriteIcon } from './dom';
 export class EscolhaDePiloto {
   private readonly root = h('.escolha-piloto');
   private selecionado = PILOTOS[0]!.id;
-  private apelidoDigitado = '';
-  private erroDeApelido = '';
-  private salvandoApelido = false;
   private readonly perfis = new Map<string, { dps: number; ehp: number; vel: number; nota: number }>();
 
   constructor(private readonly sim: Sim, private readonly host: HTMLElement) {
@@ -97,104 +92,17 @@ export class EscolhaDePiloto {
               + 'Os quatro cascos têm o mesmo poder em formas diferentes, e todo '
               + 'casco comprável fica aberto a todos. Não existe escolha errada aqui.',
           }),
-          ...this.campoDeApelido(aoConfirmar),
-
           h('button.btn.primary.big.escolha-confirmar', {
-            disabled: this.salvandoApelido,
             onclick: () => { void this.confirmar(aoConfirmar); },
           }, h('span', {
-            text: this.salvandoApelido ? 'Registrando…' : `Partir com ${escolhido.nome}`,
+            text: `Partir com ${escolhido.nome}`,
           })),
         ),
       ),
     );
   }
 
-  /**
-   * O nome no placar, pedido aqui e não depois.
-   *
-   * Antes ele só era cobrado ao abrir o placar — e quem nunca abria seguia sem
-   * nome, sem aparecer no ranking e **sem poder falar no chat**, sem nunca
-   * saber por quê. Os dois recados ficavam nas telas que o nome destrava, que
-   * são justamente as que o jogador sem nome não tem motivo para visitar.
-   *
-   * Aqui é o único momento em que a atenção dele já está numa pergunta de
-   * identidade: acabou de escolher quem comanda a frota. Custa um campo.
-   *
-   * ## Só para quem tem conta, e só quando falta
-   *
-   * Sem conta não há onde gravar — o apelido é do servidor, não do save. E
-   * quem já tem nome não é perguntado de novo: esta tela reaparece quando o
-   * jogador apaga o progresso, e a conta sobrevive a isso.
-   *
-   * ## Por que é opcional
-   *
-   * Porque a tela existe para uma decisão irreversível, e emendar nela uma
-   * segunda obrigação é o jeito de fazer alguém desistir na primeira tela. Em
-   * branco, segue o jogo; o placar continua sabendo pedir depois.
-   */
-  private campoDeApelido(aoConfirmar: () => void): HTMLElement[] {
-    if (!sessaoGuardada() || apelidoAtual()) return [];
-
-    const campo = h('input.escolha-apelido-campo', {
-      type: 'text',
-      maxlength: '16',
-      placeholder: 'Seu nome no placar e no chat',
-      'aria-label': 'Seu nome no placar e no chat',
-      value: this.apelidoDigitado,
-      oninput: (e: Event) => {
-        this.apelidoDigitado = (e.target as HTMLInputElement).value;
-        this.erroDeApelido = '';
-      },
-      // Enter no campo confirma, como o botão. Sem isto quem digita e aperta
-      // Enter não vê nada acontecer.
-      onkeydown: (e: KeyboardEvent) => {
-        if (e.key === 'Enter') { e.preventDefault(); void this.confirmar(aoConfirmar); }
-      },
-    }) as HTMLInputElement;
-
-    return [
-      h('.escolha-apelido', {},
-        h('label.escolha-apelido-rotulo', { text: 'Como os outros pilotos vão ver você' }),
-        campo,
-        h('span.tiny.muted', {
-          text: this.erroDeApelido
-            || 'De 3 a 16 caracteres. Pode deixar em branco e escolher depois.',
-        }),
-      ),
-    ];
-  }
-
-  /**
-   * Confirmar: primeiro o nome, depois o piloto.
-   *
-   * A ordem importa. `escolherPiloto` é irreversível — grava a escolha no save
-   * e faz esta tela nunca mais aparecer. Se ele viesse antes e o apelido fosse
-   * recusado (nome em uso, rede fora), não haveria mais tela onde corrigir: o
-   * jogador cairia no jogo sem nome e sem saber que tentou ter um.
-   */
   private async confirmar(aoConfirmar: () => void): Promise<void> {
-    if (this.salvandoApelido) return;
-
-    const quer = this.apelidoDigitado.trim();
-    if (quer && sessaoGuardada() && !apelidoAtual()) {
-      this.salvandoApelido = true;
-      this.render(aoConfirmar);
-
-      const r = await definirApelido(quer);
-      this.salvandoApelido = false;
-      if (!r.ok) {
-        this.erroDeApelido = {
-          invalido: 'De 3 a 16 caracteres, começando e terminando com letra ou número.',
-          em_uso: 'Esse nome já é de outro piloto. Tente outro.',
-          sem_conta: 'Entre na sua conta para escolher um nome.',
-          rede: 'Não deu para falar com o servidor. Tente de novo, ou deixe em branco.',
-        }[r.erro];
-        this.render(aoConfirmar);
-        return;
-      }
-    }
-
     // O casco inicial é concedido pelo SERVIDOR, uma vez só. O `escolherPiloto`
     // local continua gravando a escolha; o que saiu dele é a autoridade sobre a
     // frota.
