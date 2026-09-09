@@ -61,7 +61,7 @@ describe('o que a conta destrava, depois que a conta chega', () => {
 
   it('e o selo de online não espera o relógio de um minuto', () => {
     const perfil = fonte('ui', 'PerfilMenu.ts');
-    expect(perfil).toContain("window.addEventListener('oz:conta', () => { this.render(); olharOnline(); });");
+    expect(perfil).toContain("window.addEventListener('oz:conta', () => { this.render(); this.carregarApelido(); olharOnline(); });");
   });
 
   it('e o aviso continua sendo disparado nas duas pontas', () => {

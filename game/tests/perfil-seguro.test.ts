@@ -25,12 +25,24 @@ describe('perfil seguro para transmissão', () => {
       'Frota',
       'Carga',
       'Tempo de jogo',
-      'Última sincronização',
     ]) expect(source).toContain(texto);
   });
 
-  it('não mostra a antiga explicação do save nem o erro técnico bruto', () => {
+  it('usa o apelido público escolhido pelo jogador, inclusive após recarregar', () => {
     const source = perfil();
+    const placar = readFileSync(resolve(process.cwd(), 'src/app/placar.ts'), 'utf8');
+    expect(source).toContain('buscarMeuApelido');
+    expect(source).toContain("apelidoAtual() ?? 'Piloto'");
+    expect(source).not.toContain('pilotoDe');
+    expect(placar).toContain("buscarPlacar('personagem')");
+    expect(placar).toContain('estado.dados.meuApelido');
+  });
+
+  it('não mostra sincronização nem a antiga explicação do save', () => {
+    const source = perfil();
+    expect(source).not.toContain('SINCRONIZAÇÃO');
+    expect(source).not.toContain('Última sincronização');
+    expect(source).not.toContain('nuvem.');
     expect(source).not.toContain('O save sobe sozinho');
     expect(source).not.toContain('Última falha:');
   });

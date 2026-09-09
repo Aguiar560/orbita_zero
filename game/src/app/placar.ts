@@ -133,7 +133,7 @@ export async function definirApelido(bruto: string): Promise<ResultadoDeApelido>
   if (r.status === 409) return { ok: false, erro: 'em_uso' };
   if (!r.ok) return { ok: false, erro: 'rede' };
 
-  apelidoLocal = apelido;
+  registrarApelidoLocal(apelido);
   return { ok: true, apelido };
 }
 
@@ -146,7 +146,24 @@ export async function definirApelido(bruto: string): Promise<ResultadoDeApelido>
  */
 let apelidoLocal: string | null = null;
 export const apelidoAtual = (): string | null => apelidoLocal;
-export const esquecerApelido = (): void => { apelidoLocal = null; };
+const registrarApelidoLocal = (apelido: string | null): void => {
+  apelidoLocal = apelido;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('oz:apelido'));
+};
+export const esquecerApelido = (): void => { registrarApelidoLocal(null); };
+
+/**
+ * Carrega a identidade pública da conta sem expor e-mail ou id na interface.
+ *
+ * O placar já devolve `meuApelido` autenticado. Reaproveitar essa resposta
+ * evita criar uma segunda fonte de verdade só para o pequeno menu do topo.
+ */
+export async function buscarMeuApelido(): Promise<string | null> {
+  const estado = await buscarPlacar('personagem');
+  if (estado.fase !== 'pronto') return null;
+  registrarApelidoLocal(estado.dados.meuApelido);
+  return estado.dados.meuApelido;
+}
 
 // ── envio das marcas ───────────────────────────────────────────────────────
 

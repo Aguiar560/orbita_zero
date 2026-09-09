@@ -7563,8 +7563,6 @@ select option:disabled { color: #667991; }
   color: #93e5a2; background: rgba(28, 74, 45, .24);
   font: 700 7px/1 'Chakra Petch', sans-serif; letter-spacing: .07em;
 }
-.perfil-estado-ok .perfil-val { color: #93e5a2; }
-.perfil-estado-atencao .perfil-val { color: #ffc46b; }
 
 /*
  * O aviso é âmbar, não vermelho.

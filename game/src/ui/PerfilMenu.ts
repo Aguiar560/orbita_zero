@@ -1,10 +1,8 @@
 import { sair, sessaoGuardada } from '@app/conta';
 import { ehAdmin } from '@app/admin';
-import { nuvem } from '@app/nuvem';
-import { buscarOnline, onlineAtual } from '@app/placar';
+import { apelidoAtual, buscarMeuApelido, buscarOnline, onlineAtual } from '@app/placar';
 import { duration, fmt } from '@core/format';
 import { HULL_BY_ID } from '@data/hulls';
-import { pilotoDe } from '@data/pilotos';
 import type { Sim } from '@sim/index';
 import { clear, h } from './dom';
 
@@ -21,6 +19,7 @@ import { clear, h } from './dom';
 export class PerfilMenu {
   readonly root = h('.perfil');
   private aberto = false;
+  private carregandoApelido = false;
 
   constructor(private readonly sim: Sim) {
     // Clicar fora fecha. Sem isto o menu fica aberto atrás dos painéis, e o
@@ -68,9 +67,20 @@ export class PerfilMenu {
     // conta de admin com a barra ja montada esperaria o minuto inteiro para o
     // selo aparecer, e um minuto olhando para uma barra sem numero e
     // indistinguivel de um numero que nao funciona.
-    window.addEventListener('oz:conta', () => { this.render(); olharOnline(); });
+    window.addEventListener('oz:conta', () => { this.render(); this.carregarApelido(); olharOnline(); });
+    window.addEventListener('oz:apelido', () => this.render());
 
     this.render();
+    this.carregarApelido();
+  }
+
+  private carregarApelido(): void {
+    if (!sessaoGuardada() || this.carregandoApelido) return;
+    this.carregandoApelido = true;
+    void buscarMeuApelido().finally(() => {
+      this.carregandoApelido = false;
+      this.render();
+    });
   }
 
   private fechar(): void {
@@ -80,8 +90,7 @@ export class PerfilMenu {
 
   private render(): void {
     const sessao = sessaoGuardada();
-    const piloto = this.sim.state.piloto ? pilotoDe(this.sim.state.piloto) : null;
-    const nome = sessao ? piloto?.nome ?? 'Piloto' : 'Sem conta';
+    const nome = sessao ? apelidoAtual() ?? 'Piloto' : 'Sem conta';
 
     clear(this.root).append(
       h('button.perfil-botao', {
@@ -121,7 +130,6 @@ export class PerfilMenu {
 
   private gaveta(sessao: ReturnType<typeof sessaoGuardada>): HTMLElement {
     const st = this.sim.state;
-    const piloto = st.piloto ? pilotoDe(st.piloto) : null;
     const nave = HULL_BY_ID.get(st.hull);
 
     const linha = (rotulo: string, valor: string, classe = ''): HTMLElement =>
@@ -148,27 +156,15 @@ export class PerfilMenu {
       );
     }
 
-    const minutosDesdeSync = nuvem.ultimaSubida
-      ? Math.max(0, Math.round(Date.now() / 1000 - nuvem.ultimaSubida) / 60)
-      : null;
-    const ultimaSync = minutosDesdeSync === null
-      ? 'aguardando'
-      : minutosDesdeSync < 1 ? 'agora' : `há ${Math.round(minutosDesdeSync)} min`;
-    const estadoSync = nuvem.ultimoErro ? 'Reconectando' : nuvem.ultimaSubida ? 'Sincronizada' : 'Preparando';
-
     return h('.perfil-gaveta', {},
       h('.perfil-identidade', {},
         h('span.perfil-identidade-rot', { text: 'PILOTO' }),
-        h('strong', { text: piloto?.nome ?? 'Comandante' }),
+        h('strong', { text: apelidoAtual() ?? 'Piloto' }),
         h('span.perfil-privacidade', { text: 'DADOS PRIVADOS OCULTOS' }),
       ),
       linha('Nave ativa', nave?.name ?? '—'),
 
       ...this.progresso(st),
-
-      h('.perfil-secao', { text: 'SINCRONIZAÇÃO' }),
-      linha('Estado', estadoSync, nuvem.ultimoErro ? 'perfil-estado-atencao' : 'perfil-estado-ok'),
-      linha('Última sincronização', ultimaSync),
 
       h('button.perfil-acao', {
         text: 'Sair',
