@@ -516,7 +516,7 @@ async function registrarExcedentes(
 
     const ctx = await env.DB
       .prepare(
-        'SELECT (SELECT setor FROM progresso WHERE usuario = ?1) AS setor,'
+        'SELECT (SELECT melhor_setor FROM progresso WHERE usuario = ?1) AS setor,'
         + ' (SELECT MAX(em) FROM transacoes WHERE usuario = ?1 AND em < ?2) AS anterior',
       )
       .bind(id, agora)

@@ -2100,6 +2100,52 @@ mostrar o nome da conta.
 
 ---
 
+## 08/09/2026 — a migração que não subiu, e o teste que a teria pego
+
+O Rafael entrou no jogo e a nave estava sem itens, com o nível do piloto
+zerado. Não era perda de dados: era **indisponibilidade que o cliente disfarça**.
+
+`progressoDe` passou a selecionar a coluna `semente` junto da migração `0013`.
+O Worker foi publicado às 19h51 UTC; a migração **nunca foi aplicada** em
+produção. De lá em diante toda chamada a `/progresso` respondia
+`no such column: semente`. A prova está no próprio banco: nenhuma linha de
+`progresso` foi escrita depois daquele horário — a última é de 19h50.
+
+O sintoma no jogo é outro porque o cliente engole a falha (`catch { return
+null }`) e cai no padrão. Quem joga não vê "o servidor falhou", vê o nível
+zerado e a Núcleo Vektor em campo no lugar da nave que deixou. Foi por isso que
+o mesmo relato apareceu três vezes com explicações diferentes.
+
+**A correção da produção foi só a migração** — nada a publicar, porque o código
+já estava certo.
+
+### O teste
+
+[`tests/o-esquema-do-servidor-existe.test.ts`](../tests/o-esquema-do-servidor-existe.test.ts)
+monta o esquema em memória (`schema.sql` mais cada migração, em ordem) e manda o
+SQLite **preparar** cada consulta que o Worker tem. Preparar já valida tabela e
+coluna sem executar nada, então é o mesmo motor do D1 falhando pelos mesmos
+motivos — não uma imitação. Conferido: com a `0013` fora da pasta, ele acusa
+exatamente `index.ts:1362 — no such column: semente`.
+
+Ele **não** garante que a migração foi aplicada lá fora. Garante que existe uma
+para aplicar, que era o que faltava.
+
+### O segundo defeito, achado pelo teste na primeira execução
+
+`registrarExcedentes` lia `SELECT setor FROM progresso` — a coluna se chama
+`melhor_setor`. A consulta erra ao ser preparada, e a função **engole o próprio
+erro de propósito**, porque roda depois do pagamento e não pode derrubá-lo.
+
+Resultado: a auditoria de teto da carteira nunca gravou uma linha desde que
+subiu, e não havia como perceber. As 17 linhas em `excedentes` vêm todas de
+`replica` e `encontros`, que são outro caminho. Corrigido para `melhor_setor`.
+
+É o argumento do teste em uma frase: **o `catch` que protege o jogador do erro
+também esconde o erro de quem escreveu o código.**
+
+---
+
 ## Dívidas conhecidas
 
 Coisas medidas e registradas. **A lista viva, com as decisões pendentes do
