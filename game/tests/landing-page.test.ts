@@ -51,6 +51,10 @@ describe('landing navegável antes do login', () => {
     expect(landing).toContain("pontoClicavel('conta-criar'");
     const css = fonte('styles', 'landing.css');
     expect(css).toContain('transform: translateY(-12%)');
+    expect(css).toContain('aspect-ratio: 1672 / 941');
+    expect(css).toContain('.landing-art-hotspot.conta-entrar { top: 2.1%');
+    expect(css).toContain('.landing-art-hotspot.acao-galaxias { top: 76.9%');
+    expect(css).toContain('.landing-art-hotspot.acao-comunidade { top: 90.1%');
   });
 
   it('é responsiva e deixa a landing rolar no celular', () => {

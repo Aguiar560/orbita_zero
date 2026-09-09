@@ -73,15 +73,17 @@ function arteAprovada(pagina: PaginaLanding, acoes: AcoesLanding): HTMLElement {
 
   return h('.landing-art-shell', {},
     imagem,
-    pontoClicavel('marca', 'Ir para O Jogo', () => acoes.navegar('jogo')),
-    ...PAGINAS.map(([id, rotulo]) => {
-      const botao = pontoClicavel(`nav-${id}`, rotulo, () => acoes.navegar(id));
-      if (pagina === id) botao.setAttribute('aria-current', 'page');
-      return botao;
-    }),
-    pontoClicavel('conta-entrar', 'Entrar', acoes.entrar),
-    pontoClicavel('conta-criar', 'Criar conta', acoes.criarConta),
-    ...acoesDaPagina,
+    h('.landing-art-controles', {},
+      pontoClicavel('marca', 'Ir para O Jogo', () => acoes.navegar('jogo')),
+      ...PAGINAS.map(([id, rotulo]) => {
+        const botao = pontoClicavel(`nav-${id}`, rotulo, () => acoes.navegar(id));
+        if (pagina === id) botao.setAttribute('aria-current', 'page');
+        return botao;
+      }),
+      pontoClicavel('conta-entrar', 'Entrar', acoes.entrar),
+      pontoClicavel('conta-criar', 'Criar conta', acoes.criarConta),
+      ...acoesDaPagina,
+    ),
   );
 }
 

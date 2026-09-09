@@ -40,6 +40,15 @@
   user-select: none;
   pointer-events: none;
 }
+.landing-art-controles {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1672 / 941;
+  pointer-events: none;
+}
 .landing-code-shell { display: none; }
 .landing-art-hotspot {
   position: absolute;
@@ -50,8 +59,12 @@
   color: transparent;
   background: transparent;
   cursor: pointer;
+  pointer-events: auto;
 }
-.landing-art-hotspot:not(.card-naves):not(.card-galaxias):not(.card-comunidade) {
+.landing-art-hotspot.marca,
+.landing-art-hotspot[class*='nav-'],
+.landing-art-hotspot.acao-principal,
+.landing-art-hotspot.acao-naves {
   transform: translateY(-12%);
 }
 .landing-art-hotspot:hover,
@@ -77,15 +90,15 @@
 .landing-art-hotspot.nav-naves { top: .5%; left: 39.8%; width: 5.8%; height: 6.2%; }
 .landing-art-hotspot.nav-galaxias { top: .5%; left: 46.2%; width: 7.8%; height: 6.2%; }
 .landing-art-hotspot.nav-comunidade { top: .5%; left: 54.5%; width: 10.6%; height: 6.2%; }
-.landing-art-hotspot.conta-entrar { top: 1.5%; left: 73.8%; width: 8.7%; height: 4.8%; }
-.landing-art-hotspot.conta-criar { top: 1.5%; left: 83%; width: 9.7%; height: 4.8%; }
+.landing-art-hotspot.conta-entrar { top: 2.1%; left: 73.8%; width: 8.7%; height: 4.6%; }
+.landing-art-hotspot.conta-criar { top: 2%; left: 83%; width: 9.7%; height: 4.8%; }
 .landing-art-hotspot.acao-principal { top: 36.2%; left: 9.6%; width: 19.3%; height: 7%; }
 .landing-art-hotspot.card-naves { top: 64.2%; left: 1.8%; width: 31.4%; height: 29.6%; }
 .landing-art-hotspot.card-galaxias { top: 64.2%; left: 34.1%; width: 31.4%; height: 29.6%; }
 .landing-art-hotspot.card-comunidade { top: 64.2%; left: 66.5%; width: 31.6%; height: 29.6%; }
 .landing-art-hotspot.acao-naves { top: 53.5%; left: 74.2%; width: 22%; height: 6.2%; }
-.landing-art-hotspot.acao-galaxias { top: 76.5%; left: 67%; width: 28.6%; height: 6%; }
-.landing-art-hotspot.acao-comunidade { top: 89.8%; left: 37.3%; width: 25.3%; height: 6.2%; }
+.landing-art-hotspot.acao-galaxias { top: 76.9%; left: 67%; width: 28.6%; height: 5.8%; }
+.landing-art-hotspot.acao-comunidade { top: 90.1%; left: 37.3%; width: 25.3%; height: 5.8%; }
 .landing-shell button { font-family: 'Chakra Petch', sans-serif; }
 .landing-header {
   position: sticky;
