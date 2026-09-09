@@ -2,8 +2,9 @@ import { sair, sessaoGuardada } from '@app/conta';
 import { ehAdmin } from '@app/admin';
 import { nuvem } from '@app/nuvem';
 import { buscarOnline, onlineAtual } from '@app/placar';
-import { toast } from '@app/Bus';
-import { fmt } from '@core/format';
+import { duration, fmt } from '@core/format';
+import { HULL_BY_ID } from '@data/hulls';
+import { pilotoDe } from '@data/pilotos';
 import type { Sim } from '@sim/index';
 import { clear, h } from './dom';
 
@@ -13,13 +14,9 @@ import { clear, h } from './dom';
  * ## O que ele mostra, e por que essas coisas
  *
  * Um menu de conta que só oferece "sair" não vale o clique. O que o jogador
- * precisa saber olhando aqui é: **quem eu sou, onde meu progresso está guardado,
- * e o que acontece se eu fechar isto agora.**
- *
- * A terceira pergunta é a que costuma faltar, e é a que mais importa num jogo
- * cujo save morava só no navegador até ontem. Quem está sem conta merece ver
- * isso dito — não escondido atrás de um estado de "tudo certo" que não é
- * verdade.
+ * precisa saber olhando aqui é: **quem eu sou no jogo, onde estou na campanha
+ * e se meu progresso está sincronizado.** Dados da conta não pertencem a uma
+ * superfície que pode aparecer em uma transmissão ou captura de tela.
  */
 export class PerfilMenu {
   readonly root = h('.perfil');
@@ -83,11 +80,12 @@ export class PerfilMenu {
 
   private render(): void {
     const sessao = sessaoGuardada();
-    const nome = sessao ? sessao.email.split('@')[0] ?? 'piloto' : 'Sem conta';
+    const piloto = this.sim.state.piloto ? pilotoDe(this.sim.state.piloto) : null;
+    const nome = sessao ? piloto?.nome ?? 'Piloto' : 'Sem conta';
 
     clear(this.root).append(
       h('button.perfil-botao', {
-        title: sessao ? sessao.email : 'Jogando sem conta',
+        'aria-label': sessao ? `Abrir perfil de ${nome}` : 'Abrir opções da conta',
         'aria-expanded': String(this.aberto),
         onclick: () => { this.aberto = !this.aberto; this.render(); },
       },
@@ -112,7 +110,6 @@ export class PerfilMenu {
          */
         ...(ehAdmin() && onlineAtual() !== null
           ? [h('span.perfil-online', {
-              title: `${onlineAtual()} com o jogo aberto nos últimos 5 minutos`,
               text: `${onlineAtual()} on`,
             })]
           : []),
@@ -124,6 +121,8 @@ export class PerfilMenu {
 
   private gaveta(sessao: ReturnType<typeof sessaoGuardada>): HTMLElement {
     const st = this.sim.state;
+    const piloto = st.piloto ? pilotoDe(st.piloto) : null;
+    const nave = HULL_BY_ID.get(st.hull);
 
     const linha = (rotulo: string, valor: string, classe = ''): HTMLElement =>
       h(`.perfil-linha${classe}`, {},
@@ -149,43 +148,27 @@ export class PerfilMenu {
       );
     }
 
-    const restam = sessao.expiraEm - Math.floor(Date.now() / 1000);
+    const minutosDesdeSync = nuvem.ultimaSubida
+      ? Math.max(0, Math.round(Date.now() / 1000 - nuvem.ultimaSubida) / 60)
+      : null;
+    const ultimaSync = minutosDesdeSync === null
+      ? 'aguardando'
+      : minutosDesdeSync < 1 ? 'agora' : `há ${Math.round(minutosDesdeSync)} min`;
+    const estadoSync = nuvem.ultimoErro ? 'Reconectando' : nuvem.ultimaSubida ? 'Sincronizada' : 'Preparando';
+
     return h('.perfil-gaveta', {},
-      h('.perfil-secao', { text: 'CONTA' }),
-      linha('E-mail', sessao.email),
-      // Truncado para caber, mas COPIÁVEL inteiro no clique: o id é o que
-      // entra na lista de `ADMINS`, e ler um UUID da tela para digitar à mão é
-      // um erro de digitação esperando acontecer.
-      h('.perfil-linha.perfil-id', {
-        title: `${sessao.usuarioId} — clique para copiar`,
-        onclick: () => {
-          void navigator.clipboard?.writeText(sessao.usuarioId).then(
-            () => toast('Id copiado.', 'good'),
-            () => toast('Não deu para copiar.', 'bad'),
-          );
-        },
-      },
-        h('span.perfil-rot', { text: 'Id' }),
-        h('span.perfil-val', { text: `${sessao.usuarioId.slice(0, 8)}…` }),
+      h('.perfil-identidade', {},
+        h('span.perfil-identidade-rot', { text: 'PILOTO' }),
+        h('strong', { text: piloto?.nome ?? 'Comandante' }),
+        h('span.perfil-privacidade', { text: 'DADOS PRIVADOS OCULTOS' }),
       ),
-      linha(
-        'Sessão',
-        restam > 0 ? `renova em ${Math.max(1, Math.round(restam / 60))} min` : 'renovando…',
-      ),
+      linha('Nave ativa', nave?.name ?? '—'),
 
       ...this.progresso(st),
 
       h('.perfil-secao', { text: 'SINCRONIZAÇÃO' }),
-      // O que o jogador precisa saber é se o backup dele EXISTE, e de quando é.
-      // "Ativa" sozinho não responde isso: uma sincronização ligada que falhou
-      // nas últimas duas horas parece igual a uma que funciona.
-      linha('Última subida', nuvem.ultimaSubida
-        ? `há ${Math.max(1, Math.round((Date.now() / 1000 - nuvem.ultimaSubida) / 60))} min`
-        : 'ainda nesta sessão'),
-      ...(nuvem.ultimoErro ? [h('p.perfil-aviso', { text: `Última falha: ${nuvem.ultimoErro}` })] : []),
-      h('p.perfil-nota', {
-        text: 'O save sobe sozinho a cada poucos minutos e ao sair da aba. O progresso continua guardado neste navegador também.',
-      }),
+      linha('Estado', estadoSync, nuvem.ultimoErro ? 'perfil-estado-atencao' : 'perfil-estado-ok'),
+      linha('Última sincronização', ultimaSync),
 
       h('button.perfil-acao', {
         text: 'Sair',
@@ -199,6 +182,10 @@ export class PerfilMenu {
     return [
       h('.perfil-secao', { text: 'PROGRESSO' }),
       h('.perfil-linha', {},
+        h('span.perfil-rot', { text: 'Setor atual' }),
+        h('span.perfil-val', { text: fmt(st.run.sector) }),
+      ),
+      h('.perfil-linha', {},
         h('span.perfil-rot', { text: 'Melhor setor' }),
         h('span.perfil-val', { text: fmt(st.universe.bestSectorEver) }),
       ),
@@ -211,8 +198,12 @@ export class PerfilMenu {
         h('span.perfil-val', { text: `${st.fleet.length} naves` }),
       ),
       h('.perfil-linha', {},
+        h('span.perfil-rot', { text: 'Carga' }),
+        h('span.perfil-val', { text: `${st.inventory.length} itens` }),
+      ),
+      h('.perfil-linha', {},
         h('span.perfil-rot', { text: 'Tempo de jogo' }),
-        h('span.perfil-val', { text: `${Math.round(st.playtime / 60)} min` }),
+        h('span.perfil-val', { text: duration(st.playtime) }),
       ),
     ];
   }
