@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 describe('domínio oficial', () => {
   it('declara orbitazero.com.br como endereço canônico', () => {
     const pagina = readFileSync('index.html', 'utf8');
-    expect(pagina).toContain('<link rel="canonical" href="https://orbitazero.com.br/"');
-    expect(pagina).toContain('<meta property="og:url" content="https://orbitazero.com.br/"');
+    expect(pagina).toContain('<link rel="canonical" href="https://www.orbitazero.com.br/"');
+    expect(pagina).toContain('<meta property="og:url" content="https://www.orbitazero.com.br/"');
   });
 
   it('mantém o host antigo fora dos buscadores durante a transição', () => {

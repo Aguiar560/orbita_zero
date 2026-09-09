@@ -15,7 +15,7 @@ o erro mais comum.
 | Onde cola | Valor |
 |---|---|
 | **No Google e no Facebook** (callback) | `https://vzsiorkeykcbcpmismyy.supabase.co/auth/v1/callback` |
-| **No Supabase** (redirect) | `https://orbitazero.com.br/` (produção), além de localhost e previews |
+| **No Supabase** (redirect) | `https://www.orbitazero.com.br/` (produção), além de localhost e previews |
 
 O primeiro é para onde o *provedor* devolve — sempre o Supabase, nunca o jogo. O
 segundo é para onde o *Supabase* devolve — o jogo.
@@ -102,7 +102,7 @@ Para um alfa fechado, deixar em Desenvolvimento e cadastrar os testadores em
 
 *Authentication* → **URL Configuration**:
 
-- **Site URL**: `https://orbitazero.com.br`
+- **Site URL**: `https://www.orbitazero.com.br`
 - **Redirect URLs**, uma por linha:
 
   ```
@@ -113,9 +113,9 @@ Para um alfa fechado, deixar em Desenvolvimento e cadastrar os testadores em
   https://orbita-zero-*.vercel.app/**
   ```
 
-O domínio raiz é o endereço canônico. `www` redireciona para ele, mas também é
-autorizado para não quebrar um login iniciado antes do redirecionamento. O host
-antigo da Vercel fica temporariamente como contingência, e o padrão final cobre
+`www` é o endereço canônico configurado na Vercel, e o domínio raiz redireciona
+para ele. Os dois ficam autorizados para não quebrar um login iniciado antes do
+redirecionamento. O host antigo da Vercel fica temporariamente como contingência, e o padrão final cobre
 os deploys de preview — sem ele, testar login numa branch nunca funciona e
 parece defeito intermitente.
 
