@@ -4,6 +4,7 @@ import type { ComandoDeItem, Item, SlotId } from '@sim/types';
 
 import { casarCascoComAFrota } from '@sim/state';
 import { tokenValido } from './conta';
+import { toast } from './Bus';
 
 /**
  * O inventário, que mora no servidor.
@@ -184,13 +185,49 @@ export async function sintetizar(
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ uids, sorte: sim.stats.sorte, universo: sim.state.universe.index }),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { await explicarRecusa(r); return null; }
     const dados = (await r.json()) as { item: Item; receita: string; itens: LinhaRemota[] };
     adotar(sim, dados.itens);
     return { item: dados.item, receita: dados.receita };
   } catch {
+    toast('Sem resposta do servidor. A fusão não aconteceu.', 'bad');
     return null;
   }
+}
+
+/**
+ * Por que a fusão não saiu — dito ao jogador, em vez de engolido.
+ *
+ * ## Por que isto existe
+ *
+ * `chamar` devolve `null` em toda falha, e o painel transformava `null` em
+ * NADA: o jogador clicava e a tela não mudava. Foi o formato de dois defeitos
+ * em 08/09 — a migração que não subiu e o saldo que não chegava —, e nos dois
+ * o custo não foi o defeito, foi as horas até alguém entender qual era.
+ *
+ * As peças NÃO se perdem em nenhum destes casos: a fusão é uma transação só no
+ * servidor, e recusada ela não apaga nada. Dizer isso importa, porque a fusão é
+ * destrutiva e o silêncio deixa a dúvida no pior lugar possível.
+ */
+const RECUSA_DA_FUSAO: Record<string, string> = {
+  rapido_demais: 'Muitas ações seguidas. Espere alguns segundos e tente de novo.',
+  itens_nao_sao_seus: 'O servidor ainda não conhece uma das peças. Tente de novo em instantes.',
+  raridades_diferentes: 'Todas as peças precisam ser da mesma raridade.',
+  favorito_na_fusao: 'Há um favorito no anel. Favorito nunca é fundido.',
+  quantidade_errada: 'O anel não tem a quantidade que a receita pede.',
+  sem_receita: 'Não há receita para esta raridade.',
+};
+
+async function explicarRecusa(r: Response): Promise<void> {
+  let erro = '';
+  try {
+    erro = ((await r.json()) as { erro?: string }).erro ?? '';
+  } catch { /* corpo vazio ou não-JSON: o status ainda vale como resposta */ }
+
+  toast(
+    RECUSA_DA_FUSAO[erro] ?? `A fusão foi recusada (${erro || r.status}). Nenhuma peça foi perdida.`,
+    'bad',
+  );
 }
 
 /**

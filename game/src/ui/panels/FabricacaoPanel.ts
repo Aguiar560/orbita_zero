@@ -4,6 +4,7 @@ import { RECEITAS, chanceDeSubir, type ReceitaDeFusao } from '@data/balance/fusa
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { sintetizar } from '@app/inventario';
+import { toast } from '@app/Bus';
 import type { Sim } from '@sim/index';
 import type { Item, Rarity } from '@sim/types';
 import { buildItemCard } from '../ItemCard';
@@ -280,11 +281,36 @@ export class FabricacaoPanel implements Panel {
 
   // ── coluna central: a câmara ──────────────────────────────────────────────
 
+  /**
+   * Por que ainda não dá para fundir — com NÚMERO, não com instrução.
+   *
+   * A frase antiga era "Arraste ou clique em 10 itens da mesma raridade": ela
+   * diz o que fazer e não diz por que não está feito. Quem tem oito peças
+   * Comuns na mochila e um anel de dez lê isso, olha o anel cheio até onde dá,
+   * e conclui que o botão está quebrado. Foi o relato de 08/09.
+   *
+   * As duas frases separam os dois casos, que pedem ações opostas: FALTA PÔR
+   * (as peças existem) e FALTA TER (não existem, e é preciso jogar mais).
+   */
+  private porQueOAnelNaoEnche(sim: Sim, receita: ReceitaDeFusao, cheios: readonly string[]): string {
+    const nome = rarityInfo(receita.entrada).name;
+    // As peças do anel continuam na mochila — o anel é uma SELEÇÃO, não uma
+    // remoção. Contá-las duas vezes diria que há mais do que há.
+    const noAnel = new Set(cheios);
+    const disponiveis = sim.state.inventory
+      .filter((i) => i.rarity === receita.entrada && !i.favorite && !noAnel.has(i.uid)).length;
+    const faltam = receita.quantidade - cheios.length;
+
+    return disponiveis >= faltam
+      ? `Faltam ${faltam} no anel — há ${disponiveis} ${nome} na mochila.`
+      : `A receita pede ${receita.quantidade} ${nome}; você tem ${cheios.length + disponiveis}.`;
+  }
+
   private camara(sim: Sim, receita: ReceitaDeFusao): HTMLElement {
     const cheios = this.slots.filter(Boolean) as string[];
     const faltas = cheios.length === receita.quantidade
       ? sim.faltaParaFundir(cheios)
-      : [`Arraste ou clique em ${receita.quantidade} itens da mesma raridade`];
+      : [this.porQueOAnelNaoEnche(sim, receita, cheios)];
     const pode = faltas.length === 0;
     const saida = rarityInfo(Math.max(...receita.resultados.map((x) => x.raridade)) as Rarity);
 
@@ -298,9 +324,24 @@ export class FabricacaoPanel implements Panel {
         h('.fab-anel', {}, ...this.encaixes(sim, receita, saida)),
         h('.fab-reator-rodape', {},
           h('.fab-dica', { text: faltas[0] ?? 'Pronto para sintetizar' }),
-          h(`button.fab-acao${pode ? '.pronta' : ''}`, {
+          h(`button.fab-acao${pode ? '.pronta' : '.inerte'}`, {
             text: 'FABRICAR',
-            disabled: !pode || this.fundindo,
+            /**
+             * `aria-disabled`, e NUNCA `disabled`.
+             *
+             * Um botão `disabled` não recebe clique nenhum — o navegador
+             * engole o evento antes de qualquer código rodar. Quem clica não
+             * ouve nada, e "não faz nada" passa a ser a descrição literal do
+             * que acontece. Foi o relato do Rafael em 08/09 sobre a
+             * Fabricação: o anel tinha 8 peças e a receita pede 10, e a única
+             * pista era uma linha de dica pequena ao lado.
+             *
+             * Com `aria-disabled` o leitor de tela continua sabendo que não
+             * dá, o CSS continua apagando o botão, e o clique CHEGA — para
+             * poder dizer por que não dá.
+             */
+            'aria-disabled': pode && !this.fundindo ? undefined : 'true',
+            title: pode ? 'Funde as peças do anel' : faltas.join(' · '),
             // A fusão é do SERVIDOR desde a Fase 3c, e por isso é assíncrona.
             //
             // Era a última porta por onde um item nascia no cliente: dez peças
@@ -311,7 +352,9 @@ export class FabricacaoPanel implements Panel {
             // O botão trava enquanto espera. Sem a trava, dois cliques consomem
             // vinte peças e devolvem uma — e a segunda perda só apareceria depois.
             onclick: () => {
-              if (!pode || this.fundindo) return;
+              if (this.fundindo) return;
+              // Dizer o que falta é a razão de o clique chegar até aqui.
+              if (!pode) { toast(faltas[0] ?? 'A câmara ainda não está pronta.'); return; }
               this.fundindo = true;
               this.render(sim);
               void sintetizar(sim, cheios).then((r) => {

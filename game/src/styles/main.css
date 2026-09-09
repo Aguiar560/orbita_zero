@@ -2011,7 +2011,15 @@ select option:disabled { color: #667991; }
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .fab-acao.pronta:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }
-.fab-dica { font-size: 11.5px; color: var(--muted); text-align: center; }
+/*
+ * O FABRICAR indisponível é apagado como um `:disabled`, mas continua CLICÁVEL.
+ *
+ * Um `disabled` de verdade faz o navegador engolir o clique antes de qualquer
+ * código rodar — e aí a tela não tem como dizer o que falta. Aqui o clique
+ * chega e vira a explicação. Ver o comentário no `FabricacaoPanel`.
+ */
+.fab-acao.inerte { opacity: .42; cursor: not-allowed; }
+.fab-dica { font-size: 11.5px; color: var(--muted); text-align: center; font-weight: 600; }
 .fab-encher {
   font-size: 11px; padding: 4px 10px; border-radius: 999px;
   background: transparent; border: 1px solid var(--line); color: var(--muted);
