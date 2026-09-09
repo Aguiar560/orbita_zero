@@ -19,7 +19,13 @@ describe('wiki oficial', () => {
     expect(main).toContain("import('@app/Game')");
 
     const vercel = JSON.parse(fonte('vercel.json')) as { rewrites?: { source: string }[] };
-    expect(vercel.rewrites?.map((item) => item.source)).toEqual(['/wiki', '/wiki/:path*']);
+    expect(vercel.rewrites?.map((item) => item.source)).toEqual(['/wiki', '/wiki/', '/wiki/:path*']);
+    const vercelDaRaiz = JSON.parse(readFileSync(join(process.cwd(), '..', 'vercel.json'), 'utf8')) as {
+      outputDirectory?: string;
+      rewrites?: { source: string }[];
+    };
+    expect(vercelDaRaiz.outputDirectory).toBe('game/dist');
+    expect(vercelDaRaiz.rewrites?.some((item) => item.source === '/wiki/:path*')).toBe(true);
   });
 
   it('oferece guias para todos os sistemas essenciais', () => {

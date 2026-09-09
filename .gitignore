@@ -17,6 +17,7 @@
 !/.gitignore
 !/.gitattributes
 !/CLAUDE.md
+!/vercel.json
 !/.claude/
 !/game/
 

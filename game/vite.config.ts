@@ -133,7 +133,10 @@ function labCalibrationPlugin(): Plugin {
 }
 
 export default defineConfig({
-  base: './',
+  // O jogo e a wiki vivem no mesmo domínio. Caminho absoluto impede que uma
+  // página reescrita como `/wiki/sistemas/missoes` procure o bundle em
+  // `/wiki/sistemas/assets`, que não existe na hospedagem estática.
+  base: '/',
   plugins: [snapshotPlugin(), labCalibrationPlugin()],
   server: { port: 5180, host: '127.0.0.1', open: false },
   resolve: {
