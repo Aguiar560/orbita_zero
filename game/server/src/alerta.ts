@@ -138,11 +138,12 @@ export function montarAviso(linhas: readonly LinhaDeRecusa[]): Aviso | null {
  * nada — quando um webhook novo entrar, provavelmente já funciona.
  */
 export async function enviarAviso(url: string, aviso: Aviso): Promise<number> {
+  const limpa = limparUrl(url);
   try {
-    const r = await fetch(url, {
+    const r = await fetch(limpa, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(corpoDoAviso(url, aviso.texto)),
+      body: JSON.stringify(corpoDoAviso(limpa, aviso.texto)),
     });
     return r.status;
   } catch {
@@ -190,9 +191,33 @@ export function corpoDoAviso(url: string, texto: string): Record<string, string>
  * porta nenhuma. O **caminho** é que carrega o segredo — é nele que mora o
  * token do webhook —, e ele nunca sai daqui.
  */
+/**
+ * O endereço, sem o lixo que uma colagem de terminal traz junto.
+ *
+ * ## Por que isto existe, e por que devia existir desde o começo
+ *
+ * Em 09/09 o canal de avisos falhou **cinco vezes seguidas** com
+ * `valor_tem_controle`: um `\r` no fim do valor guardado. A causa é banal e
+ * inevitável — copiar uma URL do Discord traz a quebra de linha, e a colagem no
+ * PowerShell entrega os dois ao `wrangler secret put`.
+ *
+ * A resposta errada, que eu dei cinco vezes, foi pedir para colar de novo com
+ * mais cuidado. **Um humano não deve compensar a fragilidade da máquina** num
+ * caso em que a máquina sabe exatamente o que fazer: espaço e controle nas
+ * pontas de uma URL de configuração nunca são significativos.
+ *
+ * Isto não afrouxa validação nenhuma. O que estiver torto no MEIO continua
+ * derrubando a leitura, e `formaDoValor` continua nomeando o defeito.
+ */
+export const limparUrl = (bruto: string): string =>
+  // `trim` sozinho não cobre tudo: ele tira espaço e quebra de linha, e deixa
+  // passar os controles de 0x00 a 0x1F e o BOM, que uma canalização mal
+  // encodada traz e ninguém enxerga numa conferência a olho.
+  (bruto ?? '').replace(/^[\s\u0000-\u001f\u007f\ufeff]+|[\s\u0000-\u001f\u007f\ufeff]+$/g, '');
+
 export function hostDoAviso(url: string): string {
   try {
-    return new URL(url).hostname;
+    return new URL(limparUrl(url)).hostname;
   } catch {
     return '';
   }
@@ -215,13 +240,17 @@ export function hostDoAviso(url: string): string {
  */
 export function formaDoValor(bruto: string): string {
   if (!bruto) return 'vazio';
-  // BOM e caracteres de controle: o suspeito número um numa canalização do
-  // PowerShell, e invisível em qualquer conferência a olho.
-  if (/^﻿/.test(bruto)) return 'comeca_com_bom';
-  if (/[ -]/.test(bruto)) return 'tem_controle';
-  if (/["']/.test(bruto)) return 'tem_aspas';
-  if (/\s/.test(bruto.trim())) return 'tem_espaco_no_meio';
-  if (!bruto.trim().startsWith('http')) return 'nao_comeca_com_http';
-  if (bruto.trim().length < 40) return 'curta_demais';
+
+  // Julga o valor JÁ limpo. Acusar um controle que o envio apara seria mandar
+  // consertar o que já está consertado — e foi assim que cinco tentativas de
+  // configurar o canal se perderam em 09/09.
+  const limpo = limparUrl(bruto);
+
+  if (!limpo) return 'so_espaco';
+  if (/["']/.test(limpo)) return 'tem_aspas';
+  if (/[\s\u0000-\u001f]/.test(limpo)) return 'tem_controle_no_meio';
+  if (!limpo.startsWith('http')) return 'nao_comeca_com_http';
+  if (limpo.length < 40) return 'curta_demais';
   return 'formato_desconhecido';
 }
+

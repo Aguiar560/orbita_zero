@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   LIMIAR_URGENTE, LINHAS_MAX, corpoDoAviso, enviarAviso, formaDoValor, hostDoAviso,
+  limparUrl,
   montarAviso,
   type LinhaDeRecusa,
 } from '../server/src/alerta';
@@ -282,20 +283,11 @@ describe('a forma do valor, quando ele não é uma URL', () => {
    *
    * O segredo não sai daqui; a forma dele, sim.
    */
-  it('nomeia as quatro maneiras de uma colagem de terminal dar errado', () => {
+  it('nomeia o que sobra depois da limpeza', () => {
     expect(formaDoValor('')).toBe('vazio');
-    expect(formaDoValor('﻿https://discord.com/x')).toBe('comeca_com_bom');
     expect(formaDoValor('"https://discord.com/x"')).toBe('tem_aspas');
-    expect(formaDoValor('https://discord.com/ x')).toBe('tem_espaco_no_meio');
     expect(formaDoValor('discord.com/api/webhooks/1/x')).toBe('nao_comeca_com_http');
     expect(formaDoValor('https://x')).toBe('curta_demais');
-  });
-
-  it('e o controle invisível vem antes do resto — é o mais difícil de ver', () => {
-    // Um `\r` no fim é invisível em qualquer conferência a olho, e sobra
-    // quando o valor passa por arquivo ou por canalização do PowerShell.
-    expect(formaDoValor('https://discord.com/api/webhooks/1/abcdefghijklmnop\r'))
-      .toBe('tem_controle');
   });
 
   it('e NUNCA devolve pedaço do valor — só o nome do problema', () => {
@@ -304,5 +296,52 @@ describe('a forma do valor, quando ele não é uma URL', () => {
     expect(forma).not.toContain('uNEat');
     expect(forma).not.toContain('discord');
     expect(forma).toMatch(/^[a-z_]+$/);
+  });
+});
+
+describe('a colagem do terminal não pode derrubar o canal', () => {
+  /**
+   * O canal falhou CINCO vezes seguidas com `valor_tem_controle`: um retorno de
+   * carro no fim do valor guardado. A causa é banal e inevitável — copiar uma
+   * URL do Discord traz a quebra de linha, e a colagem no PowerShell entrega as
+   * duas coisas ao `wrangler secret put`.
+   *
+   * A resposta errada, dada cinco vezes, foi pedir para colar de novo com mais
+   * cuidado. **Um humano não deve compensar a fragilidade da máquina** num caso
+   * em que a máquina sabe exatamente o que fazer: espaço e controle nas pontas
+   * de uma URL de configuração nunca são significativos.
+   */
+  const CR = String.fromCharCode(13);
+  const LF = String.fromCharCode(10);
+  const TAB = String.fromCharCode(9);
+  const ALVO = 'https://discord.com/api/webhooks/1/abcdefghijklmnopqrstuv';
+
+  it('apara quebra de linha, espaço e controle das pontas', () => {
+    for (const sujo of [ALVO + CR, ALVO + LF, ALVO + CR + LF, ` ${ALVO} `, TAB + ALVO]) {
+      expect(limparUrl(sujo), JSON.stringify(sujo)).toBe(ALVO);
+    }
+  });
+
+  it('e o host volta a sair, que é o que o `fetch` precisava', () => {
+    // Antes disto, `new URL()` estourava e o livro só sabia dizer
+    // `url_invalida` — verdade inútil, porque o valor estava certo.
+    expect(hostDoAviso(ALVO + CR)).toBe('discord.com');
+    expect(corpoDoAviso(ALVO + CR, 'oi')).toEqual({ content: 'oi' });
+  });
+
+  it('mas o que está torto NO MEIO continua sendo recusado', () => {
+    // Isto não é afrouxar validação: aparar as pontas não conserta uma URL
+    // partida, e `formaDoValor` continua nomeando o defeito.
+    // Espaço no CAMINHO a URL percent-encoda e aceita; o que ela recusa de
+    // verdade é host quebrado e esquema ausente.
+    expect(hostDoAviso('https://disc ord.com/webhooks')).toBe('');
+    expect(formaDoValor('"https://discord.com/x"')).toBe('tem_aspas');
+  });
+
+  it('e a forma julga o valor JÁ limpo', () => {
+    // Acusar um controle que o envio apara seria mandar consertar o que já
+    // está consertado — e foi assim que cinco tentativas se perderam.
+    expect(formaDoValor(ALVO + CR)).not.toBe('tem_controle');
+    expect(formaDoValor(' ' + CR + LF + ' ')).toBe('so_espaco');
   });
 });
