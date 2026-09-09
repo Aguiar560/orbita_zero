@@ -74,6 +74,20 @@ export function rollItem(
     slotFavorecido?: Partial<Record<SlotId, number>>;
     /** Viés de elemento. Multiplica o peso na hora de sortear o elemento. */
     elementoFavorecido?: Partial<Record<ElementId, number>>;
+    /**
+     * A identidade da peça, quando ela precisa ser REPRODUZÍVEL.
+     *
+     * O `uid` padrão sai de `Date.now()` mais um contador mais `Math.random()`
+     * — ótimo para unicidade e péssimo para o pote do setor, que o servidor
+     * precisa reconstruir item a item. Ver `uidDoPote` em `server/src/lote.ts`:
+     * sem isto, o item entregue e o item criado na coleta eram objetos
+     * diferentes, e equipar uma peça recém-caída era recusado com
+     * `item_nao_e_seu` — dois casos registrados em produção.
+     *
+     * A fusão e o baú continuam usando o padrão: lá a peça nasce uma vez, e
+     * reproduzi-la não significa nada.
+     */
+    uid?: string;
   } = {},
 ): Item {
   // Bases são filtradas pelas três faixas mais altas disponíveis no nível: é o
@@ -162,7 +176,7 @@ export function rollItem(
   }
 
   return {
-    uid: uid(),
+    uid: opts.uid ?? uid(),
     baseId: base.id,
     slot: base.slot,
     rarity,

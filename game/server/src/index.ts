@@ -8,8 +8,9 @@ import {
 } from './carteira';
 import { excedeu } from './teto';
 import {
-  ITENS_POR_POOL, TIPOS, novaSemente, paginaValida, precisaDeLoteNovo, rolarLote,
-  setorValido, sorteValida, type TipoDeDrop,
+  ITENS_POR_POOL, TIPOS, novaSemente, precisaDeLoteNovo,
+  rolarDoCursor, setorValido, sorteValida,
+  type TipoDeDrop,
 } from './lote';
 import { conferirComandos, derivarColeta, planejarEquipar, type Comandos } from './inventario';
 import {
@@ -1325,9 +1326,42 @@ async function entregarLote(req: Request, env: Env, id: string, origem: string):
     sorte = guardado!.sorte;
   }
 
-  const pagina = paginaValida(corpo.pagina);
-  const lote = rolarLote(semente, setor, sorte, Number(corpo.universo), pagina);
-  return json({ setor, pagina, lote, porPool: ITENS_POR_POOL }, 200, origem);
+  /**
+   * O CURSOR decide o que entregar, não a página que o cliente pede.
+   *
+   * Enquanto o cliente escolhia a página e a coleta derivava outra do cursor,
+   * os dois lados olhavam para itens diferentes: o jogador via na mochila uma
+   * peça que o servidor nunca criou, e ela sumia na sincronização seguinte. Era
+   * o `faltaram_*` do livro das recusas.
+   *
+   * Derivando dos dois lados do mesmo cursor, discordar deixa de ser possível
+   * — e o cliente perde uma alavanca de escolha que nunca deveria ter tido.
+   * `corpo.pagina` continua sendo aceito e ignorado, para um cliente antigo não
+   * quebrar no meio de uma sessão.
+   */
+  const cursor = await cursorDoLote(env, id);
+  const lote = rolarDoCursor(semente, setor, sorte, Number(corpo.universo), cursor);
+
+  return json({ setor, cursor, lote, porPool: ITENS_POR_POOL }, 200, origem);
+}
+
+/**
+ * Até onde cada pote já foi consumido. Zero quando não há lote guardado.
+ *
+ * Um por TIPO, e é essa independência que a rota antiga não respeitava: ela
+ * escolhia uma página só, pelo cursor mais adiantado, e aplicava aos três.
+ */
+async function cursorDoLote(env: Env, id: string): Promise<Record<TipoDeDrop, number>> {
+  const l = await env.DB
+    .prepare('SELECT usados_onda, usados_elite, usados_chefe FROM lotes WHERE usuario = ?')
+    .bind(id)
+    .first<{ usados_onda: number; usados_elite: number; usados_chefe: number }>();
+
+  return {
+    onda: Math.max(0, l?.usados_onda ?? 0),
+    elite: Math.max(0, l?.usados_elite ?? 0),
+    chefe: Math.max(0, l?.usados_chefe ?? 0),
+  } as Record<TipoDeDrop, number>;
 }
 
 // ── inventário ──────────────────────────────────────────────────────────────
@@ -1435,21 +1469,28 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
       }>();
     if (!lote) return json({ erro: 'lote_esgotado' }, 409, origem);
 
-    // A página é derivada do cursor: quem já consumiu 12 de um tipo está na
-    // página 1 daquele tipo. Guardar a página separado seria um segundo
-    // número dizendo a mesma coisa, com uma chance a mais de divergir.
+    /**
+     * Cada tipo é rolado a partir do PRÓPRIO cursor.
+     *
+     * A versão anterior escolhia UMA página, pelo cursor mais adiantado, e
+     * aplicava aos três. Como os potes andam em ritmos muito diferentes — uma
+     * elite a cada cinco ondas, um chefe a cada dez setores —, os atrasados
+     * eram arrastados para a página do líder. Medido em 09/09: o cursor da
+     * elite pulava de 6 para 27 num envio, queimando o pote quatro vezes mais
+     * rápido, e perto da virada de página a coleta era aparada — o `faltaram_*`
+     * do livro, e o item que o jogador via aparecer e sumir.
+     *
+     * `rolarDoCursor` devolve, por tipo, os próximos itens a partir de onde
+     * aquele tipo parou. Com isso o deslocamento vira zero e o cursor novo é o
+     * antigo mais o que saiu — sem base, sem página, sem o que divergir.
+     */
     const cursor = {
       onda: lote.usados_onda, elite: lote.usados_elite, chefe: lote.usados_chefe,
     } as Record<TipoDeDrop, number>;
-    const pagina = paginaValida(Math.floor(Math.max(...TIPOS.map((t) => cursor[t])) / ITENS_POR_POOL));
-    const rolado = rolarLote(lote.semente, lote.setor, lote.sorte, 0, pagina);
+    const rolado = rolarDoCursor(lote.semente, lote.setor, lote.sorte, 0, cursor);
 
-    // O cursor é absoluto e o lote é da página: desloca antes de comparar.
-    const base = pagina * ITENS_POR_POOL;
-    const relativo = {} as Record<TipoDeDrop, number>;
-    for (const t of TIPOS) relativo[t] = Math.max(0, cursor[t] - base);
-
-    const coleta = derivarColeta(rolado, relativo, pedido);
+    const zerado = { onda: 0, elite: 0, chefe: 0 } as Record<TipoDeDrop, number>;
+    const coleta = derivarColeta(rolado, zerado, pedido);
     faltaram = coleta.faltaram;
 
     for (const item of coleta.itens) {
@@ -1463,9 +1504,16 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
         .prepare('INSERT OR IGNORE INTO itens (uid, usuario, dados, nave, slot, em) VALUES (?, ?, ?, NULL, NULL, ?)')
         .bind(item.uid, id, JSON.stringify(item), agora));
     }
+    // O cursor novo é o antigo MAIS o que saiu de cada tipo. Antes havia uma
+    // `base` comum aqui, e era ela que fazia o cursor da elite pular.
     escritas.push(env.DB
       .prepare('UPDATE lotes SET usados_onda = ?, usados_elite = ?, usados_chefe = ? WHERE usuario = ?')
-      .bind(base + coleta.cursor.onda, base + coleta.cursor.elite, base + coleta.cursor.chefe, id));
+      .bind(
+        cursor.onda + coleta.cursor.onda,
+        cursor.elite + coleta.cursor.elite,
+        cursor.chefe + coleta.cursor.chefe,
+        id,
+      ));
   }
 
   // ── descartar ─────────────────────────────────────────────────────────────

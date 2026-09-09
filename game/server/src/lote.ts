@@ -85,42 +85,78 @@ export const sorteValida = (n: unknown): number =>
   Math.min(SORTE_MAX, Math.max(0, Number(n) || 0));
 
 /**
- * Teto de páginas por setor.
+ * Teto de páginas por setor. Hoje é sanidade, e não mais orçamento.
  *
- * Paginar não permite re-rolar, mas permite GASTAR: cada página são 36
- * rolagens no Worker. Cinquenta páginas dão 600 itens por tipo no mesmo
- * setor — muito acima de qualquer sessão honesta, e barato o bastante para
- * quem estiver realmente preso num chefe difícil.
+ * ## Por que ele era 50, e por que deixou de precisar ser
+ *
+ * `rolarLote` rolava SEMPRE desde o item zero e descartava o começo, para a
+ * página 3 de hoje ser idêntica à de amanhã. O preço era quadrático: medido em
+ * 09/09, a página 50 custava **1.836 rolagens e 14,8 ms** para devolver os
+ * mesmos 36 itens que a página 0 entrega com 36 rolagens e 0,9 ms.
+ *
+ * O teto existia para o Worker não se afogar nisso — e tinha um efeito colateral
+ * que ninguém tinha notado: **a lista de itens do setor ACABAVA** em 600 por
+ * tipo. Depois disso o pote secava para sempre, e o drop daquele tipo parava.
+ * Uma conta em produção já estava em 156 de elite.
+ *
+ * Com semente derivada por página (`sementeDaPagina`), a página 500 custa o
+ * mesmo que a página 0. O teto continua aqui só para um número absurdo vindo do
+ * cliente não virar uma resposta absurda — 1,2 milhão de itens por tipo por
+ * setor é fora de qualquer alcance.
  */
-const PAGINA_MAX = 50;
+const PAGINA_MAX = 100_000;
+
+/**
+ * A semente DAQUELA página DAQUELE tipo.
+ *
+ * ## O que ela troca
+ *
+ * Antes, a página N exigia rolar as N anteriores e jogá-las fora — era assim
+ * que se garantia que a página 3 de hoje fosse a de amanhã. A mesma garantia
+ * sai de derivar a semente: mesma entrada, mesma página, mesmos itens, sem
+ * passar por nenhuma anterior.
+ *
+ * ## Por que o tipo entra na mistura
+ *
+ * Sem ele, os três potes do mesmo setor sairiam idênticos — a onda comum
+ * soltaria exatamente as mesmas peças que o chefe. O índice vem da posição em
+ * `TIPOS` e não do nome, para renomear um tipo não reescrever o loot de todo
+ * mundo.
+ *
+ * O embaralhamento é o finalizador do murmur3: sementes vizinhas (página 3 e 4)
+ * precisam produzir sequências sem parentesco, e somar um número pequeno a uma
+ * semente não faz isso sozinho.
+ */
+export function sementeDaPagina(semente: number, tipo: TipoDeDrop, pagina: number): number {
+  const ordem = TIPOS.indexOf(tipo) + 1;
+  let x = (semente ^ Math.imul(ordem, 0x9e3779b1) ^ Math.imul(pagina + 1, 0x85ebca6b)) >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d) >>> 0;
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b) >>> 0;
+  return (x ^ (x >>> 16)) >>> 0;
+}
 
 export const paginaValida = (n: unknown): number =>
   Math.min(PAGINA_MAX, Math.max(0, Math.floor(Number(n) || 0)));
 
 /**
- * Rola o lote inteiro a partir da semente guardada.
+ * A MESMA página dos três tipos. Continua existindo para a ausência e o teste.
  *
- * Determinístico: a MESMA semente com os mesmos parâmetros produz exatamente os
- * mesmos itens. É o que faz reiniciar o setor não re-rolar — o servidor devolve
- * o lote que já tinha, e não um novo.
- *
- * Os três pools saem de UM rng, em ordem fixa. Um rng por pool exigiria três
- * sementes guardadas para o mesmo ganho.
- */
-/**
- * Continuar o lote é PAGINAR a mesma sequência, nunca sortear de novo.
- *
- * ## O caso que obrigou isto, e que só apareceu medindo
+ * ## Continuar o lote é PAGINAR, nunca sortear de novo
  *
  * O lote é por setor CONCLUÍDO, mas o drop é por abate. Um jogador preso num
  * setor difícil continua matando ondas e nunca conclui — então o pote seca e
- * nunca é reposto. Medido: dez minutos morrendo no setor 3 acumularam 39
- * drops devidos contra 12 no pote.
+ * nunca é reposto. Medido: dez minutos morrendo no setor 3 acumularam 39 drops
+ * devidos contra 12 no pote.
  *
- * A saída óbvia — sortear um lote novo quando esvazia — devolveria o
- * re-rolar: bastaria consumir o pote para ganhar outro. Paginar não devolve:
- * a página 2 é a continuação da MESMA sequência da mesma semente, então pedir
- * de novo dá sempre o mesmo resultado.
+ * A saída óbvia — sortear um lote novo quando esvazia — devolveria o re-rolar:
+ * bastaria consumir o pote para ganhar outro. Paginar não devolve: a página 2 é
+ * sempre a mesma página 2.
+ *
+ * ## Quem serve o jogo é `rolarDoCursor`
+ *
+ * Esta função dá a MESMA página aos três tipos, e era isso que arrastava a
+ * elite atrasada para a página da onda. As rotas usam `rolarDoCursor`, que
+ * respeita o passo de cada uma.
  */
 export function rolarLote(
   semente: number,
@@ -129,32 +165,130 @@ export function rolarLote(
   universo: number,
   pagina = 0,
 ): Lote {
-  const rng = new Rng(semente);
+  const lote = {} as Lote;
+  for (const kind of TIPOS) lote[kind] = rolarPagina(semente, setor, sorte, universo, kind, pagina);
+  return lote;
+}
+
+/**
+ * Uma página de UM tipo. É aqui que os itens nascem.
+ *
+ * ## Cada tipo com a própria página, e por que isso importa
+ *
+ * Os três potes andam em ritmos muito diferentes — uma elite a cada cinco
+ * ondas, um chefe a cada dez setores. A rota escolhia UMA página pelo cursor
+ * mais adiantado e aplicava aos três, e o resultado, medido em 09/09, era o
+ * cursor da elite pulando de 6 para 27 num único envio: dezessete itens
+ * consumidos sem chegarem a ninguém, e o pote queimando quatro vezes mais
+ * rápido do que devia.
+ *
+ * Com a semente derivada por página, rolar cada tipo na página dele custa o
+ * mesmo que rolar os três juntos. Não há mais motivo para compartilharem.
+ */
+/**
+ * A identidade reproduzível de um item do pote.
+ *
+ * ## Por que ela precisa existir
+ *
+ * O desenho da Fase 3a é "o cliente diz QUANTOS pegou, o servidor deriva
+ * QUAIS". Derivar só funciona se o item derivado for o MESMO item — e o `uid`
+ * padrão sai do relógio, então a peça entregue e a peça criada na coleta eram
+ * objetos distintos com os mesmos atributos.
+ *
+ * O custo disso era invisível e real: equipar uma peça recém-caída virava
+ * `item_nao_e_seu` (dois casos no livro de produção), e a economia de "caiu e
+ * foi descartado no mesmo lote, não grava" nunca disparava — cada item era
+ * escrito e apagado, que é justamente a metade das escritas de D1 que ela
+ * existe para poupar.
+ *
+ * ## Por que hash, e não `semente-tipo-pagina-indice`
+ *
+ * Porque o uid viaja para o cliente. Escrever a semente nele entregaria a chave
+ * que faz o pote inteiro ser previsível — a Fase 3a inteira depende de o
+ * cliente não conhecê-la.
+ *
+ * Duas passadas de 32 bits dão 64 bits de espaço: com um `uid` sendo chave
+ * primária global em `itens`, 32 bits colidiriam entre jogadores muito antes
+ * do que se imagina.
+ */
+export function uidDoPote(semente: number, tipo: TipoDeDrop, pagina: number, indice: number): string {
+  const a = sementeDaPagina(semente, tipo, pagina * ITENS_POR_POOL + indice);
+  const b = sementeDaPagina(a ^ 0x5bf03635, tipo, indice + 1);
+  return `${a.toString(36)}${b.toString(36)}`;
+}
+
+export function rolarPagina(
+  semente: number,
+  setor: number,
+  sorte: number,
+  universo: number,
+  kind: TipoDeDrop,
+  pagina: number,
+): Item[] {
   const galaxia = galaxyOfSector(setor);
   const origem = Math.max(0, Math.floor(Number(universo) || 0));
-  const base = sectorIlvl(setor);
+  const regra = resolverDrop({ setor, galaxia, kind });
+  const ilvl = sectorIlvl(setor) + regra.ilvlBonus;
+  const luck = sorte * regra.sorteMult;
 
+  // A semente é DESTA página: não é preciso passar pelas anteriores para
+  // chegar nela, e ela continua sendo sempre a mesma. Ver `sementeDaPagina`.
+  const rng = new Rng(sementeDaPagina(semente, kind, paginaValida(pagina)));
+
+  const itens: Item[] = [];
+  for (let i = 0; i < ITENS_POR_POOL; i++) {
+    itens.push(rollItem(rng, ilvl, luck, origem, {
+      // A identidade também é derivada: ver `uidDoPote`. Sem ela, o item
+      // entregue e o criado na coleta são objetos diferentes.
+      uid: uidDoPote(semente, kind, paginaValida(pagina), i),
+      floor: regra.pisoDeRaridade,
+      slotFavorecido: regra.slotFavorecido,
+      // `elementoFavorecido` NÃO entra: ver o cabeçalho. É a única entrada de
+      // `resolverDrop` que dependia do inimigo, e aceitá-la do cliente
+      // devolveria a alavanca de re-rolar.
+    }));
+  }
+  return itens;
+}
+
+/**
+ * Os próximos `ITENS_POR_POOL` itens de cada tipo, a partir do cursor dele.
+ *
+ * ## Por que o CURSOR decide, e não o cliente
+ *
+ * A entrega e a coleta precisam concordar sobre qual item é qual. Enquanto o
+ * cliente pedia a página e a coleta derivava outra do cursor, os dois olhavam
+ * para itens diferentes — e o que o jogador via na mochila não era o que o
+ * servidor criava. Era o `faltaram_*` do livro, e o item que aparece e some.
+ *
+ * Derivando dos dois lados do MESMO cursor, a discordância deixa de ser
+ * possível. E o cliente perde uma alavanca de escolha que ele nunca deveria
+ * ter tido.
+ *
+ * Duas páginas por tipo no pior caso — quando o cursor cai no meio de uma —,
+ * o que a semente por página torna barato.
+ */
+export function rolarDoCursor(
+  semente: number,
+  setor: number,
+  sorte: number,
+  universo: number,
+  cursor: Record<TipoDeDrop, number>,
+): Lote {
   const lote = {} as Lote;
+
   for (const kind of TIPOS) {
-    const regra = resolverDrop({ setor, galaxia, kind });
-    const ilvl = base + regra.ilvlBonus;
-    const luck = sorte * regra.sorteMult;
-    // Rola desde o começo e devolve só a página pedida. Descartar o começo
-    // parece desperdício e é o contrário: é o que garante que a página 3 de
-    // hoje seja idêntica à página 3 de amanhã, com a mesma semente.
-    const ate = (pagina + 1) * ITENS_POR_POOL;
-    const itens: Item[] = [];
-    for (let i = 0; i < ate; i++) {
-      const item = rollItem(rng, ilvl, luck, origem, {
-        floor: regra.pisoDeRaridade,
-        slotFavorecido: regra.slotFavorecido,
-        // `elementoFavorecido` NÃO entra: ver o cabeçalho. É a única entrada de
-        // `resolverDrop` que dependia do inimigo, e aceitá-la do cliente
-        // devolveria a alavanca de re-rolar.
-      });
-      if (i >= pagina * ITENS_POR_POOL) itens.push(item);
-    }
-    lote[kind] = itens;
+    const de = Math.max(0, Math.floor(cursor[kind] || 0));
+    const pagina = Math.floor(de / ITENS_POR_POOL);
+    const dentro = de - pagina * ITENS_POR_POOL;
+
+    const atual = rolarPagina(semente, setor, sorte, universo, kind, pagina);
+    lote[kind] = dentro === 0
+      ? atual
+      : [
+        ...atual.slice(dentro),
+        ...rolarPagina(semente, setor, sorte, universo, kind, pagina + 1).slice(0, dentro),
+      ];
   }
   return lote;
 }

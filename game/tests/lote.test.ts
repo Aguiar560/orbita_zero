@@ -217,11 +217,36 @@ describe('paginar continua o lote, e não sorteia outro', () => {
     for (const t of TIPOS) expect(lote[t], t).toHaveLength(ITENS_POR_POOL);
   });
 
-  it('a página é limitada', () => {
-    // Paginar não re-rola, mas GASTA: cada página são 36 rolagens no Worker.
+  it('a página é limitada por sanidade, não mais por orçamento', () => {
+    /**
+     * O teto era 50 porque `rolarLote` rolava desde o item zero e descartava o
+     * começo: a página 50 custava 1.836 rolagens para devolver os mesmos 36
+     * itens. E isso tinha um efeito que ninguém tinha notado — **a lista do
+     * setor acabava** em 600 por tipo, e o drop daquele tipo parava para
+     * sempre.
+     *
+     * Com `sementeDaPagina`, a página 500 custa o mesmo que a página 0. O teto
+     * fica só para um número absurdo do cliente não virar resposta absurda.
+     */
     expect(paginaValida(-1)).toBe(0);
-    expect(paginaValida(1e9)).toBe(50);
     expect(paginaValida(NaN)).toBe(0);
     expect(paginaValida(3.9)).toBe(3);
+    expect(paginaValida(1e9)).toBe(100_000);
+    // O que importa é caber uma vida de jogo num setor só.
+    expect(paginaValida(1e9) * ITENS_POR_POOL).toBeGreaterThan(1_000_000);
+  });
+
+  it('e a página distante custa o mesmo que a primeira', () => {
+    // É a razão de o teto ter podido subir. Uma diferença de tempo grande aqui
+    // significa que alguém voltou a rolar desde o começo.
+    const medir = (pagina: number): number => {
+      const t0 = performance.now();
+      for (let i = 0; i < 20; i++) rolarLote(4242, 40, 1, 0, pagina);
+      return performance.now() - t0;
+    };
+    medir(0); // aquece, para o primeiro não pagar a compilação do motor
+    const perto = medir(0);
+    const longe = medir(5_000);
+    expect(longe).toBeLessThan(perto * 4 + 20);
   });
 });

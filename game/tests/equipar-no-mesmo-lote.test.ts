@@ -29,15 +29,24 @@ import type { Item } from '@sim/types';
  * o jogo equipa automaticamente o que é melhor assim que cai.
  */
 
-const lote = rolarLote(2024, 40, 1, 0);
 const casco = HULLS[0]!;
 const elementoDoCasco = (nave: string): string | null => HULL_BY_ID.get(nave)?.element ?? null;
 
-/** Uma peça que serve neste casco, para o teste não depender de sorte. */
+/**
+ * Uma peça que serve neste casco, para o teste não depender de sorte.
+ *
+ * Varre sementes em vez de fixar uma. A versão anterior prendia `2024`, e
+ * quando `sementeDaPagina` mudou a derivação — em 09/09, para o pote deixar de
+ * ter fim — aquela semente passou a não ter peça compatível e quatro testes
+ * caíram por um motivo que não tinha nada a ver com o que eles medem.
+ */
 function pecaQueServe(): Item {
-  const candidata = lote.onda.find((i) => !i.element || i.element === casco.element);
-  expect(candidata, 'o lote de teste precisa ter uma peça compatível').toBeTruthy();
-  return candidata!;
+  for (let semente = 1; semente <= 200; semente++) {
+    const candidata = rolarLote(semente, 40, 1, 0).onda
+      .find((i) => !i.element || i.element === casco.element);
+    if (candidata) return candidata;
+  }
+  throw new Error('nenhuma semente produziu peça compatível — isso é defeito do gerador');
 }
 
 describe('equipar uma peça do MESMO lote', () => {
