@@ -3,13 +3,21 @@ import { BOSSES } from '@data/bosses';
 import { getElement } from '@data/elements';
 import { describeGalaxy } from '@data/galaxies';
 import { HULLS } from '@data/hulls';
-import { ITEM_BASES, ITEM_SETS, AFFIXES } from '@data/items';
-import { MISSOES, CATEGORIA_LABEL } from '@data/missoes';
+import { ITEM_BASES, ITEM_SETS, AFFIXES, SLOTS, SLOT_LABEL, tipoDoAfixo } from '@data/items';
+import {
+  MISSOES, MISSAO_POR_ID, CATEGORIA_LABEL, RITMO_LABEL, TIPO_DE_MISSAO,
+  type Recompensa, type Requisito,
+} from '@data/missoes';
+import { PERSONAGENS, PERSONAGEM_POR_ID, RECOMPENSA_DE_CONFIANCA } from '@data/personagens';
 import { PILOTOS } from '@data/pilotos';
-import { MODIFICADORES, PROVACAO_PISOS } from '@data/provacao';
+import { MODIFICADORES, MODIFICADOR_POR_ID, PROVACAO_PISOS, pisoDaProvacao } from '@data/provacao';
+import { CAMADAS, chefeDoPiso } from '@data/provacao-chefes';
+import { ESPECIAL_POR_ID } from '@data/provacao-especiais';
 import { RARITIES, rarityInfo } from '@data/rarity';
-import { FAMILIA_LABEL, RECURSOS } from '@data/recursos';
+import { FAMILIA_LABEL, RECURSOS, RECURSO_POR_ID } from '@data/recursos';
 import { SCREEN_UNLOCKS } from '@data/screen-unlocks';
+import { RECEITAS, chanceDeSubir } from '@data/balance/fusao';
+import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 
 type Artigo = {
   titulo: string;
@@ -19,6 +27,7 @@ type Artigo = {
   leitura: string;
   sistema?: boolean;
   icone?: string;
+  referencia?: 'equipamentos' | 'fabricacao' | 'missoes' | 'provacao' | 'engenharia';
   secoes: readonly { titulo: string; corpo: string; dica?: string }[];
 };
 
@@ -113,7 +122,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
   '/sistemas/equipamentos': {
     titulo: 'Equipamentos',
     resumo: 'Tudo o que aparece no Inventário: filtros, grade, ficha do item, seleção e ações em lote.',
-    imagem: '/assets/landing/tela.webp', imagemAlt: 'Inventário aberto ao lado do combate', leitura: '8 min', sistema: true,
+    imagem: '/assets/landing/tela.webp', imagemAlt: 'Inventário aberto ao lado do combate', leitura: '8 min', sistema: true, referencia: 'equipamentos',
     icone: '/assets/ui/menu/armazem.webp',
     secoes: [
       { titulo: 'O que esta tela faz', corpo: `O Inventário reúne todas as peças coletadas e mostra a ocupação atual. Cada item combina uma das ${ITEM_BASES.length} bases com nível, raridade e afixos. É aqui que você compara, equipa, favorita, vende ou desmonta.` },
@@ -126,7 +135,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
   '/sistemas/fabricacao': {
     titulo: 'Fabricação',
     resumo: 'Como usar a síntese de itens, ler probabilidades e confirmar uma fabricação.',
-    imagem: '/assets/landing/fabricacao.webp', imagemAlt: 'Tela de Fabricação do Órbita Zero', leitura: '7 min', sistema: true,
+    imagem: '/assets/landing/fabricacao.webp', imagemAlt: 'Tela de Fabricação do Órbita Zero', leitura: '7 min', sistema: true, referencia: 'fabricacao',
     icone: '/assets/ui/menu/fabricacao.webp',
     secoes: [
       { titulo: 'O que esta tela faz', corpo: `A Fabricação transforma dez equipamentos da mesma raridade em uma tentativa de obter uma peça de raridade superior. Ela é liberada no nível ${SCREEN_UNLOCKS.fabricacao?.level ?? 10}.` },
@@ -139,7 +148,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
   '/sistemas/missoes': {
     titulo: 'Missões',
     resumo: 'Como navegar por contatos, aceitar contratos, acompanhar objetivos e receber recompensas.',
-    imagem: '/assets/landing/comunidade.png', imagemAlt: 'Contatos e comunidade de Órbita Zero', leitura: '7 min', sistema: true,
+    imagem: '/assets/landing/comunidade.png', imagemAlt: 'Contatos e comunidade de Órbita Zero', leitura: '7 min', sistema: true, referencia: 'missoes',
     icone: '/assets/ui/menu/missoes.webp',
     secoes: [
       { titulo: 'Contato e confiança', corpo: 'A parte superior identifica quem oferece os contratos, a galáxia, a afinidade e o nível de confiança. Concluir missões desse contato desenvolve a relação e pode abrir etapas seguintes da cadeia.' },
@@ -152,7 +161,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
   '/sistemas/provacao': {
     titulo: 'Provação',
     resumo: 'Leitura completa do Núcleo: câmaras, tentativas, chefe, modificadores e recompensas.',
-    imagem: '/assets/landing/o-jogo.png', imagemAlt: 'Combate espacial de Órbita Zero', leitura: '8 min', sistema: true,
+    imagem: '/assets/landing/o-jogo.png', imagemAlt: 'Combate espacial de Órbita Zero', leitura: '8 min', sistema: true, referencia: 'provacao',
     icone: '/assets/ui/menu/provacao.webp',
     secoes: [
       { titulo: 'Acesso e objetivo', corpo: `O Núcleo de Provação abre no nível ${SCREEN_UNLOCKS.provacao?.level ?? 30}. Ele possui ${PROVACAO_PISOS} câmaras; vencer uma libera a seguinte e registra o maior piso alcançado.` },
@@ -165,7 +174,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
   '/sistemas/engenharia': {
     titulo: 'Engenharia',
     resumo: 'Como recalibrar prefixos e sufixos na Bancada de Modulação.',
-    imagem: '/assets/landing/naves.png', imagemAlt: 'Nave e equipamentos do Órbita Zero', leitura: '9 min', sistema: true,
+    imagem: '/assets/landing/naves.png', imagemAlt: 'Nave e equipamentos do Órbita Zero', leitura: '9 min', sistema: true, referencia: 'engenharia',
     icone: '/assets/ui/menu/afixos.webp',
     secoes: [
       { titulo: 'Acesso e propósito', corpo: `A Engenharia abre no nível ${SCREEN_UNLOCKS.afixos?.level ?? 21}. A Bancada de Modulação altera prefixos e sufixos sem trocar a base do item. Existem ${AFFIXES.length} afixos catalogados e ${ITEM_SETS.length} conjuntos.` },
@@ -245,6 +254,144 @@ function cabecalhoPagina(kicker: string, titulo: string, resumo: string): string
   </header>`;
 }
 
+const numero = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
+const STAT_LABEL: Readonly<Record<string, string>> = {
+  dano: 'Dano', cadencia: 'Cadência', critChance: 'Chance de crítico', critDano: 'Dano crítico',
+  critElemChance: 'Crítico elemental', critElemDano: 'Dano crítico elemental', penetracao: 'Penetração',
+  vida: 'Casco', escudo: 'Escudo', regen: 'Regeneração', velocidade: 'Velocidade',
+  projeteis: 'Projéteis', perfuracao: 'Perfuração', explosao: 'Raio de explosão', sorte: 'Sorte',
+  sucataGanho: 'Ganho de sucata', nucleoGanho: 'Ganho de núcleos', xpGanho: 'Ganho de XP',
+  iaSkill: 'Sincronia do piloto', danoPadrao: 'Dano padrão', danoFogo: 'Dano de fogo',
+  danoGelo: 'Dano de gelo', danoCosmico: 'Dano cósmico', danoRaio: 'Dano de raio',
+  danoQuimico: 'Dano químico', resFogo: 'Resistência a fogo', resGelo: 'Resistência a gelo',
+  resCosmico: 'Resistência a cósmico', resRaio: 'Resistência a raio', resQuimico: 'Resistência a químico',
+};
+const statLabel = (id: string): string => STAT_LABEL[id] ?? id;
+const recursoLabel = (id: string): string => RECURSO_POR_ID.get(id)?.nome
+  ?? ({ sucata: 'Sucata', nucleo: 'Núcleos', cristal: 'Cristais' } as Record<string, string>)[id]
+  ?? id.replaceAll('_', ' ');
+const valor = (n: number, percentual = false): string => percentual ? `${numero.format(n * 100)}%` : numero.format(n);
+
+function formatarRequisito(req: Requisito): string {
+  switch (req.tipo) {
+    case 'nivelPersonagem': return `Nível de comando ${req.valor}`;
+    case 'nivelNave': return `Nível da nave ${req.valor}`;
+    case 'setorAlcancado': return `Alcançar setor ${req.valor}`;
+    case 'galaxiaConcluida': return `Concluir ${describeGalaxy(req.galaxia).name}`;
+    case 'chefeDerrotado': return `Derrotar ${BOSSES.find((b) => b.id === req.chefeId)?.name ?? req.chefeId}`;
+    case 'missaoConcluida': return `Concluir “${MISSAO_POR_ID.get(req.missaoId)?.nome ?? req.missaoId}”`;
+    case 'confianca': return `Confiança ${req.valor} com ${PERSONAGEM_POR_ID.get(req.personagem)?.nome ?? req.personagem}`;
+    case 'recurso': return `Possuir ${numero.format(req.valor)} ${recursoLabel(req.recurso)}`;
+    case 'provacaoPiso': return `Vencer o piso ${req.valor} da Provação`;
+  }
+}
+
+function formatarRecompensa(recompensa: Recompensa): string[] {
+  const itens: string[] = [];
+  for (const [id, qtd] of Object.entries(recompensa.moedas ?? {})) if (qtd) itens.push(`${numero.format(qtd)} ${recursoLabel(id)}`);
+  for (const [id, qtd] of Object.entries(recompensa.materiais ?? {})) itens.push(`${numero.format(qtd)} ${recursoLabel(id)}`);
+  if (recompensa.xp) itens.push(`${numero.format(recompensa.xp)} XP`);
+  if (recompensa.medalhas) itens.push(`${numero.format(recompensa.medalhas)} ${recompensa.medalhas === 1 ? 'medalha' : 'medalhas'}`);
+  if (recompensa.itens) {
+    const raro = recompensa.itens.raridadeMin === undefined ? '' : ` ${rarityInfo(recompensa.itens.raridadeMin).name}+`;
+    const nivel = recompensa.itens.ilvlBonus ? ` · +${recompensa.itens.ilvlBonus} níveis` : '';
+    itens.push(`${recompensa.itens.quantidade} ${recompensa.itens.quantidade === 1 ? 'item' : 'itens'}${raro}${nivel}`);
+  }
+  for (const [tier, qtd] of Object.entries(recompensa.baus ?? {})) itens.push(`${qtd} ${qtd === 1 ? 'baú' : 'baús'} ${tier}`);
+  if (recompensa.concessao) itens.push(`Expansão de carga: ${recompensa.concessao.replaceAll('_', ' ')}`);
+  return itens.length ? itens : ['Sem recompensa cadastrada'];
+}
+
+function referenciaMissoes(): string {
+  const porContato = new Map<string, typeof MISSOES[number][]>();
+  for (const contato of PERSONAGENS) porContato.set(contato.id, []);
+  porContato.set('sem_contato', []);
+  for (const missao of MISSOES) (porContato.get(missao.giverId ?? 'sem_contato') ?? porContato.get('sem_contato')!).push(missao);
+  const grupos = [...porContato].filter(([, missoes]) => missoes.length > 0);
+  return `<section class="wiki-reference" id="referencia">
+    <header><span>REFERÊNCIA COMPLETA</span><h2>${MISSOES.length} missões de ${grupos.length} contatos</h2><p>Cada registro abaixo vem do catálogo do jogo e inclui objetivo, requisitos e todas as recompensas.</p></header>
+    <div class="wiki-trust-ladder">${RECOMPENSA_DE_CONFIANCA.map((r) => `<span><b>${r.nivel}</b>${escapeHtml(r.texto)}</span>`).join('')}</div>
+    <div class="wiki-catalog-tools"><label>BUSCAR EM TODAS AS MISSÕES<input data-catalog-filter placeholder="Missão, contato, objetivo ou recompensa…"></label><span data-catalog-count>${MISSOES.length} resultados</span></div>
+    <div class="wiki-contact-list" data-catalog-grid>${grupos.map(([id, missoes], indice) => {
+      const contato = PERSONAGEM_POR_ID.get(id);
+      const nome = contato?.nome ?? 'Contratos sem contato';
+      const buscaContato = `${nome} ${contato?.faccao ?? ''}`.toLowerCase();
+      return `<details class="wiki-contact" ${indice === 0 ? 'open' : ''}>
+        <summary>${contato ? sprite(contato.retrato, 52) : '<span class="wiki-contact-mark">◇</span>'}<span><small>${escapeHtml(contato?.faccao ?? 'ARQUIVO GERAL')}</small><b>${escapeHtml(nome)}</b><em>${missoes.length} ${missoes.length === 1 ? 'missão' : 'missões'}</em></span><i>⌄</i></summary>
+        <div class="wiki-contact-missions">${missoes.map((missao) => {
+          const tipo = missao.tipo ? TIPO_DE_MISSAO[missao.tipo] : null;
+          const recompensas = formatarRecompensa(missao.recompensa);
+          if (missao.recompensaExclusiva) recompensas.push(`Exclusivo: ${missao.recompensaExclusiva.nome}${missao.recompensaExclusiva.de ? ` · ${missao.recompensaExclusiva.de}` : ''}`);
+          const pesquisa = `${buscaContato} ${missao.nome} ${missao.descricao} ${missao.objetivos.map((o) => o.texto).join(' ')} ${recompensas.join(' ')}`.toLowerCase();
+          return `<details class="wiki-mission-entry" data-search="${escapeHtml(pesquisa)}"><summary><span style="--mission:${tipo?.cor ?? '#55d8ff'}">${escapeHtml(tipo?.glifo ?? '•')}</span><div><small>${escapeHtml(tipo?.nome ?? CATEGORIA_LABEL[missao.categoria])} · ${escapeHtml(RITMO_LABEL[missao.ritmo])}</small><b>${escapeHtml(missao.nome)}</b><p>${escapeHtml(missao.descricao)}</p></div><i>VER FICHA</i></summary>
+            <div class="wiki-mission-sheet"><section><b>OBJETIVOS</b><ul>${missao.objetivos.map((o) => `<li>${escapeHtml(o.texto)}</li>`).join('')}</ul></section><section><b>REQUISITOS</b><ul>${(missao.requisitos?.length ? missao.requisitos.map((r) => `<li>${escapeHtml(formatarRequisito(r))}</li>`) : ['<li>Nenhum requisito adicional</li>']).join('')}</ul></section><section class="rewards"><b>RECOMPENSAS</b><ul>${recompensas.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul></section></div>
+          </details>`;
+        }).join('')}</div>
+      </details>`;
+    }).join('')}</div>
+  </section>`;
+}
+
+function faixaAfixo(min: number, max: number, kind: 'add' | 'mul'): string {
+  const percentual = kind === 'mul' || (Math.abs(max) <= 1 && min !== max);
+  return min === max ? valor(min, percentual) : `${valor(min, percentual)} – ${valor(max, percentual)}`;
+}
+
+function referenciaEquipamentos(): string {
+  return `<section class="wiki-reference" id="referencia">
+    <header><span>REFERÊNCIA COMPLETA</span><h2>Todas as famílias de equipamento</h2><p>O item final é procedural. Este catálogo mostra todas as peças que podem formá-lo: ${ITEM_BASES.length} bases, ${RARITIES.length} raridades, ${AFFIXES.length} afixos e ${ITEM_SETS.length} conjuntos.</p></header>
+    <div class="wiki-catalog-tools"><label>BUSCAR NO CATÁLOGO DE EQUIPAMENTOS<input data-catalog-filter placeholder="Base, slot, afixo, raridade ou conjunto…"></label><span data-catalog-count>${ITEM_BASES.length + RARITIES.length + AFFIXES.length + ITEM_SETS.length} resultados</span></div>
+    <div class="wiki-equipment-reference" data-catalog-grid>
+      <section><h3>RARIDADES</h3><div class="wiki-rarity-grid">${RARITIES.map((r) => `<article data-search="${escapeHtml(`raridade ${r.name}`.toLowerCase())}" style="--rarity:${r.color}"><span>${sprite(r.gem, 36)}</span><b>${escapeHtml(r.name)}</b><small>${r.afixos} afixos · tier máximo T${r.tierMax}</small><p>Poder ×${numero.format(r.power)} · peso base ${numero.format(r.weight)}</p></article>`).join('')}</div></section>
+      ${SLOTS.map((slot) => `<section class="wiki-base-group"><h3>${escapeHtml(slot.name.toUpperCase())} · 8 BASES</h3><div class="wiki-base-grid">${ITEM_BASES.filter((base) => base.slot === slot.id).map((base) => `<article data-search="${escapeHtml(`${base.name} ${slot.name} ${statLabel(base.implicit.stat)}`.toLowerCase())}">${sprite(base.icon, 58)}<div><span>T${base.tier + 1} · NÍVEL ${base.minIlvl}+</span><b>${escapeHtml(base.name)}</b><p>${escapeHtml(statLabel(base.implicit.stat))}: ${base.implicit.kind === 'mul' ? valor(base.implicit.per, true) : numero.format(base.implicit.per)} por nível</p></div></article>`).join('')}</div></section>`).join('')}
+      <section><h3>AFIXOS · PREFIXOS E SUFIXOS</h3><div class="wiki-affix-table">${AFFIXES.map((afixo) => `<article data-search="${escapeHtml(`${afixo.label} ${afixo.familia} ${tipoDoAfixo(afixo)} ${statLabel(afixo.stat)} ${(afixo.slots ?? []).map((s) => SLOT_LABEL[s]).join(' ')}`.toLowerCase())}"><div><span>${tipoDoAfixo(afixo).toUpperCase()} · ${afixo.familia.toUpperCase()}</span><b>${escapeHtml(afixo.label)}</b></div><dl><div><dt>FAIXA BASE</dt><dd>${faixaAfixo(afixo.min, afixo.max, afixo.kind)}</dd></div><div><dt>SLOTS</dt><dd>${escapeHtml(afixo.slots?.map((s) => SLOT_LABEL[s]).join(', ') ?? 'Todos')}</dd></div><div><dt>ACESSO</dt><dd>${afixo.minIlvl ? `Nível ${afixo.minIlvl}+` : 'Desde o início'}${afixo.raridadeMin === undefined ? '' : ` · ${rarityInfo(afixo.raridadeMin).name}+`}</dd></div></dl></article>`).join('')}</div></section>
+      <section><h3>CONJUNTOS</h3><div class="wiki-set-grid">${ITEM_SETS.map((set) => `<article data-search="${escapeHtml(`${set.name} ${set.slots.map((s) => SLOT_LABEL[s]).join(' ')} ${set.bonuses.map((b) => b.label).join(' ')}`.toLowerCase())}" style="--set:${set.color}"><span>${escapeHtml(set.name)}</span><p>Peças: ${escapeHtml(set.slots.map((s) => SLOT_LABEL[s]).join(', '))}</p><ul>${set.bonuses.map((b) => `<li><b>${b.pieces} peças</b> ${escapeHtml(b.label)}</li>`).join('')}</ul></article>`).join('')}</div></section>
+    </div>
+  </section>`;
+}
+
+function referenciaFabricacao(): string {
+  return `<section class="wiki-reference" id="referencia"><header><span>RECEITAS COMPLETAS</span><h2>${RECEITAS.length} sínteses disponíveis</h2><p>A chance e os custos vêm da mesma tabela utilizada ao confirmar a fabricação.</p></header>
+    <div class="wiki-recipe-grid">${RECEITAS.map((receita) => `<article><header><span>${numero.format(chanceDeSubir(receita) * 100)}% DE ASCENSÃO</span><h3>${escapeHtml(receita.nome)}</h3><p>${escapeHtml(receita.nota)}</p></header><dl><div><dt>ENTRADA</dt><dd>${receita.quantidade} itens ${rarityInfo(receita.entrada).name}</dd></div><div><dt>NÚCLEOS</dt><dd>${numero.format(receita.nucleos)}</dd></div><div><dt>MATERIAIS</dt><dd>${Object.entries(receita.custo).map(([id, qtd]) => `${numero.format(qtd)} ${recursoLabel(id)}`).join(' · ')}</dd></div><div><dt>RESULTADOS</dt><dd>${receita.resultados.map((r) => `${r.peso}% ${rarityInfo(r.raridade).name}`).join(' · ')}</dd></div></dl></article>`).join('')}</div>
+  </section>`;
+}
+
+function referenciaEngenharia(): string {
+  return `<section class="wiki-reference" id="referencia"><header><span>PROTOCOLOS COMPLETOS</span><h2>${OPERACOES_DE_MODULACAO.length} operações de modulação</h2><p>Custos apresentados abaixo são os valores-base; raridade, nível do item e tier da linha aumentam o custo final mostrado na tela.</p></header>
+    <div class="wiki-operation-grid">${OPERACOES_DE_MODULACAO.map((op, i) => `<article><div><small>${String(i + 1).padStart(2, '0')} · ${op.exigeLinha ? 'EXIGE LINHA' : 'ITEM INTEIRO'}</small><h3>${escapeHtml(op.nome)}</h3><p>${escapeHtml(op.descricao)}</p></div><dl><div><dt>PRESERVA</dt><dd>${escapeHtml(op.preserva)}</dd></div><div><dt>ESSÊNCIA</dt><dd>${escapeHtml(recursoLabel(op.essencia))} ×${op.custoEssencia}</dd></div><div><dt>NÚCLEOS-BASE</dt><dd>${numero.format(op.custoNucleos)}</dd></div></dl></article>`).join('')}</div>
+  </section>`;
+}
+
+function recompensaProvacao(piso: ReturnType<typeof pisoDaProvacao>): string {
+  const r = piso.recompensa;
+  const materiais = Object.entries(r.materiais).map(([id, qtd]) => `${numero.format(qtd)} ${recursoLabel(id)}`);
+  return [`${numero.format(r.sucata)} sucata`, `${numero.format(r.nucleos)} núcleos`, r.cristais ? `${r.cristais} cristais` : '', r.medalhas ? `${r.medalhas} medalha(s)` : '', `${r.itens.quantidade} item(ns) ${rarityInfo(r.itens.raridadeMin).name}+`, ...materiais, r.chanceExclusivo ? `${numero.format(r.chanceExclusivo * 100)}% exclusivo` : ''].filter(Boolean).join(' · ');
+}
+
+function referenciaProvacao(): string {
+  return `<section class="wiki-reference" id="referencia"><header><span>ARQUIVO COMPLETO · SPOILERS</span><h2>${PROVACAO_PISOS} pisos, ${CAMADAS.length} camadas</h2><p>Todos os guardiões, requisitos, especiais, modificadores e recompensas.</p></header>
+    <div class="wiki-trial-layers">${CAMADAS.map((camada, ci) => {
+      const inicio = ci * 10 + 1;
+      const pisos = Array.from({ length: 10 }, (_, i) => pisoDaProvacao(inicio + i));
+      return `<details ${ci === 0 ? 'open' : ''} style="--layer:${camada.cor}"><summary><span>${String(camada.indice).padStart(2, '0')}</span><div><small>${escapeHtml(getElement(camada.elemento).name)} · PISOS ${inicio}–${inicio + 9}</small><b>${escapeHtml(camada.nome)}</b><p>${escapeHtml(camada.tema)}</p></div><i>⌄</i></summary><div class="wiki-floor-list">${pisos.map((piso) => {
+        const chefe = chefeDoPiso(piso.piso);
+        const especial = ESPECIAL_POR_ID.get(chefe.especial);
+        const mods = piso.modificadores.map((id) => MODIFICADOR_POR_ID.get(id)?.nome ?? id);
+        return `<article>${sprite(chefe.sprite, 72)}<div><span>PISO ${piso.piso}${piso.marco ? ' · MARCO' : ''} · NÍVEL ${piso.requisitos.find((r) => r.tipo === 'nivelPersonagem') && 'valor' in piso.requisitos[0]! ? piso.requisitos[0]!.valor : '?'}</span><h3>${escapeHtml(chefe.nome)}</h3><p>${escapeHtml(chefe.caracteristica)}</p></div><dl><div><dt>ELEMENTO / ARQUÉTIPO</dt><dd>${escapeHtml(getElement(chefe.elemento).name)} · ${escapeHtml(chefe.arquetipo)}</dd></div><div><dt>ESPECIAL</dt><dd>${escapeHtml(especial ? `${especial.nome} — ${especial.descricao}` : chefe.especial)}</dd></div><div><dt>MODIFICADORES</dt><dd>${escapeHtml(mods.join(', ') || 'Nenhum')}</dd></div><div><dt>RECOMPENSA</dt><dd>${escapeHtml(recompensaProvacao(piso))}</dd></div></dl></article>`;
+      }).join('')}</div></details>`;
+    }).join('')}</div>
+  </section>`;
+}
+
+function referenciaSistema(id: Artigo['referencia']): string {
+  if (id === 'missoes') return referenciaMissoes();
+  if (id === 'equipamentos') return referenciaEquipamentos();
+  if (id === 'fabricacao') return referenciaFabricacao();
+  if (id === 'engenharia') return referenciaEngenharia();
+  if (id === 'provacao') return referenciaProvacao();
+  return '';
+}
+
 function paginaInicial(): string {
   const cards = [
     ['/guia/inicio', 'ORIENTAÇÃO', 'Comece sua jornada', 'Conta, piloto, tutorial e primeiros setores.', '/assets/landing/o-jogo.png'],
@@ -285,8 +432,9 @@ function paginaArtigo(artigo: Artigo): string {
     const captura = artigo.imagem.endsWith('.webp')
       ? `<figure class="wiki-system-screen"><img src="${artigo.imagem}" alt="${escapeHtml(artigo.imagemAlt)}"><figcaption>CAPTURA DA TELA NO JOGO</figcaption></figure>`
       : '';
-    return `<header class="wiki-system-head">${artigo.icone ? `<img src="${artigo.icone}" alt="">` : ''}<div><span>SISTEMA · ${artigo.leitura} DE LEITURA</span><h1>${escapeHtml(artigo.titulo)}</h1><p>${escapeHtml(artigo.resumo)}</p></div></header>
-      ${captura}<article class="wiki-prose wiki-system-prose">${artigo.secoes.map((secao, i) => `<section id="secao-${i + 1}"><small>${String(i + 1).padStart(2, '0')}</small><h2>${escapeHtml(secao.titulo)}</h2><p>${escapeHtml(secao.corpo)}</p>${secao.dica ? `<aside><b>ATENÇÃO</b>${escapeHtml(secao.dica)}</aside>` : ''}</section>`).join('')}</article>`;
+    return `<header class="wiki-system-head">${artigo.icone ? `<img src="${artigo.icone}" alt="">` : ''}<div><span>SISTEMA · DOCUMENTAÇÃO COMPLETA</span><h1>${escapeHtml(artigo.titulo)}</h1><p>${escapeHtml(artigo.resumo)}</p></div></header>
+      <nav class="wiki-system-jumps"><a href="#secao-1">COMO USAR A TELA</a><a href="#referencia">IR AO CATÁLOGO COMPLETO ↓</a></nav>
+      ${captura}<article class="wiki-prose wiki-system-prose">${artigo.secoes.map((secao, i) => `<section id="secao-${i + 1}"><small>${String(i + 1).padStart(2, '0')}</small><h2>${escapeHtml(secao.titulo)}</h2><p>${escapeHtml(secao.corpo)}</p>${secao.dica ? `<aside><b>ATENÇÃO</b>${escapeHtml(secao.dica)}</aside>` : ''}</section>`).join('')}</article>${referenciaSistema(artigo.referencia)}`;
   }
   return `${cabecalhoPagina(`GUIA · ${artigo.leitura} DE LEITURA`, artigo.titulo, artigo.resumo)}
     <figure class="wiki-article-hero"><img src="${artigo.imagem}" alt="${escapeHtml(artigo.imagemAlt)}"><figcaption>IMAGEM REAL DO UNIVERSO ÓRBITA ZERO</figcaption></figure>
@@ -336,13 +484,7 @@ function paginaRecursos(): string {
 }
 
 function paginaMissoes(): string {
-  return `${cabecalhoPagina('ARQUIVO DE CONTRATOS', `${MISSOES.length} missões registradas`, 'Consulte objetivo, categoria, ritmo e recompensa. O progresso só começa depois de aceitar a missão.')}
-    <aside class="wiki-callout"><b>REGRA IMPORTANTE</b> Missões disponíveis não acumulam progresso. Aceite o contrato antes de realizar o objetivo.</aside>
-    <div class="wiki-catalog-tools"><label>BUSCAR MISSÃO<input data-catalog-filter placeholder="Nome, descrição, categoria ou ritmo…"></label><span data-catalog-count>${MISSOES.length} resultados</span></div>
-    <div class="wiki-mission-list" data-catalog-grid>${MISSOES.map((missao) => `<article data-search="${escapeHtml(`${missao.nome} ${missao.descricao} ${CATEGORIA_LABEL[missao.categoria]} ${missao.ritmo}`.toLowerCase())}">
-      <div><span>${escapeHtml(CATEGORIA_LABEL[missao.categoria])} · ${escapeHtml(missao.ritmo)}</span><h2>${escapeHtml(missao.nome)}</h2><p>${escapeHtml(missao.descricao)}</p></div>
-      <ul>${missao.objetivos.map((o) => `<li>${escapeHtml(o.texto ?? `${o.fato}: ${o.alvo}`)}</li>`).join('')}</ul>
-    </article>`).join('')}</div>`;
+  return `${cabecalhoPagina('ARQUIVO DE CONTRATOS', `${MISSOES.length} missões registradas`, 'Todas as missões, organizadas por contato, com objetivos, requisitos e recompensas completas.')}${referenciaMissoes()}`;
 }
 
 function paginaChefes(revelado: boolean): string {
@@ -358,7 +500,7 @@ function paginaChefes(revelado: boolean): string {
 
 type AtlasJson = { w: number; h: number; frames: Record<string, [number, number, number, number, number, number, number, number]> };
 const atlasCache = new Map<string, Promise<AtlasJson>>();
-const ATLAS_CANDIDATOS = ['spaceships2', 'void', 'galaxia', 'espaco', 'elemental', 'recursos', 'characters', 'itens-novos', 'itens', 'icones'];
+const ATLAS_CANDIDATOS = ['spaceships2', 'void', 'galaxia', 'espaco', 'elemental', 'recursos', 'characters', 'retratos', 'itens-novos', 'itens', 'icones'];
 
 async function carregarAtlas(nome: string): Promise<AtlasJson> {
   const existente = atlasCache.get(nome);
@@ -409,6 +551,11 @@ function aplicarFiltro(raiz: HTMLElement): void {
       const mostrar = termos.every((termo) => texto.includes(termo));
       item.hidden = !mostrar;
       if (mostrar) visiveis += 1;
+    }
+    if (termos.length) {
+      grade.querySelectorAll<HTMLDetailsElement>('.wiki-contact').forEach((grupo) => {
+        if (grupo.querySelector('[data-search]:not([hidden])')) grupo.open = true;
+      });
     }
     contador.textContent = `${visiveis} ${visiveis === 1 ? 'resultado' : 'resultados'}`;
   });

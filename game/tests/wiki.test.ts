@@ -5,8 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import { BOSSES } from '@data/bosses';
 import { HULLS } from '@data/hulls';
+import { AFFIXES, ITEM_BASES, ITEM_SETS } from '@data/items';
 import { MISSOES } from '@data/missoes';
+import { PERSONAGENS } from '@data/personagens';
+import { PROVACAO_PISOS } from '@data/provacao';
 import { RECURSOS } from '@data/recursos';
+import { RECEITAS } from '@data/balance/fusao';
+import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 
 const fonte = (arquivo: string): string => readFileSync(join(process.cwd(), arquivo), 'utf8');
 const wiki = fonte('src/wiki/WikiApp.ts');
@@ -46,6 +51,32 @@ describe('wiki oficial', () => {
     expect(wiki).toContain('/assets/ui/menu/missoes.webp');
     expect(wiki).toContain('/assets/ui/menu/provacao.webp');
     expect(wiki).toContain('/assets/ui/menu/afixos.webp');
+  });
+
+  it('expõe o conteúdo completo dos sistemas, sem amostras limitadas', () => {
+    expect(MISSOES).toHaveLength(499);
+    expect(PERSONAGENS.length).toBeGreaterThanOrEqual(30);
+    expect(ITEM_BASES).toHaveLength(80);
+    expect(AFFIXES).toHaveLength(35);
+    expect(ITEM_SETS).toHaveLength(4);
+    expect(RECEITAS).toHaveLength(6);
+    expect(OPERACOES_DE_MODULACAO).toHaveLength(10);
+    expect(PROVACAO_PISOS).toBe(100);
+    expect(wiki).toContain('MISSOES.map');
+    expect(wiki).toContain('ITEM_BASES.filter');
+    expect(wiki).toContain('AFFIXES.map');
+    expect(wiki).toContain('RECEITAS.map');
+    expect(wiki).toContain('OPERACOES_DE_MODULACAO.map');
+    expect(wiki).toContain('pisoDaProvacao');
+    expect(wiki).not.toMatch(/MISSOES\.slice|ITEM_BASES\.slice|AFFIXES\.slice/);
+  });
+
+  it('mostra objetivos, requisitos e recompensas de cada missão', () => {
+    expect(wiki).toContain('formatarRecompensa(missao.recompensa)');
+    expect(wiki).toContain('missao.objetivos.map');
+    expect(wiki).toContain('missao.requisitos.map');
+    expect(wiki).toContain('missao.recompensaExclusiva');
+    expect(wiki).toContain('PERSONAGEM_POR_ID.get');
   });
 
   it('gera catálogos a partir das tabelas reais', () => {
