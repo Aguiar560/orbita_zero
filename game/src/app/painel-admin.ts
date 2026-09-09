@@ -10,6 +10,8 @@ export interface JogadorDoPainelAdmin {
   itensNaMochila: number;
   itensEquipados: number;
   missoesConcluidas: number;
+  tempoDeJogo: number;
+  recursos: Record<string, number>;
   online: boolean;
   ultimaAtividade: number | null;
 }
@@ -29,7 +31,11 @@ export interface PainelAdmin {
     itensNaMochila: number;
     itensEquipados: number;
     missoesConcluidas: number;
+    tempoDeJogo: number;
   };
+  economia: { recursos: { moeda: string; quantia: number }[] };
+  frota: { cascos: { casco: string; total: number }[] };
+  galaxias: { indice: number; jogadores: number; maiorSetor: number }[];
   jogadores: JogadorDoPainelAdmin[];
 }
 
