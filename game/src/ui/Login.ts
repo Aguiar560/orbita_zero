@@ -222,18 +222,28 @@ export class Login {
         // acabou de fechar removendo o sink do `h()`.
         h(`p.login-recado${this.recado ? '' : '.hidden'}`, { text: this.recado }),
 
-        // Os provedores vêm DEPOIS do formulário, não antes. Quem já tem
-        // conta no jogo chega aqui para digitar e-mail e senha; pôr Google no
-        // topo faria a ação mais comum ser a de baixo.
-        h('.login-ou', {}, h('span', { text: 'ou' })),
-        h('.login-provedores', {},
-          ...(Object.keys(NOME_DO_PROVEDOR) as Provedor[]).map((p) =>
-            h(`button.login-provedor.p-${p}`, {
-              text: `Continuar com ${NOME_DO_PROVEDOR[p]}`,
-              disabled: this.ocupado,
-              onclick: () => { void comProvedor(p); },
-            })),
-        ),
+        // O OAuth do Google usa uma única porta para entrar e cadastrar: a API
+        // não oferece um `não crie usuário` por tentativa. Portanto ele fica
+        // somente no fluxo explícito de CRIAÇÃO. Em Entrar, aceitar Google
+        // cadastraria silenciosamente quem ainda não existe — exatamente o
+        // oposto do que o botão promete.
+        ...(modo === 'criar' ? [
+          h('.login-ou', {}, h('span', { text: 'ou' })),
+          h('.login-provedores', {},
+            ...(Object.keys(NOME_DO_PROVEDOR) as Provedor[]).map((p) =>
+              h(`button.login-provedor.p-${p}`, {
+                text: `Criar conta com ${NOME_DO_PROVEDOR[p]}`,
+                disabled: this.ocupado,
+                onclick: () => { void comProvedor(p); },
+              })),
+          ),
+        ] : []),
+        h('button.login-pular', {
+          type: 'button',
+          text: modo === 'criar' ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta',
+          disabled: this.ocupado || this.esperandoProvedor,
+          onclick: () => abrir(modo === 'criar' ? 'entrar' : 'criar'),
+        }),
         h('p.login-nota.tiny.muted', {
           // A frase anterior avisava o que se perdia jogando sem e-mail. Não
           // existe mais esse caminho: a conta é a única porta, e o que a nota

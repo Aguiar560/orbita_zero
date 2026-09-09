@@ -27,6 +27,15 @@ describe('entrada progressiva na conta', () => {
     expect(login).toContain('this.modo = null;');
   });
 
+  it('não oferece cadastro implícito no fluxo Entrar', () => {
+    const login = fonte('ui', 'Login.ts');
+    expect(login).toContain("...(modo === 'criar' ? [");
+    expect(login).toContain('text: `Criar conta com ${NOME_DO_PROVEDOR[p]}`');
+    expect(login).toContain("modo === 'criar' ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta'");
+    expect(login).not.toContain('text: `Continuar com ${NOME_DO_PROVEDOR[p]}`');
+    expect(login).toContain("const r = modo === 'criar' ? await cadastrar(e, s) : await entrar(e, s);");
+  });
+
   it('mantém as ações visíveis no topo também em telas pequenas', () => {
     const css = fonte('styles', 'main.css');
     expect(css).toMatch(/\.login-acoes-topo\s*\{/);
