@@ -42,19 +42,20 @@ describe('o que a conta destrava, depois que a conta chega', () => {
     expect(shell).not.toContain('private readonly panels: Panel[] = [');
   });
 
-  it('e TIRA o Laboratório de quem saiu da conta, fechando-o se estiver aberto', () => {
+  it('e TIRA os painéis administrativos de quem saiu da conta, fechando-os se estiverem abertos', () => {
     /**
      * Tirar importa tanto quanto pôr: sair da conta de admin numa aba que
-     * continua aberta deixaria a bancada de medição na mão de quem entrar
-     * depois. E um painel que some da barra estando ABERTO continua desenhado,
-     * sem aba que o feche.
+     * continua aberta deixaria dados operacionais na mão de quem entrar depois.
+     * Um painel que some da barra estando ABERTO continua desenhado, sem aba
+     * que o feche.
      */
     const shell = fonte('ui', 'Shell.ts');
     const metodo = shell.slice(shell.indexOf('private ajustarPaineisDeAdmin'));
     const corpo = metodo.slice(0, metodo.indexOf('\n  private buildTabs'));
 
-    expect(corpo).toContain('if (this.active === atual) this.voltarDaCamada();');
-    expect(corpo).toContain('this.panels = this.panels.filter((p) => p !== atual);');
+    expect(corpo).toContain("const idsAdmin = new Set(['laboratorio', 'admin-dashboard']);");
+    expect(corpo).toContain('if (idsAdmin.has(this.active.id)) this.voltarDaCamada();');
+    expect(corpo).toContain('this.panels = this.panels.filter((p) => !idsAdmin.has(p.id));');
     // E redesenha a barra: sem isto a aba continua na tela depois de removida.
     expect(corpo).toContain('this.buildTabs();');
   });

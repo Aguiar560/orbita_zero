@@ -19,6 +19,102 @@
   color-scheme: dark;
 }
 
+/* ── Comando: telemetria administrativa ─────────────────────────────────── */
+.camada[data-tela='admin-dashboard'] {
+  padding: 6px;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(15, 112, 127, .21), transparent 48%),
+    rgba(1, 4, 10, .92);
+  backdrop-filter: blur(8px) saturate(1.08);
+}
+.camada[data-tela='admin-dashboard'] .camada-caixa {
+  width: min(1580px, 99vw);
+  height: min(900px, 98vh);
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+  padding: 5px 20px 14px;
+  gap: 7px;
+  border: 24px solid transparent !important;
+  border-image: url('/assets/ui/provacao/frames/prv_moldura_externa.png') 84 fill stretch !important;
+  border-radius: 0;
+  background: rgba(3, 7, 13, .97);
+  box-shadow: 0 28px 100px rgba(0, 0, 0, .82);
+}
+.camada[data-tela='admin-dashboard'] .camada-topo {
+  min-height: 48px;
+  margin: 0;
+  padding: 0 8px 5px;
+  border: 0;
+  border-bottom: 1px solid rgba(107, 139, 159, .24);
+  background: linear-gradient(90deg, rgba(20, 54, 53, .36), transparent 58%);
+}
+.camada[data-tela='admin-dashboard'] .camada-topo h1 {
+  color: #d5f4ed;
+  font: 600 20px/1 'Chakra Petch', 'Segoe UI', sans-serif;
+  letter-spacing: 2.2px;
+}
+.admin-dashboard {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  color: #cbdce0;
+  font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+  background:
+    linear-gradient(rgba(3, 10, 15, .9), rgba(3, 10, 15, .97)),
+    url('/assets/ui/provacao/backgrounds/prv_torre_fundo.webp') center / cover no-repeat;
+}
+.admin-dashboard-topo { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 12px; }
+.admin-dashboard-contexto { display: grid; gap: 2px; }
+.admin-dashboard-contexto > span { color: #68dff1; font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .15em; }
+.admin-dashboard-contexto strong { color: #e5fffa; font: 700 22px/1.12 'Chakra Petch', sans-serif; }
+.admin-dashboard-contexto small { color: #829ba5; font-size: 11px; }
+.admin-atualizar { min-width: 116px; min-height: 34px; color: #8ff8dd; border-color: rgba(78, 226, 185, .52); }
+.admin-kpis { display: grid; grid-template-columns: repeat(8, minmax(100px, 1fr)); gap: 7px; margin-bottom: 13px; }
+.admin-kpi { display: grid; gap: 7px; min-height: 80px; padding: 11px; border: 1px solid rgba(88, 181, 183, .24); border-left-color: rgba(94, 239, 205, .62); background: linear-gradient(135deg, rgba(10, 43, 48, .62), rgba(4, 12, 18, .88)); }
+.admin-kpi span { color: #88a8ad; font: 700 9px/1.15 'Chakra Petch', sans-serif; letter-spacing: .09em; }
+.admin-kpi strong { color: #dcfff3; font: 700 22px/1 'Chakra Petch', sans-serif; }
+.admin-dashboard-lista { min-height: 0; border: 1px solid rgba(88, 181, 183, .29); background: rgba(2, 9, 14, .84); }
+.admin-lista-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid rgba(88, 181, 183, .23); background: rgba(13, 42, 47, .38); }
+.admin-lista-texto { display: grid; gap: 2px; }
+.admin-lista-texto > span { color: #7be9d8; font: 700 11px/1 'Chakra Petch', sans-serif; letter-spacing: .14em; }
+.admin-lista-texto small { color: #8197a0; font-size: 10px; }
+.admin-filtro { width: min(290px, 45vw); min-height: 34px; padding: 0 10px; border: 1px solid rgba(82, 189, 196, .42); outline: 0; color: #e1fffa; background: rgba(1, 10, 16, .8); font: 600 12px 'Chakra Petch', sans-serif; }
+.admin-filtro:focus { border-color: #6df0dc; box-shadow: 0 0 0 2px rgba(77, 224, 200, .14); }
+.admin-lista-tabela { overflow: auto; }
+.admin-linha { display: grid; grid-template-columns: minmax(190px, 1.7fr) 88px 64px 72px 66px 76px 78px 128px; align-items: center; min-width: 840px; min-height: 54px; border-bottom: 1px solid rgba(88, 148, 162, .17); }
+.admin-linha:not(.admin-cabecalho):hover { background: rgba(45, 178, 168, .07); }
+.admin-linha > span, .admin-linha > strong { padding: 0 9px; color: #d1e5e8; font-size: 12px; }
+.admin-linha > strong { color: #eafff8; font-family: 'Chakra Petch', sans-serif; }
+.admin-cabecalho { min-height: 32px; background: rgba(10, 32, 39, .7); }
+.admin-cabecalho > span { color: #77a8b5; font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .09em; }
+.admin-piloto { display: grid; gap: 3px; padding: 0 9px; }
+.admin-piloto strong { color: #e8fffb; font-size: 12px; }
+.admin-piloto small { color: #74909a; font: 10px 'Chakra Petch', sans-serif; letter-spacing: .05em; }
+.admin-status { color: #83979d !important; font: 700 9px/1 'Chakra Petch', sans-serif !important; letter-spacing: .08em; }
+.admin-linha.online .admin-status { color: #72f0b2 !important; }
+.admin-linha.online .admin-piloto strong { color: #a7ffdb; }
+.admin-atividade { color: #8ca6ae !important; }
+.admin-vazio { padding: 28px 14px; color: #7c939b; text-align: center; font-size: 12px; }
+.admin-mensagem { display: grid; place-content: center; justify-items: center; gap: 10px; min-height: 260px; text-align: center; }
+.admin-mensagem strong { color: #d9fff5; font: 700 20px 'Chakra Petch', sans-serif; }
+.admin-mensagem span { max-width: 430px; color: #849da6; font-size: 12px; }
+
+@media (max-width: 980px) {
+  .admin-kpis { grid-template-columns: repeat(4, minmax(110px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .camada[data-tela='admin-dashboard'] .camada-caixa { border-width: 18px !important; padding-inline: 8px; }
+  .admin-dashboard { padding: 7px; }
+  .admin-dashboard-topo { align-items: flex-start; }
+  .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .admin-kpi { min-height: 68px; padding: 9px; }
+  .admin-kpi strong { font-size: 19px; }
+  .admin-lista-topo { align-items: stretch; flex-direction: column; }
+  .admin-filtro { width: 100%; box-sizing: border-box; }
+}
+
 * { box-sizing: border-box; }
 
 html, body {

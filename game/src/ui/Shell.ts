@@ -33,6 +33,7 @@ import { CodexPanel } from './panels/CodexPanel';
 import { RankingPanel } from './panels/RankingPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { LaboratorioPanel } from './panels/LaboratorioPanel';
+import { AdminDashboardPanel } from './panels/AdminDashboardPanel';
 import { ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
 import { ChatPanel } from './ChatPanel';
@@ -78,7 +79,7 @@ export class Shell {
     // tela de login aparece depois desta barra ser montada. Quem administra
     // nunca via o Laboratório por isso — a conta chegava tarde demais. Ver
     // `ajustarPaineisDeAdmin`.
-    ...(ehAdmin() ? [new LaboratorioPanel()] : []),
+    ...(ehAdmin() ? [new LaboratorioPanel(), new AdminDashboardPanel()] : []),
   ];
 
   private readonly settings = new SettingsPanel();
@@ -272,15 +273,16 @@ export class Shell {
    * feche.
    */
   private ajustarPaineisDeAdmin(): void {
-    const atual = this.panels.find((p) => p.id === 'laboratorio');
     const deveTer = ehAdmin();
-    if (deveTer === !!atual) return;
+    const idsAdmin = new Set(['laboratorio', 'admin-dashboard']);
+    const tem = this.panels.some((p) => p.id === 'admin-dashboard');
+    if (deveTer === tem) return;
 
     if (deveTer) {
-      this.panels = [...this.panels, new LaboratorioPanel()];
+      this.panels = [...this.panels, new LaboratorioPanel(), new AdminDashboardPanel()];
     } else {
-      if (this.active === atual) this.voltarDaCamada();
-      this.panels = this.panels.filter((p) => p !== atual);
+      if (idsAdmin.has(this.active.id)) this.voltarDaCamada();
+      this.panels = this.panels.filter((p) => !idsAdmin.has(p.id));
     }
 
     this.buildTabs();

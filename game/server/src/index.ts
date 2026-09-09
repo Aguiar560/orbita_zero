@@ -29,6 +29,7 @@ import {
 } from './recusas';
 import { enviarAviso, hostDoAviso, montarAviso, type LinhaDeRecusa } from './alerta';
 import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corpo';
+import { lerPainelAdmin, podeLerPainelAdmin } from './painel-admin';
 import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
@@ -654,6 +655,19 @@ async function rotear(req: Request, env: Env): Promise<Response> {
         .bind(desde)
         .first<{ n: number }>();
       return json({ online: r?.n ?? 0, janelaSegundos: 300 }, 200, origem);
+    }
+
+    /**
+     * Visão operacional completa: identidade pública, atividade e progresso.
+     *
+     * Diferente de `/online`, esta rota revela linhas por pessoa. Por isso o
+     * portão não pode morar apenas no cliente: qualquer conta poderia chamar a
+     * URL direto pelo console. A autorização acontece depois da validação do
+     * JWT, usando o id assinado pelo Supabase.
+     */
+    if (url.pathname === '/admin/painel' && req.method === 'GET') {
+      if (!podeLerPainelAdmin(usuario.id)) return json({ erro: 'nao_autorizado' }, 403, origem);
+      return json(await lerPainelAdmin(env, Math.floor(Date.now() / 1000)), 200, origem);
     }
 
     if (url.pathname === '/carteira' && req.method === 'GET') {
