@@ -27,7 +27,7 @@ import { precificarEncontros } from './encontros';
 import {
   IGNORADOS, acumular, horaDe, motivoDaResposta, novoLivro,
 } from './recusas';
-import { enviarAviso, montarAviso, type LinhaDeRecusa } from './alerta';
+import { enviarAviso, hostDoAviso, montarAviso, type LinhaDeRecusa } from './alerta';
 import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corpo';
 import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
@@ -369,7 +369,38 @@ async function avisarDasRecusas(env: Env): Promise<void> {
   const aviso = montarAviso(results);
   if (!aviso) return;
 
-  if (!(await enviarAviso(env.ALERTA_WEBHOOK, aviso))) return;
+  const status = await enviarAviso(env.ALERTA_WEBHOOK, aviso);
+
+  /**
+   * O aviso que não sai também vira linha no livro.
+   *
+   * Sem isto, o sistema de avisos era o único componente do servidor incapaz de
+   * avisar que estava quebrado — e foi exatamente o que aconteceu em 09/09: o
+   * segredo configurado, o gatilho publicado, e nada chegando. Do lado de fora
+   * não havia como distinguir "o gatilho nunca rodou" de "rodou e o destino
+   * recusou".
+   *
+   * Agora a diferença se lê na tabela: sem linha `/alerta`, o gatilho não
+   * rodou; com `envio_400`, ele rodou e o Discord recusou o corpo.
+   */
+  if (status < 200 || status >= 300) {
+    /**
+     * `envio_0` sozinho não fecha o diagnóstico: ele diz que o `fetch` nem
+     * recebeu resposta, e isso tem duas causas bem diferentes — a URL não é uma
+     * URL, ou é e o destino não respondeu. O host separa as duas.
+     *
+     * O host é seguro de gravar (`discord.com` não identifica ninguém). O
+     * CAMINHO é que carrega o token do webhook, e ele nunca sai do segredo.
+     */
+    const host = hostDoAviso(env.ALERTA_WEBHOOK);
+    const alvo = host ? host.replace(/[^a-z0-9.]/gi, '') : 'url_invalida';
+
+    await Promise.all([
+      anotarMotivo(env, '/alerta', `envio_${status}`, 500),
+      anotarMotivo(env, '/alerta', `alvo_${alvo}`.slice(0, 48), 500),
+    ]).catch(() => { /* o livro nunca derruba o gatilho */ });
+    return;
+  }
 
   await env.DB.batch(results.map((l) => env.DB
     .prepare('UPDATE recusas SET avisado = ? WHERE rota = ? AND motivo = ? AND hora = ?')

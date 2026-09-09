@@ -137,15 +137,63 @@ export function montarAviso(linhas: readonly LinhaDeRecusa[]): Aviso | null {
  * Discord lê, o segundo é o do Slack. Uma carga só serve os dois, e não custa
  * nada — quando um webhook novo entrar, provavelmente já funciona.
  */
-export async function enviarAviso(url: string, aviso: Aviso): Promise<boolean> {
+export async function enviarAviso(url: string, aviso: Aviso): Promise<number> {
   try {
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ content: aviso.texto, text: aviso.texto }),
+      body: JSON.stringify(corpoDoAviso(url, aviso.texto)),
     });
-    return r.ok;
+    return r.status;
   } catch {
-    return false;
+    // Zero significa "nem chegou a responder" — rede fora, DNS, URL inválida.
+    return 0;
+  }
+}
+
+/**
+ * O corpo, no formato que o destino entende.
+ *
+ * ## Por que não dá para mandar os dois campos juntos
+ *
+ * A primeira versão mandava `{ content, text }` de uma vez, com o argumento de
+ * que "uma carga só serve Discord e Slack e não custa nada". Custava: **o
+ * Discord recusa campo que não conhece**, e devolve 400 dizendo `Unknown field`
+ * para o `text`. O aviso nunca saía.
+ *
+ * E foi um defeito exemplar de tudo o que este dia produziu — a esperteza de
+ * economizar um `if` transformou o sistema de avisos no único componente que
+ * não conseguia avisar que estava quebrado.
+ *
+ * O host decide, porque é o que se sabe com certeza. Um destino desconhecido
+ * leva os dois campos: sem saber quem é, servir os dois formatos é a aposta com
+ * mais chance de acertar.
+ */
+export function corpoDoAviso(url: string, texto: string): Record<string, string> {
+  const host = hostDoAviso(url);
+
+  if (host.endsWith('discord.com') || host.endsWith('discordapp.com')) return { content: texto };
+  if (host.endsWith('slack.com')) return { text: texto };
+  return { content: texto, text: texto };
+}
+
+/**
+ * O host do destino — a única parte da URL que pode virar linha no livro.
+ *
+ * ## Por que isto existe
+ *
+ * `envio_0` diz que o `fetch` nem recebeu resposta, e isso tem duas causas
+ * muito diferentes: a URL não é uma URL, ou é e o destino não respondeu. Sem
+ * separar as duas, o diagnóstico volta a ser palpite.
+ *
+ * O host é seguro de gravar: `discord.com` não identifica ninguém e não abre
+ * porta nenhuma. O **caminho** é que carrega o segredo — é nele que mora o
+ * token do webhook —, e ele nunca sai daqui.
+ */
+export function hostDoAviso(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
   }
 }

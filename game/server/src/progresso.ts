@@ -127,18 +127,37 @@ export function conferirMatriz(alocados: readonly string[], nivel: number): Recu
   // ligado à raiz". Sem ela dá para pegar só os nós profundos, que são os
   // melhores, sem pagar o caminho até eles.
   if (semRaiz.length) {
-    if (!conjunto.has(ROOT)) return 'matriz_desconexa';
+    /**
+     * A raiz é IMPLÍCITA, e exigi-la aqui recusava 100% das alocações.
+     *
+     * No cliente, `allocatedSet` faz `set.add(ROOT)` na hora de usar — então
+     * `command.allocated`, que é o que sobe, NUNCA contém a raiz. Guardá-la
+     * seria guardar um valor que é sempre o mesmo.
+     *
+     * Esta função exigia `conjunto.has(ROOT)` para começar a travessia. As duas
+     * metades nunca combinaram a convenção, e o resultado foi total: toda
+     * alocação não vazia virava `matriz_desconexa`, o cliente adotava o `[]` de
+     * volta por cima, e o jogador via os nós apagarem sozinhos. Em produção,
+     * sete contas com sete matrizes vazias — e nenhuma linha de erro em lugar
+     * nenhum, até o livro das recusas existir e mostrar `matriz_desconexa` em
+     * 09/09.
+     *
+     * Somar a raiz aqui aceita as DUAS formas — com e sem ela na lista — e não
+     * afrouxa nada: a travessia continua exigindo que todo nó alocado esteja
+     * ligado, que é o que impede pegar os nós profundos sem pagar o caminho.
+     */
+    const comRaiz = new Set(conjunto).add(ROOT);
     const vistos = new Set([ROOT]);
     const fila = [ROOT];
     while (fila.length) {
       const atual = fila.shift()!;
       for (const vizinho of TREE_ADJACENCY.get(atual) ?? []) {
-        if (!conjunto.has(vizinho) || vistos.has(vizinho)) continue;
+        if (!comRaiz.has(vizinho) || vistos.has(vizinho)) continue;
         vistos.add(vizinho);
         fila.push(vizinho);
       }
     }
-    if (vistos.size !== conjunto.size) return 'matriz_desconexa';
+    if (vistos.size !== comRaiz.size) return 'matriz_desconexa';
   }
   return null;
 }

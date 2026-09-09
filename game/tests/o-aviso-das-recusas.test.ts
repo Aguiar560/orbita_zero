@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  LIMIAR_URGENTE, LINHAS_MAX, enviarAviso, montarAviso, type LinhaDeRecusa,
+  LIMIAR_URGENTE, LINHAS_MAX, corpoDoAviso, enviarAviso, hostDoAviso, montarAviso,
+  type LinhaDeRecusa,
 } from '../server/src/alerta';
 
 /**
@@ -135,38 +136,52 @@ describe('o que faz um aviso ser URGENTE', () => {
   });
 });
 
-describe('o envio', () => {
-  it('serve Discord e Slack com uma carga só', () => {
-    // `content` é o que o Discord lê; `text`, o Slack. Mandar os dois não custa
-    // nada e faz um webhook novo provavelmente já funcionar.
-    let corpo = '';
-    vi.stubGlobal('fetch', vi.fn(async (_u: string, o: { body: string }) => {
-      corpo = o.body;
-      return { ok: true } as Response;
-    }));
-
-    return enviarAviso('https://exemplo', { texto: 'oi', urgente: false, total: 1 })
-      .then((ok) => {
-        expect(ok).toBe(true);
-        expect(JSON.parse(corpo)).toEqual({ content: 'oi', text: 'oi' });
-        vi.unstubAllGlobals();
-      });
+describe('o corpo, no formato que o destino entende', () => {
+  it('o Discord recebe SÓ `content` — campo a mais ele recusa', () => {
+    /**
+     * Foi o defeito de 09/09, e ele é exemplar.
+     *
+     * A primeira versão mandava `{ content, text }` de uma vez, com o argumento
+     * de que "uma carga só serve os dois e não custa nada". Custava: o Discord
+     * devolve **400 `Unknown field`** para o `text`, e o aviso nunca saía.
+     *
+     * A esperteza de economizar um `if` transformou o sistema de avisos no
+     * único componente do servidor incapaz de avisar que estava quebrado.
+     */
+    const c = corpoDoAviso('https://discord.com/api/webhooks/1/abc', 'oi');
+    expect(c).toEqual({ content: 'oi' });
+    expect(corpoDoAviso('https://discordapp.com/api/webhooks/1/abc', 'oi'))
+      .toEqual({ content: 'oi' });
   });
 
-  it('e devolve false quando não entregou — o livro não pode ser marcado', async () => {
-    /**
-     * É a disciplina da fila da carteira: só se apaga o que se confirmou ter
-     * entregado. Um aviso perdido reaparece no ciclo seguinte, em vez de sumir
-     * com a marca de "já avisei" — e sumir seria o pior dos mundos, porque o
-     * defeito continua lá e ninguém mais seria avisado dele.
-     */
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false }) as Response));
-    expect(await enviarAviso('https://exemplo', { texto: 'x', urgente: true, total: 1 }))
-      .toBe(false);
+  it('e o Slack recebe só `text`', () => {
+    expect(corpoDoAviso('https://hooks.slack.com/services/T/B/x', 'oi')).toEqual({ text: 'oi' });
+  });
 
+  it('e um destino desconhecido leva os dois, que é a aposta com mais chance', () => {
+    expect(corpoDoAviso('https://exemplo.com/hook', 'oi')).toEqual({ content: 'oi', text: 'oi' });
+    // URL torta não pode derrubar o aviso: cai no genérico.
+    expect(corpoDoAviso('nao-e-url', 'oi')).toEqual({ content: 'oi', text: 'oi' });
+  });
+});
+
+describe('o envio devolve o STATUS, não um sim ou não', () => {
+  it('porque `false` não distingue 400 de rede fora', async () => {
+    /**
+     * Com um booleano, o gatilho publicado e o segredo configurado davam o
+     * mesmo silêncio de "o gatilho nunca rodou". O número é o que permite a
+     * linha `envio_400` no livro dizer exatamente o que aconteceu.
+     */
+    vi.stubGlobal('fetch', vi.fn(async () => ({ status: 400 }) as Response));
+    expect(await enviarAviso('https://x', { texto: 'x', urgente: true, total: 1 })).toBe(400);
+
+    // O Discord responde 204 no sucesso, e 204 é entrega.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ status: 204 }) as Response));
+    expect(await enviarAviso('https://x', { texto: 'x', urgente: true, total: 1 })).toBe(204);
+
+    // Zero é "nem chegou a responder": rede fora, DNS, URL inválida.
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
-    expect(await enviarAviso('https://exemplo', { texto: 'x', urgente: true, total: 1 }))
-      .toBe(false);
+    expect(await enviarAviso('https://x', { texto: 'x', urgente: true, total: 1 })).toBe(0);
     vi.unstubAllGlobals();
   });
 });
@@ -176,10 +191,25 @@ describe('o gatilho, e a brecha que ele fecha', () => {
 
   it('só marca como avisado DEPOIS do envio confirmado', () => {
     const i = fonte.indexOf('async function avisarDasRecusas');
-    const bloco = fonte.slice(i, i + 1800);
-    expect(bloco).toContain('if (!(await enviarAviso(');
+    const bloco = fonte.slice(i, i + 2600);
+    expect(bloco).toContain('const status = await enviarAviso(');
     expect(bloco.indexOf('enviarAviso'))
       .toBeLessThan(bloco.indexOf('UPDATE recusas SET avisado'));
+  });
+
+  it('e o aviso que NÃO sai também vira linha no livro', () => {
+    /**
+     * Sem isto, o sistema de avisos era o único componente do servidor incapaz
+     * de avisar que estava quebrado — e foi o que aconteceu em 09/09: segredo
+     * configurado, gatilho publicado, e nada chegando, sem jeito de distinguir
+     * "não rodou" de "rodou e o destino recusou".
+     *
+     * Com a linha `/alerta envio_400`, a diferença se lê na tabela.
+     */
+    const i = fonte.indexOf('async function avisarDasRecusas');
+    const bloco = fonte.slice(i, i + 2600);
+    expect(bloco).toContain("anotarMotivo(env, '/alerta', `envio_${status}`");
+    expect(bloco).toContain('status < 200 || status >= 300');
   });
 
   it('e não faz nada sem webhook configurado', () => {
@@ -213,5 +243,32 @@ describe('o gatilho, e a brecha que ele fecha', () => {
       new URL('../server/migrations/0016-recusa-avisada.sql', import.meta.url), 'utf8',
     );
     expect(sql).toContain('ALTER TABLE recusas ADD COLUMN avisado');
+  });
+});
+
+describe('o host do destino, que é a parte que pode ser gravada', () => {
+  it('sai da URL', () => {
+    expect(hostDoAviso('https://discord.com/api/webhooks/1/token-secreto'))
+      .toBe('discord.com');
+  });
+
+  it('e vazio quando a URL não é uma URL — que é o caso que interessa separar', () => {
+    /**
+     * `envio_0` diz que o `fetch` nem recebeu resposta, e isso tem duas causas
+     * bem diferentes: a URL não é uma URL, ou é e o destino não respondeu. Sem
+     * separar as duas, o diagnóstico volta a ser palpite — que é justamente o
+     * que este dia inteiro foi feito para acabar.
+     */
+    expect(hostDoAviso('')).toBe('');
+    expect(hostDoAviso('discord.com/api/webhooks/1/x')).toBe('');
+    expect(hostDoAviso('  https://discord.com/x')).toBe('discord.com');
+  });
+
+  it('e o CAMINHO nunca sai junto — é nele que mora o token', () => {
+    // O host não identifica ninguém e não abre porta nenhuma. O caminho abre:
+    // quem o tem escreve no canal.
+    const h = hostDoAviso('https://discord.com/api/webhooks/1547/uNEatPLPZyBQ');
+    expect(h).not.toContain('uNEat');
+    expect(h).not.toContain('/');
   });
 });
