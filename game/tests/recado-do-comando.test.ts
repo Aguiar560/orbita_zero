@@ -151,6 +151,64 @@ describe('a mensagem chega SEM o jogador fazer nada', () => {
   });
 });
 
+describe('o comando que manda o recado', () => {
+  const cmd = fonte('tools', 'recado.mjs');
+
+  it('ensaia por padrão, e só grava com --enviar', () => {
+    /**
+     * A diferença entre um recado e um engano de operação é uma condição no
+     * `WHERE`. O ensaio mostra o público e o SQL antes de qualquer linha
+     * existir — conferir custa três segundos, desfazer custa um pedido de
+     * desculpas para todo mundo.
+     */
+    expect(cmd).toContain("if (!tem('--enviar'))");
+    expect(cmd).toContain('ENSAIO. Nada foi gravado.');
+    expect(cmd.indexOf("if (!tem('--enviar'))")).toBeLessThan(cmd.indexOf('d1(insercao);'));
+  });
+
+  it('e os três públicos cobrem todo mundo, sem sobra e sem falta', () => {
+    /**
+     * `sem-vip` é literalmente `todos EXCEPT vips`. Escrito como uma consulta
+     * própria — "quem não tem linha em assinaturas" — ele erraria de dois
+     * jeitos: deixaria de fora quem tem assinatura VENCIDA, e divergiria de
+     * `todos` no dia em que a lista de jogadores mudasse de fonte.
+     */
+    expect(cmd).toContain("'sem-vip': `${TODOS} EXCEPT ${VIPS}`");
+    expect(cmd).toContain("expira_em > strftime('%s','now')");
+  });
+
+  it('e "todo mundo" é a UNIÃO das duas tabelas de jogador', () => {
+    // `contas` nasceu na migração 0004 e não conhece quem chegou antes;
+    // `apelidos` só tem quem escolheu um nome. Uma sozinha deixa gente de fora.
+    expect(cmd).toContain('SELECT usuario FROM apelidos UNION SELECT usuario FROM contas');
+  });
+
+  it('e um público vazio não vira envio silencioso', () => {
+    // Um prefixo errado acertaria zero jogadores, e sem esta guarda o comando
+    // diria "enviado" sem ter mandado nada para ninguém.
+    expect(cmd).toContain('nenhum jogador em');
+  });
+
+  it('e a aspa do texto não quebra a consulta', () => {
+    // `d'água` é o texto mais provável do mundo a aparecer num recado em
+    // português, e é exatamente o que fecha a string do SQL no meio.
+    expect(cmd).toContain(`replace(/'/g, "''")`);
+  });
+
+  it('e o público é congelado no envio, não avaliado na entrega', () => {
+    /**
+     * "Mandar para os vips" quer dizer os vips de AGORA. Guardar a regra e
+     * avaliá-la na entrega faria um agradecimento aos assinantes cair, semanas
+     * depois, na tela de quem acabou de assinar — e sumir da de quem deixou
+     * vencer.
+     */
+    expect(cmd).toContain('INSERT INTO recados (usuario, texto, criado_em)');
+    expect(cmd).toContain('SELECT usuario, ');
+    // Nada de coluna de público na tabela: a audiência vira LINHAS.
+    expect(fonte('server', 'migrations', '0018-recados.sql')).not.toMatch(/publico|audiencia/);
+  });
+});
+
 describe('o servidor não entrega o recado de outra pessoa', () => {
   it('a leitura filtra pelo dono e pelo que falta entregar', () => {
     const corpo = corpoDe('recadosDe');

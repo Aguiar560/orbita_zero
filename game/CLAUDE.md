@@ -89,6 +89,17 @@ produção — use antes de teorizar. `d1_migrations` NÃO registra o que subiu 
 cd D:\bbb\game\server; npx wrangler d1 execute orbita-zero --remote --command "SELECT rota, motivo, SUM(n) FROM recusas WHERE hora > strftime('%s','now') - 86400 GROUP BY rota, motivo ORDER BY 3 DESC"
 ```
 
+**Mandar um recado para a tela de quem está jogando** — ele aparece em até
+30 s, sem o jogador recarregar nada:
+
+```bash
+cd D:\bbb\game; node tools/recado.mjs --para vips "texto do recado"
+```
+
+`--para` aceita `todos`, `vips`, `sem-vip` ou o id (ou o começo dele) de um
+jogador. **Sem `--enviar` ele só ensaia**: mostra quem receberia e o SQL, sem
+gravar nada. `--pendentes` lista o que já foi mandado e quem leu.
+
 Um gatilho de tempo manda o resumo a cada cinco minutos quando há
 `ALERTA_WEBHOOK` configurado (`wrangler secret put`). Ver a seção 12 do
 `SISTEMAS.md`.
