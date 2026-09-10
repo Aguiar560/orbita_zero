@@ -109,6 +109,48 @@ describe('a leitura é confirmada ao FECHAR, não ao aparecer', () => {
   });
 });
 
+describe('a mensagem chega SEM o jogador fazer nada', () => {
+  it('tem relógio próprio, mais curto que o da nuvem', () => {
+    /**
+     * Entregar só no boot deixava a mensagem esperando quem estivesse com a
+     * aba aberta — que num idle é a maioria, e por horas. E o ciclo da nuvem,
+     * de 150 s, seria a carona de graça: o atraso dele é exatamente o que faz
+     * a mensagem não parecer do servidor.
+     */
+    expect(game).toContain('const INTERVALO_DO_RECADO = 30;');
+    expect(game).toContain('private tickRecado(dt: number)');
+    expect(game).toContain('this.tickRecado(dt);');
+  });
+
+  it('e não gasta nada com a aba escondida', () => {
+    // Um cartão que aparece para ninguém não foi entregue — e num idle a aba
+    // passa a maior parte do tempo assim.
+    const t = game.slice(game.indexOf('private tickRecado'));
+    const corpo = t.slice(0, t.indexOf('\n  }\n'));
+    expect(corpo).toContain('if (document.hidden || this.entregandoRecado) return;');
+  });
+
+  it('e pergunta assim que a aba volta', () => {
+    const t = game.slice(game.indexOf('private readonly onVisibility'));
+    const corpo = t.slice(0, t.indexOf('\n  };\n'));
+    expect(corpo).toContain('void this.entregarRecados();');
+  });
+
+  it('e dois ciclos seguidos não empilham cartão', () => {
+    /**
+     * A leitura só é confirmada ao fechar, então o mesmo recado continua
+     * pendente enquanto o jogador lê. Sem a trava, o ciclo seguinte o buscaria
+     * de novo e mostraria uma segunda cópia por cima da primeira.
+     */
+    const t = game.slice(game.indexOf('private async entregarRecados'));
+    const corpo = t.slice(0, t.indexOf('\n  }\n'));
+    expect(corpo).toContain('if (this.entregandoRecado) return;');
+    expect(corpo).toContain('this.entregandoRecado = true;');
+    // E solta quando a fila acaba, senão a trava fecharia a porta para sempre.
+    expect((corpo.match(/this\.entregandoRecado = false;/g) ?? []).length).toBe(2);
+  });
+});
+
 describe('o servidor não entrega o recado de outra pessoa', () => {
   it('a leitura filtra pelo dono e pelo que falta entregar', () => {
     const corpo = corpoDe('recadosDe');

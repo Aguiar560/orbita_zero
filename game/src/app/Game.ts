@@ -53,6 +53,19 @@ const INTERVALO_DE_SUBIDA = 150;
 const FOLGA_PARA_SUBIR = 600;
 
 /**
+ * De quanto em quanto tempo perguntar pelo recado do comando.
+ *
+ * Trinta segundos é o que separa "uma mensagem do servidor" de "uma mensagem
+ * que apareceu em algum momento". O ciclo da nuvem, de 150 s, seria a carona
+ * de graça — e o atraso dela é exatamente o que faz a mensagem não parecer do
+ * servidor.
+ *
+ * O custo é a leitura mais barata que existe: um índice, quase sempre zero
+ * linhas, e só enquanto a aba está à vista.
+ */
+const INTERVALO_DO_RECADO = 30;
+
+/**
  * A ausência mínima saiu daqui na Fase 5 do Passo 9.
  *
  * Quem decide se houve ausência é o SERVIDOR, pela diferença entre agora e o
@@ -118,6 +131,9 @@ export class Game {
 
   /** Segundos desde a última tentativa de subir o save. */
   private relogioDaNuvem = 0;
+  private relogioDoRecado = 0;
+  /** Há um cartão de recado na tela, ou uma busca em curso. */
+  private entregandoRecado = false;
   /** A versão que o servidor já publica e esta aba ainda não tem. */
   private versaoNova: string | null = null;
   /** Trava: dois gatilhos podem pedir a recarga no mesmo instante. */
@@ -757,7 +773,32 @@ export class Game {
     }
     if (!this.sim.laboratorio.active) this.sim.tickSave(dt);
     this.tickNuvem(dt);
+    this.tickRecado(dt);
   };
+
+  /**
+   * Pergunta pelo recado do comando, com a aba à vista.
+   *
+   * ## Por que relógio próprio, e não o da nuvem
+   *
+   * Por dois motivos que apontam para o mesmo lado. O da nuvem é de 150 s —
+   * atraso demais para uma mensagem que se quer "do servidor, agora" —, e ele
+   * PARA durante o Laboratório, que é bancada de medição: um recado não tem
+   * por que esperar alguém sair de lá.
+   *
+   * ## Por que só com a aba à vista
+   *
+   * Porque um cartão que aparece para ninguém não foi entregue, e o
+   * `visibilitychange` já pergunta assim que a aba volta. Escondida, isto
+   * seria custo puro — e num idle a aba passa a maior parte do tempo assim.
+   */
+  private tickRecado(dt: number): void {
+    if (document.hidden || this.entregandoRecado) return;
+    this.relogioDoRecado += dt;
+    if (this.relogioDoRecado < INTERVALO_DO_RECADO) return;
+    this.relogioDoRecado = 0;
+    void this.entregarRecados();
+  }
 
   /**
    * Sobe o save de tempos em tempos.
@@ -858,7 +899,10 @@ export class Game {
    */
   private readonly onVisibility = (): void => {
     this.loop.setBackground(document.hidden);
-    if (document.hidden) this.sim.save();
+    if (document.hidden) return void this.sim.save();
+    // Voltar para a aba é quando o jogador volta a olhar. Perguntar aqui evita
+    // que ele espere o resto do ciclo para ver um recado que já estava pronto.
+    void this.entregarRecados();
   };
 
   /**
@@ -876,11 +920,18 @@ export class Game {
    * aba em outra janela quando ele apareceu. Ver não é ler.
    */
   private async entregarRecados(): Promise<void> {
+    // Um cartão por vez, e uma busca por vez. Sem esta trava, o ciclo da nuvem
+    // pediria de novo enquanto o jogador ainda lê o primeiro — e o mesmo recado
+    // apareceria duplicado, porque a leitura só é confirmada ao fechar.
+    if (this.entregandoRecado) return;
+    this.entregandoRecado = true;
+
     const fila = [...await buscarRecados()];
+    if (!fila.length) { this.entregandoRecado = false; return; }
 
     const proximo = (): void => {
       const recado = fila.shift();
-      if (!recado) return;
+      if (!recado) { this.entregandoRecado = false; return; }
       mostrarRecado(this.rootEl, recado, (id) => {
         void marcarRecadosLidos([id]);
         proximo();
