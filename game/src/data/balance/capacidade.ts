@@ -21,6 +21,15 @@ export const CARGA_INICIAL = 15;
 /** Teto absoluto. Grade 7 × 10 — o formato que o painel foi desenhado para ter. */
 export const CARGA_MAXIMA = 70;
 
+/**
+ * Quantas peças de chefe podem esperar espaço (`GameState.pecasRetidas`).
+ *
+ * É promessa de peça do pote, não item guardado. O teto é sanidade: um save
+ * editado com mil viraria mil coletas. Vinte cobre alguns chefes seguidos com o
+ * inventário cheio — o chefe solta 3 peças mais `floor(2 × Sorte)`.
+ */
+export const PECAS_RETIDAS_MAX = 20;
+
 /** Colunas da grade quando ela ainda é estreita, e quando já cresceu. */
 export const COLUNAS_MIN = 5;
 export const COLUNAS_MAX = 7;

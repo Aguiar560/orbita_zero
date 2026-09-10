@@ -3,7 +3,7 @@ import { bus, toast } from '@app/Bus';
 import { afinidadeDoAlvo, resolverDrop } from '@data/balance/drops';
 import { multiplicadorDoTier, raridadeExclusivaDoTier, tierDoContatoPorId } from '@data/balance/contatos';
 import { confiancaDaMissao } from '@data/balance/confianca';
-import { CARGA_MAXIMA, CONCESSAO_POR_ID, capacidadeDeItens } from '@data/balance/capacidade';
+import { CARGA_MAXIMA, CONCESSAO_POR_ID, PECAS_RETIDAS_MAX, capacidadeDeItens } from '@data/balance/capacidade';
 import { RENDA_POR_ABATE, quantidadeDeMaterialGalactico } from '@data/balance/economia-recursos';
 import { RECURSO_POR_ID, recursoDoChefe, recursosDoPlaneta } from '@data/recursos';
 import { receitaPara } from '@data/balance/fusao';
@@ -2133,7 +2133,40 @@ export class Sim {
     return null;
   }
 
-  rollDrops(kind: 'onda' | 'elite' | 'chefe', alvoDef?: { id?: string; tags?: readonly string[]; element?: ElementId }): Item[] {
+  /**
+   * Quantas peças o chefe do encontro atual pode soltar — o teto da rolagem.
+   *
+   * Existe para o aviso ANTES da luta: o jogador não sabe quantas peças um
+   * chefe entrega, e descobria na hora em que elas não cabiam. É a mesma conta
+   * de `rollDrops`, com a peça sorteada contada como certa.
+   */
+  pecasDoChefe(): number {
+    const e = this.encounter;
+    if (e.kind !== 'chefe') return 0;
+    const regra = resolverDrop({
+      setor: e.sector, galaxia: galaxyOfSector(e.sector), kind: 'chefe',
+      chefe: e.boss?.id ?? null, inimigo: null, elemento: e.boss?.element,
+    });
+    const luck = this.stats.sorte * regra.sorteMult;
+    return Math.max(0, Math.round((regra.itensExtras + Math.floor(luck * 2) + 1) * regra.quantidade));
+  }
+
+  /** Espaços livres do inventário agora, sem contar cápsulas no ar. */
+  get espacosLivres(): number {
+    return Math.max(0, this.cargoSlots - this.state.inventory.length);
+  }
+
+  /**
+   * @param emTransito Cápsulas de item já no ar, a caminho da nave. Elas vão
+   *   ocupar espaço ao serem coletadas, e ignorá-las fazia a conta de "cabe?"
+   *   mentir: com 1 espaço e 4 peças de chefe, as quatro viravam cápsula, a
+   *   primeira entrava e as outras três eram DESCARTADAS na coleta.
+   */
+  rollDrops(
+    kind: 'onda' | 'elite' | 'chefe',
+    alvoDef?: { id?: string; tags?: readonly string[]; element?: ElementId },
+    emTransito = 0,
+  ): Item[] {
     const e = this.encounter;
     const out: Item[] = [];
 
@@ -2185,19 +2218,62 @@ export class Sim {
     // dono. O servidor aplica os mesmos `pisoDeRaridade`, `ilvlBonus` e
     // `slotFavorecido` ao montar cada pote, derivando-os do setor.
     void ilvl; void opts;
+    let livres = this.cargoSlots - this.state.inventory.length - Math.max(0, emTransito);
     for (let i = 0; i < total; i++) {
       // ESPIA antes de consumir. Se o item não vai caber, ele fica no lote —
       // e o `break` para o resto: o que não coube para um não cabe para o
       // seguinte, e insistir só avisaria a mesma coisa várias vezes.
       const proximo = this.pote?.[kind][0];
-      if (proximo && this.seriaPerdidoPorFalta(proximo)) {
-        bus.emit('inventario:cheio', { motivo: 'nao-coletado' });
+      const ocupa = !proximo || this.ocupaEspaco(proximo);
+      if (ocupa && livres <= 0) {
+        if (kind === 'chefe') {
+          // A peça de CHEFE não é deixada para trás: fica guardada até haver
+          // espaço, e o jogador é avisado de quantas são. Ver `pecasRetidas`.
+          this.reterPecasDoChefe(total - i);
+        } else {
+          bus.emit('inventario:cheio', { motivo: 'nao-coletado' });
+        }
         break;
       }
       const item = this.tirarDoPote(kind);
       if (item) out.push(item);
+      if (ocupa) livres--;
     }
     return out;
+  }
+
+  /** Guarda `n` peças de chefe para quando houver espaço, e avisa. */
+  private reterPecasDoChefe(n: number): void {
+    const antes = this.state.pecasRetidas;
+    this.state.pecasRetidas = Math.min(PECAS_RETIDAS_MAX, antes + n);
+    bus.emit('chefe:pecasRetidas', { retidas: this.state.pecasRetidas, novas: this.state.pecasRetidas - antes });
+    this.touch();
+  }
+
+  /**
+   * Entrega as peças de chefe guardadas, enquanto houver espaço.
+   *
+   * Chamado a cada passo do laço: a verificação vazia é uma comparação, e
+   * ligar a entrega a cada ação que libera espaço (vender, desmontar, equipar,
+   * fundir, o descarte automático…) seria uma lista que esquece a próxima.
+   *
+   * A peça sai do pote AGORA, e não na hora da morte do chefe: é o que a
+   * mantém no servidor enquanto espera — o cliente só pede "uma de chefe".
+   * Pote vazio vira dívida, paga quando a próxima página chegar.
+   */
+  entregarPecasRetidas(): number {
+    if (this.state.pecasRetidas <= 0 || this.state.inventory.length >= this.cargoSlots) return 0;
+    let entregues = 0;
+    while (this.state.pecasRetidas > 0 && this.state.inventory.length < this.cargoSlots) {
+      this.state.pecasRetidas--;
+      const item = this.tirarDoPote('chefe');
+      if (item) this.acquire(item);
+      entregues++;
+    }
+    toast(entregues === 1 ? 'Peça do chefe entregue' : `${entregues} peças do chefe entregues`, 'epic');
+    bus.emit('chefe:pecasRetidas', { retidas: this.state.pecasRetidas, novas: 0 });
+    this.touch();
+    return entregues;
   }
 
   /** Tipos de material distintos guardados hoje. */
@@ -2385,10 +2461,22 @@ export class Sim {
    * jogador PEDIU: ali o item é consumido e pago, e deve continuar sendo. A
    * pergunta aqui é outra — "não coube" —, e só ela justifica deixar no chão.
    */
-  seriaPerdidoPorFalta(item: Item): boolean {
+  /**
+   * A peça vai para o INVENTÁRIO se for coletada?
+   *
+   * Não vai quando a automação que o jogador ligou a consome antes: desmanche
+   * por raridade (`autoSalvage`) ou auto-equipar. É a pergunta que a conta de
+   * espaço livre precisa — uma peça que vira material não ocupa lugar.
+   */
+  ocupaEspaco(item: Item): boolean {
     if (item.rarity < this.state.settings.autoSalvage) return false;
     if (this.vipAtivo && this.state.settings.autoEquip
       && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) return false;
+    return true;
+  }
+
+  seriaPerdidoPorFalta(item: Item): boolean {
+    if (!this.ocupaEspaco(item)) return false;
     /**
      * Cheio é cheio, melhor ou pior.
      *

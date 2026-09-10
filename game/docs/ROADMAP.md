@@ -13,6 +13,26 @@ de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
+## 10/09/2026 — a peça do chefe espera espaço
+
+**O pedido:** "o player não sabe quantos itens irá ganhar" ao matar o chefe com
+o inventário cheio. Medido no código: a peça que não cabia ficava no lote e se
+perdia na troca de setor; pior, com 1 vaga e 4 peças as quatro viravam cápsula
+(a conta de espaço ignorava as cápsulas no ar) e três eram **descartadas** na
+coleta.
+
+- `rollDrops` conta as cápsulas no ar e só solta o que cabe.
+- Aviso quando o chefe aparece, com quantas peças ele pode soltar
+  (`pecasDoChefe`) e quantas vagas faltam. `boss:spawned` existia no tipo do
+  barramento e ninguém o disparava.
+- O que não cabe vira `pecasRetidas` (save, teto 20), com cartão âmbar até
+  entrar; `entregarPecasRetidas` entrega assim que houver espaço.
+- Wiki: seção *Inventário cheio e peças do chefe* em Equipamentos.
+
+**Testes:** 6 novos em `tests/inventario-cheio.test.ts`. Suíte: 1.649.
+
+---
+
 ## 10/09/2026 — o cristal fica escasso, e só o servidor o cria
 
 **O pedido:** "os cristais são a fonte de renda do jogo, então devem ser

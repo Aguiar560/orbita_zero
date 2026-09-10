@@ -22,6 +22,11 @@ export interface GameEvents {
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };
+  /**
+   * Peças de chefe esperando espaço no inventário mudaram.
+   * `retidas` é o total agora; `novas`, quantas o último chefe acabou de reter.
+   */
+  'chefe:pecasRetidas': { retidas: number; novas: number };
   /** Uma missão foi entregue no cliente. O servidor ainda precisa conferir. */
   'missao:entregue': { id: string };
   /** Pausa o combate enquanto uma transmissão canônica está sendo lida. */

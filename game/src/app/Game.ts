@@ -815,6 +815,9 @@ export class Game {
     for (let i = 0; i < speed; i++) {
       this.vertical.update(dt);
     }
+    // Peça de chefe guardada entra assim que houver espaço — seja qual for a
+    // ação que o liberou. Sem retidas, é uma comparação e volta.
+    if (!this.sim.laboratorio.active) this.sim.entregarPecasRetidas();
     if (!this.sim.laboratorio.active) this.sim.tickSave(dt);
     this.tickNuvem(dt);
     this.tickRecado(dt);

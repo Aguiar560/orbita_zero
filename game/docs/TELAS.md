@@ -361,6 +361,21 @@ e a montagem não depende de arrastar.
 - **Escreve:** equipar/desequipar, favoritar, vender por Sucata, desmontar por materiais
 - **Capacidade:** 15 espaços no começo, até 70 por conquista (`cargaLiberada`)
 
+**Inventário cheio e o chefe (10/09/2026).** O jogador não sabe quantas peças um
+chefe solta (3 mais `floor(2 × Sorte)`), e perdia as que não cabiam: ficavam no
+lote e se perdiam na troca de setor, ou viravam cápsula e eram descartadas na
+coleta — a conta de espaço ignorava as cápsulas no ar. Agora:
+
+- `rollDrops` recebe as cápsulas no ar (`VerticalMode.capsulasNoAr`) e só solta
+  o que cabe, para qualquer tipo de inimigo.
+- Quando o chefe aparece (`boss:spawned`, disparado pelo `WaveDirector`) e
+  `pecasDoChefe()` passa de `espacosLivres`, um cartão avisa quantas peças ele
+  pode soltar e quantas vagas faltam.
+- A peça de chefe que não cabe vira `pecasRetidas` (no save, teto
+  `PECAS_RETIDAS_MAX` = 20) e um cartão âmbar fica na tela até ela entrar.
+  `entregarPecasRetidas`, chamado a cada passo do laço, a tira do pote e a
+  entrega assim que houver espaço — seja qual for a ação que o liberou.
+
 **`ui/ItemCard.ts`** (184 linhas) desenha a ficha: nome colorido por raridade,
 implícito da base, elemento, conjunto, e os afixos **agrupados em Prefixos e
 Sufixos** com etiqueta de tier (`T1`…`T10`). O rótulo do grupo só aparece quando

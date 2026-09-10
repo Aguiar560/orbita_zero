@@ -18,7 +18,8 @@ import { describe, expect, it } from 'vitest';
 
 import { bus } from '@app/Bus';
 import { Sim } from '@sim/index';
-import { createState } from '@sim/state';
+import { createState, migrate } from '@sim/state';
+import { PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
 
 const shell = readFileSync(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8');
 
@@ -121,8 +122,10 @@ describe('os três desfechos do Inventário cheio', () => {
   };
 
   it('a peça que não cabe avisa que NÃO foi coletada', () => {
+    // Elite, e não chefe: desde 10/09 a peça de CHEFE que não cabe fica
+    // guardada, com aviso próprio — ver o bloco abaixo.
     const sim = lotado(21);
-    expect(eventos(sim, () => { sim.rollDrops('chefe'); })).toContain('nao-coletado');
+    expect(eventos(sim, () => { sim.rollDrops('elite'); })).toContain('nao-coletado');
   });
 
   it('a peça desfeita ao coletar avisa que foi desfeita', () => {
@@ -154,5 +157,78 @@ describe('os três desfechos do Inventário cheio', () => {
     expect(avisos).toContain('nao-coletado');
     // A peça continua no soquete: não foi para lugar nenhum.
     expect(sim.equipamentoDe()[arma.slot]?.uid).toBe(arma.uid);
+  });
+});
+
+describe('as peças do chefe esperam espaço', () => {
+  /**
+   * Pedido de 10/09/2026: "o player não sabe quantos itens irá ganhar". Ao
+   * matar o chefe com o inventário cheio, as peças dele ficavam no lote e se
+   * perdiam na troca de setor — ou viravam cápsula e eram DESCARTADAS na
+   * coleta, porque a conta de espaço ignorava as cápsulas já no ar.
+   */
+  const retidas = (sim: Sim, corpo: () => void): number[] => {
+    const vistos: number[] = [];
+    const off = bus.on('chefe:pecasRetidas', ({ retidas: n }) => vistos.push(n));
+    try { corpo(); } finally { off(); }
+    return vistos;
+  };
+
+  it('o que não cabe é guardado e avisado, e não sai do lote', () => {
+    const sim = lotado(31);
+    const lote = sim.pote!.chefe.length;
+    const avisos = retidas(sim, () => { expect(sim.rollDrops('chefe')).toEqual([]); });
+    expect(sim.state.pecasRetidas).toBeGreaterThanOrEqual(3);
+    expect(avisos.at(-1)).toBe(sim.state.pecasRetidas);
+    expect(sim.pote!.chefe.length).toBe(lote);
+  });
+
+  it('com espaço para parte, entrega a parte e guarda o resto', () => {
+    const sim = lotado(32);
+    sim.state.inventory.splice(0, 1); // um espaço livre
+    const soltas = sim.rollDrops('chefe');
+    expect(soltas).toHaveLength(1);
+    expect(sim.state.pecasRetidas).toBeGreaterThanOrEqual(2);
+  });
+
+  it('as cápsulas já no ar contam como espaço ocupado', () => {
+    const sim = lotado(33);
+    sim.state.inventory.splice(0, 2); // dois espaços livres…
+    const soltas = sim.rollDrops('chefe', undefined, 2); // …e duas cápsulas a caminho
+    expect(soltas).toEqual([]);
+    expect(sim.state.pecasRetidas).toBeGreaterThanOrEqual(3);
+  });
+
+  it('liberar espaço entrega as guardadas, direto no inventário', () => {
+    const sim = lotado(34);
+    sim.rollDrops('chefe');
+    const guardadas = sim.state.pecasRetidas;
+    expect(sim.entregarPecasRetidas(), 'cheio: nada a entregar').toBe(0);
+
+    sim.state.inventory.splice(0, 2);
+    const avisos = retidas(sim, () => { expect(sim.entregarPecasRetidas()).toBe(2); });
+    expect(sim.state.pecasRetidas).toBe(guardadas - 2);
+    expect(sim.state.inventory.length).toBe(sim.cargoSlots);
+    expect(avisos.at(-1)).toBe(guardadas - 2);
+    // Saiu do lote pela porta de sempre: o servidor recebe "coletar chefe".
+    expect(sim.state.comandosDeItem.filter((c) => c.tipo === 'coletar' && c.pote === 'chefe')).toHaveLength(2);
+  });
+
+  it('o save guarda a contagem, com teto', () => {
+    const sim = lotado(35);
+    sim.rollDrops('chefe');
+    const salvo = JSON.parse(JSON.stringify(sim.state)) as Record<string, unknown>;
+    expect(migrate(salvo).pecasRetidas).toBe(sim.state.pecasRetidas);
+    expect(migrate({ ...salvo, pecasRetidas: 1000 }).pecasRetidas).toBe(PECAS_RETIDAS_MAX);
+    expect(migrate({ ...salvo, pecasRetidas: -3 }).pecasRetidas).toBe(0);
+  });
+
+  it('o aviso antes da luta sabe quantas peças o chefe pode soltar', () => {
+    const sim = new Sim(createState(36));
+    sim.jumpSector(10);
+    sim.state.run.wave = 7;
+    sim.refreshEncounter();
+    expect(sim.encounter.kind).toBe('chefe');
+    expect(sim.pecasDoChefe()).toBeGreaterThanOrEqual(3);
   });
 });

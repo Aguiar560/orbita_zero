@@ -23,6 +23,7 @@ import { SCREEN_UNLOCKS } from '@data/screen-unlocks';
 import { RECEITAS, chanceDeSubir } from '@data/balance/fusao';
 import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 import { ALVO_DA_CAMPANHA, SETOR_FINAL_DA_CAMPANHA } from '@data/balance/cristal';
+import { PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
 import { CHESTS } from '@data/chests';
 import { SHOP } from '@data/shop';
 import { MARCOS_DE_CRISTAL } from '@sim/marcos-de-cristal';
@@ -148,6 +149,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
       { titulo: 'Grade e seleção', corpo: 'Um clique deixa a peça amarela e a inclui na seleção. Não existe caixa de tique. Duplo clique equipa, evitando que selecionar e equipar sejam a mesma ação. O botão direito alterna Favorito e protege a peça das ações em lote.' },
       { titulo: 'Ficha ao passar o mouse', corpo: `A ficha fica dentro do jogo, acima da barra de ações. Ela mostra nome, base, slot, raridade, nível, prefixos, sufixos e comparação com o equipado. A escala possui ${RARITIES.length} raridades, de ${RARITIES[0]?.name} a ${RARITIES.at(-1)?.name}.`, dica: 'Verde e vermelho comparam números; elemento, conjunto e função da configuração ainda precisam ser avaliados.' },
       { titulo: 'Vender e desmontar', corpo: 'Os botões aparecem abaixo da grade somente quando existe seleção. Vender converte as peças em sucata; Desmontar devolve materiais. As duas ações abrem uma confirmação dentro da interface antes de alterar o inventário.' },
+      { titulo: 'Inventário cheio e peças do chefe', corpo: `Com o inventário cheio, a peça comum que cai fica para trás e o aviso “Inventario Cheio” aparece por alguns segundos. As peças de chefe não se perdem: todo chefe solta pelo menos 3 peças (mais com Sorte). Quando ele aparece e o espaço não basta, um cartão avisa quantas peças ele pode soltar. O que não couber fica guardado — até ${PECAS_RETIDAS_MAX} peças — e um cartão âmbar mostra quantas estão esperando. Venda ou desmonte peças e elas entram sozinhas no inventário.`, dica: 'Baús são diferentes: eles pedem confirmação antes de abrir sem espaço, e o que não couber de um baú é desmontado na hora.' },
     ],
   },
   '/sistemas/fabricacao': {

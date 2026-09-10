@@ -8282,6 +8282,12 @@ select option:disabled { color: #667991; }
 }
 .dica-escudo-ok:hover { color: var(--text); }
 
+/* Peças do chefe sem espaço: o mesmo cartão, em âmbar. Não é dica, é algo do
+ * jogador esperando uma ação — a cor de alerta da casa, sem ser o vermelho de
+ * erro. Sobe acima do canto para não cobrir a oferta de recuo, que mora ali. */
+.pecas-retidas { border-color: var(--accent-2); bottom: 150px; box-shadow: 0 16px 44px rgba(0, 0, 0, .6), 0 0 22px rgba(255, 182, 56, .18); }
+.pecas-retidas .dica-escudo-topo strong { color: var(--accent-2); }
+
 /* Placar da galáxia: os estados em que não há lista.
  *
  * Antes o widget tinha cinco nomes escritos no código e nunca ficava vazio.

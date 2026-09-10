@@ -505,6 +505,11 @@ export class Shell {
     bus.on('toast', ({ text, kind, icon }) => this.pushToast(text, kind ?? 'info', icon));
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
     bus.on('inventario:cheio', ({ motivo }) => this.avisarInventarioCheio(motivo));
+    bus.on('boss:spawned', () => this.avisarEspacoParaOChefe());
+    bus.on('chefe:pecasRetidas', ({ retidas }) => this.mostrarPecasRetidas(retidas));
+    // Peças guardadas numa sessão anterior: o save lembra, e a tela precisa
+    // dizer logo ao abrir — senão o jogador libera espaço sem saber por quê.
+    if (this.sim.state.pecasRetidas > 0) setTimeout(() => this.mostrarPecasRetidas(this.sim.state.pecasRetidas), 0);
 
     bus.on('panel:open', ({ id, galaxy }) => {
       const panel = this.panels.find((p) => p.id === id);
@@ -795,6 +800,73 @@ export class Shell {
    * jogador pode estar a um item de passar, e ninguém sabe disso melhor que
    * ele.
    */
+  /**
+   * O chefe apareceu e as peças dele não cabem: avisa AGORA, durante a luta.
+   *
+   * ## Por que antes, e não só depois
+   *
+   * O jogador não sabe quantas peças um chefe solta — relato de 10/09/2026:
+   * "o player não sabe gerenciar isso". Avisar quando o chefe aparece dá a ele
+   * a luta inteira para vender ou desmontar. O que não couber mesmo assim fica
+   * guardado (`mostrarPecasRetidas`), então este aviso é conveniência, não a
+   * única proteção.
+   *
+   * "Até N": a última peça depende de sorte, e o desmanche automático pode
+   * consumir alguma antes de ela ocupar lugar. O teto é a promessa honesta.
+   */
+  private avisarEspacoParaOChefe(): void {
+    const pecas = this.sim.pecasDoChefe();
+    const livres = this.sim.espacosLivres;
+    if (pecas <= livres || this.sim.testMode) return;
+    this.root.querySelector('.aviso-chefe')?.remove();
+
+    const cartao = h('.dica-escudo.pecas-retidas.aviso-chefe', { role: 'alert' });
+    const fechar = (): void => cartao.remove();
+    const falta = pecas - livres;
+    cartao.append(
+      h('.dica-escudo-topo', {},
+        h('strong', { text: 'Chefe à vista — falta espaço' }),
+        h('button.dica-escudo-x', { text: '✕', 'aria-label': 'Fechar', onclick: fechar }),
+      ),
+      h('p.dica-escudo-txt', {
+        text: `Ele solta até ${pecas} peças e você tem ${livres} ${livres === 1 ? 'espaço livre' : 'espaços livres'}.`
+          + ` Venda ou desmonte ${falta} ${falta === 1 ? 'peça' : 'peças'} do inventário — o que não couber fica guardado até você liberar espaço.`,
+      }),
+      h('.dica-escudo-acoes', {}, h('button.dica-escudo-ok', { text: 'Entendi', onclick: fechar })),
+    );
+    this.root.append(cartao);
+    setTimeout(fechar, 30_000);
+  }
+
+  /**
+   * Peças do chefe esperando espaço: um cartão que FICA até elas entrarem.
+   *
+   * Diferente do "Inventario Cheio" de dois segundos, que é estado momentâneo
+   * da cena. Aqui há algo do jogador guardado e uma ação a fazer — liberar
+   * espaço —, e o cartão só sai quando a última peça é entregue. Fechar o
+   * esconde até a próxima mudança; as peças continuam guardadas no save.
+   */
+  private mostrarPecasRetidas(retidas: number): void {
+    let cartao = this.root.querySelector<HTMLElement>('.pecas-retidas-guardadas');
+    if (retidas <= 0) { cartao?.remove(); return; }
+    this.root.querySelector('.aviso-chefe')?.remove();
+
+    if (!cartao) {
+      cartao = h('.dica-escudo.pecas-retidas.pecas-retidas-guardadas', { role: 'status' });
+      this.root.append(cartao);
+    }
+    const alvo = cartao;
+    clear(alvo).append(
+      h('.dica-escudo-topo', {},
+        h('strong', { text: retidas === 1 ? '1 peça do chefe guardada' : `${retidas} peças do chefe guardadas` }),
+        h('button.dica-escudo-x', { text: '✕', 'aria-label': 'Esconder', onclick: () => alvo.remove() }),
+      ),
+      h('p.dica-escudo-txt', {
+        text: `Não couberam no inventário. Libere ${retidas} ${retidas === 1 ? 'espaço' : 'espaços'} — venda ou desmonte peças — e elas entram sozinhas.`,
+      }),
+    );
+  }
+
   private oferecerRecuo(setor: number, quedas: number): void {
     // Uma por vez. Outra queda pode chegar antes de o jogador responder, e
     // dois cartões iguais empilhados é defeito.

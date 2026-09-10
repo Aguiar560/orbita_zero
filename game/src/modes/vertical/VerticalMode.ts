@@ -1647,8 +1647,18 @@ export class VerticalMode {
     const rolls = this.sim.rollDrops(
       e.boss ? 'chefe' : e.def.elite ? 'elite' : 'onda',
       { id: e.def.id, tags: e.def.tags, element: e.boss?.element ?? e.def.element },
+      // As cápsulas já no ar também vão ocupar espaço. Sem contá-las, a peça
+      // que não cabia virava cápsula e era descartada na coleta.
+      this.capsulasNoAr(),
     );
     for (const item of rolls) this.spawnLoot(e.x, e.y, item);
+  }
+
+  /** Cápsulas de item ainda a caminho da nave. */
+  private capsulasNoAr(): number {
+    let n = 0;
+    this.pickups.each((p) => { if (p.kind === 'item' && p.item) n++; });
+    return n;
   }
 
   private spawnLoot(x: number, y: number, item: Item): void {

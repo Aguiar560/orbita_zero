@@ -1,4 +1,5 @@
 ﻿import type { Pool } from '@core/pool';
+import { bus } from '@app/Bus';
 import { Rng, clamp } from '@core/math';
 import type { Encounter } from '@sim/progression';
 import { unitHp } from '@sim/progression';
@@ -188,6 +189,9 @@ export class WaveDirector {
           boss.anchorX = VIEW.w / 2;
           boss.anchorY = VIEW.h * 0.22;
           boss.share = 1;
+          // O evento existia no tipo e ninguém o disparava. Ele é a deixa do
+          // aviso de espaço: o jogador ainda pode liberar espaço durante a luta.
+          bus.emit('boss:spawned', { id: enc.boss.id, name: enc.boss.name });
         }
         return 1;
       }

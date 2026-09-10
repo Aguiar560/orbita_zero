@@ -610,6 +610,16 @@ export interface GameState {
   comandosDeItem: ComandoDeItem[];
 
   /**
+   * Peças de CHEFE que não couberam no inventário e esperam espaço.
+   *
+   * Uma contagem, não os itens: a peça continua no pote do servidor e só sai
+   * dele quando houver onde guardá-la (`entregarPecasRetidas`). Antes ela nem
+   * virava cápsula, ou virava e era descartada ao ser coletada — o jogador
+   * matava o chefe e perdia o que ele soltou sem saber quantas peças eram.
+   */
+  pecasRetidas: number;
+
+  /**
    * Cargas de serviço compradas e ainda não usadas. id → quantidade.
    *
    * Separado de `shop`, que conta COMPRAS acumuladas para cota e preço

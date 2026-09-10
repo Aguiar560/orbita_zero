@@ -5,7 +5,7 @@ import { frotaSa, itemUtilizavel, numeroSao, recursosSaos } from './sanear';
 import { MISSAO_POR_ID } from '@data/missoes';
 import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
-import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES } from '@data/balance/capacidade';
+import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES, PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
 import { limiteDeMissoes } from './vip';
 
@@ -115,6 +115,7 @@ export function createState(
     vip: { expiresAt: 0 },
     pendentes: [],
     comandosDeItem: [],
+    pecasRetidas: 0,
     servicos: {},
     command: { nivel: 1, xp: 0, allocated: [], refunds: 3 },
     naves: {},
@@ -259,6 +260,9 @@ export function migrate(raw: unknown): GameState | null {
     vip: { ...fresh.vip, ...(data.vip ?? {}) },
     pendentes: Array.isArray(data.pendentes) ? data.pendentes : [],
     comandosDeItem: Array.isArray(data.comandosDeItem) ? data.comandosDeItem : [],
+    // Teto de 20: é uma PROMESSA de peça do pote, e um save editado com mil
+    // viraria mil coletas. Vinte cobre dois chefes seguidos com o baú cheio.
+    pecasRetidas: Math.max(0, Math.min(PECAS_RETIDAS_MAX, Math.floor(Number(data.pecasRetidas) || 0))),
     servicos: { ...data.servicos },
     command: { ...fresh.command, ...data.command },
     chests: { ...data.chests },
