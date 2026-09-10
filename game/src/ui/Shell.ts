@@ -43,6 +43,8 @@ import { ChatPanel } from './ChatPanel';
 import { instalarTooltipsDoJogo } from './TooltipDoJogo';
 import { TransmissoesDaCampanha } from './TransmissaoDaCampanha';
 import { transmissaoAoEntrarNoSetor, transmissaoAposVitoria, type TransmissaoDaCampanha } from '@data/narrativa-campanha';
+import { bossForSector } from '@data/bosses';
+import { chaveDaGalaxia } from '@data/chaves-de-acesso';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
@@ -506,6 +508,7 @@ export class Shell {
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
     bus.on('inventario:cheio', ({ motivo }) => this.avisarInventarioCheio(motivo));
     bus.on('boss:spawned', () => this.avisarEspacoParaOChefe());
+    bus.on('boss:access-requested', ({ sector, galaxia, bossId }) => this.confirmarEntradaNoChefe(sector, galaxia, bossId));
     bus.on('access-key:dropped', ({ galaxia, garantida }) => this.pushToast(
       `Chave da Galáxia ${galaxia + 1} ${garantida ? 'garantida' : 'encontrada'} · guardada no Armazém`, 'good', 'ui/icon_star',
     ));
@@ -910,6 +913,33 @@ export class Shell {
     // parte da moldura da tela. Não responder é ficar — que é o padrão certo,
     // porque é o que não mexe em nada.
     setTimeout(fechar, 45_000);
+  }
+
+  private confirmarEntradaNoChefe(sector: number, galaxia: number, bossId: string): void {
+    if (this.root.querySelector('.boss-key-confirmacao')) return;
+    const boss = bossForSector(sector);
+    const chave = chaveDaGalaxia(galaxia);
+    const quantidade = this.sim.quantidadeChaveDaGalaxia(galaxia);
+    const modal = h('.modal-backdrop.boss-key-confirmacao', { role: 'presentation' });
+    const fechar = (): void => modal.remove();
+    const voltar = h('button.btn', { text: 'VOLTAR AO SETOR ANTERIOR', onclick: () => { this.sim.recuarUmSetor(); fechar(); } });
+    const usar = h('button.btn.primary.big', {
+      disabled: quantidade <= 0,
+      onclick: () => { if (this.sim.prepararAcessoAoChefe(bossId)) fechar(); },
+    }, h('span', { text: 'USAR CHAVE E ENTRAR' }));
+    modal.append(h('.modal.boss-key-confirmacao-cartao', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'boss-key-confirmacao-titulo' },
+      h('span.boss-key-confirmacao-kicker', { text: `GALÁXIA ${String(galaxia + 1).padStart(2, '0')} · SETOR ${sector}` }),
+      h('h2#boss-key-confirmacao-titulo', { text: 'Acesso ao chefe' }),
+      h('p.muted', { text: `A entrada consome 1 chave e inicia a rota de ${boss.name}.` }),
+      h('.boss-key-confirmacao-chave', { style: { '--key-cor': chave.cor } as Partial<CSSStyleDeclaration> },
+        h('img', { src: `/assets/${chave.arte}`, alt: '', 'aria-hidden': 'true' }),
+        h('span', {}, h('strong', { text: chave.nome }), h('small', { text: `Você possui ${quantidade} · após entrar: ${Math.max(0, quantidade - 1)}` })),
+      ),
+      quantidade > 0 ? h('p.boss-key-confirmacao-alerta', { text: 'A chave é exclusiva desta galáxia e não pode ser devolvida.' }) : h('p.boss-key-confirmacao-alerta', { text: 'Você não possui a chave desta galáxia.' }),
+      h('.boss-key-confirmacao-acoes', {}, voltar, usar),
+    ));
+    modal.addEventListener('click', (event) => { if (event.target === modal) voltar.click(); });
+    this.root.append(modal);
   }
 
   /**

@@ -91,6 +91,7 @@ const FALHAS_PARA_OFERECER_RECUO = 3;
 const PILHA_MAX = 999_999_999;
 
 import { galaxyOfSector, phaseOfSector } from '@data/galaxies';
+import { bossForSector, isBossSector } from '@data/bosses';
 import { CHANCE_DROP_CHAVE_REPETICAO, CHAVE_POR_ID, chaveDaGalaxia, type ChaveDeAcessoDef } from '@data/chaves-de-acesso';
 import { CHEST_BY_ID } from '@data/chests';
 import { getHull, HULLS, normalizeHullHitbox, type HullHitbox } from '@data/hulls';
@@ -759,6 +760,10 @@ export class Sim {
     this.marcarSetor();
     this.state.universe.bestSector = Math.max(this.state.universe.bestSector, this.state.run.sector);
     this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
+    if (isBossSector(this.state.run.sector) && !this.testMode) {
+      const boss = bossForSector(this.state.run.sector);
+      bus.emit('boss:access-requested', { sector: this.state.run.sector, galaxia: galaxyOfSector(this.state.run.sector), bossId: boss.id });
+    }
     this.refreshEncounter();
     this.touch();
   }
@@ -1822,6 +1827,10 @@ export class Sim {
        * o jogador voltar, ele escolhe se avança.
        */
       if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
+      if (!abstract && run.sector === proximo && isBossSector(proximo) && !this.testMode) {
+        const boss = bossForSector(proximo);
+        bus.emit('boss:access-requested', { sector: proximo, galaxia: galaxyOfSector(proximo), bossId: boss.id });
+      }
       run.chaveAcessoConsumida = undefined;
       run.falhasNoSetor = 0;
       // Depois de mover o ponteiro, e SEMPRE — mesmo repetindo o mesmo setor,

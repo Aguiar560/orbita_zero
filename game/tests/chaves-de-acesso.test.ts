@@ -35,4 +35,10 @@ describe('chaves de acesso', () => {
     expect(sim.prepararAcessoAoChefe(chave.bossId)).toBe(true);
     expect(sim.prepararAcessoAoChefe(BOSSES[1]!.id)).toBe(false);
   });
+
+  it('pede confirmação antes de avançar para o setor do chefe', async () => {
+    const source = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8'));
+    expect(source).toContain('boss:access-requested');
+    expect(source).toContain('Você possui ${quantidade}');
+  });
 });
