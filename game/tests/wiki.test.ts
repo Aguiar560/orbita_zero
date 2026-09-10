@@ -12,6 +12,7 @@ import { PROVACAO_PISOS } from '@data/provacao';
 import { RECURSOS } from '@data/recursos';
 import { RECEITAS } from '@data/balance/fusao';
 import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
+import { FACCOES, HISTORIAS_DOS_PILOTOS, LORE_DAS_GALAXIAS } from '@data/lore';
 
 const fonte = (arquivo: string): string => readFileSync(join(process.cwd(), arquivo), 'utf8');
 const wiki = fonte('src/wiki/WikiApp.ts');
@@ -39,6 +40,17 @@ describe('wiki oficial', () => {
       '/sistemas/equipamentos', '/sistemas/fabricacao', '/sistemas/missoes',
       '/sistemas/provacao', '/sistemas/engenharia', '/guia/conta',
     ]) expect(wiki, rota).toContain(`'${rota}'`);
+  });
+
+  it('documenta o universo, os pilotos e a diplomacia', () => {
+    for (const rota of ['/universo/historia', '/universo/personagens', '/universo/faccoes']) {
+      expect(wiki).toContain(`'${rota}'`);
+    }
+    expect(FACCOES).toHaveLength(8);
+    expect(HISTORIAS_DOS_PILOTOS).toHaveLength(4);
+    expect(LORE_DAS_GALAXIAS).toHaveLength(30);
+    expect(wiki).toContain('depoisDaVitoria');
+    expect(wiki).toContain('A Guerra dos Selos');
   });
 
   it('documenta as centrais como telas, sem linguagem de landing page', () => {

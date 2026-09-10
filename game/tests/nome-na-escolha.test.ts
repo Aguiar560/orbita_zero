@@ -38,4 +38,12 @@ describe('escolha de piloto depois da identidade', () => {
     expect(css).toContain('.escolha-apelido-campo {');
     expect(css).toContain('.escolha-apelido-rotulo {');
   });
+
+  it('abre a história antes de registrar a escolha irreversível', () => {
+    expect(tela).toContain("private etapa: 'selecao' | 'dossie'");
+    expect(tela).toContain('Conhecer a história de');
+    expect(tela).toContain('SEUS PRÓXIMOS PASSOS');
+    expect(tela).toContain('ASSUMIR O COMANDO COMO');
+    expect(tela.indexOf("this.etapa = 'dossie'")).toBeLessThan(tela.indexOf('this.sim.escolherPiloto'));
+  });
 });

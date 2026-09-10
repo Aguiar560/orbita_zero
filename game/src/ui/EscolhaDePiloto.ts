@@ -2,6 +2,7 @@ import { HULL_BY_ID } from '@data/hulls';
 import { describeGalaxy } from '@data/galaxies';
 import { getElement } from '@data/elements';
 import { PILOTOS, type PilotoDef } from '@data/pilotos';
+import { HISTORIA_POR_PILOTO, type HistoriaPiloto } from '@data/lore';
 import { registrarPiloto } from '@app/inventario';
 import type { Sim } from '@sim/index';
 import { createState } from '@sim/state';
@@ -36,6 +37,7 @@ import { clear, h, portraitIcon, spriteIcon } from './dom';
 export class EscolhaDePiloto {
   private readonly root = h('.escolha-piloto');
   private selecionado = PILOTOS[0]!.id;
+  private etapa: 'selecao' | 'dossie' = 'selecao';
   private readonly perfis = new Map<string, { dps: number; ehp: number; vel: number; nota: number }>();
 
   constructor(private readonly sim: Sim, private readonly host: HTMLElement) {
@@ -75,6 +77,10 @@ export class EscolhaDePiloto {
 
   private render(aoConfirmar: () => void): void {
     const escolhido = PILOTOS.find((p) => p.id === this.selecionado)!;
+    if (this.etapa === 'dossie') {
+      this.renderDossie(escolhido, HISTORIA_POR_PILOTO.get(escolhido.id)!, aoConfirmar);
+      return;
+    }
 
     clear(this.root).append(
       h('.escolha-fundo'),
@@ -93,9 +99,12 @@ export class EscolhaDePiloto {
               + 'casco comprável fica aberto a todos. Não existe escolha errada aqui.',
           }),
           h('button.btn.primary.big.escolha-confirmar', {
-            onclick: () => { void this.confirmar(aoConfirmar); },
+            onclick: () => {
+              this.etapa = 'dossie';
+              this.render(aoConfirmar);
+            },
           }, h('span', {
-            text: `Partir com ${escolhido.nome}`,
+            text: `Conhecer a história de ${escolhido.nome}`,
           })),
         ),
       ),
@@ -130,13 +139,11 @@ export class EscolhaDePiloto {
     const cartao = h(`.escolha-cartao${ativo ? '.ativo' : ''}`, {
       style: { '--piloto': p.cor } as Partial<CSSStyleDeclaration>,
       onclick: () => {
-        // Um clique no cartão JÁ selecionado confirma. O segundo clique é o
-        // gesto natural de quem já decidiu, e obrigá-lo a mirar o botão lá
-        // embaixo seria atrito puro.
+        // O segundo clique abre o DOSSIÊ, nunca registra o piloto. A história é
+        // uma etapa real da escolha: só o botão ao fim dela inicia a partida.
         if (ativo) {
-          if (this.sim.escolherPiloto(p.id)) {
-            void registrarPiloto(this.sim, p.id).then(aoConfirmar);
-          }
+          this.etapa = 'dossie';
+          this.render(aoConfirmar);
           return;
         }
         this.selecionado = p.id;
@@ -177,6 +184,53 @@ export class EscolhaDePiloto {
       ),
     );
     return cartao;
+  }
+
+  private renderDossie(p: PilotoDef, historia: HistoriaPiloto, aoConfirmar: () => void): void {
+    const casco = HULL_BY_ID.get(p.casco)!;
+    const el = getElement(casco.element);
+    clear(this.root).append(
+      h('.escolha-fundo'),
+      h('.escolha-corpo.escolha-dossie', { style: { '--piloto': p.cor } as Partial<CSSStyleDeclaration> },
+        h('header.escolha-dossie-topo', {},
+          h('button.btn.escolha-voltar', {
+            onclick: () => { this.etapa = 'selecao'; this.render(aoConfirmar); },
+          }, h('span', { text: '‹ ESCOLHER OUTRO' })),
+          h('div', {}, h('span.tiny', { text: 'ARQUIVO DE RECRUTAMENTO · ACESSO INICIAL' }), h('h1', { text: historia.epiteto })),
+        ),
+        h('.escolha-dossie-grid', {},
+          h('aside.escolha-dossie-identidade', {},
+            h('.escolha-dossie-retrato', {}, portraitIcon(p.retrato, 194, 206)),
+            h('span.tiny', { text: `${p.raca.toUpperCase()} · ${describeGalaxy(p.galaxia).name.toUpperCase()}` }),
+            h('h2', { text: p.nome }),
+            h('p', { text: historia.juramento }),
+            h('.escolha-nave', {},
+              spriteIcon(casco.sprite, 58, 'escolha-nave-art'),
+              h('.escolha-nave-txt', {}, h('strong', { text: casco.name }), h('span.tiny', { text: `${p.arquetipo} · ${el.name}`, style: { color: el.color } as Partial<CSSStyleDeclaration> })),
+            ),
+          ),
+          h('main.escolha-dossie-historia', {},
+            h('section.escolha-dossie-prologo', {}, h('span.tiny', { text: 'PRÓLOGO' }), h('p', { text: historia.prologo })),
+            h('.escolha-dossie-segredos', {},
+              h('section', {}, h('span.tiny', { text: 'A FERIDA' }), h('p', { text: historia.ferida })),
+              h('section', {}, h('span.tiny', { text: 'ARQUIVO LACRADO' }), h('p', { text: 'O segredo deste piloto será revelado durante a campanha. A wiki permite consultá-lo com spoilers.' })),
+            ),
+            h('section.escolha-dossie-conexoes', {}, h('span.tiny', { text: 'CONEXÕES COM O UNIVERSO' }),
+              h('ul', {}, ...historia.conexoes.map((texto) => h('li', { text: texto }))),
+            ),
+          ),
+          h('aside.escolha-dossie-rota', {},
+            h('span.tiny', { text: 'SEUS PRÓXIMOS PASSOS' }),
+            h('ol', {}, ...historia.proximosPassos.map((texto, indice) => h('li', {}, h('b', { text: String(indice + 1).padStart(2, '0') }), h('span', { text: texto })))),
+            h('.escolha-dossie-arco', {}, h('span.tiny', { text: 'ARCO PESSOAL' }), ...historia.capitulos.map((capitulo) => h('div', {}, h('b', { text: capitulo.titulo }), h('p', { text: capitulo.texto })))),
+          ),
+        ),
+        h('footer.escolha-dossie-acoes', {},
+          h('p', { text: 'Ao partir, você entra no prólogo e inicia o tutorial com esta identidade e nave.' }),
+          h('button.btn.primary.big.escolha-confirmar', { onclick: () => { void this.confirmar(aoConfirmar); } }, h('span', { text: `ASSUMIR O COMANDO COMO ${p.nome}` })),
+        ),
+      ),
+    );
   }
 
   private barra(rotulo: string, fracao: number, cor: string): HTMLElement {

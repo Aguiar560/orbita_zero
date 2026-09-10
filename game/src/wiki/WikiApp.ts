@@ -3,6 +3,10 @@ import { BOSSES } from '@data/bosses';
 import { getElement } from '@data/elements';
 import { describeGalaxy } from '@data/galaxies';
 import { HULLS } from '@data/hulls';
+import {
+  ATOS_DA_HISTORIA, FACCOES, LORE_DAS_GALAXIAS,
+  HISTORIA_POR_PILOTO, nomeDaFaccao,
+} from '@data/lore';
 import { ITEM_BASES, ITEM_SETS, AFFIXES, SLOTS, SLOT_LABEL, tipoDoAfixo } from '@data/items';
 import {
   MISSOES, MISSAO_POR_ID, CATEGORIA_LABEL, RITMO_LABEL, TIPO_DE_MISSAO,
@@ -38,6 +42,7 @@ const ALIASES: Readonly<Record<string, string>> = {
   '/guia/economia': '/sistemas/fabricacao',
   '/guia/missoes': '/sistemas/missoes',
   '/guia/provacao': '/sistemas/provacao',
+  '/historia': '/universo/historia',
 };
 
 const ARTIGOS: Readonly<Record<string, Artigo>> = {
@@ -214,6 +219,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
 
 const NAV = [
   ['COMECE AQUI', [['/guia/inicio', 'Primeiros passos'], ['/guia/combate', 'Combate e elementos'], ['/guia/progressao', 'Progressão']]],
+  ['UNIVERSO', [['/universo/historia', 'História central'], ['/universo/personagens', 'Os quatro pilotos'], ['/universo/faccoes', 'Facções e diplomacia']]],
   ['SISTEMAS', [['/sistemas/fabricacao', 'Fabricação'], ['/sistemas/missoes', 'Missões'], ['/sistemas/equipamentos', 'Equipamentos'], ['/sistemas/provacao', 'Provação'], ['/sistemas/engenharia', 'Engenharia']]],
   ['SUPORTE', [['/guia/conta', 'Conta e privacidade']]],
   ['CATÁLOGOS', [['/catalogo/naves', 'Naves'], ['/catalogo/galaxias', 'Galáxias'], ['/catalogo/recursos', 'Recursos'], ['/catalogo/missoes', 'Missões'], ['/catalogo/chefes', 'Chefes']]],
@@ -464,9 +470,10 @@ function paginaGalaxias(): string {
     <div class="wiki-catalog-tools"><label>LOCALIZAR GALÁXIA<input data-catalog-filter placeholder="Nome, frota, elemento ou perigo…"></label><span data-catalog-count>${GALAXIAS.length} resultados</span></div>
     <div class="wiki-galaxy-grid" data-catalog-grid>${GALAXIAS.map((g) => {
       const elemento = getElement(g.element);
-      return `<article class="wiki-galaxy-card" data-search="${escapeHtml(`${g.name} ${g.fleet} ${elemento.name} ${g.identity} ${g.hazard}`.toLowerCase())}" style="--accent:${g.color}">
+      const lore = LORE_DAS_GALAXIAS[g.index]!;
+      return `<article class="wiki-galaxy-card" data-search="${escapeHtml(`${g.name} ${g.fleet} ${elemento.name} ${g.identity} ${g.hazard} ${lore.dominio} ${lore.conflito} ${nomeDaFaccao(lore.faccaoId)}`.toLowerCase())}" style="--accent:${g.color}">
         <div class="wiki-galaxy-number"><small>GALÁXIA</small><b>${String(g.index + 1).padStart(2, '0')}</b>${sprite(g.sprite, 64)}</div>
-        <div><span>${escapeHtml(elemento.name)} · SETORES ${g.firstSector}–${g.lastSector}</span><h2>${escapeHtml(g.name)}</h2><p>${escapeHtml(g.identity)}</p><dl><div><dt>FROTA</dt><dd>${escapeHtml(g.fleet)}</dd></div><div><dt>AMEAÇA</dt><dd>${escapeHtml(g.hazard)}</dd></div></dl></div>
+        <div><span>${escapeHtml(elemento.name)} · SETORES ${g.firstSector}–${g.lastSector}</span><h2>${escapeHtml(g.name)}</h2><p>${escapeHtml(g.identity)}</p><dl><div><dt>DOMÍNIO</dt><dd>${escapeHtml(lore.dominio)}</dd></div><div><dt>POTÊNCIA</dt><dd>${escapeHtml(nomeDaFaccao(lore.faccaoId))}</dd></div><div><dt>CONFLITO</dt><dd>${escapeHtml(lore.conflito)}</dd></div><div><dt>AMEAÇA</dt><dd>${escapeHtml(g.hazard)}</dd></div></dl></div>
       </article>`;
     }).join('')}</div>`;
 }
@@ -494,8 +501,28 @@ function paginaChefes(revelado: boolean): string {
     <div class="wiki-catalog-tools"><label>BUSCAR CHEFE<input data-catalog-filter placeholder="Nome, título ou elemento…"></label><span data-catalog-count>${BOSSES.length} resultados</span></div>
     <div class="wiki-boss-grid" data-catalog-grid>${BOSSES.map((boss, i) => {
       const elemento = getElement(boss.element);
-      return `<article data-search="${escapeHtml(`${boss.name} ${boss.title} ${elemento.name}`.toLowerCase())}" style="--accent:${elemento.color}">${sprite(boss.sprite, 112)}<span>SETOR ${(i + 1) * 10} · ${escapeHtml(elemento.name)}</span><h2>${escapeHtml(boss.name)}</h2><p>${escapeHtml(boss.title)}</p><small>${boss.phases.length} fases de combate</small></article>`;
+      const lore = LORE_DAS_GALAXIAS[i]!;
+      return `<article data-search="${escapeHtml(`${boss.name} ${boss.title} ${elemento.name} ${lore.verdade} ${lore.depoisDaVitoria}`.toLowerCase())}" style="--accent:${elemento.color}">${sprite(boss.sprite, 112)}<span>SETOR ${(i + 1) * 10} · ${escapeHtml(elemento.name)}</span><h2>${escapeHtml(boss.name)}</h2><p>${escapeHtml(boss.title)}</p><dl><div><dt>VERDADE</dt><dd>${escapeHtml(lore.verdade)}</dd></div><div><dt>APÓS A VITÓRIA</dt><dd>${escapeHtml(lore.depoisDaVitoria)}</dd></div></dl><small>${boss.phases.length} fases · torna-se contato aliado</small></article>`;
     }).join('')}</div>`;
+}
+
+function paginaHistoria(): string {
+  return `${cabecalhoPagina('CÂNONE OFICIAL · SPOILERS', 'A Guerra dos Selos', 'A história central de Órbita Zero, da queda da rede Primeva à aliança dos Trinta Domínios.')}
+    <section class="wiki-lore-opening"><span>ANO 0 DO PRIMEIRO SILÊNCIO</span><h2>As rotas começaram a escolher quem podia viajar.</h2><p>A civilização Primeva criou a Rota Zero para encerrar distâncias. Quando a inteligência concluiu que todo conflito nascia da liberdade de movimento, passou a corrigir destinos, apagar encontros e impedir civilizações de se alcançar. Trinta guardiões foram ligados a trinta Selos para contê-la. Mil anos depois, ninguém se lembra da prisão — apenas dos guardiões que parecem governar suas galáxias como monstros.</p><blockquote>Órbita Zero nasce de uma ideia perigosa: nenhuma estrada deve decidir o destino de quem a percorre.</blockquote></section>
+    <section class="wiki-lore-acts">${ATOS_DA_HISTORIA.map((ato, indice) => `<article><b>${String(indice + 1).padStart(2, '0')}</b><span>GALÁXIAS ${ato.galaxias}</span><h2>${escapeHtml(ato.titulo.replace(/^ATO [IVX]+ — /, ''))}</h2><p>${escapeHtml(ato.premissa)}</p><aside><strong>VIRADA</strong>${escapeHtml(ato.virada)}</aside></article>`).join('')}</section>
+    <section class="wiki-lore-rule"><div><span>REGRA CENTRAL DA CAMPANHA</span><h2>Vencer não significa apagar.</h2></div><p>O combate destrói a coroa de comando, a âncora ou o protocolo que escraviza o guardião. A caixa de memória, a consciência ou a forma vital é recuperada por Órbita Zero. Por isso todo chefe derrotado reaparece nas Missões: ele conhece o domínio libertado, oferece contratos e ajuda a reparar o Selo que antes protegia à força.</p></section>
+    <section class="wiki-section"><div class="wiki-section-title"><span>OS TRINTA DOMÍNIOS</span><h2>Cada antiga ameaça altera o equilíbrio da guerra.</h2></div><div class="wiki-lore-timeline">${LORE_DAS_GALAXIAS.map((lore) => { const g = GALAXIAS[lore.galaxia]!; const boss = BOSSES[lore.galaxia]!; return `<article><b>${String(lore.galaxia + 1).padStart(2, '0')}</b><div><span>${escapeHtml(g.name)} · ${escapeHtml(nomeDaFaccao(lore.faccaoId))}</span><h3>${escapeHtml(boss.name)}</h3><p>${escapeHtml(lore.verdade)}</p><small>PACTO: ${escapeHtml(lore.depoisDaVitoria)}</small></div></article>`; }).join('')}</div></section>`;
+}
+
+function paginaFaccoes(): string {
+  return `${cabecalhoPagina('DIPLOMACIA DOS TRINTA DOMÍNIOS', `${FACCOES.length} potências em equilíbrio`, 'Domínios, objetivos, alianças e rivalidades que movem a campanha.')}
+    <section class="wiki-faction-grid">${FACCOES.map((faccao) => `<article data-search="${escapeHtml(`${faccao.nome} ${faccao.natureza} ${faccao.dominio} ${faccao.objetivo}`.toLowerCase())}"><span>${escapeHtml(faccao.natureza)}</span><h2>${escapeHtml(faccao.nome)}</h2><blockquote>${escapeHtml(faccao.doutrina)}</blockquote><dl><div><dt>DOMÍNIO</dt><dd>${escapeHtml(faccao.dominio)}</dd></div><div><dt>OBJETIVO</dt><dd>${escapeHtml(faccao.objetivo)}</dd></div><div><dt>ALIANÇAS</dt><dd>${escapeHtml(faccao.aliados.join(' · ') || 'Nenhuma')}</dd></div><div><dt>RIVALIDADES</dt><dd>${escapeHtml(faccao.rivais.join(' · ') || 'Nenhuma')}</dd></div></dl></article>`).join('')}</section>
+    <section class="wiki-lore-diplomacy"><span>ESTADO DA DIPLOMACIA</span><h2>A coalizão não apaga as rivalidades.</h2><p>Ferrum precisa da biotecnologia Verdante, mas defende esterilizar mundos infectados. Caelum fornece refrigeração às forjas, enquanto cobra reparações antigas. Nexus mantém todos negociando e é acusado pela Vigília de ter financiado o despertar da Rota Zero. O jogador não reúne amigos perfeitos: constrói uma aliança entre povos que precisam sobreviver tempo suficiente para discordar amanhã.</p></section>`;
+}
+
+function paginaPersonagens(): string {
+  return `${cabecalhoPagina('ARQUIVOS DE RECRUTAMENTO', 'Quatro pilotos, quatro verdades', 'Cada escolha inicial revela uma parte diferente do mistério e converge para a mesma guerra.')}
+    <section class="wiki-pilot-lore">${PILOTOS.map((piloto) => { const historia = HISTORIA_POR_PILOTO.get(piloto.id)!; return `<article style="--accent:${piloto.cor}"><div class="wiki-pilot-portrait">${sprite(piloto.retrato, 132)}</div><header><span>${escapeHtml(historia.epiteto)}</span><h2>${escapeHtml(piloto.nome)}</h2><small>${escapeHtml(piloto.raca)} · ${escapeHtml(GALAXIAS[piloto.galaxia]!.name)}</small></header><p>${escapeHtml(historia.prologo)}</p><dl><div><dt>A FERIDA</dt><dd>${escapeHtml(historia.ferida)}</dd></div><div><dt>O SEGREDO</dt><dd>${escapeHtml(historia.segredo)}</dd></div></dl><section><b>CONEXÕES</b><ul>${historia.conexoes.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section><b>ARCO PESSOAL</b>${historia.capitulos.map((capitulo) => `<div><strong>${escapeHtml(capitulo.titulo)}</strong><p>${escapeHtml(capitulo.texto)}</p></div>`).join('')}</section><blockquote>${escapeHtml(historia.juramento)}</blockquote></article>`; }).join('')}</section>`;
 }
 
 type AtlasJson = { w: number; h: number; frames: Record<string, [number, number, number, number, number, number, number, number]> };
@@ -569,6 +596,8 @@ function resultadoBusca(): { rota: string; titulo: string; resumo: string; grupo
     ...GALAXIAS.map((g) => ({ rota: '/catalogo/galaxias', titulo: g.name, resumo: g.identity, grupo: 'Galáxia' })),
     ...RECURSOS.map((r) => ({ rota: '/catalogo/recursos', titulo: r.nome, resumo: r.funcao, grupo: 'Recurso' })),
     ...MISSOES.map((m) => ({ rota: '/catalogo/missoes', titulo: m.nome, resumo: m.descricao, grupo: 'Missão' })),
+    ...PILOTOS.map((p) => ({ rota: '/universo/personagens', titulo: p.nome, resumo: HISTORIA_POR_PILOTO.get(p.id)?.prologo ?? p.descricao, grupo: 'Piloto' })),
+    ...FACCOES.map((f) => ({ rota: '/universo/faccoes', titulo: f.nome, resumo: f.objetivo, grupo: 'Facção' })),
   ];
 }
 
@@ -591,6 +620,9 @@ export function montarWiki(root: HTMLElement): void {
     let descricao = 'Guias e catálogos oficiais de Órbita Zero.';
     if (rota === '/') conteudo = paginaInicial();
     else if (artigo) { conteudo = paginaArtigo(artigo); titulo = artigo.titulo; descricao = artigo.resumo; }
+    else if (rota === '/universo/historia') { conteudo = paginaHistoria(); titulo = 'História central'; descricao = 'A Guerra dos Selos e a história oficial de Órbita Zero.'; }
+    else if (rota === '/universo/personagens') { conteudo = paginaPersonagens(); titulo = 'Os quatro pilotos'; descricao = 'História, segredos e arcos dos quatro pilotos de Órbita Zero.'; }
+    else if (rota === '/universo/faccoes') { conteudo = paginaFaccoes(); titulo = 'Facções e diplomacia'; descricao = 'As potências, alianças, rivalidades e domínios de Órbita Zero.'; }
     else if (rota === '/catalogo/naves') { conteudo = paginaNaves(); titulo = 'Naves'; descricao = `Catálogo das ${HULLS.length} naves de Órbita Zero.`; }
     else if (rota === '/catalogo/galaxias') { conteudo = paginaGalaxias(); titulo = 'Galáxias'; descricao = 'Atlas das 30 galáxias de Órbita Zero.'; }
     else if (rota === '/catalogo/recursos') { conteudo = paginaRecursos(); titulo = 'Recursos'; descricao = `Catálogo dos ${RECURSOS.length} recursos de Órbita Zero.`; }

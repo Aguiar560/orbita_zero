@@ -6628,6 +6628,82 @@ select option:disabled { color: #667991; }
 }
 .escolha-confirmar { min-width: 260px; }
 
+/* A decisão agora tem duas etapas: comparação e dossiê narrativo. O dossiê
+ * ainda ocupa a mesma camada, mas ganha rolagem própria para nunca jogar o
+ * botão de confirmação para fora da janela em notebooks. */
+.escolha-dossie {
+  width: min(1280px, 95vw); max-height: 94vh; min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px; padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--piloto) 42%, var(--painel-linha));
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(6, 15, 26, .97), rgba(2, 7, 14, .98));
+  box-shadow: 0 0 70px rgba(0, 0, 0, .72), inset 0 1px rgba(255, 255, 255, .03);
+}
+.escolha-dossie-topo { display: grid; grid-template-columns: 190px 1fr 190px; align-items: center; text-align: center; }
+.escolha-dossie-topo > div { grid-column: 2; }
+.escolha-dossie-topo span { color: var(--piloto); letter-spacing: .16em; }
+.escolha-dossie-topo h1 { margin: 5px 0 0; color: #e5f3fc; font: 700 21px/1.1 'Chakra Petch', sans-serif; letter-spacing: .08em; }
+.escolha-voltar { justify-self: start; }
+.escolha-dossie-grid {
+  min-height: 0; overflow: auto;
+  display: grid; grid-template-columns: 230px minmax(340px, 1fr) minmax(260px, 340px); gap: 14px;
+  padding: 3px 4px 8px;
+}
+.escolha-dossie-grid > * { min-width: 0; }
+.escolha-dossie-identidade, .escolha-dossie-historia, .escolha-dossie-rota {
+  padding: 16px; border: 1px solid var(--painel-linha); border-radius: 9px;
+  background: rgba(3, 10, 18, .72);
+}
+.escolha-dossie-identidade { display: grid; align-content: start; gap: 8px; text-align: center; }
+.escolha-dossie-retrato { display: grid; place-items: center; margin-bottom: 2px; }
+.escolha-dossie-retrato .portrait { border: 1px solid var(--piloto); border-radius: 8px; box-shadow: 0 0 26px color-mix(in srgb, var(--piloto) 18%, transparent); }
+.escolha-dossie-identidade > span { color: #7891a5; }
+.escolha-dossie-identidade h2 { margin: 0; color: var(--piloto); font: 700 20px/1 'Chakra Petch', sans-serif; letter-spacing: .08em; }
+.escolha-dossie-identidade > p { margin: 3px 0 8px; color: #b6c9d6; font-style: italic; font-size: 12px; line-height: 1.5; }
+.escolha-dossie-historia { display: grid; align-content: start; gap: 12px; }
+.escolha-dossie-historia section > span, .escolha-dossie-rota > span, .escolha-dossie-arco > span { color: var(--piloto); letter-spacing: .12em; }
+.escolha-dossie-historia p { margin: 7px 0 0; color: #a9bdca; font-size: 12px; line-height: 1.55; }
+.escolha-dossie-prologo { padding: 14px; border-left: 2px solid var(--piloto); background: color-mix(in srgb, var(--piloto) 6%, transparent); }
+.escolha-dossie-prologo p { color: #d4e1e9; font-size: 13px; }
+.escolha-dossie-segredos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.escolha-dossie-segredos section { padding: 12px; border: 1px solid var(--painel-linha); border-radius: 7px; }
+.escolha-dossie-segredos section:last-child { border-color: rgba(255, 183, 58, .28); }
+.escolha-dossie-segredos section:last-child > span { color: #ffbd48; }
+.escolha-dossie-conexoes ul { display: grid; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
+.escolha-dossie-conexoes li { position: relative; padding-left: 15px; color: #91a9b9; font-size: 11px; line-height: 1.45; }
+.escolha-dossie-conexoes li::before { content: '◇'; position: absolute; left: 0; color: var(--piloto); }
+.escolha-dossie-rota { display: grid; align-content: start; gap: 11px; }
+.escolha-dossie-rota ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.escolha-dossie-rota li { display: grid; grid-template-columns: 27px 1fr; gap: 8px; align-items: start; padding: 9px; border: 1px solid var(--painel-linha); border-radius: 6px; }
+.escolha-dossie-rota li b { color: var(--piloto); font: 700 11px/1.4 'Chakra Petch', sans-serif; }
+.escolha-dossie-rota li span { color: #b8cad5; font-size: 11px; line-height: 1.4; }
+.escolha-dossie-arco { display: grid; gap: 8px; padding-top: 4px; }
+.escolha-dossie-arco div { padding-left: 10px; border-left: 1px solid color-mix(in srgb, var(--piloto) 50%, transparent); }
+.escolha-dossie-arco b { color: #c8dae4; font-size: 11px; }
+.escolha-dossie-arco p { margin: 3px 0 0; color: #7891a2; font-size: 10px; line-height: 1.4; }
+.escolha-dossie-acoes { display: flex; justify-content: flex-end; align-items: center; gap: 18px; border-top: 1px solid var(--painel-linha); padding-top: 13px; }
+.escolha-dossie-acoes p { margin: 0; color: #718898; font-size: 11px; }
+
+@media (max-width: 980px) {
+  .escolha-dossie-topo { grid-template-columns: auto 1fr; gap: 10px; }
+  .escolha-dossie-topo > div { grid-column: 2; }
+  .escolha-dossie-grid { grid-template-columns: 210px 1fr; }
+  .escolha-dossie-rota { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+  .escolha-dossie { width: 96vw; padding: 10px; }
+  .escolha-dossie-topo { grid-template-columns: 1fr; justify-items: center; }
+  .escolha-dossie-topo > div { grid-column: 1; }
+  .escolha-dossie-topo h1 { font-size: 16px; }
+  .escolha-voltar { justify-self: center; }
+  .escolha-dossie-grid { grid-template-columns: 1fr; }
+  .escolha-dossie-rota { grid-column: auto; }
+  .escolha-dossie-segredos { grid-template-columns: 1fr; }
+  .escolha-dossie-acoes { display: grid; justify-items: stretch; text-align: center; }
+  .escolha-dossie-acoes .escolha-confirmar { min-width: 0; }
+}
+
 /* O nome no placar, pedido junto com o piloto.
  *
  * Fica ACIMA do botão e abaixo da nota, no fluxo da decisão: escolher quem

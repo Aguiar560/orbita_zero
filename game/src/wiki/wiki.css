@@ -364,7 +364,63 @@ dd { margin: 5px 0 0; color: #acc0cc; font-size: 13px; line-height: 1.2; }
 .wiki-boss-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 13px; }
 .wiki-boss-grid article { min-height: 310px; display: flex; flex-direction: column; align-items: center; padding: 20px; border: 1px solid var(--wiki-line); border-top: 2px solid var(--accent); text-align: center; background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 32%), #06111b; }
 .wiki-boss-grid article > span { margin-top: 10px; color: var(--accent); }
+.wiki-boss-grid article > dl { width: 100%; display: grid; gap: 8px; margin: 15px 0 0; text-align: left; }
+.wiki-boss-grid article > dl > div { padding: 9px; border: 1px solid var(--wiki-line); background: rgba(0, 0, 0, .16); }
+.wiki-boss-grid article > dl dd { line-height: 1.4; }
 .wiki-boss-grid article small { margin-top: auto; padding-top: 16px; color: #657d8c; }
+
+/* ═══ Universo e cânone ═══════════════════════════════════════════════════ */
+.wiki-lore-opening { max-width: 980px; padding: 36px 40px; border: 1px solid var(--wiki-line); border-left: 3px solid var(--wiki-cyan); background: radial-gradient(circle at 10% 0, rgba(52, 202, 255, .1), transparent 38%), #06111b; }
+.wiki-lore-opening > span, .wiki-lore-rule span, .wiki-lore-diplomacy > span { color: var(--wiki-cyan); font: 700 9px/1 'Oxanium', sans-serif; letter-spacing: 1.5px; }
+.wiki-lore-opening h2 { max-width: 760px; margin: 10px 0 16px; color: #e7f4fb; font: 700 29px/1.15 'Oxanium', sans-serif; }
+.wiki-lore-opening p { max-width: 900px; margin: 0; color: #9eb3bf; font-size: 15px; line-height: 1.7; }
+.wiki-lore-opening blockquote, .wiki-pilot-lore article > blockquote { margin: 24px 0 0; padding: 15px 18px; border-left: 2px solid var(--wiki-amber); color: #e6c77d; background: rgba(255, 184, 43, .05); font: italic 500 15px/1.5 'Rajdhani', sans-serif; }
+.wiki-lore-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0 38px; }
+.wiki-lore-acts article { position: relative; min-height: 310px; padding: 24px; border: 1px solid var(--wiki-line); background: linear-gradient(160deg, rgba(11, 31, 46, .88), rgba(3, 11, 18, .96)); overflow: hidden; }
+.wiki-lore-acts article > b { position: absolute; right: 12px; top: 4px; color: rgba(74, 209, 255, .08); font: 700 88px/1 'Oxanium', sans-serif; }
+.wiki-lore-acts article > span { position: relative; color: var(--wiki-cyan); font: 700 9px/1 'Oxanium', sans-serif; letter-spacing: 1.3px; }
+.wiki-lore-acts h2 { position: relative; margin: 36px 0 13px; color: #e4f1f8; font: 700 19px/1.2 'Oxanium', sans-serif; }
+.wiki-lore-acts p { position: relative; color: #91a7b4; font-size: 14px; line-height: 1.55; }
+.wiki-lore-acts aside { position: relative; margin-top: 18px; padding: 12px; border: 1px solid rgba(255, 189, 61, .22); color: #ac9a72; font-size: 13px; line-height: 1.5; background: rgba(255, 189, 61, .035); }
+.wiki-lore-acts aside strong { display: block; margin-bottom: 6px; color: var(--wiki-amber); font: 700 8px/1 'Oxanium', sans-serif; letter-spacing: 1.2px; }
+.wiki-lore-rule { display: grid; grid-template-columns: minmax(220px, .45fr) 1fr; gap: 30px; align-items: center; margin: 0 0 60px; padding: 25px 28px; border: 1px solid rgba(255, 189, 61, .3); background: linear-gradient(90deg, rgba(255, 171, 33, .07), transparent); }
+.wiki-lore-rule h2 { margin: 8px 0 0; color: var(--wiki-amber); font: 700 22px/1.15 'Oxanium', sans-serif; }
+.wiki-lore-rule p { margin: 0; color: #9eb0ba; font-size: 14px; line-height: 1.6; }
+.wiki-lore-timeline { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.wiki-lore-timeline article { display: grid; grid-template-columns: 48px 1fr; gap: 13px; padding: 14px; border: 1px solid var(--wiki-line); background: rgba(6, 17, 27, .72); }
+.wiki-lore-timeline article > b { color: rgba(79, 202, 245, .42); font: 700 25px/1 'Oxanium', sans-serif; }
+.wiki-lore-timeline span { color: var(--wiki-cyan); font: 700 8px/1 'Oxanium', sans-serif; letter-spacing: 1px; }
+.wiki-lore-timeline h3 { margin: 6px 0; color: #dbe9f1; font: 700 14px/1.2 'Oxanium', sans-serif; }
+.wiki-lore-timeline p { margin: 0; color: #8299a7; font-size: 12px; line-height: 1.45; }
+.wiki-lore-timeline small { display: block; margin-top: 9px; color: #a89161; font-size: 10px; line-height: 1.4; }
+.wiki-faction-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.wiki-faction-grid article { padding: 24px; border: 1px solid var(--wiki-line); border-top: 2px solid rgba(70, 206, 255, .48); background: #06111b; }
+.wiki-faction-grid article > span { color: var(--wiki-cyan); font: 700 9px/1 'Oxanium', sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
+.wiki-faction-grid h2 { margin: 9px 0; color: #e4f1f8; font: 700 20px/1.15 'Oxanium', sans-serif; }
+.wiki-faction-grid blockquote { margin: 14px 0; color: #a8bdc9; font-style: italic; }
+.wiki-faction-grid dl { display: grid; gap: 8px; }
+.wiki-faction-grid dl > div { padding: 10px; border: 1px solid var(--wiki-line); }
+.wiki-faction-grid dd { line-height: 1.45; }
+.wiki-lore-diplomacy { max-width: 920px; margin-top: 28px; padding: 28px; border: 1px solid rgba(255, 189, 61, .28); background: rgba(255, 180, 34, .035); }
+.wiki-lore-diplomacy h2 { margin: 9px 0 12px; color: #e9d19a; font: 700 22px/1.2 'Oxanium', sans-serif; }
+.wiki-lore-diplomacy p { margin: 0; color: #99adb8; font-size: 14px; line-height: 1.65; }
+.wiki-pilot-lore { display: grid; gap: 18px; }
+.wiki-pilot-lore > article { display: grid; grid-template-columns: 160px 1fr 1fr; gap: 20px; padding: 24px; border: 1px solid var(--wiki-line); border-left: 3px solid var(--accent); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, #06111b), #06111b); }
+.wiki-pilot-portrait { grid-row: span 5; display: grid; align-content: start; justify-content: center; }
+.wiki-pilot-lore header span { color: var(--accent); font: 700 8px/1 'Oxanium', sans-serif; letter-spacing: 1.2px; }
+.wiki-pilot-lore header h2 { margin: 8px 0 5px; color: #e9f5fb; font: 700 23px/1 'Oxanium', sans-serif; }
+.wiki-pilot-lore header small { color: #718995; }
+.wiki-pilot-lore > article > p { margin: 0; color: #a8bac5; font-size: 14px; line-height: 1.6; }
+.wiki-pilot-lore > article > dl { grid-column: 2 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wiki-pilot-lore > article > dl > div { padding: 13px; border: 1px solid var(--wiki-line); }
+.wiki-pilot-lore > article > dl dd { line-height: 1.5; }
+.wiki-pilot-lore > article > section { padding: 14px; border: 1px solid var(--wiki-line); }
+.wiki-pilot-lore > article > section > b { color: var(--accent); font: 700 9px/1 'Oxanium', sans-serif; letter-spacing: 1.2px; }
+.wiki-pilot-lore ul { margin: 10px 0 0; padding-left: 18px; color: #94aab6; font-size: 12px; line-height: 1.5; }
+.wiki-pilot-lore section div { margin-top: 10px; }
+.wiki-pilot-lore section strong { color: #ccdce5; font-size: 12px; }
+.wiki-pilot-lore section p { margin: 3px 0 0; color: #8097a5; font-size: 11px; line-height: 1.4; }
+.wiki-pilot-lore article > blockquote { grid-column: 2 / -1; margin: 0; }
 
 .wiki-sprite { position: relative; width: var(--sprite-size); height: var(--sprite-size); display: inline-block; flex: none; filter: drop-shadow(0 0 10px rgba(69, 196, 240, .25)); }
 .wiki-sprite > i { position: absolute; display: block; background-repeat: no-repeat; image-rendering: pixelated; overflow: hidden; }
@@ -402,6 +458,10 @@ dd { margin: 5px 0 0; color: #acc0cc; font-size: 13px; line-height: 1.2; }
   .wiki-base-grid, .wiki-set-grid { grid-template-columns: repeat(2, 1fr); }
   .wiki-floor-list article { grid-template-columns: 68px 1fr; }
   .wiki-floor-list dl { grid-column: 2; }
+  .wiki-lore-acts { grid-template-columns: 1fr; }
+  .wiki-pilot-lore > article { grid-template-columns: 140px 1fr; }
+  .wiki-pilot-lore > article > dl, .wiki-pilot-lore article > blockquote { grid-column: 2; }
+  .wiki-pilot-lore > article > section { grid-column: 2; }
 }
 
 @media (max-width: 760px) {
@@ -449,6 +509,13 @@ dd { margin: 5px 0 0; color: #acc0cc; font-size: 13px; line-height: 1.2; }
   .wiki-catalog-tools { align-items: stretch; flex-direction: column; }
   .wiki-catalog-tools > span { padding: 0; text-align: left; }
   .wiki-spoiler { margin: 30px auto; padding: 28px 18px; }
+  .wiki-lore-opening { padding: 25px 20px; }
+  .wiki-lore-opening h2 { font-size: 22px; }
+  .wiki-lore-rule, .wiki-lore-timeline, .wiki-faction-grid { grid-template-columns: 1fr; }
+  .wiki-pilot-lore > article { grid-template-columns: 1fr; padding: 18px; }
+  .wiki-pilot-portrait { grid-row: auto; }
+  .wiki-pilot-lore > article > dl, .wiki-pilot-lore article > blockquote, .wiki-pilot-lore > article > section { grid-column: 1; }
+  .wiki-pilot-lore > article > dl { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
