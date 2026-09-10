@@ -1689,6 +1689,8 @@ export class VerticalMode {
   }
 
   private spawnLoot(x: number, y: number, item: Item): void {
+    // A última vaga é reservada para a chave obrigatória do setor 9/19/29….
+    if (this.pickups.size >= this.pickups.capacity - 1) return;
     const p = this.pickups.spawn();
     if (!p) return;
     p.kind = 'item';
@@ -1702,7 +1704,23 @@ export class VerticalMode {
   }
 
   private spawnChave(x: number, y: number, chaveId: string, color: string, garantida = false): boolean {
-    const p = this.pickups.spawn();
+    if (!garantida && this.pickups.size >= this.pickups.capacity - 1) return false;
+    let p = this.pickups.spawn();
+    // A chave obrigatória do último inimigo não pode desaparecer porque as 80
+    // vagas visuais estão ocupadas. Nesse caso ela toma o lugar do coletável
+    // comum mais antigo; a garantia continua nascendo exatamente na nave morta.
+    if (!p && garantida) {
+      let abriuVaga = false;
+      this.pickups.each((item) => {
+        if (abriuVaga || item.chaveGarantida) return;
+        item.alive = false;
+        abriuVaga = true;
+      });
+      if (abriuVaga) {
+        this.pickups.compact();
+        p = this.pickups.spawn();
+      }
+    }
     if (!p) return false;
     p.kind = 'chave'; p.chaveId = chaveId; p.chaveGarantida = garantida; p.item = null; p.icon = ''; p.color = color;
     p.x = x; p.y = y; p.vy = 40; p.vx = this.rng.range(-40, 40);

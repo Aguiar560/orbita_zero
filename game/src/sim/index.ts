@@ -92,7 +92,7 @@ const PILHA_MAX = 999_999_999;
 
 import { galaxyOfSector, phaseOfSector } from '@data/galaxies';
 import { bossForSector, isBossSector } from '@data/bosses';
-import { CHANCE_DROP_CHAVE_REPETICAO, CHAVE_POR_ID, chaveDaGalaxia, type ChaveDeAcessoDef } from '@data/chaves-de-acesso';
+import { CHAVE_POR_ID, chanceDropChavePorAbate, chaveDaGalaxia, type ChaveDeAcessoDef } from '@data/chaves-de-acesso';
 import { CHEST_BY_ID } from '@data/chests';
 import { getHull, HULLS, normalizeHullHitbox, type HullHitbox } from '@data/hulls';
 import { ALL_ENEMIES } from '@data/enemies';
@@ -1682,7 +1682,7 @@ export class Sim {
       && ultimoAbate
       && !this.state.chavesAcessoGarantidas.includes(galaxia)
       && !this.pendingGuaranteedKeys.has(galaxia);
-    if (!garantia && !this.rng.chance(0.004)) return null;
+    if (!garantia && !this.rng.chance(chanceDropChavePorAbate(phaseOfSector(setor)))) return null;
     if (garantia) this.pendingGuaranteedKeys.add(galaxia);
     return { chave: chaveDaGalaxia(galaxia), garantida: garantia };
   }
@@ -1733,19 +1733,6 @@ export class Sim {
     bus.emit('access-key:consumed', { galaxia: chave.galaxia, id: chave.id });
     this.touch();
     return true;
-  }
-
-  private tentarDropChaveAoConcluir(setor: number): void {
-    const fase = phaseOfSector(setor);
-    if (fase > 9) return;
-    const galaxia = galaxyOfSector(setor);
-    const chave = chaveDaGalaxia(galaxia);
-    const garantia = fase === 9 && !this.state.chavesAcessoGarantidas.includes(galaxia);
-    if (garantia && this.pendingGuaranteedKeys.has(galaxia)) return;
-    if (!garantia && !this.rng.chance(CHANCE_DROP_CHAVE_REPETICAO)) return;
-    this.state.chavesAcesso[chave.id] = Math.min(999, (this.state.chavesAcesso[chave.id] ?? 0) + 1);
-    if (garantia) this.state.chavesAcessoGarantidas.push(galaxia);
-    bus.emit('access-key:dropped', { galaxia, id: chave.id, garantida: garantia, setor });
   }
 
   completeEncounter(abstract = false): void {
@@ -1831,7 +1818,6 @@ export class Sim {
       }
       run.wave = 1;
       run.cleared++;
-      this.tentarDropChaveAoConcluir(e.sector);
 
       /**
        * Setor concluído devolve a nave inteira. Pedido do Rafael em 09/09.

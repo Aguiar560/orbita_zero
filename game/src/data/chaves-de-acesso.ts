@@ -3,7 +3,17 @@ import { describeGalaxy } from './galaxies';
 import type { ElementId } from '@sim/types';
 
 /** Chance de uma conclusão posterior de qualquer setor pré-chefe gerar a chave. */
-export const CHANCE_DROP_CHAVE_REPETICAO = 0.12;
+/**
+ * Chance por inimigo abatido em cada um dos nove setores pré-chefe.
+ * A mesma curva se repete em todas as galáxias.
+ */
+export const CHANCES_DROP_CHAVE_POR_FASE = [
+  0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.0055, 0.0075, 0.01,
+] as const;
+
+export function chanceDropChavePorAbate(fase: number): number {
+  return CHANCES_DROP_CHAVE_POR_FASE[Math.floor(fase) - 1] ?? 0;
+}
 
 export interface ChaveDeAcessoDef {
   id: string;

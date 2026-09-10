@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BOSSES } from '@data/bosses';
-import { CHAVE_POR_ID, CHAVES_DE_ACESSO } from '@data/chaves-de-acesso';
+import { CHANCES_DROP_CHAVE_POR_FASE, CHAVE_POR_ID, CHAVES_DE_ACESSO, chanceDropChavePorAbate } from '@data/chaves-de-acesso';
 import { createState, migrate, SAVE_VERSION } from '@sim/state';
 import { Sim } from '@sim/index';
 import { WAVES_PER_SECTOR } from '@sim/progression';
@@ -53,11 +53,11 @@ describe('chaves de acesso', () => {
 
     sim.completeEncounter();
     expect(sim.state.run.sector).toBe(9);
-    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(2); // garantia do setor 9 + a chave inicial
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1); // concluir não concede chave diretamente
 
     expect(sim.prepararAcessoAoChefe(chave.bossId)).toBe(true);
     expect(sim.state.run.sector).toBe(10);
-    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(0);
   });
 
   it('materializa a garantia como cápsula física no último abate', () => {
@@ -72,5 +72,16 @@ describe('chaves de acesso', () => {
     sim.adquirirChave(drop!.chave.id, 9, drop!.garantida);
     expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
     expect(state.chavesAcessoGarantidas).toEqual([0]);
+  });
+
+  it('aumenta progressivamente a chance do primeiro ao nono setor de toda galáxia', () => {
+    expect(CHANCES_DROP_CHAVE_POR_FASE).toHaveLength(9);
+    expect(chanceDropChavePorAbate(0)).toBe(0);
+    expect(chanceDropChavePorAbate(10)).toBe(0);
+    for (let fase = 2; fase <= 9; fase++) {
+      expect(chanceDropChavePorAbate(fase)).toBeGreaterThan(chanceDropChavePorAbate(fase - 1));
+    }
+    expect(chanceDropChavePorAbate(1)).toBe(0.001);
+    expect(chanceDropChavePorAbate(9)).toBe(0.01);
   });
 });
