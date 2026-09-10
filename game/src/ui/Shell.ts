@@ -39,7 +39,7 @@ import { RESOURCE_META } from './recursos';
 import { ChatPanel } from './ChatPanel';
 import { instalarTooltipsDoJogo } from './TooltipDoJogo';
 import { TransmissoesDaCampanha } from './TransmissaoDaCampanha';
-import { transmissaoAoEntrarNoSetor, transmissaoAposVitoria } from '@data/narrativa-campanha';
+import { transmissaoAoEntrarNoSetor, transmissaoAposVitoria, type TransmissaoDaCampanha } from '@data/narrativa-campanha';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
@@ -535,11 +535,7 @@ export class Shell {
 
     bus.on('sector:advanced', ({ sector }) => {
       this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star');
-      // Só a fronteira inédita fala. Repetir um setor ou concluí-lo em ausência
-      // deixa `bestSectorEver` à frente do ponteiro e não reabre a cena.
-      if (sector === this.sim.state.universe.bestSectorEver) {
-        this.transmissoes.enfileirar(transmissaoAoEntrarNoSetor(sector, this.sim.state.piloto));
-      }
+      this.enfileirarTransmissao(transmissaoAoEntrarNoSetor(sector, this.sim.state.piloto));
     });
     // Ninguém escutava este evento: o casco trocava sozinho por tanque seco e
     // o jogador via a nave mudar sem explicação nenhuma. O `Sim` já o emitia
@@ -548,9 +544,9 @@ export class Shell {
       `Tanque seco — assumindo ${getHull(trocouPara)?.name ?? 'outra nave'}`, 'bad', 'ui/icon_ship',
     ));
     bus.on('sector:parede', ({ setor, quedas }) => this.oferecerRecuo(setor, quedas));
-    bus.on('boss:defeated', ({ id, name, sector, first }) => {
+    bus.on('boss:defeated', ({ id, name, sector }) => {
       this.pushToast(`${name} derrotado`, 'epic', 'fx/blast_fire_3');
-      if (first) this.transmissoes.enfileirar(transmissaoAposVitoria(id, sector, this.sim.state.piloto));
+      this.enfileirarTransmissao(transmissaoAposVitoria(id, sector, this.sim.state.piloto));
     });
     // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a
     // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
@@ -561,6 +557,23 @@ export class Shell {
     bus.on('provacao:falhou', () => this.mostrarResultadoDaProvacao());
 
     bus.on('chest:granted', ({ tier, source }) => this.pushToast(`Baú ${tier}${source ? ` · ${source}` : ''}`, 'good', 'ui/icon_coin'));
+  }
+
+  /**
+   * Cada cena canônica aparece uma vez por save.
+   *
+   * `guiasVistos` já é a lista sincronizada de conteúdo apresentado ao
+   * jogador. Prefixar separa as cenas dos ids de painel e evita criar uma
+   * segunda fila persistente com as mesmas regras de migração e nuvem.
+   */
+  private enfileirarTransmissao(transmissao: TransmissaoDaCampanha | null): void {
+    if (!transmissao) return;
+    const chave = `narrativa:${transmissao.id}`;
+    if (this.sim.state.settings.guiasVistos.includes(chave)) return;
+    this.sim.state.settings.guiasVistos.push(chave);
+    this.sim.touch();
+    this.sim.save();
+    this.transmissoes.enfileirar(transmissao);
   }
 
   update(dt: number): void {

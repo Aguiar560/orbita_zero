@@ -29,13 +29,13 @@ describe('direção narrativa da campanha', () => {
     expect(new Set(respostas).size).toBe(PILOTOS.length);
   });
 
-  it('a UI só abre cenas inéditas e pausa o combate enquanto são lidas', () => {
+  it('a UI grava cenas vistas e pausa o combate enquanto são lidas', () => {
     const shell = readFileSync(join(process.cwd(), 'src/ui/Shell.ts'), 'utf8');
     const game = readFileSync(join(process.cwd(), 'src/app/Game.ts'), 'utf8');
-    const sim = readFileSync(join(process.cwd(), 'src/sim/index.ts'), 'utf8');
-    expect(shell).toContain('sector === this.sim.state.universe.bestSectorEver');
-    expect(shell).toContain('if (first) this.transmissoes.enfileirar');
-    expect(sim).toContain('sector: e.sector, first');
+    expect(shell).toContain('`narrativa:${transmissao.id}`');
+    expect(shell).toContain('settings.guiasVistos.includes(chave)');
+    expect(shell).toContain('settings.guiasVistos.push(chave)');
+    expect(shell).not.toContain('sector === this.sim.state.universe.bestSectorEver');
     expect(game).toContain("bus.on('narrativa:estado'");
     expect(game).toContain('aberta ? this.loop.stop() : this.loop.start()');
   });

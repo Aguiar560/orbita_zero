@@ -1580,7 +1580,7 @@ export class Sim {
       } else {
         this.grantChest('prata', 1, e.boss.name);
       }
-      bus.emit('boss:defeated', { id: e.boss.id, name: e.boss.name, sector: e.sector, first });
+      bus.emit('boss:defeated', { id: e.boss.id, name: e.boss.name, sector: e.sector });
       this.registrar({ tipo: 'chefe', chefeId: e.boss.id, setor: e.sector });
     }
 
