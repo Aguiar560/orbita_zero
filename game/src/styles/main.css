@@ -257,16 +257,22 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .resources { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* Engrenagem de configurações: fora das abas, porque não é onde se joga. */
-.gear {
+.gear, .wiki-shortcut {
   display: grid; place-items: center; width: 34px; height: 34px;
   padding: 0;
   background: rgba(8, 14, 28, 0.8); border: 1px solid var(--line); border-radius: 8px;
   transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 }
-.gear:hover {
+.gear:hover, .wiki-shortcut:hover {
   border-color: var(--line-strong); background: rgba(30, 48, 80, 0.7);
   box-shadow: inset 0 0 12px rgba(75, 200, 255, .08);
 }
+.wiki-shortcut { text-decoration: none; }
+.wiki-shortcut img {
+  width: 22px; height: 22px; object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(86, 207, 255, .34));
+}
+.wiki-shortcut:hover img { filter: brightness(1.18) drop-shadow(0 0 8px rgba(86, 207, 255, .52)); }
 .gear-icon {
   display: block; margin: 0; color: #dbe8ee;
   font: 400 19px/1 'Segoe UI Symbol', sans-serif;
@@ -8378,7 +8384,8 @@ select option:disabled { color: #667991; }
   .res { min-width: 0; gap: 3px; padding: 3px 6px; }
   .res .sprite { width: 17px !important; height: 17px !important; }
   .res-value { min-width: 0; max-width: 6ch; overflow: hidden; font-size: 12px; text-overflow: ellipsis; }
-  .gear { width: 30px; height: 30px; flex: none; }
+  .gear, .wiki-shortcut { width: 30px; height: 30px; flex: none; }
+  .wiki-shortcut img { width: 19px; height: 19px; }
 
   .topbar .tabs {
     grid-area: tabs; width: 100%; justify-content: flex-start; gap: 3px;

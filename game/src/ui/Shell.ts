@@ -185,6 +185,12 @@ export class Shell {
           this.resourceNodes.set(id, value);
           return h('.res', { title: meta.label }, spriteIcon(meta.icon, 22), value);
         })),
+        h('a.wiki-shortcut', {
+          href: '/wiki/',
+          target: '_blank',
+          rel: 'noopener',
+          'aria-label': 'Abrir a Wiki de Órbita Zero',
+        }, h('img', { src: '/assets/ui/menu/codex.webp', alt: '', 'aria-hidden': true })),
         h('button.gear', {
           title: 'Configurações',
           'aria-label': 'Abrir configurações',
