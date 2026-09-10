@@ -206,6 +206,19 @@ export interface LinhaDoPlacar {
 }
 
 /**
+ * Uma conta operacional pode jogar e salvar normalmente, mas não disputa
+ * placar. A decisão mora no D1, ligada ao UUID autenticado, para não depender
+ * de apelido ou e-mail e para valer em qualquer cliente.
+ */
+export async function contaSemRanking(env: Env, usuario: string): Promise<boolean> {
+  const marcada = await env.DB
+    .prepare('SELECT 1 AS marcada FROM contas_teste WHERE usuario = ?')
+    .bind(usuario)
+    .first<{ marcada: number }>();
+  return !!marcada;
+}
+
+/**
  * O topo de um placar, mais a posição de quem perguntou.
  *
  * As duas coisas na mesma consulta porque a tela mostra as duas juntas, e
@@ -236,6 +249,7 @@ export async function lerPlacar(
     SELECT m.usuario, m.valor, m.casco, a.apelido
     FROM marcas m JOIN apelidos a ON a.usuario = m.usuario
     WHERE m.placar = ? AND m.casco = ?
+      AND NOT EXISTS (SELECT 1 FROM contas_teste t WHERE t.usuario = m.usuario)
     ORDER BY m.valor DESC, m.desempate DESC, m.atualizado_em ASC
     LIMIT ?
   `).bind(placar, casco, limite).all<{ usuario: string; valor: number; casco: string; apelido: string }>();
@@ -249,14 +263,22 @@ export async function lerPlacar(
   }));
 
   const total = await env.DB
-    .prepare('SELECT COUNT(*) AS n FROM marcas m JOIN apelidos a ON a.usuario = m.usuario WHERE m.placar = ? AND m.casco = ?')
+    .prepare(`
+      SELECT COUNT(*) AS n FROM marcas m JOIN apelidos a ON a.usuario = m.usuario
+      WHERE m.placar = ? AND m.casco = ?
+        AND NOT EXISTS (SELECT 1 FROM contas_teste t WHERE t.usuario = m.usuario)
+    `)
     .bind(placar, casco)
     .first<{ n: number }>();
 
   // A minha marca, uma vez — as subconsultas repetidas de antes liam a mesma
   // linha seis vezes e ignoravam o casco.
   const minhaMarca = await env.DB
-    .prepare('SELECT valor, desempate FROM marcas WHERE usuario = ? AND placar = ? AND casco = ?')
+    .prepare(`
+      SELECT m.valor, m.desempate FROM marcas m
+      WHERE m.usuario = ? AND m.placar = ? AND m.casco = ?
+        AND NOT EXISTS (SELECT 1 FROM contas_teste t WHERE t.usuario = m.usuario)
+    `)
     .bind(usuario, placar, casco)
     .first<{ valor: number; desempate: number }>();
 
@@ -265,6 +287,7 @@ export async function lerPlacar(
         SELECT 1 + COUNT(*) AS pos FROM marcas m
         JOIN apelidos a ON a.usuario = m.usuario
         WHERE m.placar = ? AND m.casco = ?
+          AND NOT EXISTS (SELECT 1 FROM contas_teste t WHERE t.usuario = m.usuario)
           AND (m.valor > ? OR (m.valor = ? AND m.desempate > ?))
       `).bind(placar, casco, minhaMarca.valor, minhaMarca.valor, minhaMarca.desempate)
         .first<{ pos: number }>()

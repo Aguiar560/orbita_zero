@@ -1,5 +1,5 @@
 import { usuarioDoToken } from './auth';
-import { apelidoValido, conferir, lerPlacar, normalizar, type MarcaRecebida } from './placar';
+import { apelidoValido, conferir, contaSemRanking, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
 import {
   MOEDAS, TETO_POR_LANCAMENTO, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar,
@@ -1301,6 +1301,12 @@ async function enviarMarcas(req: Request, env: Env, id: string, origem: string):
   if (!Array.isArray(corpo.marcas)) return json({ erro: 'corpo_incompleto' }, 400, origem);
   // Teto de itens: o placar de naves tem uma marca por casco, e são ~50.
   if (corpo.marcas.length > 80) return json({ erro: 'marcas_demais' }, 413, origem);
+
+  // Conta de teste joga o fluxo real inteiro, mas nunca grava uma classificação.
+  // O cliente trata a resposta como sincronizada e não insiste a cada ciclo.
+  if (await contaSemRanking(env, id)) {
+    return json({ ok: true, aceitas: [], recusadas: [], foraDoPlacar: true }, 200, origem);
+  }
 
   const temApelido = await env.DB.prepare('SELECT 1 FROM apelidos WHERE usuario = ?').bind(id).first();
   if (!temApelido) return json({ erro: 'sem_apelido' }, 409, origem);
