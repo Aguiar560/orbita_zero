@@ -219,6 +219,17 @@ export class LeftRail {
             // que sobra aqui — o número que decresce junto com o verde.
             h('span.tiny.muted', { text: `Combustível restante ${duration(restam)}` }),
             progressBar(tanque, cor, 4),
+          ), h(`button.rail-repeat-sector${sim.state.settings.repetirSetor ? '.active' : ''}`, {
+            type: 'button',
+            'aria-pressed': String(sim.state.settings.repetirSetor),
+            title: sim.state.settings.repetirSetor
+              ? 'Ligado: continua repetindo o setor atual após concluí-lo.'
+              : 'Desligado: avança para o próximo setor ao concluir este.',
+            onclick: () => { sim.state.settings.repetirSetor = !sim.state.settings.repetirSetor; sim.touch(); },
+          },
+            h('span.rail-repeat-sector-led', { 'aria-hidden': 'true' }),
+            h('span', {}, h('strong', { text: 'Repetir setor' }), h('small', { text: sim.state.settings.repetirSetor ? 'Ligado' : 'Desligado' })),
+            h('b', { text: sim.state.settings.repetirSetor ? 'ON' : 'OFF' }),
           )];
         })(),
       ),

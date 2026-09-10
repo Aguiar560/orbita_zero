@@ -8969,6 +8969,11 @@ select option:disabled { color: #667991; }
   text-shadow: 0 0 7px rgba(111, 222, 255, .55);
 }
 .rail-module-pilot .rail-fuel { padding-top: 6px; border-top: 1px solid rgba(104, 181, 213, .14); }
+.rail-repeat-sector { display: flex; align-items: center; gap: 7px; width: 100%; padding: 6px 7px; border: 1px solid rgba(104, 181, 213, .2); border-radius: 2px; background: linear-gradient(90deg, rgba(19, 47, 65, .55), rgba(7, 16, 29, .72)); color: var(--muted); text-align: left; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.rail-repeat-sector:hover { border-color: rgba(104, 215, 255, .55); color: var(--text); }
+.rail-repeat-sector.active { border-color: rgba(88, 221, 255, .72); background: linear-gradient(90deg, rgba(20, 98, 127, .42), rgba(8, 25, 40, .82)); color: #d9f8ff; box-shadow: inset 0 0 12px rgba(61, 204, 255, .1), 0 0 8px rgba(61, 204, 255, .08); }
+.rail-repeat-sector-led { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #718696; box-shadow: 0 0 0 2px rgba(113, 134, 150, .12); }.rail-repeat-sector.active .rail-repeat-sector-led { background: #57ddff; box-shadow: 0 0 8px #57ddff; }
+.rail-repeat-sector span:not(.rail-repeat-sector-led) { display: grid; gap: 2px; flex: 1; }.rail-repeat-sector strong { font-size: 11px; letter-spacing: .2px; }.rail-repeat-sector small { color: var(--muted); font-size: 9px; }.rail-repeat-sector.active small { color: #8ce8ff; }.rail-repeat-sector b { color: var(--muted); font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .7px; }.rail-repeat-sector.active b { color: #57ddff; }
 
 /* Cabeçalho e console do inventário. */
 .inv-panel-head { position: relative; display: grid; gap: 1px; padding: 1px 0 10px 13px; margin-bottom: 2px; border-bottom: 1px solid rgba(76, 199, 242, .26); }
