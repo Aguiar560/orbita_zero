@@ -1,6 +1,6 @@
 import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
-import type { ResourceId } from '@sim/types';
+import type { MovimentoPendente, ResourceId } from '@sim/types';
 
 import { tokenValido } from './conta';
 import { relatarFalha, relatarSucesso } from './recusa';
@@ -198,17 +198,69 @@ export async function drenarCarteira(sim: Sim): Promise<void> {
   // O ESPELHAR, porém, acontece de qualquer jeito — ver `espelharNoSim`.
   if (fila.length || !carteiraPronta()) {
     const enviando = fila.splice(0, fila.length);
-    const ok = enviando.length ? await movimentar(enviando) : await sincronizar();
-
-    if (!ok) {
-      // Volta ao INÍCIO da fila: a ordem dos lançamentos é o que o livro-caixa
-      // vai contar depois, e reordenar torna a auditoria mais difícil de ler.
-      fila.unshift(...enviando);
-      return;
+    if (!enviando.length) {
+      if (!(await sincronizar())) return;
+    } else {
+      const lotes = lotesParaEnvio(enviando);
+      for (let i = 0; i < lotes.length; i++) {
+        if (await movimentar(lotes[i]!)) continue;
+        // Volta ao INÍCIO da fila só o que NÃO foi: os lotes anteriores já
+        // entraram no livro, e devolvê-los creditaria duas vezes.
+        fila.unshift(...(lotes.slice(i).flat() as MovimentoPendente[]));
+        return;
+      }
     }
   }
 
   espelharNoSim(sim);
+}
+
+/** O teto de itens por lote da rota `/carteira`. Espelha `movimentar` no Worker. */
+export const MOVIMENTOS_POR_LOTE = 6;
+
+/**
+ * A fila, pronta para subir: somada por moeda e motivo, e em lotes de até 6.
+ *
+ * ## O defeito que isto conserta (medido em 10/09/2026)
+ *
+ * `drenarCarteira` mandava a fila INTEIRA num POST, e o Worker recusa lote com
+ * mais de 6 movimentos (`movimentos_invalidos`). Todo `grant` enfileira um
+ * movimento, então dois ou três setores concluídos num ciclo de 150 s já
+ * passavam de 6. A recusa devolvia a fila, que crescia, e era recusada de novo
+ * — para sempre. A sucata e os núcleos daquela conta paravam de chegar ao
+ * servidor, sem sintoma: o livro das recusas contava ~10 por hora desde a
+ * madrugada, e a conta de teste estava com 9 de sucata jogando todo dia.
+ *
+ * ## Por que somar
+ *
+ * Quarenta "+1.200 sucata, drop" são o mesmo lançamento que um "+48.000
+ * sucata, drop", e o livro continua respondendo de onde o dinheiro veio — o
+ * motivo não se mistura. Somar mantém a conta em uma ou duas requisições por
+ * ciclo em vez de dezenas.
+ *
+ * ## Por que o crédito vem antes do débito
+ *
+ * O Worker lança na ordem em que recebe. Um gasto na frente de um ganho do
+ * mesmo ciclo seria recusado por saldo que o próprio lote ia creditar.
+ */
+export function lotesParaEnvio(fila: readonly Movimento[]): Movimento[][] {
+  const somados = new Map<string, Movimento>();
+  for (const m of fila) {
+    if (!Number.isFinite(m.quantia)) continue;
+    const q = Math.trunc(m.quantia);
+    // Crédito e débito do mesmo motivo NÃO se anulam: a multa de uma morte e a
+    // sucata do setor seguinte são fatos diferentes, e o livro precisa dos dois.
+    const chave = `${m.moeda}|${m.motivo}|${q > 0 ? '+' : '-'}`;
+    const atual = somados.get(chave);
+    if (atual) atual.quantia += q;
+    else somados.set(chave, { moeda: m.moeda, motivo: m.motivo, quantia: q });
+  }
+  const lista = [...somados.values()]
+    .filter((m) => m.quantia !== 0)
+    .sort((a, b) => Number(b.quantia > 0) - Number(a.quantia > 0));
+  const lotes: Movimento[][] = [];
+  for (let i = 0; i < lista.length; i += MOVIMENTOS_POR_LOTE) lotes.push(lista.slice(i, i + MOVIMENTOS_POR_LOTE));
+  return lotes;
 }
 
 /**

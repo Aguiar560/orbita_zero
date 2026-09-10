@@ -54,6 +54,14 @@ verdade por outro motivo; agora ele exige a entrega.
 
 **Precisa de deploy do Worker** (sem migração).
 
+**Achado no mesmo dia, pelo livro das recusas:** `/carteira →
+movimentos_invalidos` ~10 por hora desde a madrugada. O cliente mandava a fila
+inteira e o Worker recusa mais de 6 por lote; a fila voltava, crescia e era
+recusada para sempre — sucata e núcleos daquela conta paravam de chegar ao
+servidor. `lotesParaEnvio` soma por moeda, motivo e sinal, põe crédito antes de
+débito e sobe em lotes de 6; se um falha, só o resto volta. Teste em
+`tests/carteira-em-lotes.test.ts`.
+
 ---
 
 ## 10/09/2026 — a ausência mostra o que tirou
