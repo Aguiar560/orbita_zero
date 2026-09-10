@@ -127,6 +127,35 @@ export function valorConfere(compra: Compra, centavosPagos: unknown): boolean {
   return Number.isFinite(pago) && pago >= compra.centavos;
 }
 
+/**
+ * O motivo de uma recusa do Mercado Pago, pronto para o livro das recusas.
+ *
+ * ## Por que existe
+ *
+ * O livro guardava só `http_401`, e o 401 do Mercado Pago tem pelo menos três
+ * causas com consertos diferentes: token inválido, credencial de produção usada
+ * onde se pede teste, aplicação sem permissão. Em 10/09/2026 foram três
+ * tentativas seguidas de 401 e nenhuma forma de saber qual — o provedor manda o
+ * motivo no corpo e ninguém o lia.
+ *
+ * Só o texto que o PROVEDOR escreveu entra aqui; o token nunca passa por esta
+ * função. O resultado é cortado e limpo porque vira chave de agrupamento no
+ * livro, e um texto livre ali multiplicaria as linhas.
+ */
+export function motivoDoMP(status: number, corpo: string): string {
+  let texto = '';
+  try {
+    const d = JSON.parse(corpo) as {
+      message?: unknown; error?: unknown; cause?: { code?: unknown; description?: unknown }[];
+    };
+    const causa = Array.isArray(d.cause) ? d.cause[0] : undefined;
+    texto = String(d.message ?? causa?.description ?? d.error ?? causa?.code ?? '');
+  } catch { /* corpo que não é JSON: fica só o status */ }
+  const limpo = texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return (limpo ? `http_${status}_${limpo}` : `http_${status}`).slice(0, 48).replace(/_+$/, '');
+}
+
 // ── a assinatura do provedor ────────────────────────────────────────────────
 
 /**

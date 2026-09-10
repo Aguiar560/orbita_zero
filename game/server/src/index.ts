@@ -9,7 +9,7 @@ import {
 import { excedeu } from './teto';
 import { marcosACreditar, origemDoMarco } from './marcos';
 import {
-  assinaturaConfere, expirou, manifestoDoMP, novaCompra, pacotePorId,
+  assinaturaConfere, expirou, manifestoDoMP, motivoDoMP, novaCompra, pacotePorId,
   partesDaAssinatura, podePagar, valorConfere, type Compra,
 } from './compras';
 import {
@@ -1659,8 +1659,10 @@ async function criarPixNoMP(
     });
     if (!r.ok) {
       // Token vencido, conta suspensa, valor recusado: o jogador vê um botão
-      // que não funciona, e do lado de cá isto precisa ter nome.
-      await anotarMotivo(env, '/mp/criar', `http_${r.status}`, 502).catch(() => {});
+      // que não funciona, e do lado de cá isto precisa ter nome — o nome que o
+      // PROVEDOR deu, e não só o status. Ver `motivoDoMP`.
+      const corpo = await r.text().catch(() => '');
+      await anotarMotivo(env, '/mp/criar', motivoDoMP(r.status, corpo), 502).catch(() => {});
       return null;
     }
 

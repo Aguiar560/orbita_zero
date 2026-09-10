@@ -3,9 +3,27 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
-  VALIDADE_DA_COBRANCA, assinaturaConfere, expirou, manifestoDoMP, novaCompra,
+  VALIDADE_DA_COBRANCA, assinaturaConfere, expirou, manifestoDoMP, motivoDoMP, novaCompra,
   pacotePorId, partesDaAssinatura, podePagar, valorConfere, type Compra,
 } from '../server/src/compras';
+
+describe('a recusa do provedor tem nome', () => {
+  // Em 10/09/2026 o livro só dizia `http_401`, três vezes, e o 401 do Mercado
+  // Pago tem causas com consertos diferentes. O motivo vem no corpo.
+  it('lê a mensagem do Mercado Pago', () => {
+    expect(motivoDoMP(401, JSON.stringify({ message: 'invalid access token', error: 'unauthorized' })))
+      .toBe('http_401_invalid_access_token');
+    expect(motivoDoMP(401, JSON.stringify({ message: 'Unauthorized use of live credentials' })))
+      .toBe('http_401_unauthorized_use_of_live_credentials');
+  });
+
+  it('cai no status quando o corpo não ajuda, e nunca passa do tamanho da chave', () => {
+    expect(motivoDoMP(502, '<html>bad gateway</html>')).toBe('http_502');
+    expect(motivoDoMP(400, JSON.stringify({ cause: [{ code: 13253, description: 'Collector user without key enabled for QR render' }] })))
+      .toBe('http_400_collector_user_without_key_enabled_for');
+    expect(motivoDoMP(400, JSON.stringify({ message: 'x'.repeat(200) })).length).toBeLessThanOrEqual(48);
+  });
+});
 import { CRYSTAL_PACKAGES, cristaisDoPacote } from '@sim/vip';
 
 /**
