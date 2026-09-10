@@ -386,6 +386,10 @@ dd { margin: 5px 0 0; color: #acc0cc; font-size: 13px; line-height: 1.2; }
 .wiki-lore-rule { display: grid; grid-template-columns: minmax(220px, .45fr) 1fr; gap: 30px; align-items: center; margin: 0 0 60px; padding: 25px 28px; border: 1px solid rgba(255, 189, 61, .3); background: linear-gradient(90deg, rgba(255, 171, 33, .07), transparent); }
 .wiki-lore-rule h2 { margin: 8px 0 0; color: var(--wiki-amber); font: 700 22px/1.15 'Oxanium', sans-serif; }
 .wiki-lore-rule p { margin: 0; color: #9eb0ba; font-size: 14px; line-height: 1.6; }
+.wiki-key-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.wiki-key-grid article { display: flex; align-items: center; gap: 14px; min-height: 112px; padding: 14px; border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); border-top: 2px solid var(--accent); background: radial-gradient(circle at 16% 50%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 46%), #06111b; }
+.wiki-key-grid img { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 0 9px color-mix(in srgb, var(--accent) 65%, transparent)); }
+.wiki-key-grid span { color: var(--accent); font: 700 9px/1 'Oxanium', sans-serif; letter-spacing: 1px; }.wiki-key-grid h3 { margin: 7px 0 5px; color: #e4f1f8; font: 700 15px/1.2 'Oxanium', sans-serif; }.wiki-key-grid p { margin: 0; color: #8298a6; font-size: 12px; line-height: 1.4; }
 .wiki-lore-timeline { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .wiki-lore-timeline article { display: grid; grid-template-columns: 48px 1fr; gap: 13px; padding: 14px; border: 1px solid var(--wiki-line); background: rgba(6, 17, 27, .72); }
 .wiki-lore-timeline article > b { color: rgba(79, 202, 245, .42); font: 700 25px/1 'Oxanium', sans-serif; }

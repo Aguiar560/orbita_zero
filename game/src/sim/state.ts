@@ -7,6 +7,7 @@ import type { GameState, NaveProgresso } from './types';
 import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES, PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
+import { CHAVE_POR_ID, CHAVES_DE_ACESSO } from '@data/chaves-de-acesso';
 import { limiteDeMissoes } from './vip';
 
 /**
@@ -57,7 +58,7 @@ const chaveDoSave = (): string => (slot ? `${SAVE_KEY}:${slot}` : SAVE_KEY);
  *
  * A migração nunca rejeita um save antigo; ela apara o que não existe mais.
  */
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 /**
  * Os cascos com que se começa: os que não custam nada e não exigem setor.
@@ -110,6 +111,8 @@ export function createState(
     inventory: [],
     cargaLiberada: [],
     armazem: {},
+    chavesAcesso: {},
+    chavesAcessoGarantidas: [],
 
     shop: {},
     vip: { expiresAt: 0 },
@@ -352,6 +355,15 @@ export function migrate(raw: unknown): GameState | null {
   state.armazem = Object.fromEntries(
     Object.entries(state.armazem ?? {}).filter(([id, n]) => RECURSO_POR_ID.has(id) && n > 0),
   );
+  state.chavesAcesso = Object.fromEntries(
+    Object.entries(state.chavesAcesso ?? {})
+      .filter(([id, n]) => CHAVE_POR_ID.has(id) && Number.isFinite(n) && n > 0)
+      .map(([id, n]) => [id, Math.min(999, Math.floor(n))]),
+  );
+  state.chavesAcessoGarantidas = [...new Set(
+    (Array.isArray(state.chavesAcessoGarantidas) ? state.chavesAcessoGarantidas : [])
+      .filter((g): g is number => Number.isInteger(g) && g >= 0 && g < CHAVES_DE_ACESSO.length),
+  )];
   delete (state as unknown as Record<string, unknown>).inventorySize;
   // Hitboxes são dados administrativos versionados, nunca progresso do jogador.
   // Saves do protótipo podem carregar estas duas chaves antigas via `...data`.

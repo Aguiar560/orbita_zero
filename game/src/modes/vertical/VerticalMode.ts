@@ -210,6 +210,8 @@ export class VerticalMode {
   private toqueManual: { tipo: 'pointer' | 'touch'; id: number; origemX: number; origemY: number; dx: number; dy: number } | null = null;
   /** Zonas telegráficas da Provação; vivem na cena, nunca no save. */
   private readonly dangerZones: { x: number; y: number; radius: number; life: number; warmup: number; damage: number }[] = [];
+  /** A cena fica parada até o jogador trazer a chave correta para o chefe. */
+  private chefeBloqueado = false;
 
   readonly player: Player = {
     x: VIEW.w / 2, y: VIEW.h * 0.75, vx: 0, vy: 0,
@@ -466,6 +468,14 @@ export class VerticalMode {
 
     this.encounterKey = key;
     this.cleared = false;
+    this.chefeBloqueado = false;
+    if (e.kind === 'chefe' && e.boss && !this.sim.prepararAcessoAoChefe(e.boss.id)) {
+      this.chefeBloqueado = true;
+      this.enemies.clear();
+      this.bullets.clear();
+      this.setBanner('CHAVE DE ACESSO NECESSÁRIA');
+      return;
+    }
     this.director.begin(e);
     this.bullets.clear();
     this.enemies.clear();
@@ -625,6 +635,13 @@ export class VerticalMode {
       this.refreshPlayer(true);
     }
     this.syncEncounter();
+    if (this.chefeBloqueado) {
+      const e = this.sim.encounter;
+      if (this.sim.temChaveDaGalaxia(galaxyOfSector(e.sector))) this.syncEncounter(true);
+      this.advanceSky(dt);
+      this.particles.update(dt);
+      return;
+    }
     if (this.player.hpMax <= 0) this.refreshPlayer(true);
 
     // Durante a vitória o combate congela: só o cenário, as partículas e a
@@ -1652,6 +1669,8 @@ export class VerticalMode {
       this.capsulasNoAr(),
     );
     for (const item of rolls) this.spawnLoot(e.x, e.y, item);
+    const chave = this.sim.rollChaveDuranteAbate(this.sim.state.run.sector);
+    if (chave) this.spawnChave(e.x, e.y, chave.id, chave.cor);
   }
 
   /** Cápsulas de item ainda a caminho da nave. */
@@ -1672,6 +1691,13 @@ export class VerticalMode {
     p.y = y;
     p.vy = 40;
     p.vx = this.rng.range(-40, 40);
+  }
+
+  private spawnChave(x: number, y: number, chaveId: string, color: string): void {
+    const p = this.pickups.spawn();
+    if (!p) return;
+    p.kind = 'chave'; p.chaveId = chaveId; p.item = null; p.icon = ''; p.color = color;
+    p.x = x; p.y = y; p.vy = 40; p.vx = this.rng.range(-40, 40);
   }
 
   // ── projéteis ─────────────────────────────────────────────────────────────
@@ -2142,7 +2168,11 @@ export class VerticalMode {
       }
       if (p.alive && d < p.radius + 22) {
         item.alive = false;
-        if (item.item) {
+        if (item.kind === 'chave' && item.chaveId) {
+          this.sim.adquirirChave(item.chaveId, this.sim.state.run.sector);
+          this.particles.shockwave(p.x, p.y, 44, item.color, 0.35);
+          this.particles.sparks(p.x, p.y, 10, item.color, 170);
+        } else if (item.item) {
           this.sim.acquire(item.item);
           this.particles.shockwave(p.x, p.y, 44, item.color, 0.35);
           this.particles.sparks(p.x, p.y, 10, item.color, 170);
@@ -2878,7 +2908,12 @@ export class VerticalMode {
       s.ctx.globalAlpha = 0.8;
       s.ctx.strokeRect(item.x - 13, item.y - 13 + bob, 26, 26);
       s.ctx.globalAlpha = 1;
-      s.sprite(item.icon, item.x, item.y + bob, { scale: 0.5 });
+      if (item.kind === 'chave') {
+        const ctx = s.ctx;
+        ctx.save(); ctx.translate(item.x, item.y + bob); ctx.rotate(-0.35);
+        ctx.strokeStyle = item.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(-5, 0, 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(18, 0); ctx.lineTo(18, 6); ctx.moveTo(11, 0); ctx.lineTo(11, 5); ctx.stroke(); ctx.restore();
+      } else s.sprite(item.icon, item.x, item.y + bob, { scale: 0.5 });
     });
   }
 

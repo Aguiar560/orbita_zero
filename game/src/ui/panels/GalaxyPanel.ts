@@ -4,6 +4,7 @@ import { buscarPlacar, type EstadoDaBusca } from '@app/placar';
 import { fmt } from '@core/format';
 import { clamp } from '@core/math';
 import { describeGalaxy, galaxyOfSector, galaxyPhases, PHASES_PER_GALAXY } from '@data/galaxies';
+import { chaveDaGalaxia } from '@data/chaves-de-acesso';
 import { getElement } from '@data/elements';
 import { HULLS } from '@data/hulls';
 import { retratoInimigoDaGalaxia } from '@data/personagens';
@@ -65,6 +66,9 @@ export class GalaxyPanel implements Panel {
 
     const selected = phases.find((phase) => phase.sector === this.selectedSector) ?? phases[0]!;
     const selecionavel = best >= selected.sector;
+    const chaveSelecionada = chaveDaGalaxia(this.viewing);
+    const quantidadeChave = sim.quantidadeChaveDaGalaxia(this.viewing);
+    const acessoLiberado = !selected.isBoss || sim.temChaveDaGalaxia(this.viewing);
     const preview = buildEncounter(sim.state, selected.sector, 1);
     const setorAtual = sim.state.run.sector === selected.sector;
     const setoresVencidos = clamp(best - info.firstSector + 1, 0, PHASES_PER_GALAXY);
@@ -86,7 +90,7 @@ export class GalaxyPanel implements Panel {
       sim.touch();
     };
     const selecionarSetor = (): void => {
-      if (!selecionavel) return;
+      if (!selecionavel || !acessoLiberado) return;
       sim.jumpSector(selected.sector);
       this.viewing = galaxyOfSector(selected.sector);
       bus.emit('panel:close');
@@ -185,8 +189,13 @@ export class GalaxyPanel implements Panel {
                 ['Poder inimigo', fmt(sectorDamage(selected.sector))], ['Recompensa base', fmt(sectorBounty(selected.sector))],
               ].map(([label, value]) => h('.galaxy-command-stat-row', {}, h('span', { text: label }), h('b', { text: value }))),
             ),
+            selected.isBoss ? h('.galaxy-command-key-status', { style: { '--key-cor': chaveSelecionada.cor } as Partial<CSSStyleDeclaration> },
+              h('img', { src: `/assets/${chaveSelecionada.arte}`, alt: '', 'aria-hidden': 'true' }),
+              h('span', {}, h('small', { text: 'CHAVE DE ACESSO' }), h('b', { text: `${chaveSelecionada.nome} · ${quantidadeChave} disponível` })),
+              h('em', { text: acessoLiberado ? 'PRONTA' : 'NECESSÁRIA' }),
+            ) : null,
           ),
-          h('button.galaxy-command-select', { disabled: !selecionavel, onclick: selecionarSetor, text: selecionavel ? (setorAtual ? 'SETOR ATUAL' : 'SELECIONAR SETOR') : 'SETOR BLOQUEADO' }),
+          h('button.galaxy-command-select', { disabled: !selecionavel || !acessoLiberado, onclick: selecionarSetor, text: !acessoLiberado ? 'CHAVE NECESSÁRIA' : selecionavel ? (setorAtual ? 'SETOR ATUAL' : 'SELECIONAR SETOR') : 'SETOR BLOQUEADO' }),
         ),
       ),
       h('.galaxy-command-bottom', {},

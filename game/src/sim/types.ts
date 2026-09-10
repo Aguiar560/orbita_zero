@@ -317,6 +317,8 @@ export interface RunState {
    * troca de setor e bate de novo.
    */
   paredeAvisadaEm?: number;
+  /** Id do chefe cuja chave já foi consumida nesta tentativa. */
+  chaveAcessoConsumida?: string;
   /** Setores em que o jogador já derrotou o chefe neste universo. */
   cleared: number;
 }
@@ -562,6 +564,11 @@ export interface GameState {
    * material que ninguém tem.
    */
   armazem: Record<string, number>;
+
+  /** Estoque de chaves especiais, indexado pelo id da própria galáxia. */
+  chavesAcesso: Record<string, number>;
+  /** Galáxias que já receberam a garantia do primeiro setor pré-chefe. */
+  chavesAcessoGarantidas: number[];
 
   /** id do item de loja → quantas vezes foi comprado. */
   shop: Record<string, number>;

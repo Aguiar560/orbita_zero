@@ -148,7 +148,7 @@ export interface Enemy {
  *
  * A renda dela não sumiu: foi para dentro do abate. Ver `rewardKill`.
  */
-export type PickupKind = 'item';
+export type PickupKind = 'item' | 'chave';
 
 export interface Pickup {
   alive: boolean;
@@ -168,6 +168,8 @@ export interface Pickup {
    * que escapa pela base é realmente perdido.
    */
   item: Item | null;
+  /** Id da chave quando `kind === 'chave'`; chaves não ocupam inventário. */
+  chaveId: string | null;
   /** Sprite do ícone do item, resolvido uma vez no spawn. */
   icon: string;
   /** Cor da raridade, para o halo e o rastro. */
@@ -307,8 +309,8 @@ export function createDetritoPool(capacity = 80): Pool<Detrito> {
 
 export function createPickupPool(capacity = 80): Pool<Pickup> {
   return new Pool<Pickup>(
-    () => ({ alive: false, kind: 'item', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, icon: '', color: '#fff' }),
-    (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.icon = ''; p.color = '#fff'; },
+    () => ({ alive: false, kind: 'item', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, chaveId: null, icon: '', color: '#fff' }),
+    (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.chaveId = null; p.icon = ''; p.color = '#fff'; },
     capacity,
   );
 }
@@ -316,14 +318,17 @@ export function createPickupPool(capacity = 80): Pool<Pickup> {
 /** Clipe animado de cada coletável, vindo da folha `Bonuses`. */
 export const PICKUP_CLIP: Record<PickupKind, string> = {
   item: '',
+  chave: '',
 };
 
 /** Fallback estático, caso a folha arcade não tenha sido gerada. */
 export const PICKUP_SPRITE: Record<PickupKind, string> = {
   item: '',
+  chave: '',
 };
 
 export const PICKUP_COLOR: Record<PickupKind, string> = {
   // Cápsulas de item usam a cor da raridade, guardada no próprio pickup.
   item: '#ffffff',
+  chave: '#5de5ff',
 };

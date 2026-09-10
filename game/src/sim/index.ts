@@ -90,7 +90,8 @@ const FALHAS_PARA_OFERECER_RECUO = 3;
 
 const PILHA_MAX = 999_999_999;
 
-import { galaxyOfSector } from '@data/galaxies';
+import { galaxyOfSector, phaseOfSector } from '@data/galaxies';
+import { CHANCE_DROP_CHAVE_REPETICAO, CHAVE_POR_ID, chaveDaGalaxia, type ChaveDeAcessoDef } from '@data/chaves-de-acesso';
 import { CHEST_BY_ID } from '@data/chests';
 import { getHull, HULLS, normalizeHullHitbox, type HullHitbox } from '@data/hulls';
 import { ALL_ENEMIES } from '@data/enemies';
@@ -753,6 +754,7 @@ export class Sim {
     // lugar novo já disparava o aviso de parede — que diz "três quedas
     // seguidas aqui" sobre um lugar onde o jogador caiu uma vez. O teste pegou.
     this.state.run.falhasNoSetor = 0;
+    this.state.run.chaveAcessoConsumida = undefined;
     // A contagem do painel de conclusão é DESTE setor, pelo mesmo motivo.
     this.marcarSetor();
     this.state.universe.bestSector = Math.max(this.state.universe.bestSector, this.state.run.sector);
@@ -1644,6 +1646,61 @@ export class Sim {
     };
   }
 
+  quantidadeChaveDaGalaxia(galaxia: number): number {
+    const chave = chaveDaGalaxia(galaxia);
+    return Math.max(0, Math.floor(this.state.chavesAcesso?.[chave.id] ?? 0));
+  }
+
+  temChaveDaGalaxia(galaxia: number): boolean {
+    return this.testMode || this.quantidadeChaveDaGalaxia(galaxia) > 0;
+  }
+
+  /** Drop visual raro de abate em setores anteriores ao chefe. */
+  rollChaveDuranteAbate(setor: number): ChaveDeAcessoDef | null {
+    if (this.testMode || phaseOfSector(setor) > 9 || !this.rng.chance(0.004)) return null;
+    return chaveDaGalaxia(galaxyOfSector(setor));
+  }
+
+  adquirirChave(id: string, setor = chaveDaGalaxia(CHAVE_POR_ID.get(id)?.galaxia ?? 0).galaxia * 10 + 1): boolean {
+    const chave = CHAVE_POR_ID.get(id);
+    if (!chave) return false;
+    this.state.chavesAcesso[id] = Math.min(999, (this.state.chavesAcesso[id] ?? 0) + 1);
+    bus.emit('access-key:dropped', { galaxia: chave.galaxia, id, garantida: false, setor });
+    this.touch();
+    return true;
+  }
+
+  /** Cobra uma chave uma vez por tentativa de chefe, inclusive após uma derrota. */
+  prepararAcessoAoChefe(bossId: string): boolean {
+    if (this.desafio || this.testMode) return true;
+    const run = this.state.run;
+    if (run.chaveAcessoConsumida === bossId) return true;
+    const chave = [...CHAVE_POR_ID.values()].find((item) => item.bossId === bossId);
+    if (!chave || this.quantidadeChaveDaGalaxia(chave.galaxia) <= 0) {
+      toast('Chave de acesso necessária para iniciar este chefe.', 'bad');
+      return false;
+    }
+    const restante = this.quantidadeChaveDaGalaxia(chave.galaxia) - 1;
+    if (restante > 0) this.state.chavesAcesso[chave.id] = restante;
+    else delete this.state.chavesAcesso[chave.id];
+    run.chaveAcessoConsumida = bossId;
+    bus.emit('access-key:consumed', { galaxia: chave.galaxia, id: chave.id });
+    this.touch();
+    return true;
+  }
+
+  private tentarDropChaveAoConcluir(setor: number): void {
+    const fase = phaseOfSector(setor);
+    if (fase > 9) return;
+    const galaxia = galaxyOfSector(setor);
+    const chave = chaveDaGalaxia(galaxia);
+    const garantia = fase === 9 && !this.state.chavesAcessoGarantidas.includes(galaxia);
+    if (!garantia && !this.rng.chance(CHANCE_DROP_CHAVE_REPETICAO)) return;
+    this.state.chavesAcesso[chave.id] = Math.min(999, (this.state.chavesAcesso[chave.id] ?? 0) + 1);
+    if (garantia) this.state.chavesAcessoGarantidas.push(galaxia);
+    bus.emit('access-key:dropped', { galaxia, id: chave.id, garantida: garantia, setor });
+  }
+
   completeEncounter(abstract = false): void {
     const e = this.encounter;
     const run = this.state.run;
@@ -1727,6 +1784,7 @@ export class Sim {
       }
       run.wave = 1;
       run.cleared++;
+      this.tentarDropChaveAoConcluir(e.sector);
 
       /**
        * Setor concluído devolve a nave inteira. Pedido do Rafael em 09/09.
@@ -1764,6 +1822,7 @@ export class Sim {
        * o jogador voltar, ele escolhe se avança.
        */
       if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
+      run.chaveAcessoConsumida = undefined;
       run.falhasNoSetor = 0;
       // Depois de mover o ponteiro, e SEMPRE — mesmo repetindo o mesmo setor,
       // que é quando `run.sector` não muda e uma checagem preguiçosa por
@@ -1815,6 +1874,7 @@ export class Sim {
     // Refaz o setor inteiro. Sem isso a morte não custaria TEMPO, que é a
     // moeda que mais importa num idle.
     run.wave = 1;
+    run.chaveAcessoConsumida = undefined;
     run.falhasNoSetor = (run.falhasNoSetor ?? 0) + 1;
 
     /**

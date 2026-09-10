@@ -2,6 +2,7 @@ import { fmt } from '@core/format';
 import { rarityInfo } from '@data/rarity';
 import { ESCOPO_LABEL, FAMILIAS_ORDENADAS, FAMILIA_LABEL, RECURSOS, iconeDeRecurso } from '@data/recursos';
 import { ELEMENTS, getElement } from '@data/elements';
+import { CHAVES_DE_ACESSO } from '@data/chaves-de-acesso';
 import { HULL_BY_ID } from '@data/hulls';
 import { SHOP } from '@data/shop';
 import { pedirSelecao } from '../selecao';
@@ -104,6 +105,7 @@ export class ArmazemPanel implements Panel {
 
       h('nav.armazem-abas', { role: 'tablist', 'aria-label': 'Grupos do armazém' },
         // Serviços vem PRIMEIRO: é a única aba com algo a fazer, não só a ver.
+        this.botaoDeAba(sim, 'chaves', 'Chaves', Object.values(sim.state.chavesAcesso ?? {}).reduce((s, n) => s + n, 0)),
         this.botaoDeAba(sim, 'servicos', 'Serviços', this.totalDeCargas(sim)),
         ...FAMILIAS_ORDENADAS.map((cat) => this.botaoDeAba(
           sim, cat, FAMILIA_LABEL[cat],
@@ -111,7 +113,7 @@ export class ArmazemPanel implements Panel {
         )),
       ),
       h('.armazem-conteudo', { role: 'tabpanel' },
-        ...(this.aba === 'servicos' ? this.abaDeServicos(sim) : grupos.filter((g) => g?.dataset.familia === this.aba)),
+        ...(this.aba === 'chaves' ? this.abaDeChaves(sim) : this.aba === 'servicos' ? this.abaDeServicos(sim) : grupos.filter((g) => g?.dataset.familia === this.aba)),
       ),
     );
   }
@@ -119,6 +121,19 @@ export class ArmazemPanel implements Panel {
   /** Quantas cargas de serviço há guardadas, somando todos os tipos. */
   private totalDeCargas(sim: Sim): number {
     return Object.values(sim.state.servicos ?? {}).reduce((s, n) => s + (n ?? 0), 0);
+  }
+
+  private abaDeChaves(sim: Sim): HTMLElement[] {
+    const chaves = CHAVES_DE_ACESSO.filter((chave) => !this.soPossuidos || (sim.state.chavesAcesso[chave.id] ?? 0) > 0);
+    if (!chaves.length) return [h('.armazem-vazio', {}, h('strong', { text: 'Nenhuma chave guardada.' }), h('span.tiny', { text: 'As chaves caem nos setores anteriores a cada chefe e não ocupam espaço do Inventário.' }))];
+    return [h('.armazem-chave-grid', {}, ...chaves.map((chave) => {
+      const n = sim.state.chavesAcesso[chave.id] ?? 0;
+      const elemento = getElement(chave.elemento);
+      return h('.armazem-chave-card', { style: { '--chave-cor': chave.cor } as Partial<CSSStyleDeclaration>, title: chave.descricao },
+        h('img', { src: `/assets/${chave.arte}`, alt: '', 'aria-hidden': 'true' }),
+        h('strong', { text: chave.nome }), h('span', { text: `Galáxia ${chave.galaxia + 1} · ${elemento.name}` }), h('b', { text: `×${n}` }),
+      );
+    }))];
   }
 
   private botaoDeAba(sim: Sim, id: string, rotulo: string, quantos: number): HTMLElement {

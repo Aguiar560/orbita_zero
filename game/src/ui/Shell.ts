@@ -506,6 +506,9 @@ export class Shell {
     bus.on('dica:escudo', () => this.mostrarDicaDeEscudo());
     bus.on('inventario:cheio', ({ motivo }) => this.avisarInventarioCheio(motivo));
     bus.on('boss:spawned', () => this.avisarEspacoParaOChefe());
+    bus.on('access-key:dropped', ({ galaxia, garantida }) => this.pushToast(
+      `Chave da Galáxia ${galaxia + 1} ${garantida ? 'garantida' : 'encontrada'} · guardada no Armazém`, 'good', 'ui/icon_star',
+    ));
     bus.on('chefe:pecasRetidas', ({ retidas }) => this.mostrarPecasRetidas(retidas));
     // Peças guardadas numa sessão anterior: o save lembra, e a tela precisa
     // dizer logo ao abrir — senão o jogador libera espaço sem saber por quê.
