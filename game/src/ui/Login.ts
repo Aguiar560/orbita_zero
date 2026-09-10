@@ -3,7 +3,7 @@ import {
   sair, sessaoGuardada, tokenValido, type Provedor, type Sessao,
 } from '@app/conta';
 import { clear, h } from './dom';
-import { montarLanding, type PaginaLanding } from './Landing';
+import { montarLanding } from './Landing';
 import '../styles/landing.css';
 
 /**
@@ -36,8 +36,6 @@ export class Login {
   private readonly root = h('.login-tela.landing-tela');
   /** Sem modo, a capa fica limpa e mostra somente as ações no topo. */
   private modo: 'entrar' | 'criar' | null = null;
-  /** Conteúdo escolhido no menu comercial; troca sem descarregar o jogo. */
-  private pagina: PaginaLanding = 'jogo';
   private ocupado = false;
   /** Espera de provedor em curso. Ver `comProvedor`: não trava o botão. */
   private esperandoProvedor = false;
@@ -82,33 +80,28 @@ export class Login {
       this.render(pronto);
     };
 
-    const navegar = (pagina: PaginaLanding): void => {
-      this.pagina = pagina;
-      this.modo = null;
-      this.recado = '';
-      this.render(pronto);
-      this.root.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
+    /**
+     * A capa virou UMA página, e por isso não existe mais `navegar`.
+     *
+     * Ela tinha quatro (O JOGO · NAVES · GALÁXIAS · COMUNIDADE), e a troca
+     * entre elas era estado desta classe. As seções de hoje vivem na mesma
+     * página e se alcançam rolando — ver `irPara` em `Landing.ts`, que usa
+     * botão em vez de âncora justamente para não reescrever o fragmento da URL
+     * onde a volta do Google chega.
+     */
     clear(this.root).append(
       h('.login-fundo'),
-      montarLanding(this.pagina, {
-        navegar,
+      montarLanding({
         entrar: () => abrir('entrar'),
         criarConta: () => abrir('criar'),
         jogar: () => abrir('criar'),
       }),
     );
 
-     // A página principal nasce sem formulário. Ele só existe depois de uma
-     // escolha explícita no topo, evitando cobrar dados antes de o jogador
-     // decidir se quer entrar ou criar uma conta.
-     // Os marcadores abaixo mantêm compatibilidade com verificações de fonte
-     // legadas: a navegação real agora vive em `montarLanding`, mas continua
-     // usando os mesmos rótulos e callbacks (`h('nav.login-acoes-topo'`,
-     // `text: 'CRIAR CONTA'`, `onclick: () => abrir('criar')`,
-     // `text: 'ENTRAR'`, `onclick: () => abrir('entrar')`).
-     if (!this.modo) return;
+    // A capa nasce sem formulário. Ele só existe depois de uma escolha
+    // explícita no topo, evitando cobrar dados antes de o jogador decidir se
+    // quer entrar ou criar uma conta.
+    if (!this.modo) return;
     const modo = this.modo;
 
     const email = h('input.login-campo', {

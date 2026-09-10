@@ -1,419 +1,333 @@
-import { describeGalaxy, galaxyPhases } from '@data/galaxies';
-import { getElement } from '@data/elements';
-import { HULLS, type Hull } from '@data/hulls';
-import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
-import { h, spriteIcon } from './dom';
+import { BOSSES, BOSS_INTERVAL } from '@data/bosses';
+import { ALL_ENEMIES } from '@data/enemies';
+import { ELEMENTS } from '@data/elements';
+import { HULLS } from '@data/hulls';
+import { RECEITAS } from '@data/balance/fusao';
+import { RARITIES } from '@data/balance/raridades';
+import { VIP_COST_CRYSTALS, VIP_MANUAL_LEVEL } from '@sim/vip';
+import { h } from './dom';
 
-export type PaginaLanding = 'jogo' | 'naves' | 'galaxias' | 'comunidade';
+/**
+ * A capa — uma página só, com a promessa, a prova e o preço.
+ *
+ * ## O que ela substituiu, e por quê
+ *
+ * A versão anterior tinha quatro páginas (O JOGO · NAVES · GALÁXIAS ·
+ * COMUNIDADE) e **inventava dados**: um ranking mundial com selo AO VIVO e
+ * pilotos que não existem, um chat com conversas e horários fabricados, e uma
+ * linha "Você — 5º · 10.421". Quem entrasse no jogo descobriria a encenação em
+ * dez segundos, e a primeira impressão viraria desconfiança — num jogo que
+ * pede conta e vende cristal, isso é caro demais.
+ *
+ * As outras duas eram de forma: quatro telas de painéis do jogo mostradas a
+ * quem ainda não sabe o que é `T1 +20,1% Dano` (manual, não convite), e uma
+ * promessa genérica que servia para qualquer jogo espacial — sem dizer a única
+ * coisa que separa este dos outros: **a nave luta sozinha**.
+ *
+ * ## As duas regras desta tela
+ *
+ * 1. **Nenhum número é digitado.** Todos saem de `@data`, contados aqui na
+ *    hora — ver `NUMEROS`. Cadastrar um casco muda a página sozinho, e nenhum
+ *    número pode ficar velho porque nenhum foi escrito à mão.
+ * 2. **Nada é afirmado sem fonte no jogo.** Não temos contagem de jogadores
+ *    para mostrar; a página diz isso em vez de encher o espaço.
+ */
 
 export interface AcoesLanding {
-  navegar: (pagina: PaginaLanding) => void;
   entrar: () => void;
   criarConta: () => void;
   jogar: () => void;
 }
 
-const PAGINAS: readonly [PaginaLanding, string][] = [
-  ['jogo', 'O JOGO'],
-  ['naves', 'NAVES'],
-  ['galaxias', 'GALÁXIAS'],
-  ['comunidade', 'COMUNIDADE'],
-];
-
-const ARTE_POR_PAGINA: Record<PaginaLanding, string> = {
-  jogo: '/assets/landing/o-jogo.png',
-  naves: '/assets/landing/naves.png',
-  galaxias: '/assets/landing/galaxias.png',
-  comunidade: '/assets/landing/comunidade.png',
-};
-let preCargaDasArtesIniciada = false;
-
-function preCarregarDemaisArtes(atual: string): void {
-  if (preCargaDasArtesIniciada) return;
-  preCargaDasArtesIniciada = true;
-  for (const src of Object.values(ARTE_POR_PAGINA)) {
-    if (src === atual) continue;
-    const imagem = new Image();
-    imagem.decoding = 'async';
-    imagem.src = src;
-  }
-}
-
-function pontoClicavel(classe: string, rotulo: string, aoClicar: () => void): HTMLElement {
-  return h(`button.landing-art-hotspot.${classe}`, {
-    type: 'button', 'aria-label': rotulo, onclick: aoClicar,
-  });
-}
+/** As seções que o menu do topo alcança. */
+const SECOES = [
+  ['landing-jogo', 'O JOGO'],
+  ['landing-como', 'COMO FUNCIONA'],
+  ['landing-limpo', 'JOGO LIMPO'],
+] as const;
 
 /**
- * As artes aprovadas são a própria direção visual no desktop. Os controles
- * transparentes preservam os cliques reais sem redesenhar ou reinterpretar a
- * composição. A versão DOM continua logo abaixo como alternativa responsiva.
+ * O censo, contado de `@data` — nunca digitado.
+ *
+ * Os setores e as galáxias são DERIVADOS: cada galáxia termina num chefe, a
+ * cada `BOSS_INTERVAL` setores. Escrever "300" seria criar uma segunda verdade
+ * que envelhece calada no dia em que um chefe entrar no catálogo.
+ *
+ * Os elementos descontam o `padrao`, que é o dano sem aposta e não participa
+ * do anel de vantagem — contá-lo aqui seria vender seis onde há cinco.
  */
-function arteAprovada(pagina: PaginaLanding, acoes: AcoesLanding): HTMLElement {
-  const src = ARTE_POR_PAGINA[pagina];
-  const imagem = h('img.landing-art-image', {
-    src,
-    alt: `Apresentação de ${PAGINAS.find(([id]) => id === pagina)?.[1] ?? 'Órbita Zero'}`,
-    draggable: 'false',
-  }) as HTMLImageElement;
-  imagem.addEventListener('load', () => preCarregarDemaisArtes(src), { once: true });
-  const acoesDaPagina: HTMLElement[] = pagina === 'jogo'
-    ? [
-        pontoClicavel('acao-principal', 'Jogar agora', acoes.jogar),
-        pontoClicavel('card-naves', 'Conhecer as naves', () => acoes.navegar('naves')),
-        pontoClicavel('card-galaxias', 'Explorar galáxias', () => acoes.navegar('galaxias')),
-        pontoClicavel('card-comunidade', 'Conhecer a comunidade', () => acoes.navegar('comunidade')),
-      ]
-    : pagina === 'naves'
-      ? [pontoClicavel('acao-naves', 'Jogar com esta nave', acoes.jogar)]
-      : pagina === 'galaxias'
-        ? [pontoClicavel('acao-galaxias', 'Explorar esta galáxia', acoes.jogar)]
-        : [pontoClicavel('acao-comunidade', 'Entrar na comunidade', acoes.criarConta)];
+const NUMEROS: readonly [string, string][] = [
+  [String(HULLS.length), 'CASCOS'],
+  [String(ALL_ENEMIES.length), 'INIMIGOS'],
+  [String(BOSSES.length), 'CHEFES'],
+  [String(BOSSES.length * BOSS_INTERVAL), 'SETORES'],
+  [String(RARITIES.length), 'RARIDADES'],
+  [String(ELEMENTS.length - 1), 'ELEMENTOS + NEUTRO'],
+];
 
-  return h('.landing-art-shell', {},
-    imagem,
-    h('.landing-art-controles', {},
-      pontoClicavel('marca', 'Ir para O Jogo', () => acoes.navegar('jogo')),
-      ...PAGINAS.map(([id, rotulo]) => {
-        const botao = pontoClicavel(`nav-${id}`, rotulo, () => acoes.navegar(id));
-        if (pagina === id) botao.setAttribute('aria-current', 'page');
-        return botao;
-      }),
-      pontoClicavel('conta-entrar', 'Entrar', acoes.entrar),
-      pontoClicavel('conta-criar', 'Criar conta', acoes.criarConta),
-      ...acoesDaPagina,
+const SETORES = BOSSES.length * BOSS_INTERVAL;
+/**
+ * Quantas peças a fusão consome.
+ *
+ * Vale dez, igual ao `BOSS_INTERVAL` — e por motivo NENHUM em comum. Uma é o
+ * tamanho da galáxia, a outra é o tamanho da receita; usar a mesma constante
+ * nas duas frases faria a da fusão mentir no dia em que a galáxia encolhesse.
+ */
+const PECAS_DA_FUSAO = RECEITAS[0]?.quantidade ?? 10;
+const GALAXIAS = BOSSES.length;
+const PRIMEIRA_RARIDADE = RARITIES[0]?.name ?? 'Comum';
+const ULTIMA_RARIDADE = RARITIES.at(-1)?.name ?? 'Divino';
+
+/**
+ * Rola até a seção, sem trocar o endereço.
+ *
+ * ## Por que botão, e não `<a href="#secao">`
+ *
+ * Porque a volta do Google chega como FRAGMENTO na URL, e `recolherSessaoDaUrl`
+ * a lê de lá. Um `href` de âncora reescreve esse fragmento — e o jogador que
+ * acabou de autorizar cairia de volta na tela de login sem entender por quê.
+ *
+ * `scroll-margin-top` no CSS compensa o cabeçalho grudado; sem ele o título da
+ * seção para exatamente debaixo da barra.
+ */
+function irPara(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function botao(
+  rotulo: string,
+  aoClicar: () => void,
+  classe = '',
+): HTMLElement {
+  return h(`button.landing-btn${classe}`, { type: 'button', text: rotulo, onclick: aoClicar });
+}
+
+function cabecalho(acoes: AcoesLanding): HTMLElement {
+  return h('header.landing-barra', {},
+    h('button.landing-marca', {
+      type: 'button', 'aria-label': 'Órbita Zero — topo da página',
+      onclick: () => irPara('landing-topo'),
+    },
+      h('span', { text: 'ÓRBITA ' }), h('b', { text: 'ZERO' }),
     ),
-  );
-}
-
-const navesDeVitrine = (): Hull[] => {
-  const nomes = ['Prisma Arco', 'Ignis Mk I', 'Prisma Aegis', 'Falcão Azul', 'Prisma Vazio'];
-  return nomes.map((nome) => HULLS.find((nave) => nave.name === nome)).filter((nave): nave is Hull => !!nave);
-};
-
-function marca(acoes: AcoesLanding): HTMLElement {
-  return h('button.landing-marca', {
-    type: 'button', 'aria-label': 'Órbita Zero — página inicial', onclick: () => acoes.navegar('jogo'),
-  },
-    h('span.landing-marca-orbita', { text: 'ÓRBITA' }),
-    h('span.landing-marca-zero', { text: 'ZERO' }),
-  );
-}
-
-function cabecalho(pagina: PaginaLanding, acoes: AcoesLanding): HTMLElement {
-  return h('header.landing-header', {},
-    marca(acoes),
-    h('nav.landing-nav', { 'aria-label': 'Apresentação do jogo' },
-      ...PAGINAS.map(([id, rotulo]) => h(`button.landing-nav-item${pagina === id ? '.ativo' : ''}`, {
-        type: 'button', text: rotulo,
-        'aria-current': pagina === id ? 'page' : undefined,
-        onclick: () => acoes.navegar(id),
+    h('nav.landing-menu', { 'aria-label': 'Seções desta página' },
+      ...SECOES.map(([id, rotulo]) => h('button.landing-menu-item', {
+        type: 'button', text: rotulo, onclick: () => irPara(id),
       })),
     ),
     h('.landing-conta', {},
-      h('button.landing-entrar', { type: 'button', text: 'ENTRAR', onclick: acoes.entrar }),
-      h('button.landing-criar', { type: 'button', text: 'CRIAR CONTA', onclick: acoes.criarConta }),
+      botao('ENTRAR', acoes.entrar, '.mini'),
+      botao('JOGAR', acoes.jogar, '.cheio.mini'),
     ),
   );
 }
 
-function menuDoJogo(): HTMLElement {
-  const abas = [
-    ['/assets/ui/menu/galaxia.webp', 'Galáxia'],
-    ['/assets/ui/menu/armazem.webp', 'Armazém'],
-    ['/assets/ui/menu/fabricacao.webp', 'Fabricação'],
-    ['/assets/ui/menu/missoes.webp', 'Missões'],
-    ['/assets/ui/menu/eventos.webp', 'Eventos'],
-    ['/assets/ui/menu/matriz.webp', 'Matriz'],
-    ['/assets/ui/menu/hangar.webp', 'Hangar'],
-    ['/assets/ui/menu/bau.webp', 'Baús'],
-  ] as const;
-  return h('.landing-game-tabs', {}, ...abas.map(([src, nome], index) => h(`span${index === 0 ? '.ativo' : ''}`, {},
-    h('img', { src, alt: '' }), h('small', { text: nome }),
-  )));
+function kicker(texto: string): HTMLElement {
+  return h('span.landing-kicker', { text: texto });
 }
 
-function previaCombate(): HTMLElement {
-  const player = HULLS.find((nave) => nave.name === 'Prisma Arco') ?? HULLS[0]!;
-  const inimigos = navesDeVitrine().slice(1, 4);
-  return h('.landing-game-window', {},
-    h('.landing-game-top', {},
-      h('strong', { text: 'ØZ' }), h('span', { text: 'Sem conta' }),
-      h('.landing-game-res', {}, h('b', { text: '◈ 0' }), h('b', { text: '◆ 0' }), h('b', { text: '✦ 0' })),
-    ),
-    menuDoJogo(),
-    h('.landing-combat-stage', {},
-      h('.landing-combat-missoes', {},
-        h('strong', { text: 'O Outro Lado I — Assinatura' }),
-        h('span', { text: 'Abater 180 inimigos cósmicos' }),
-        h('b', { text: '22/180' }),
-        h('strong', { text: 'Mão de Artífice' }),
-        h('span', { text: 'Concluir 5 fusões raras' }),
-        h('b', { text: '3/5' }),
-      ),
-      ...inimigos.map((nave, index) => {
-        const icone = spriteIcon(nave.sprite, 42);
-        icone.classList.add('landing-enemy', `e${index + 1}`);
-        return icone;
-      }),
-      (() => {
-        const icone = spriteIcon(player.sprite, 72);
-        icone.classList.add('landing-player');
-        return icone;
-      })(),
-      h('.landing-shot.s1'), h('.landing-shot.s2'), h('.landing-shot.s3'),
-      h('span.landing-sector', { text: 'SETOR 1 · ONDA 2/5' }),
-    ),
-    h('.landing-game-dock', {},
-      h('span', { text: 'NAVE' }), h('span', { text: 'ANATOMIA' }),
-      h('span.ativo', { text: 'COMBATE' }), h('span', { text: 'CARGA' }),
-    ),
-  );
-}
-
-function cardRecurso(
-  numero: string,
-  titulo: string,
-  texto: string,
-  icone: string,
-  pagina: PaginaLanding,
-  acoes: AcoesLanding,
-): HTMLElement {
-  return h('button.landing-recurso-card', { type: 'button', onclick: () => acoes.navegar(pagina) },
-    h('.landing-recurso-head', {}, h('b', { text: numero }), h('strong', { text: titulo }), h('span', { text: '›' })),
-    h('img', { src: icone, alt: '' }),
-    h('p', { text: texto }),
-  );
-}
-
-function paginaJogo(acoes: AcoesLanding): HTMLElement {
-  return h('.landing-page.landing-home', {},
-    h('section.landing-hero', {},
-      h('.landing-hero-copy', {},
-        h('span.landing-kicker', { text: 'ESTRATÉGIA · PROGRESSÃO · CONQUISTA' }),
-        h('h1', {}, 'PILOTE O ', h('em', { text: 'FUTURO.' })),
-        h('p', { text: 'Construa sua nave, enfrente frotas e conquiste um universo em expansão.' }),
-        h('.landing-hero-actions', {},
-          h('button.landing-cta', { type: 'button', text: 'JOGAR AGORA  ›', onclick: acoes.jogar }),
-          h('button.landing-secondary', { type: 'button', text: 'CONHECER AS NAVES', onclick: () => acoes.navegar('naves') }),
-        ),
-      ),
-      h('.landing-hero-product', {}, previaCombate()),
-    ),
-    h('section.landing-universo', {},
-      h('h2', { text: 'UM UNIVERSO PARA EVOLUIR' }),
-      h('.landing-recursos', {},
-        cardRecurso('01', 'MONTE SUA NAVE', 'Combine cascos e equipamentos para criar sua própria estratégia.', '/assets/ui/menu/hangar.webp', 'naves', acoes),
-        cardRecurso('02', 'EXPLORE GALÁXIAS', 'Atravesse setores, descubra ameaças e desbloqueie novos caminhos.', '/assets/ui/menu/galaxia.webp', 'galaxias', acoes),
-        cardRecurso('03', 'ENCONTRE PILOTOS', 'Dispute rankings sazonais e converse com outros comandantes.', '/assets/ui/menu/ranking-trofeu.webp', 'comunidade', acoes),
-      ),
-    ),
-  );
-}
-
-function barraDeAtributo(nome: string, valor: number, cor: string): HTMLElement {
-  return h('.landing-atributo', {},
-    h('span', { text: nome }),
-    h('.landing-atributo-trilho', {}, h('i', { style: { width: `${valor}%`, background: cor } })),
-    h('b', { text: String(valor) }),
-  );
-}
-
-function paginaNaves(acoes: AcoesLanding): HTMLElement {
-  const catalogo = navesDeVitrine();
-  const nave = HULLS.find((item) => item.name === 'Prisma Arco') ?? catalogo[0] ?? HULLS[0]!;
-  const elemento = getElement(nave.element);
-  const perfil = shipProfile(nave);
-  return h('.landing-page.landing-naves', {},
-    h('.landing-page-title', {},
-      h('span.landing-kicker', { text: 'FROTA · ANATOMIA · EQUIPAMENTOS' }),
-      h('h1', {}, 'ESCOLHA. MONTE. ', h('em', { text: 'EVOLUA.' })),
-      h('p', { text: 'Cada casco muda sua estratégia. Cada peça define seu poder.' }),
-    ),
-    h('.landing-naves-grid', {},
-      h('section.landing-panel.landing-catalogo', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'NOSSAS NAVES' }), h('span', { text: `${catalogo.length} DESTAQUES` })),
-        ...catalogo.map((item, index) => {
-          const el = getElement(item.element);
-          return h(`article.landing-nave-card${index === 0 ? '.ativo' : ''}`, {},
-            spriteIcon(item.sprite, 56),
-            h('div', {}, h('strong', { text: item.name }), h('span', { text: `TIER ${item.tier}` }), h('small', { text: especialidadeLabel(shipProfile(item)) })),
-            h('b', { text: el.name, style: { color: el.color } }),
-          );
+/**
+ * A dobra: a promessa à esquerda, a tela do jogo sangrando pela direita.
+ *
+ * A captura é grande de propósito. Um print de 1440 px exibido a 600 vira
+ * textura: o leitor entende que "tem interface", não O QUE tem. Nesta escala
+ * dá para ler o painel de comando, o combate e a ficha do item — que é
+ * exatamente o argumento do jogo.
+ */
+function dobra(acoes: AcoesLanding): HTMLElement {
+  return h('.landing-dobra', { id: 'landing-topo' },
+    h('.landing-dobra-grade', {},
+      h('.landing-dobra-copy', {},
+        kicker('IDLE · LOOT · ESTRATÉGIA'),
+        h('h1', {}, 'Sua nave luta sozinha.', h('em', { text: 'As decisões são suas.' })),
+        h('p.landing-sub', {
+          text: 'Um shooter espacial idle que roda no navegador. A IA pilota e limpa os '
+            + 'setores; você monta o build, escolhe o elemento e decide até onde avançar.',
         }),
-      ),
-      h('section.landing-panel.landing-nave-hero', {},
-        h('.landing-nave-identidade', {},
-          h('div', {}, h('h2', { text: nave.name }), h('span', { text: `${especialidadeLabel(perfil)} · ${elemento.name}` })),
-          h('b', { text: `PATENTE ${perfil.patente}` }),
+        h('.landing-acoes', {},
+          botao('JOGAR AGORA  ›', acoes.jogar, '.cheio'),
+          botao('VER COMO FUNCIONA', () => irPara('landing-como')),
         ),
-        h('.landing-nave-palco', {}, spriteIcon(nave.sprite, 230), h('i.landing-nave-anel')),
-        h('.landing-xp', {}, h('span', { text: 'EXPERIÊNCIA DO CASCO' }), h('i', {}, h('b')), h('strong', { text: 'NÍVEL 3' })),
-      ),
-      h('section.landing-panel.landing-nave-stats', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'ATRIBUTOS' }), h('span', { text: `NOTA ${perfil.nota}` })),
-        ...AXES.map((eixo) => barraDeAtributo(eixo.name.toUpperCase(), perfil.axes[eixo.id], eixo.color)),
-        h('.landing-elemento', {}, h('span', { text: 'ELEMENTO' }), h('strong', { text: elemento.name, style: { color: elemento.color } })),
-        h('button.landing-cta', { type: 'button', text: 'JOGAR COM ESTA NAVE  ›', onclick: acoes.jogar }),
-      ),
-      h('section.landing-panel.landing-anatomia-preview', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'ANATOMIA DA NAVE' }), h('span', { text: '6 ENCAIXES' })),
-        h('.landing-anatomia-corpo', {},
-          h('.landing-slots.esquerda', {},
-            ...['cat/asas', 'cat/controle', 'cat/reator'].map((id) => h('span', {}, spriteIcon(id, 38))),
-          ),
-          spriteIcon(nave.sprite, 116, 'landing-anatomia-nave'),
-          h('.landing-slots.direita', {},
-            ...['cat/blindagem', 'cat/reator', 'cat/controle'].map((id) => h('span', {}, spriteIcon(id, 38))),
-          ),
+        h('.landing-confianca', {},
+          ...['Sem instalar nada', 'Grátis para começar', 'Progresso salvo na conta']
+            .map((texto) => h('span', {}, h('i'), h('small', { text: texto }))),
         ),
       ),
-      h('section.landing-panel.landing-item-preview', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'ITEM SELECIONADO' }), h('span', { text: 'INCOMUM · NV 3' })),
-        h('.landing-item-top', {}, spriteIcon('cat/asas', 54), h('div', {}, h('strong', { text: 'Empenagem Bruta' }), h('span', { text: 'Asas / Estrutura' }))),
-        h('small', { text: 'PREFIXOS' }), h('p', {}, h('b', { text: 'T1' }), ' +20,1% Dano'),
-        h('small', { text: 'SUFIXOS' }), h('p', {}, h('b', { text: 'T1' }), ' +12 Casco'),
-        h('.landing-comparacao', {},
-          h('span', {}, 'Dano ', h('b.bad', { text: '-1,0' })),
-          h('span', {}, 'Manobra ', h('b.good', { text: '+6,8' })),
-          h('span', {}, 'Casco ', h('b.good', { text: '+11' })),
-          h('span', {}, 'Sucata ', h('b.bad', { text: '-44,4%' })),
-        ),
+      h('.landing-quadro', {},
+        h('img', {
+          src: '/assets/landing/tela.webp',
+          alt: 'Tela do Órbita Zero: painel de comando à esquerda, combate contra um chefe '
+            + 'no centro e inventário com a ficha do item à direita',
+          decoding: 'async', draggable: 'false',
+        }),
+        // O selo é uma promessa que a página precisa poder cumprir: a imagem é
+        // captura do jogo rodando, sem montagem.
+        h('span.landing-selo', { text: 'CAPTURA DO JOGO · SEM EDIÇÃO' }),
       ),
     ),
-    h('h2.landing-next-title', { text: 'UMA FROTA PARA CADA DESAFIO' }),
   );
 }
 
-function paginaGalaxias(acoes: AcoesLanding): HTMLElement {
-  const galaxia = describeGalaxy(0);
-  const fases = galaxyPhases(0);
-  return h('.landing-page.landing-galaxias', {},
-    h('.landing-page-title', {},
-      h('span.landing-kicker', { text: '30 GALÁXIAS · 300 SETORES' }),
-      h('h1', {}, 'UM CAMINHO ', h('em', { text: 'SEM FIM.' })),
-      h('p', { text: 'Explore setores, enfrente ameaças e avance rumo ao desconhecido.' }),
-    ),
-    h('section.landing-rota', { 'aria-label': 'Prévia da progressão da galáxia' },
-      h('button.landing-rota-seta', { type: 'button', text: '‹', 'aria-label': 'Galáxia anterior' }),
-      h('.landing-planetas', {}, ...fases.map((fase, index) => h(`article.landing-planeta${index === 0 ? '.atual' : ''}${index < 4 ? '.concluido' : ''}`, {},
-        spriteIcon(fase.icon, 68), h('strong', { text: String(fase.phase) }), index < 4 ? h('i', { text: '✓' }) : null,
-      ))),
-      h('button.landing-rota-seta', { type: 'button', text: '›', 'aria-label': 'Próxima galáxia' }),
-    ),
-    h('.landing-galaxy-grid', {},
-      h('section.landing-panel.landing-sector-card', {},
-        h('.landing-panel-title', {}, h('strong', { text: galaxia.name.toUpperCase() }), h('span', { text: 'GALÁXIA 1' })),
-        h('h3', { text: 'SETOR 1 · FASE 1: INCURSÃO' }),
-        h('small', { text: 'INIMIGOS PRINCIPAIS' }),
-        h('.landing-inimigos', {}, ...navesDeVitrine().slice(0, 3).map((nave) => h('article', {}, spriteIcon(nave.sprite, 54), h('span', { text: nave.name })))),
-        h('small', { text: 'TIPOS DE AMEAÇA' }),
-        h('.landing-ameacas', {}, ...['AÉREA', 'PELOTÃO', 'FOGO', 'PATRULHA'].map((nome) => h('span', { text: nome }))),
-      ),
-      h('section.landing-panel.landing-sector-detail', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'DETALHES DO SETOR' }), h('span', { text: 'FASE ATUAL' })),
-        ...[
-          ['Nível recomendado', '1 – 3'], ['Onda máxima', '5'], ['Objetivo', 'Sobreviva às ondas'],
-          ['Poder inimigo', '2,2'], ['Recompensa base', '0,1'],
-        ].map(([nome, valor]) => h('.landing-detail-row', {}, h('span', { text: nome }), h('b', { text: valor }))),
-        h('p', { text: galaxia.identity }),
-      ),
-      h('section.landing-panel.landing-boss-card', {},
-        h('.landing-boss-head', {},
-          spriteIcon(fases.at(-1)!.icon, 86),
-          h('div', {}, h('small', { text: 'CHEFE NO SETOR 10' }), h('h2', { text: fases.at(-1)!.bossName ?? 'Núcleo Ferrugem' }), h('p', { text: 'A ameaça final guarda o caminho para a próxima fronteira.' })),
-        ),
-        h('.landing-recompensas', {},
-          h('span', {}, spriteIcon('recurso/ferrita', 28), h('b', { text: '201 FERRITA' })),
-          h('span', {}, spriteIcon('recurso/gas_exotico', 28), h('b', { text: '8 NÚCLEOS' })),
-          h('span', {}, spriteIcon((HULLS.find((n) => n.name === 'Prisma Arco') ?? HULLS[0]!).sprite, 30), h('b', { text: 'NOVA NAVE' })),
-        ),
-        h('button.landing-cta', { type: 'button', text: 'EXPLORAR ESTA GALÁXIA  ›', onclick: acoes.jogar }),
-      ),
-    ),
-    h('h2.landing-next-title', { text: 'DESBLOQUEIE NOVAS NAVES E RECURSOS' }),
+function pilar(numero: string, titulo: string, texto: string, dado: string): HTMLElement {
+  return h('article.landing-pilar', {},
+    h('b', { text: numero }),
+    h('h3', { text: titulo }),
+    h('p', { text: texto }),
+    h('span.landing-pilar-dado', { text: dado }),
   );
 }
 
-const PILOTOS = [
-  ['NovaPrime', '12.480'], ['Kryon', '11.920'], ['Eclipse', '11.035'], ['Stellaris', '10.894'],
-  ['Você', '10.421'], ['Zarah', '10.312'], ['Draken', '9.880'], ['Lunaris', '9.402'],
-] as const;
-
-function paginaComunidade(acoes: AcoesLanding): HTMLElement {
-  const naves = navesDeVitrine();
-  const categorias = [
-    ['/assets/ui/menu/provacao.webp', 'PROVAÇÃO'], ['/assets/ui/menu/galaxia.webp', 'GALÁXIA'],
-    ['/assets/ui/menu/codex.webp', 'PERSONAGEM'], ['/assets/ui/menu/hangar.webp', 'NAVES'],
-    ['/assets/ui/menu/missoes.webp', 'MISSÕES'],
-  ] as const;
-  const mensagens = [
-    ['NovaPrime', 'Alguém para a Provação do setor 3?', '16:02'],
-    ['Eclipse', 'Setor 5 livre! Boa caçada, pilotos.', '16:05'],
-    ['Zarah', 'Qual a melhor nave para o setor 80+?', '16:11'],
-    ['Draken', 'Vektor-9 ainda é imbatível.', '16:14'],
-    ['Lunaris', 'Missão concluída. Vamos para o 3?', '16:18'],
-  ] as const;
-  return h('.landing-page.landing-comunidade', {},
-    h('.landing-page-title', {},
-      h('span.landing-kicker', { text: 'TEMPORADAS · RANKINGS · COMUNICAÇÕES' }),
-      h('h1', {}, 'O UNIVERSO NÃO ', h('em', { text: 'DORME.' })),
-      h('p', { text: 'Compare suas conquistas, encontre pilotos e dispute o topo a cada temporada.' }),
+function oQueVoceFaz(): HTMLElement {
+  return h('section.landing-secao', { id: 'landing-jogo' },
+    h('.landing-titulo', {},
+      kicker('O QUE VOCÊ FAZ AQUI'),
+      h('h2', { text: 'Três coisas, e só três.' }),
+      h('p', {
+        text: 'Não existe menu de melhoria, energia para esperar nem botão de bater mais '
+          + 'rápido. O poder vem de onde dá para ver.',
+      }),
     ),
-    h('.landing-community-grid', {},
-      h('section.landing-panel.landing-ranking', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'RANKING MUNDIAL' }), h('span', { text: 'AO VIVO' })),
-        h('.landing-season', {}, h('div', {}, h('strong', { text: 'TEMPORADA 1' }), h('small', { text: '01/09/2026 → 28/09/2026' })), h('div', {}, h('span', { text: 'VIRA EM' }), h('b', { text: '21D 7H' }))),
-        h('.landing-ranking-tabs', {}, ...['PROVAÇÃO', 'GALÁXIA', 'PERSONAGEM', 'NAVES', 'MISSÕES'].map((nome, i) => h(`span${i === 0 ? '.ativo' : ''}`, { text: nome }))),
-        h('.landing-ranking-head', {}, h('span', { text: '#' }), h('span', { text: 'PILOTO' }), h('span', { text: 'MARCA' })),
-        ...PILOTOS.map(([nome, marca], index) => h(`.landing-ranking-row${nome === 'Você' ? '.eu' : ''}`, {},
-          h('b', { text: String(index + 1) }),
-          spriteIcon((naves[index % Math.max(1, naves.length)] ?? HULLS[0]!).sprite, 27),
-          h('span', { text: nome }), h('strong', { text: marca }),
-        )),
-        h('.landing-sua-marca', {}, h('span', {}, 'SUA MARCA', h('b', { text: '5º' })), h('strong', { text: 'VEKTOR-9 · 10.421' })),
-      ),
-      h('.landing-community-center', {},
-        h('section.landing-panel.landing-destaques', {},
-          h('.landing-panel-title', {}, h('strong', { text: 'PILOTOS EM DESTAQUE' }), h('span', { text: 'TOP 3' })),
-          h('.landing-podio', {}, ...PILOTOS.slice(0, 3).map(([nome, marca], index) => h(`article.p${index + 1}`, {},
-            h('b', { text: String(index + 1) }), spriteIcon((naves[index] ?? HULLS[0]!).sprite, index === 0 ? 84 : 66),
-            h('strong', { text: nome }), h('span', { text: marca }),
-          ))),
-        ),
-        h('section.landing-panel.landing-categorias', {},
-          h('.landing-panel-title', {}, h('strong', { text: 'CINCO FORMAS DE CHEGAR AO TOPO' })),
-          h('.landing-categoria-grid', {}, ...categorias.map(([src, nome]) => h('article', {}, h('img', { src, alt: '' }), h('b', { text: nome })))),
-        ),
-      ),
-      h('section.landing-panel.landing-chat-preview', {},
-        h('.landing-panel-title', {}, h('strong', { text: 'COMUNICAÇÕES' }), h('span', { text: 'REDE SOCIAL' })),
-        h('.landing-chat-tabs', {}, h('span.ativo', { text: 'GLOBAL' }), h('span', { text: 'PRIVADAS' })),
-        h('.landing-chat-log', {}, ...mensagens.map(([nome, texto, hora]) => h('article', {},
-          h('header', {}, h('strong', { text: nome }), h('time', { text: hora })), h('p', { text: texto }),
-        ))),
-        h('.landing-chat-form', {}, h('span', { text: 'Escreva sua mensagem…' }), h('button', { type: 'button', text: 'ENVIAR', onclick: acoes.entrar })),
-      ),
+    h('.landing-pilares', {},
+      pilar('01', 'A IA pilota. Você comanda.',
+        'Escolha o perfil — agressivo, evasivo ou coletor — e deixe rodar. A nave '
+        + 'enfrenta as ondas enquanto você faz outra coisa.',
+        '3 PERFIS DE PILOTO'),
+      pilar('02', 'O que cai muda o build.',
+        'Prefixos e sufixos com tier, afinidade elemental e ganho de poder calculado na '
+        + 'hora. Equipar, desmontar ou fundir: três respostas para a mesma peça.',
+        `${RARITIES.length} RARIDADES · ${PRIMEIRA_RARIDADE.toUpperCase()} → ${ULTIMA_RARIDADE.toUpperCase()}`),
+      pilar('03', 'O caminho é longo de propósito.',
+        `Cada galáxia tem ${BOSS_INTERVAL} setores e um chefe no fim. O inimigo muda de `
+        + 'elemento, e o que servia antes para de servir.',
+        `${SETORES} SETORES · ${BOSSES.length} CHEFES`),
     ),
-    h('button.landing-cta.landing-community-cta', { type: 'button', text: 'ENTRAR NA COMUNIDADE  ›', onclick: acoes.criarConta }),
   );
 }
 
-export function montarLanding(pagina: PaginaLanding, acoes: AcoesLanding): HTMLElement {
-  const conteudo = pagina === 'naves'
-    ? paginaNaves(acoes)
-    : pagina === 'galaxias'
-      ? paginaGalaxias(acoes)
-      : pagina === 'comunidade'
-        ? paginaComunidade(acoes)
-        : paginaJogo(acoes);
-  return h('.landing-shell', { dataset: { pagina } },
-    arteAprovada(pagina, acoes),
-    h('.landing-code-shell', {},
-      cabecalho(pagina, acoes),
-      h('main.landing-main', {}, conteudo),
-      h('footer.landing-footer', {}, h('span', { text: 'ÓRBITA ZERO' }), h('span', { text: 'PILOTE · CONSTRUA · COMBATA · EXPLORE' })),
+function passo(numero: string, titulo: string, texto: string): HTMLElement {
+  return h('.landing-passo', {},
+    h('b', { text: numero }), h('h3', { text: titulo }), h('p', { text: texto }),
+  );
+}
+
+function figura(src: string, alt: string, etiqueta: string, legenda: string): HTMLElement {
+  return h('figure.landing-figura', {},
+    h('img', { src, alt, decoding: 'async', draggable: 'false' }),
+    h('figcaption', {}, h('b', { text: etiqueta }), h('span', { text: legenda })),
+  );
+}
+
+function comoFunciona(): HTMLElement {
+  return h('section.landing-secao.landing-como', { id: 'landing-como' },
+    h('.landing-titulo', {},
+      kicker('EM TRÊS MINUTOS'),
+      h('h2', { text: 'Como uma sessão acontece.' }),
+    ),
+    h('.landing-passos', {},
+      passo('01', 'Entre e escolha um casco.',
+        'Cada um tem um perfil próprio de dano, casco e manobra — e um elemento.'),
+      passo('02', 'A nave começa a limpar.',
+        'Ondas, setores, chefe. Você pode assistir, ou fechar a aba e voltar depois.'),
+      passo('03', 'Volte e decida.',
+        `Equipe o que subiu seu poder, funda ${PECAS_DA_FUSAO} peças ruins em uma boa, avance o setor.`),
+    ),
+    h('.landing-figuras', {},
+      figura('/assets/landing/fabricacao.webp',
+        'Tela de Fabricação: dez componentes num anel e a chance de obter a raridade acima',
+        'FABRICAÇÃO',
+        'Dez itens da mesma raridade, e a chance de subir uma raridade escrita antes de você apertar.'),
+      figura('/assets/landing/elementos.webp',
+        'Códex do jogo mostrando o ciclo de vantagem entre os cinco elementos',
+        'CÓDEX',
+        'Fogo vence Gelo, que vence Cósmico, que vence Raio. Acertar o elemento vale ×1,5 de dano.'),
+    ),
+  );
+}
+
+/**
+ * O censo, e a frase que costuma faltar.
+ *
+ * A linha final não é modéstia: é o que separa esta página da anterior, que
+ * mostrava um ranking mundial inventado. Espaço vazio custa menos que um
+ * número falso.
+ */
+function numeros(): HTMLElement {
+  return h('.landing-numeros', {},
+    h('.landing-numeros-grade', {},
+      ...NUMEROS.map(([valor, rotulo]) => h('.landing-numero', {},
+        h('b', { text: valor }), h('span', { text: rotulo }),
+      )),
+    ),
+    h('p.landing-numeros-nota', {
+      text: 'Números contados no próprio jogo, na tela do Códex. Não temos contagem de '
+        + 'jogadores para mostrar — então não mostramos.',
+    }),
+  );
+}
+
+function regra(titulo: string, texto: string, classe = ''): HTMLElement {
+  return h(`.landing-regra${classe}`, {},
+    h('strong', { text: titulo }), h('p', { text: texto }),
+  );
+}
+
+/**
+ * O bloco que costuma estar escondido no rodapé.
+ *
+ * Está aqui em cima de propósito. Num gênero em que todo mundo desconfia de
+ * pay-to-win, dizer na capa que o passe não dá poder de combate é argumento de
+ * conversão — e é verdade verificável: `comprarVip` no servidor debita
+ * cristais e estende validade, e nada mais.
+ */
+function jogoLimpo(): HTMLElement {
+  return h('section.landing-secao.landing-limpo', { id: 'landing-limpo' },
+    h('.landing-titulo', {},
+      kicker('JOGO LIMPO'),
+      h('h2', { text: 'O que não dá para comprar.' }),
+      h('p', {
+        text: 'Vale a pena ler antes de criar a conta. É a parte que costuma estar '
+          + 'escondida no rodapé.',
+      }),
+    ),
+    h('.landing-regras', {},
+      regra('O PASSE VIP NÃO DÁ PODER DE COMBATE',
+        'Ele libera automações, uma tentativa a mais na Provação e a pilotagem manual a '
+        + `partir do nível ${VIP_MANUAL_LEVEL}. Dano, defesa e atributo continuam vindo de `
+        + 'item, craft e Matriz — para quem paga e para quem não paga.',
+        '.destaque'),
+      regra('CRISTAIS SE COMPRAM COM DINHEIRO; O PASSE, COM CRISTAIS',
+        `O passe custa ${VIP_COST_CRYSTALS} cristais. Sem caixa surpresa paga: os baús são `
+        + 'comprados com moeda do jogo, e as probabilidades ficam à vista na própria tela.'),
+      regra('SEU PROGRESSO É DA CONTA, NÃO DO NAVEGADOR',
+        'Item, casco, moeda, nível e setor ficam no servidor. Trocar de computador não '
+        + 'recomeça nada.'),
+      regra('EM DESENVOLVIMENTO ATIVO',
+        'O jogo está no ar e jogável agora, e continua crescendo. Quando algo estiver '
+        + 'incompleto, vai estar escrito — não pintado de pronto.'),
+    ),
+  );
+}
+
+function fechamento(acoes: AcoesLanding): HTMLElement {
+  return h('section.landing-fechamento', {},
+    h('h2', { text: 'O setor 1 está esperando.' }),
+    h('p', { text: 'Sem download, sem chave de acesso, sem cartão. Abre e joga.' }),
+    botao('JOGAR AGORA  ›', acoes.jogar, '.cheio'),
+  );
+}
+
+export function montarLanding(acoes: AcoesLanding): HTMLElement {
+  return h('.landing-shell', {},
+    cabecalho(acoes),
+    dobra(acoes),
+    oQueVoceFaz(),
+    comoFunciona(),
+    numeros(),
+    jogoLimpo(),
+    fechamento(acoes),
+    h('footer.landing-rodape', {},
+      h('span', { text: 'ÓRBITA ZERO' }),
+      h('span', { text: `PILOTE · CONSTRUA · COMBATA · EXPLORE · ${GALAXIAS} GALÁXIAS` }),
     ),
   );
 }

@@ -12,13 +12,24 @@ describe('entrada progressiva na conta', () => {
     expect(login).toContain('if (!this.modo) return;');
   });
 
-  it('oferece criar conta e entrar no topo', () => {
+  it('oferece entrar e jogar no topo, pela capa', () => {
+    /**
+     * O topo é da CAPA, não do `Login`. Este teste cobrava
+     * `h('nav.login-acoes-topo'` — uma marcação que já não existia: sobrevivia
+     * num COMENTÁRIO deixado em `Login.ts` só para a asserção continuar
+     * passando, e mantinha viva no `main.css` uma barra que ninguém desenhava.
+     *
+     * Um teste que casa com comentário não testa nada. O que importa é o
+     * caminho: a capa recebe as três ações e as liga ao formulário certo.
+     */
     const login = fonte('ui', 'Login.ts');
-    expect(login).toContain("h('nav.login-acoes-topo'");
-    expect(login).toContain("text: 'CRIAR CONTA'");
-    expect(login).toContain("onclick: () => abrir('criar')");
-    expect(login).toContain("text: 'ENTRAR'");
-    expect(login).toContain("onclick: () => abrir('entrar')");
+    expect(login).toContain("entrar: () => abrir('entrar')");
+    expect(login).toContain("criarConta: () => abrir('criar')");
+    expect(login).toContain("jogar: () => abrir('criar')");
+
+    const landing = fonte('ui', 'Landing.ts');
+    expect(landing).toContain("botao('ENTRAR', acoes.entrar");
+    expect(landing).toContain("botao('JOGAR', acoes.jogar");
   });
 
   it('permite fechar o formulário e voltar para a capa', () => {
@@ -36,9 +47,11 @@ describe('entrada progressiva na conta', () => {
   });
 
   it('mantém as ações visíveis no topo também em telas pequenas', () => {
-    const css = fonte('styles', 'main.css');
-    expect(css).toMatch(/\.login-acoes-topo\s*\{/);
-    expect(css).toContain('@media (max-width: 560px)');
-    expect(css).toMatch(/\.login-topo-acao\s*\{/);
+    // No estreito a capa esconde o MENU de seções — rolar até uma seção é
+    // conveniência. Entrar e jogar são o motivo da tela, e ficam.
+    const css = fonte('styles', 'landing.css');
+    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).toContain('.landing-menu { display: none; }');
+    expect(css).not.toMatch(/\.landing-conta\s*\{[^}]*display:\s*none/);
   });
 });

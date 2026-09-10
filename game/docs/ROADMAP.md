@@ -8,8 +8,57 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.515 testes** em 146 arquivos · registro consolidado
+**Última atualização:** 09/09/2026 · **1.530 testes** em 147 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 09/09/2026 — a capa deixa de inventar dados
+
+A landing tinha um **ranking mundial com selo AO VIVO** e oito pilotos que não
+existem, um chat com conversas e horários fabricados, e uma linha
+"Você — 5º · 10.421". Nada disso é exagero de marketing: é uma promessa que o
+próprio jogo desmente em dez segundos, na tela que pede conta e vende cristal.
+
+Ela virou **uma página só**, com a promessa que de fato separa este jogo dos
+outros — *a nave luta sozinha* —, a tela do jogo grande o bastante para ser
+lida, três pilares, três passos, a faixa de números e o bloco **Jogo limpo**.
+
+### As duas regras que ficaram
+
+**Nenhum número é digitado.** O censo inteiro sai de `@data`, contado na hora:
+53 cascos, 68 inimigos, 30 chefes, 300 setores (derivados de
+`BOSSES.length * BOSS_INTERVAL`), 7 raridades, 5 elementos. Cadastrar um casco
+muda a página sozinho. E as peças da fusão vêm da RECEITA, não do
+`BOSS_INTERVAL` — as duas valem dez hoje, por motivos sem relação nenhuma.
+
+**Nada é afirmado sem fonte no jogo.** No lugar do ranking falso, a página diz
+que não há contagem de jogadores para mostrar. Espaço vazio custa menos que um
+número falso.
+
+### O que saiu junto
+
+As quatro páginas viraram três seções na mesma tela, alcançadas por **botão com
+`scrollIntoView`, nunca por âncora `#`** — o fragmento da URL é onde a volta do
+Google chega, e reescrevê-lo devolveria à tela de login quem acabou de
+autorizar. Os **pontos clicáveis posicionados em porcentagem** sobre o PNG
+sumiram: cada botão era uma coordenada mantida à mão, e trocar a arte
+desalinhava a interface inteira.
+
+E caiu uma barra de topo morta no `main.css` (`.login-acoes-topo`,
+`.login-topo-acao`) que só continuava viva porque um teste casava com um
+**comentário** deixado no `Login.ts` para satisfazê-lo. Um teste que casa com
+comentário não testa nada; ele passou a cobrar o caminho real.
+
+### Medido
+
+- **1.530 testes em 147 arquivos**, todos passando.
+- `tests/landing-page.test.ts` reescrito: proíbe os nomes inventados no que a
+  página DESENHA (comentário não conta), exige que o censo não tenha literal
+  numérico, e lê o corpo de `comprarVip` no Worker para cobrar que o passe
+  continue sem conceder dano, defesa ou atributo.
+- No navegador: o menu leva a seção ao topo exato da barra (62 px), a URL não
+  ganha fragmento, e não há rolagem horizontal em 1440 nem em 390 de largura.
 
 ---
 

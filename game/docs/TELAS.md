@@ -143,17 +143,60 @@ Abrir por código: `bus.emit('panel:open', { id })`.
 
 `ui/Landing.ts` · `ui/Login.ts` · `app/conta.ts` · `styles/landing.css`
 
-A primeira coisa que existe. A **capa** é navegável sem conta, com quatro
-páginas comerciais — `O JOGO`, `NAVES`, `GALÁXIAS`, `COMUNIDADE` — cada uma
-sobre uma arte aprovada em `/assets/landing/`. Os botões são **pontos clicáveis
-posicionados em porcentagem sobre a arte**, e não elementos desenhados por cima:
-a arte é a composição, e ancorar em proporção faz eles acompanharem qualquer
-largura sem media query. As demais artes são pré-carregadas depois da primeira,
-para trocar de página não piscar.
+A primeira coisa que existe, e a única que alguém vê antes de decidir se
+entra. É **uma página só**, sem conta, com três seções que o topo alcança
+rolando: `O JOGO`, `COMO FUNCIONA` e `JOGO LIMPO`.
 
-`Entrar` e `Criar conta` ficam no topo e **são caminhos separados**. O
-formulário só aparece depois da escolha explícita — a capa fica limpa para quem
-só está olhando.
+`Entrar` e `Jogar` ficam no topo e **são caminhos separados**. O formulário só
+aparece depois da escolha explícita — a capa fica limpa para quem só está
+olhando.
+
+### A promessa, e por que é essa
+
+A dobra diz **"Sua nave luta sozinha. As decisões são suas."** É a única frase
+que separa este jogo de qualquer outro shooter espacial: ele é *idle*. A
+captura ao lado é a tela inteira do jogo — painel de comando, combate e ficha
+do item — e **sangra pela direita** de propósito: um print de 1440 px exibido a
+600 vira textura, e o leitor entende que "tem interface" sem ver O QUE tem.
+
+Depois vêm três pilares (a IA pilota · o loot muda o build · o caminho é
+longo), três passos de uma sessão com duas capturas legendadas, a faixa de
+números e o bloco **Jogo limpo**.
+
+### As duas regras da capa
+
+1. **Nenhum número é digitado.** Cascos, inimigos, chefes, setores, raridades e
+   elementos saem de `@data`, contados no `NUMEROS` de `Landing.ts`. Os setores
+   são derivados (`BOSSES.length * BOSS_INTERVAL`), e as peças da fusão vêm da
+   receita — não de uma constante que por acaso também vale dez.
+2. **Nada é afirmado sem fonte no jogo.** A página diz, com todas as letras,
+   que não há contagem de jogadores para mostrar.
+
+O bloco **Jogo limpo** está acima do rodapé de propósito: num gênero em que
+todo mundo desconfia de pay-to-win, dizer na capa que o passe não concede dano,
+defesa nem atributo é argumento de conversão — e é verificável, porque
+`comprarVip` no Worker debita cristais e estende validade, e nada mais.
+`tests/landing-page.test.ts` lê o corpo daquela função e cobra isso.
+
+### O que ela substituiu, e por quê
+
+Eram **quatro páginas** sobre quatro artes aprovadas, com os botões como
+**pontos clicáveis posicionados em porcentagem** sobre o PNG. Dois problemas,
+um grave e um de forma.
+
+O grave: ela **inventava dados**. Um ranking mundial com selo AO VIVO e oito
+pilotos que não existem, um chat com conversas e horários fabricados, e uma
+linha "Você — 5º · 10.421" para o visitante se ver no pódio. Quem entrasse no
+jogo desmentiria a encenação em dez segundos — e a tela que pede conta e vende
+cristal é o pior lugar possível para queimar confiança.
+
+O de forma: quatro telas de painéis do jogo mostradas a quem ainda não sabe o
+que é `T1 +20,1% Dano`, com uma promessa genérica que servia para qualquer jogo
+espacial. E cada botão era uma coordenada mantida à mão: trocar a arte
+desalinhava a interface inteira, sem nada disso aparecer num teste.
+
+As quatro artes continuam no repositório — a **wiki** as usa como capa de
+seção.
 
 ### Não existe mais "jogar sem conta", e o tipo é a regra
 

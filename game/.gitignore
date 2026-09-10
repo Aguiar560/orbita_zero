@@ -13,3 +13,8 @@ dist/
 server/node_modules/
 server/.wrangler/
 server/.dev.vars
+
+# Mockups de landing em avaliacao. Ficam em public/ para o servidor de dev
+# servi-los e o Rafael clicar — e FORA do git para nao subirem num deploy
+# antes de ele escolher um modelo.
+public/mockups/
