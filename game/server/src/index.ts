@@ -102,7 +102,20 @@ export interface Env {
    */
   MP_ACCESS_TOKEN?: string;
   MP_WEBHOOK_SECRET?: string;
+  /**
+   * O e-mail do PAGADOR que vai na cobrança. Opcional.
+   *
+   * Existe por causa do ambiente de teste do Mercado Pago: com o token de um
+   * usuário de teste, o pagador também tem de ser um usuário de teste — senão
+   * a API responde 401 `unauthorized use of live credentials`, que foi o que
+   * aconteceu em 10/09/2026 com o e-mail fixo abaixo. Em produção fica vazio e
+   * vale o padrão.
+   */
+  MP_EMAIL_DO_PAGADOR?: string;
 }
+
+/** O pagador quando `MP_EMAIL_DO_PAGADOR` não está definido. */
+const PAGADOR_PADRAO = 'comprador@orbitazero.dev';
 
 // O ritmo de gravação mora em `ritmo.ts`: é um balde de fichas, não um
 // intervalo fixo. Ver lá o defeito que a mudança conserta.
@@ -1654,7 +1667,7 @@ async function criarPixNoMP(
         description: `Órbita Zero — ${compra.cristais} cristais`,
         payment_method_id: 'pix',
         external_reference: compra.id,
-        payer: { email: 'comprador@orbitazero.dev' },
+        payer: { email: env.MP_EMAIL_DO_PAGADOR?.trim() || PAGADOR_PADRAO },
       }),
     });
     if (!r.ok) {
