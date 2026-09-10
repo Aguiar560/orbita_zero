@@ -37,6 +37,50 @@ export class CentralChat {
     const s = await this.sql('SELECT tipo FROM chat_sancoes WHERE usuario=? AND ate>?', usuario, Date.now()).first<{ tipo: string }>();
     if (s && (escrita || s.tipo === 'banimento')) throw new ErroChat('Acesso ao chat limitado pela moderação.', 403);
   }
+  /**
+   * Quem tem passe ativo, do banco do JOGO.
+   *
+   * ## Por que daqui, e não do cliente
+   *
+   * Porque a coroa é um selo pago. Se ela viesse no que o cliente envia,
+   * bastaria trocar um `false` por `true` no console para usá-la de graça — e
+   * um selo que qualquer um consegue não vale nada para quem pagou.
+   *
+   * ## Por que o conjunto INTEIRO, e não um por autor
+   *
+   * Os assinantes são poucos e a lista é curta. Uma consulta por minuto,
+   * independente do movimento do chat, é mais barata que uma por lote de
+   * mensagens — e num global movimentado a diferença é de ordens de grandeza.
+   *
+   * O minuto de atraso é aceitável: alguém que acabou de comprar o passe vê a
+   * coroa aparecer na mensagem seguinte, não na mesma.
+   */
+  private vips = new Set<string>();
+  private vipsEm = 0;
+  private async vipsAtivos(): Promise<Set<string>> {
+    const agora = Date.now();
+    if (agora - this.vipsEm < 60_000) return this.vips;
+    this.vipsEm = agora;
+    try {
+      const { results } = await this.env.DB
+        .prepare('SELECT usuario FROM assinaturas WHERE expira_em > ? LIMIT 5000')
+        .bind(Math.floor(agora / 1000))
+        .all<{ usuario: string }>();
+      this.vips = new Set(results.map((r) => r.usuario));
+    } catch {
+      // O banco do jogo fora do ar não pode derrubar o chat. Sem coroa é pior
+      // que com coroa; sem chat é pior que os dois.
+    }
+    return this.vips;
+  }
+
+  /** Carimba a coroa na saída — em toda entrega, e nunca no banco. */
+  private async comCoroa<T extends { autor: string }>(mensagens: T[]): Promise<T[]> {
+    if (!mensagens.length) return mensagens;
+    const vips = await this.vipsAtivos();
+    return mensagens.map((m) => (vips.has(m.autor) ? { ...m, vip: 1 } : m));
+  }
+
   private async perfil(u: Usuario): Promise<PerfilChat> {
     const row = await this.env.DB.prepare('SELECT apelido FROM apelidos WHERE usuario=?').bind(u.id).first<{ apelido: string }>();
     const podeEnviar = !u.anonima && !!row?.apelido;
@@ -164,7 +208,9 @@ export class CentralChat {
         AND NOT EXISTS (SELECT 1 FROM chat_bloqueios b WHERE
           (b.usuario=? AND b.alvo=m.autor) OR (b.alvo=? AND b.usuario=m.autor))
         ORDER BY m.id ${apos ? 'ASC' : 'DESC'} LIMIT ?`, d.conversa, antes, antes, apos, apos, id, id, CHAT.pagina).all<MensagemChat>();
-      return { mensagens: apos ? mensagens.results : mensagens.results.reverse() };
+      return {
+        mensagens: await this.comCoroa(apos ? mensagens.results : mensagens.results.reverse()),
+      };
     }
     if (!p.podeEnviar) throw new ErroChat('Vincule uma conta e defina um apelido para conversar.', 403);
 
@@ -250,7 +296,9 @@ export class CentralChat {
       ]);
       const mensagem = await this.sql('SELECT * FROM chat_mensagens WHERE autor=? AND clienteId=?', id, d.clienteId).first<MensagemChat>();
       await this.entregar();
-      return { mensagem };
+      // Também no eco: sem isto o autor VIP veria a PRÓPRIA mensagem sem coroa
+      // até recarregar o histórico, e concluiria que o selo não funciona.
+      return { mensagem: mensagem ? (await this.comCoroa([mensagem]))[0] : mensagem };
     }
     if (op === 'ler') {
       await this.conversa(d.conversa, id);
@@ -318,7 +366,9 @@ export class CentralChat {
 
   private async entregar(): Promise<void> {
     const pendentes = await this.sql('SELECT m.* FROM chat_entregas e JOIN chat_mensagens m ON m.id=e.mensagem ORDER BY m.id LIMIT 100').all<MensagemChat>();
-    for (const m of pendentes.results) {
+    // Uma consulta para o lote inteiro, não uma por mensagem: num global
+    // movimentado a diferença é de ordens de grandeza. Ver `vipsAtivos`.
+    for (const m of await this.comCoroa(pendentes.results)) {
       const c = m.conversa === 'global' ? null : await this.sql('SELECT * FROM chat_conversas WHERE id=?', m.conversa).first<Conversa>();
       const bloqueios = await this.sql('SELECT usuario,alvo FROM chat_bloqueios WHERE usuario=? OR alvo=?', m.autor, m.autor).all<{ usuario: string; alvo: string }>();
       const bloqueados = new Set(bloqueios.results.map(b => b.usuario === m.autor ? b.alvo : b.usuario));

@@ -241,7 +241,13 @@ export class ChatPanel {
     for (const m of mensagens) {
       const meu = m.autor === this.cliente.perfil?.id;
       const autor = h(meu ? 'strong' : 'button.chat-autor', { text: meu ? `${m.apelido} · você` : m.apelido, ...(!meu ? { onclick: () => this.acoesMensagem(m), title: 'Conversa, bloqueio ou denúncia' } : {}) });
-      this.log.append(h(`article.chat-mensagem${meu ? '.minha' : ''}`, {}, h('header', {}, autor, h('time', { text: new Date(m.criado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), datetime: new Date(m.criado).toISOString() })), h('p', { text: m.removida ? 'Mensagem removida pela moderação.' : m.texto })));
+      // A coroa vem ANTES do nome, e é do servidor — ver `comCoroa`. Fosse do
+      // cliente, trocar um campo no console daria o selo pago de graça, e um
+      // selo que qualquer um consegue não vale nada para quem pagou.
+      const coroa = m.vip
+        ? h('span.chat-coroa', { text: '👑', title: 'Passe VIP ativo', 'aria-label': 'VIP' })
+        : null;
+      this.log.append(h(`article.chat-mensagem${meu ? '.minha' : ''}`, {}, h('header', {}, coroa, autor, h('time', { text: new Date(m.criado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), datetime: new Date(m.criado).toISOString() })), h('p', { text: m.removida ? 'Mensagem removida pela moderação.' : m.texto })));
     }
     if (noFim && !this.carregando) this.log.scrollTop = this.log.scrollHeight;
     else if (this.carregando) this.log.scrollTop = topo + this.log.scrollHeight - altura;

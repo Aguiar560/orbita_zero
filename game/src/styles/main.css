@@ -7782,6 +7782,23 @@ select option:disabled { color: #667991; }
   .login-caixa { width: calc(100vw - 24px); padding-inline: 22px; }
 }
 
+/* ── coroa do VIP no chat ────────────────────────────────────────────────── */
+/*
+ * Pequena e antes do nome. Ela identifica, não anuncia: um selo grande ao lado
+ * de cada frase transformaria o canal numa vitrine e faria quem não paga ler
+ * publicidade a cada mensagem.
+ *
+ * O `filter` tira o brilho de emoji colorido do sistema e o traz para o ouro
+ * do cockpit — sem isso ela destoa de tudo em volta.
+ */
+.chat-coroa {
+  flex: none;
+  font-size: 11px;
+  line-height: 1;
+  filter: saturate(.85) drop-shadow(0 0 4px rgba(240, 180, 90, .5));
+  cursor: default;
+}
+
 /* ── recado do comando ───────────────────────────────────────────────────── */
 /*
  * Ao contrário da faixa de versão, este PEDE um clique: ele só existe porque

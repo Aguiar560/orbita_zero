@@ -8,8 +8,43 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.561 testes** em 150 arquivos · registro consolidado
+**Última atualização:** 09/09/2026 · **1.586 testes** em 153 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 09/09/2026 — o operador ganha voz, e o passe ganha rosto
+
+Duas peças que faltavam para operar um jogo com gente dentro.
+
+### Recado do comando
+
+Não havia caminho nenhum entre quem opera e quem joga: compensação,
+agradecimento, aviso de manutenção — tudo dependia de o jogador estar no
+Discord. O chat não serve (exige conta de remetente com sessão viva, vive
+noutro Worker e noutro D1, e some na rolagem).
+
+Tabela `recados` (`0018`), `GET/POST /recados`, e um cartão no centro da tela
+que pede um clique. Três decisões carregam a segurança: a leitura é confirmada
+ao **fechar** e não ao aparecer (ver não é ler); a marcação filtra por
+`AND usuario = ?`, porque os ids são sequenciais e visíveis; e um id inválido
+não derruba os outros.
+
+Entrega no boot, e só — um recado é raro, e perguntar de dois em dois minutos
+gastaria a cota para responder "nada" mil vezes.
+
+### A coroa do VIP no chat
+
+O carimbo é aplicado **na saída**, pelo Worker social, lendo `assinaturas` no
+banco do jogo — que ele já consultava para os apelidos. Vindo do cliente,
+bastaria trocar um campo no console para usar o selo pago de graça.
+
+E não é gravado junto da mensagem: ali viraria histórico ("era VIP em março"),
+e a coroa mentiria nos dois sentidos — sumindo de quem renovou e ficando em
+quem deixou vencer. Um conjunto em memória, uma consulta por minuto,
+independente do movimento do chat; os três caminhos de saída carimbam (o
+histórico, o eco do envio e a difusão), porque um selo intermitente lê como
+defeito e não como benefício.
 
 ---
 

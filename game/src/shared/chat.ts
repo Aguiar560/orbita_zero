@@ -10,6 +10,18 @@ export interface PerfilChat { id: string; apelido: string; podeEnviar: boolean; 
 export interface MensagemChat {
   id: number; conversa: string; autor: string; apelido: string; texto: string;
   criado: number; removida: number; clienteId: string;
+  /**
+   * O autor tem passe ativo AGORA — não quando escreveu.
+   *
+   * É por isso que o campo não vive na tabela de mensagens: um selo gravado
+   * junto do texto viraria histórico ("era VIP em março"), e a coroa passaria
+   * a mentir nos dois sentidos — some de quem renovou e fica em quem deixou
+   * vencer. O carimbo é aplicado na saída, a cada entrega.
+   *
+   * Opcional porque uma mensagem antiga, entregue por um Worker anterior a
+   * este campo, continua sendo uma mensagem válida.
+   */
+  vip?: number;
 }
 export interface ConversaChat {
   id: string; outro: string; apelido: string; iniciador: string;
