@@ -1675,8 +1675,10 @@ export class VerticalMode {
       this.capsulasNoAr(),
     );
     for (const item of rolls) this.spawnLoot(e.x, e.y, item);
-    const chave = this.sim.rollChaveDuranteAbate(this.sim.state.run.sector);
-    if (chave) this.spawnChave(e.x, e.y, chave.id, chave.cor);
+    const chave = this.sim.rollChaveDuranteAbate(this.sim.state.run.sector, e.counts && this.sim.state.run.restam <= 0);
+    if (chave && !this.spawnChave(e.x, e.y, chave.chave.id, chave.chave.cor, chave.garantida)) {
+      this.sim.cancelarChaveGarantida(chave.chave.id);
+    }
   }
 
   /** Cápsulas de item ainda a caminho da nave. */
@@ -1699,11 +1701,15 @@ export class VerticalMode {
     p.vx = this.rng.range(-40, 40);
   }
 
-  private spawnChave(x: number, y: number, chaveId: string, color: string): void {
+  private spawnChave(x: number, y: number, chaveId: string, color: string, garantida = false): boolean {
     const p = this.pickups.spawn();
-    if (!p) return;
-    p.kind = 'chave'; p.chaveId = chaveId; p.item = null; p.icon = ''; p.color = color;
+    if (!p) return false;
+    p.kind = 'chave'; p.chaveId = chaveId; p.chaveGarantida = garantida; p.item = null; p.icon = ''; p.color = color;
     p.x = x; p.y = y; p.vy = 40; p.vx = this.rng.range(-40, 40);
+    // A garantia continua sendo uma queda visível, mas não pode ser perdida
+    // por distância: a cápsula vai direto para a nave como um item magnético.
+    p.magnet = garantida;
+    return true;
   }
 
   // ── projéteis ─────────────────────────────────────────────────────────────
@@ -2175,7 +2181,7 @@ export class VerticalMode {
       if (p.alive && d < p.radius + 22) {
         item.alive = false;
         if (item.kind === 'chave' && item.chaveId) {
-          this.sim.adquirirChave(item.chaveId, this.sim.state.run.sector);
+          this.sim.adquirirChave(item.chaveId, this.sim.state.run.sector, item.chaveGarantida);
           this.particles.shockwave(p.x, p.y, 44, item.color, 0.35);
           this.particles.sparks(p.x, p.y, 10, item.color, 170);
         } else if (item.item) {

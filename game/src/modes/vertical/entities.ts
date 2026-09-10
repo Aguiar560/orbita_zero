@@ -170,6 +170,8 @@ export interface Pickup {
   item: Item | null;
   /** Id da chave quando `kind === 'chave'`; chaves não ocupam inventário. */
   chaveId: string | null;
+  /** A chave veio da garantia da primeira conclusão do setor 9/19/29… */
+  chaveGarantida: boolean;
   /** Sprite do ícone do item, resolvido uma vez no spawn. */
   icon: string;
   /** Cor da raridade, para o halo e o rastro. */
@@ -309,8 +311,8 @@ export function createDetritoPool(capacity = 80): Pool<Detrito> {
 
 export function createPickupPool(capacity = 80): Pool<Pickup> {
   return new Pool<Pickup>(
-    () => ({ alive: false, kind: 'item', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, chaveId: null, icon: '', color: '#fff' }),
-    (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.chaveId = null; p.icon = ''; p.color = '#fff'; },
+    () => ({ alive: false, kind: 'item', x: 0, y: 0, vx: 0, vy: 0, time: 0, magnet: false, item: null, chaveId: null, chaveGarantida: false, icon: '', color: '#fff' }),
+    (p) => { p.time = 0; p.magnet = false; p.vx = 0; p.item = null; p.chaveId = null; p.chaveGarantida = false; p.icon = ''; p.color = '#fff'; },
     capacity,
   );
 }

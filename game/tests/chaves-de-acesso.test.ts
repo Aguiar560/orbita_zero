@@ -59,4 +59,18 @@ describe('chaves de acesso', () => {
     expect(sim.state.run.sector).toBe(10);
     expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
   });
+
+  it('materializa a garantia como cápsula física no último abate', () => {
+    const state = createState();
+    const sim = new Sim(state);
+    const drop = sim.rollChaveDuranteAbate(9, true);
+
+    expect(drop?.garantida).toBe(true);
+    expect(drop?.chave.id).toBe(CHAVES_DE_ACESSO[0]!.id);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(0);
+
+    sim.adquirirChave(drop!.chave.id, 9, drop!.garantida);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
+    expect(state.chavesAcessoGarantidas).toEqual([0]);
+  });
 });

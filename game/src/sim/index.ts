@@ -295,6 +295,8 @@ export class Sim {
 
   /** Setor de chefe aguardando confirmação da chave após concluir o anterior. */
   private pendingBossSector: number | undefined;
+  /** Garantias já materializadas como cápsula física nesta incursão. */
+  private pendingGuaranteedKeys = new Set<number>();
 
   /**
    * O resultado da última luta da Provação, para as telas do §30–§33.
@@ -1673,18 +1675,36 @@ export class Sim {
   }
 
   /** Drop visual raro de abate em setores anteriores ao chefe. */
-  rollChaveDuranteAbate(setor: number): ChaveDeAcessoDef | null {
-    if (this.testMode || phaseOfSector(setor) > 9 || !this.rng.chance(0.004)) return null;
-    return chaveDaGalaxia(galaxyOfSector(setor));
+  rollChaveDuranteAbate(setor: number, ultimoAbate = false): { chave: ChaveDeAcessoDef; garantida: boolean } | null {
+    if (this.testMode || phaseOfSector(setor) > 9) return null;
+    const galaxia = galaxyOfSector(setor);
+    const garantia = phaseOfSector(setor) === 9
+      && ultimoAbate
+      && !this.state.chavesAcessoGarantidas.includes(galaxia)
+      && !this.pendingGuaranteedKeys.has(galaxia);
+    if (!garantia && !this.rng.chance(0.004)) return null;
+    if (garantia) this.pendingGuaranteedKeys.add(galaxia);
+    return { chave: chaveDaGalaxia(galaxia), garantida: garantia };
   }
 
-  adquirirChave(id: string, setor = chaveDaGalaxia(CHAVE_POR_ID.get(id)?.galaxia ?? 0).galaxia * 10 + 1): boolean {
+  adquirirChave(id: string, setor = chaveDaGalaxia(CHAVE_POR_ID.get(id)?.galaxia ?? 0).galaxia * 10 + 1, garantida = false): boolean {
     const chave = CHAVE_POR_ID.get(id);
     if (!chave) return false;
-    this.state.chavesAcesso[id] = Math.min(999, (this.state.chavesAcesso[id] ?? 0) + 1);
-    bus.emit('access-key:dropped', { galaxia: chave.galaxia, id, garantida: false, setor });
+    const jaGarantida = garantida && this.state.chavesAcessoGarantidas.includes(chave.galaxia);
+    if (!jaGarantida) this.state.chavesAcesso[id] = Math.min(999, (this.state.chavesAcesso[id] ?? 0) + 1);
+    if (garantida) {
+      this.pendingGuaranteedKeys.delete(chave.galaxia);
+      if (!this.state.chavesAcessoGarantidas.includes(chave.galaxia)) this.state.chavesAcessoGarantidas.push(chave.galaxia);
+    }
+    bus.emit('access-key:dropped', { galaxia: chave.galaxia, id, garantida, setor });
     this.touch();
     return true;
+  }
+
+  /** Libera a garantia se a cena não conseguiu criar a cápsula física. */
+  cancelarChaveGarantida(id: string): void {
+    const chave = CHAVE_POR_ID.get(id);
+    if (chave) this.pendingGuaranteedKeys.delete(chave.galaxia);
   }
 
   /** Cobra uma chave uma vez por tentativa de chefe, inclusive após uma derrota. */
@@ -1721,6 +1741,7 @@ export class Sim {
     const galaxia = galaxyOfSector(setor);
     const chave = chaveDaGalaxia(galaxia);
     const garantia = fase === 9 && !this.state.chavesAcessoGarantidas.includes(galaxia);
+    if (garantia && this.pendingGuaranteedKeys.has(galaxia)) return;
     if (!garantia && !this.rng.chance(CHANCE_DROP_CHAVE_REPETICAO)) return;
     this.state.chavesAcesso[chave.id] = Math.min(999, (this.state.chavesAcesso[chave.id] ?? 0) + 1);
     if (garantia) this.state.chavesAcessoGarantidas.push(galaxia);
