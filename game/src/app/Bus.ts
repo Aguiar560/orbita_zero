@@ -21,7 +21,9 @@ export interface GameEvents {
   'sector:parede': { setor: number; quedas: number };
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
-  'boss:defeated': { id: string; name: string; sector: number };
+  'boss:defeated': { id: string; name: string; sector: number; first: boolean };
+  /** Pausa o combate enquanto uma transmissão canônica está sendo lida. */
+  'narrativa:estado': { aberta: boolean };
 
   // Núcleo de Provação (§61). Existem para as missões e a telemetria futura
   // ouvirem o modo sem que ele precise conhecê-las.

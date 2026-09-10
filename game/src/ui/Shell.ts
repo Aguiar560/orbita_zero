@@ -38,6 +38,8 @@ import { PAINEIS_DE_ADMIN, ehAdmin } from '@app/admin';
 import { RESOURCE_META } from './recursos';
 import { ChatPanel } from './ChatPanel';
 import { instalarTooltipsDoJogo } from './TooltipDoJogo';
+import { TransmissoesDaCampanha } from './TransmissaoDaCampanha';
+import { transmissaoAoEntrarNoSetor, transmissaoAposVitoria } from '@data/narrativa-campanha';
 
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
@@ -133,6 +135,7 @@ export class Shell {
   private missionHud!: HTMLElement;
   private perfil!: PerfilMenu;
   private chat: ChatPanel | null = null;
+  private transmissoes!: TransmissoesDaCampanha;
 
   constructor(
     private readonly root: HTMLElement,
@@ -144,6 +147,7 @@ export class Shell {
     instalarTooltipsDoJogo();
     this.chat?.destruir();
     this.chat = new ChatPanel();
+    this.transmissoes = new TransmissoesDaCampanha(this.root);
     document.documentElement.dataset.contrast = this.sim.state.settings.highContrast ? 'high' : '';
     const stage = h('canvas#stage', {
       role: 'img', tabindex: '0',
@@ -529,7 +533,14 @@ export class Shell {
       this.pushToast(`${itemName(item)} · ${info.name}`, item.rarity >= 4 ? 'epic' : 'good', item.icon);
     });
 
-    bus.on('sector:advanced', ({ sector }) => this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star'));
+    bus.on('sector:advanced', ({ sector }) => {
+      this.pushToast(`Setor ${sector} liberado`, 'good', 'ui/icon_star');
+      // Só a fronteira inédita fala. Repetir um setor ou concluí-lo em ausência
+      // deixa `bestSectorEver` à frente do ponteiro e não reabre a cena.
+      if (sector === this.sim.state.universe.bestSectorEver) {
+        this.transmissoes.enfileirar(transmissaoAoEntrarNoSetor(sector, this.sim.state.piloto));
+      }
+    });
     // Ninguém escutava este evento: o casco trocava sozinho por tanque seco e
     // o jogador via a nave mudar sem explicação nenhuma. O `Sim` já o emitia
     // desde sempre — faltava alguém do lado da tela.
@@ -537,7 +548,10 @@ export class Shell {
       `Tanque seco — assumindo ${getHull(trocouPara)?.name ?? 'outra nave'}`, 'bad', 'ui/icon_ship',
     ));
     bus.on('sector:parede', ({ setor, quedas }) => this.oferecerRecuo(setor, quedas));
-    bus.on('boss:defeated', ({ name }) => this.pushToast(`${name} destruído`, 'epic', 'fx/blast_fire_3'));
+    bus.on('boss:defeated', ({ id, name, sector, first }) => {
+      this.pushToast(`${name} derrotado`, 'epic', 'fx/blast_fire_3');
+      if (first) this.transmissoes.enfileirar(transmissaoAposVitoria(id, sector, this.sim.state.piloto));
+    });
     // As telas de vitoria e derrota da Provacao vivem AQUI, e nao no painel: a
     // luta acontece com o painel fechado, e o resultado tem de aparecer sobre o
     // jogo. Os dois eventos caem no mesmo lugar porque o que muda entre eles e

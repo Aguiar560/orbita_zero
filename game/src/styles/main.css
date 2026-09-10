@@ -6527,6 +6527,71 @@ select option:disabled { color: #667991; }
 .stage-wrap > canvas { max-width: 100%; max-height: 100%; }
 
 
+/* ═══ Transmissões da campanha ═════════════════════════════════════════════ */
+.narrativa-camada {
+  position: fixed; inset: 0; z-index: 185;
+  display: grid; align-items: end; justify-items: center;
+  padding: 26px;
+  background: linear-gradient(180deg, rgba(0, 5, 12, .18), rgba(0, 5, 12, .86));
+  backdrop-filter: blur(2px) saturate(.82);
+}
+.narrativa-console {
+  --fala-cor: #55d8ff;
+  position: relative; width: min(980px, 96vw);
+  display: grid; grid-template-rows: auto auto auto;
+  border: 1px solid color-mix(in srgb, var(--fala-cor) 60%, var(--line));
+  border-left: 3px solid var(--fala-cor); border-radius: 7px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--fala-cor) 7%, transparent), transparent 38%),
+    rgba(3, 11, 21, .97);
+  box-shadow: 0 22px 80px #000, 0 0 30px color-mix(in srgb, var(--fala-cor) 10%, transparent);
+  overflow: hidden;
+}
+.narrativa-console.tom-hostil { --fala-cor: #ff5364; }
+.narrativa-console.tom-aliado { --fala-cor: #63e58a; }
+.narrativa-console.tom-comando { --fala-cor: #ffbd48; }
+.narrativa-console::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .15;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(108, 213, 255, .12) 4px);
+}
+.narrativa-topo {
+  position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 20px; align-items: center;
+  min-height: 42px; padding: 8px 16px; border-bottom: 1px solid var(--line);
+  background: rgba(1, 7, 14, .68);
+}
+.narrativa-topo > div { display: grid; gap: 4px; }
+.narrativa-topo span { color: var(--fala-cor); font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .14em; }
+.narrativa-topo b { color: #718b9d; font: 600 9px/1 'Chakra Petch', sans-serif; letter-spacing: .1em; }
+.narrativa-topo small { color: var(--fala-cor); font: 700 10px/1 'Chakra Petch', sans-serif; }
+.narrativa-conteudo { position: relative; z-index: 1; display: grid; grid-template-columns: 142px minmax(0, 1fr); min-height: 170px; }
+.narrativa-retrato { display: grid; place-items: center; border-right: 1px solid var(--line); background: radial-gradient(circle, color-mix(in srgb, var(--fala-cor) 15%, transparent), transparent 66%); }
+.narrativa-retrato .portrait { border: 1px solid color-mix(in srgb, var(--fala-cor) 65%, transparent); border-radius: 5px; box-shadow: 0 0 22px color-mix(in srgb, var(--fala-cor) 14%, transparent); }
+.narrativa-fala { align-self: center; padding: 22px 28px; }
+.narrativa-fala > span { color: var(--fala-cor); font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .13em; }
+.narrativa-fala h2 { margin: 8px 0 11px; color: #e6f2f8; font: 700 22px/1 'Chakra Petch', sans-serif; letter-spacing: .08em; }
+.narrativa-fala p { max-width: 720px; margin: 0; color: #b4c7d2; font-size: 14px; line-height: 1.6; }
+.narrativa-rodape { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 11px 15px; border-top: 1px solid var(--line); background: rgba(1, 7, 14, .74); }
+.narrativa-objetivo { display: grid; gap: 4px; min-width: 0; }
+.narrativa-objetivo span { color: #ffbd48; font: 700 8px/1 'Chakra Petch', sans-serif; letter-spacing: .13em; }
+.narrativa-objetivo b { color: #aebfca; font-size: 11px; line-height: 1.3; }
+.narrativa-acoes { display: flex; gap: 7px; }
+.narrativa-acoes .btn { min-width: 120px; }
+.narrativa-pular { opacity: .72; }
+
+@media (max-width: 680px) {
+  .narrativa-camada { padding: 8px; }
+  .narrativa-console { width: 100%; max-height: calc(100dvh - 16px); overflow-y: auto; }
+  .narrativa-topo { padding: 8px 11px; }
+  .narrativa-conteudo { grid-template-columns: 94px 1fr; min-height: 150px; }
+  .narrativa-retrato .portrait { max-width: 82px; }
+  .narrativa-fala { padding: 17px 13px; }
+  .narrativa-fala h2 { font-size: 17px; }
+  .narrativa-fala p { font-size: 12px; }
+  .narrativa-rodape { grid-template-columns: 1fr; }
+  .narrativa-acoes { justify-content: stretch; }
+  .narrativa-acoes .btn { flex: 1; min-width: 0; }
+}
+
 /* ═══ Escolha de personagem — a primeira tela ══════════════════════════════ */
 
 /*
