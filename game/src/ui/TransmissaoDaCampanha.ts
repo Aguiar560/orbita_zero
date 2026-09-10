@@ -1,6 +1,7 @@
 import { bus } from '@app/Bus';
 import type { TransmissaoDaCampanha } from '@data/narrativa-campanha';
 import { clear, h, portraitIcon, spriteIcon } from './dom';
+import { assets } from '@render/Assets';
 
 /** Fila modal das cenas curtas da campanha. */
 export class TransmissoesDaCampanha {
@@ -9,6 +10,7 @@ export class TransmissoesDaCampanha {
   private indice = 0;
   private camada: HTMLElement | null = null;
   private aoTeclar: ((evento: KeyboardEvent) => void) | null = null;
+  private retratos: Promise<void> | null = null;
 
   constructor(private readonly host: HTMLElement) {}
 
@@ -27,15 +29,39 @@ export class TransmissoesDaCampanha {
     }
     this.atual = proxima;
     this.indice = 0;
-    this.camada = h('.narrativa-camada', { role: 'dialog', 'aria-modal': 'true', 'aria-label': proxima.titulo });
-    this.host.append(this.camada);
+    this.camada = null;
     this.aoTeclar = (evento) => {
       if (evento.key === 'Escape') this.encerrarAtual();
       if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); this.avancar(); }
     };
     addEventListener('keydown', this.aoTeclar);
     bus.emit('narrativa:estado', { aberta: true });
-    this.render();
+
+    // `characters` e `retratos` são atlas lazy. A cena era montada antes de
+    // eles chegarem, então `portraitIcon` não encontrava o frame e a moldura
+    // ficava vazia para sempre. O combate já está pausado pelo evento acima;
+    // esperamos os atlas antes de inserir o modal para o primeiro quadro já
+    // conter a arte correta.
+    void this.carregarRetratos().then(() => {
+      if (this.atual !== proxima) return;
+      this.camada = h('.narrativa-camada', { role: 'dialog', 'aria-modal': 'true', 'aria-label': proxima.titulo });
+      this.host.append(this.camada);
+      this.render();
+    });
+  }
+
+  private carregarRetratos(): Promise<void> {
+    if (!this.retratos) {
+      this.retratos = Promise.all([
+        assets.loadAtlas('characters'),
+        assets.loadAtlas('retratos'),
+      ]).then(() => undefined).catch((error) => {
+        // A narrativa continua legível mesmo se um pack opcional falhar; o
+        // importante é não deixar uma rejeição interromper a fila da cena.
+        console.warn('[narrativa] retratos indisponíveis; seguindo com texto', error);
+      });
+    }
+    return this.retratos;
   }
 
   private render(): void {

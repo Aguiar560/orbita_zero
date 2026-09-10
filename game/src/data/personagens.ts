@@ -22,7 +22,8 @@ import { describeGalaxy } from '@data/galaxies';
  * ## Retratos
  *
  * O atlas `characters` reúne os retratos curados do pack Characters. Ele é
- * carregado sob demanda pela Central de Missões, tal como os retratos do mapa.
+ * carregado sob demanda pela Central de Missões e pelas transmissões da
+ * campanha, tal como os retratos do mapa.
  */
 
 export type StatusDeContato = 'aliado' | 'neutro' | 'ex_chefe' | 'bloqueado';
