@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { passosDoOnboarding } from '@data/onboarding';
+import { VIP_MANUAL_LEVEL } from '@sim/vip';
 import type { PassoDoTour } from '@ui/Tour';
 
 /**
@@ -159,7 +160,9 @@ describe('o passo dos modos acompanha o que a tela permite', () => {
 
   it('bloqueado, o guia diz por que o botão não responde', () => {
     expect(dosModos(false).texto).toMatch(/VIP/);
-    expect(dosModos(false).texto).toMatch(/15/);
+    // O número vem da régua. Escrito à mão aqui, o teste continuaria passando
+    // com o guia dizendo 15 depois de ela virar 25 — que foi o defeito real.
+    expect(dosModos(false).texto).toContain(String(VIP_MANUAL_LEVEL));
   });
 
   it('liberado, o guia não vende nada', () => {

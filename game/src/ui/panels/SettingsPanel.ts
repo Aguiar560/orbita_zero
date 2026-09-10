@@ -6,6 +6,7 @@ import { apagarNaNuvem } from '@app/nuvem';
 import { sair, sessaoGuardada } from '@app/conta';
 import { bus, toast } from '@app/Bus';
 import { MUSICAS } from '@data/musicas';
+import { VIP_MANUAL_LEVEL } from '@sim/vip';
 import { pilotoDe } from '@data/pilotos';
 import { describeGalaxy } from '@data/galaxies';
 import type { Rarity } from '@sim/types';
@@ -134,7 +135,7 @@ export class SettingsPanel implements Panel {
         sim.touch();
       }, manualDisponivel
         ? (s.controlMode === 'manual' ? 'WASD, setas ou deslize no campo · tiro automático' : '')
-        : 'A partir do nível 15, o controle manual requer VIP',
+        : `A partir do nível ${VIP_MANUAL_LEVEL}, o controle manual requer VIP`,
       manualDisponivel ? [] : ['manual']),
       escolha('Postura da IA', [
         ['agressivo', 'Agressiva'],

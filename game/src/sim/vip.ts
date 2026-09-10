@@ -3,7 +3,21 @@ import type { GameState } from './types';
 export const VIP_COST_CRYSTALS = 500;
 export const VIP_DURATION_DAYS = 30;
 export const VIP_DURATION_MS = VIP_DURATION_DAYS * 24 * 60 * 60 * 1000;
-export const VIP_MANUAL_LEVEL = 15;
+/**
+ * A partir de que nível a pilotagem manual vira benefício do passe.
+ *
+ * Era 15, e subiu para 25 em 09/09/2026. O motivo é o mesmo que fez o gate
+ * existir com um degrau em vez de nascer fechado: quem experimenta o jogo
+ * precisa conhecer os DOIS modos antes de escolher, e o `idle` só faz sentido
+ * para quem já sentiu o manual. Quinze níveis eram pouco tempo de mão livre
+ * para essa comparação acontecer de verdade.
+ *
+ * Quem lê este número não é só o `if`: a frase do trilho, a de Ajustes, a do
+ * guia e a da capa saem todas daqui. Escrever "15" em qualquer uma delas cria
+ * uma segunda verdade que envelhece calada — e foi exatamente o que aconteceu
+ * nas três primeiras, corrigidas junto com esta mudança.
+ */
+export const VIP_MANUAL_LEVEL = 25;
 
 export interface CrystalPackage {
   id: string;
@@ -39,7 +53,7 @@ export function limiteDeMissoes(state: GameState, agora = Date.now()): number {
   return vipAtivo(state, agora) ? 5 : 4;
 }
 
-/** Até o nível 14 todos experimentam os dois modos; depois, manual é benefício VIP. */
+/** Antes de `VIP_MANUAL_LEVEL` todos experimentam os dois modos; dali em diante, manual é benefício VIP. */
 export function controleManualDisponivel(state: GameState, agora = Date.now()): boolean {
   return state.settings.testMode || state.command.nivel < VIP_MANUAL_LEVEL || vipAtivo(state, agora);
 }

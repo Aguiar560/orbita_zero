@@ -947,7 +947,7 @@ teto da linha.
 
 `state.vip.expiresAt` é a única persistência da assinatura. `sim/vip.ts` deriva
 do relógio o teto de tentativas (5/6), o rastreador de missões (4/5), o acesso
-ao controle manual no nível 15+ e as duas automações exclusivas. O cliente não concede
+ao controle manual no nível 25+ (`VIP_MANUAL_LEVEL`) e as duas automações exclusivas. O cliente não concede
 pacotes de cristais nem estende o passe: **o servidor debita e o servidor
 carimba a validade**, e a tela só pede. Os cristais, por sua vez, se compram com
 dinheiro de verdade — ver *A compra de cristais*, no §12.

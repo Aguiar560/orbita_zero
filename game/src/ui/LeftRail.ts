@@ -5,6 +5,7 @@ import { fmt, duration, pct } from '@core/format';
 import { clamp01 } from '@core/math';
 import { ELEMENTOS_RESISTIVEIS, getElement, matchup } from '@data/elements';
 import { dps, effectiveHp } from '@sim/stats';
+import { VIP_MANUAL_LEVEL } from '@sim/vip';
 import type { Sim } from '@sim/index';
 import { WAVES_PER_SECTOR } from '@data/balance/curvas';
 import { RESOURCE_IDS } from '@sim/types';
@@ -178,7 +179,7 @@ export class LeftRail {
         ),
         h('span.tiny.muted.rail-control-help', {
             text: manualAtivo ? 'WASD / setas ou deslize no campo · disparo automático'
-            : manualDisponivel ? 'IA no comando' : 'Manual requer VIP no nível 15+',
+            : manualDisponivel ? 'IA no comando' : `Manual requer VIP no nível ${VIP_MANUAL_LEVEL}+`,
         }),
         h('.rail-pilots', {}, ...PILOTS.map((p) =>
           h(`button.rail-pilot${sim.state.settings.pilot === p.id ? '.active' : ''}`, {

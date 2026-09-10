@@ -1,3 +1,4 @@
+import { VIP_MANUAL_LEVEL } from '@sim/vip';
 import type { PassoDoTour } from '@ui/Tour';
 
 /**
@@ -53,12 +54,18 @@ export function passosDoOnboarding(manualDisponivel: boolean): readonly PassoDoT
       // O texto pergunta ao jogo, e não ao roteiro, se PILOTAR está ao alcance.
       //
       // O guia é reabrível por Ajustes, então ele não é lido só no nível 1. A
-      // partir do nível 15 o controle manual passa a ser benefício VIP, e a frase
-      // fixa acabava descrevendo um botão que, para esse jogador, está desligado
-      // na frente dele. Prometer o que a tela nega é pior do que não explicar.
+      // partir de `VIP_MANUAL_LEVEL` o controle manual passa a ser benefício VIP,
+      // e a frase fixa acabava descrevendo um botão que, para esse jogador, está
+      // desligado na frente dele. Prometer o que a tela nega é pior do que não
+      // explicar.
+      //
+      // O NÚMERO também vem de lá. Ele já esteve escrito à mão aqui, e ficou
+      // dizendo 15 depois de a régua virar 25.
       texto: manualDisponivel
         ? 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. PILOTAR passa a nave para você, com WASD ou as setas; o disparo continua automático. Dá para trocar no meio da luta.'
-        : 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. PILOTAR passa a nave para você, com WASD ou as setas. A partir do nível 15 esse modo faz parte do passe VIP, por isso ele aparece desligado aqui.',
+        : 'IDLE deixa a IA no comando — o jogo avança sozinho, inclusive com a aba fechada. '
+          + 'PILOTAR passa a nave para você, com WASD ou as setas. A partir do nível '
+          + `${VIP_MANUAL_LEVEL} esse modo faz parte do passe VIP, por isso ele aparece desligado aqui.`,
       escala: 1.14,
       folga: 10,
     },

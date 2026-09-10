@@ -13,6 +13,21 @@ de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
+## 09/09/2026 — a pilotagem manual fica livre até o nível 25
+
+Era 15. O gate existe para o `idle` fazer sentido — ele só faz, para quem já
+sentiu o manual —, e quinze níveis eram pouco tempo de mão livre para essa
+comparação acontecer.
+
+O que a mudança revelou vale mais que ela: o número estava **escrito à mão em
+três telas**. O trilho dizia "Manual requer VIP no nível 15+", Ajustes dizia "A
+partir do nível 15", e o guia repetia. Só a capa lia `VIP_MANUAL_LEVEL`. As
+três passaram a ler também, e os dois testes que verificavam o texto pelo
+literal `15` passaram a ler a régua — do jeito antigo eles continuariam verdes
+com a tela mentindo.
+
+---
+
 ## 09/09/2026 — a capa deixa de inventar dados
 
 A landing tinha um **ranking mundial com selo AO VIVO** e oito pilotos que não

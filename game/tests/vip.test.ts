@@ -7,7 +7,7 @@ import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import type { Item } from '@sim/types';
 import {
-  CRYSTAL_PACKAGES, VIP_COST_CRYSTALS, VIP_DURATION_MS,
+  CRYSTAL_PACKAGES, VIP_COST_CRYSTALS, VIP_DURATION_MS, VIP_MANUAL_LEVEL,
   controleManualAtivo, controleManualDisponivel, cristaisDoPacote, limiteDeMissoes,
   limiteTentativasDaProvacao, vipAtivo,
 } from '@sim/vip';
@@ -98,13 +98,18 @@ describe('Passe VIP', () => {
     expect(comVenda.state.armazem).toEqual({});
   });
 
-  it('mantém manual livre até o nível 14 e exige VIP a partir do 15', () => {
+  it('mantém manual livre abaixo da régua e exige VIP a partir dela', () => {
+    /**
+     * Os níveis saem de `VIP_MANUAL_LEVEL`, e não de literais: a régua já
+     * mudou uma vez (15 → 25), e um teste com o número escrito à mão teria
+     * caído junto com a mudança sem nenhum defeito por trás.
+     */
     const state = createState(208);
     state.settings.controlMode = 'manual';
-    state.command.nivel = 14;
+    state.command.nivel = VIP_MANUAL_LEVEL - 1;
     expect(controleManualDisponivel(state)).toBe(true);
     expect(controleManualAtivo(state)).toBe(true);
-    state.command.nivel = 15;
+    state.command.nivel = VIP_MANUAL_LEVEL;
     expect(controleManualDisponivel(state)).toBe(false);
     expect(controleManualAtivo(state)).toBe(false);
     state.vip.expiresAt = Date.now() + 60_000;
