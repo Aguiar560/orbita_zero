@@ -1164,6 +1164,10 @@ export class Shell {
         ? linha(RESOURCE_META.sucata.icon, 'Sucata do cofre (multa das quedas)', `−${fmt(b.perdas.multa)}`, VERMELHO)
         : null,
       ...RESOURCE_IDS
+        .filter((id) => b.perdas.moedas[id] > 0)
+        .map((id) => linha(RESOURCE_META[id].icon, `${RESOURCE_META[id].label} do saldo`,
+          `−${fmt(b.perdas.moedas[id])}`, VERMELHO)),
+      ...RESOURCE_IDS
         .filter((id) => b.perdas.carga[id] > 0)
         .map((id) => linha(RESOURCE_META[id].icon, `${RESOURCE_META[id].label} da carga (evaporou nas quedas)`,
           `−${fmt(b.perdas.carga[id])}`, VERMELHO)),
@@ -1174,6 +1178,24 @@ export class Shell {
       ...b.perdas.matriz.map((no) =>
         linha('node/exp', `Nó da Matriz devolvido: ${NODE_BY_ID.get(no)?.name ?? no}`, '−1', VERMELHO)),
     ]);
+
+    /**
+     * A carga a bordo: o que os abates renderam sem setor concluído.
+     *
+     * Bloco próprio, e não dentro de "Ganhou", porque ainda não é de ninguém:
+     * só vira saldo ao concluir o setor, e uma queda a leva. Sem ele, 506
+     * abates sem setor concluído chegavam como relatório vazio.
+     */
+    const carga = b.carga
+      ? secao('Carga a bordo — em risco até concluir o setor', RESOURCE_IDS
+        .filter((id) => Math.trunc(b.carga!.antes[id] ?? 0) > 0 || Math.trunc(b.carga!.depois[id] ?? 0) > 0)
+        .map((id) => {
+          const antes = Math.trunc(b.carga!.antes[id] ?? 0);
+          const depois = Math.trunc(b.carga!.depois[id] ?? 0);
+          return linha(RESOURCE_META[id].icon, RESOURCE_META[id].label, `${fmt(antes)} → ${fmt(depois)}`,
+            depois < antes ? VERMELHO : RESOURCE_META[id].color);
+        }))
+      : null;
 
     // A nave tem nível próprio, e ele cai junto com o do piloto. Mostrar só a
     // patente deixaria de fora metade do que a queda cobra.
@@ -1210,21 +1232,22 @@ export class Shell {
       h('.modal.offline-modal', {},
         h('h2', { text: 'Relatório de ausência' }),
         h('p.muted', { text: `A frota operou sozinha por ${duration(report.seconds)}${report.capped ? ' (teto atingido)' : ''}.` }),
-        b.quedas > 0
+        (b.quedas ?? 0) > 0
           ? h('p.offline-alerta', {
-            text: `A nave caiu ${fmt(b.quedas)} ${b.quedas === 1 ? 'vez' : 'vezes'}. O setor em que ela ficou está `
+            text: `A nave caiu ${fmt(b.quedas!)} ${b.quedas === 1 ? 'vez' : 'vezes'}. O setor em que ela ficou está `
               + 'acima do que ela aguenta — recue um setor antes de sair, ou reforce o equipamento.',
           })
           : null,
         patente,
         ganhos,
         perdas,
+        carga,
         naves,
         resultado,
         b.vazio ? h('p.muted', { text: 'Nada entrou e nada saiu: a frota não decolou.' }) : null,
         h('.offline-extra', {},
           h('span', { text: `${fmt(report.kills)} abates` }),
-          h('span', { text: `${fmt(b.quedas)} quedas` }),
+          b.quedas !== null ? h('span', { text: `${fmt(b.quedas)} quedas` }) : null,
           report.sectorsCleared > 0 ? h('span', { text: `${report.sectorsCleared} setores` }) : null,
           report.chests > 0 ? h('span', { text: `${report.chests} baús` }) : null,
         ),

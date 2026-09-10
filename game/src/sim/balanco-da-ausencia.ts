@@ -32,10 +32,19 @@ export interface BalancoDaAusencia {
     materiais: Record<string, number>;
     /** Nós da Matriz devolvidos por patente perdida. */
     matriz: string[];
+    /**
+     * Saldo que caiu sem o servidor dizer por quê — só quando `perdas` não
+     * veio (Worker antigo). Com o detalhe, a queda do saldo já está explicada
+     * pela multa e isto fica zerado.
+     */
+    moedas: Record<ResourceId, number>;
   };
   /** O que de fato mudou no saldo e no XP — é o que o topo da tela mostra. */
   liquido: { xp: number; moedas: Record<ResourceId, number> };
-  quedas: number;
+  /** A carga a bordo antes e depois, quando algum lado tem alguma coisa. */
+  carga: { antes: Record<ResourceId, number>; depois: Record<ResourceId, number> } | null;
+  /** `null` = o servidor não contou. Nunca vira zero: "0 quedas" é afirmação. */
+  quedas: number | null;
   patente: { antes: number; depois: number } | null;
   naves: NonNullable<OfflineReport['naves']>;
   /** Alguma coisa saiu? Decide se o relatório abre com o aviso vermelho. */
@@ -49,20 +58,35 @@ const zeros = (): Record<ResourceId, number> => ({ sucata: 0, nucleo: 0, cristal
 export function balancoDaAusencia(r: OfflineReport): BalancoDaAusencia {
   const p = r.perdas;
   const multa = Math.max(0, Math.trunc(p?.multa ?? 0));
-  const xpPerdido = Math.max(0, p?.xpPiloto ?? 0);
   const xpLiquido = r.xp ?? 0;
+  /**
+   * Sem o detalhe das perdas (Worker antigo), o líquido negativo É a perda.
+   *
+   * Era `p?.xpPiloto ?? 0`: sem detalhe, a perda valia zero e o ganho bruto
+   * saía `max(0, líquido)` — um XP de −738 simplesmente sumia da tela. Medido
+   * em 10/09 numa ausência de 5m29s: nove quedas, relatório vazio.
+   */
+  const xpPerdido = p ? Math.max(0, p.xpPiloto) : Math.max(0, -xpLiquido);
 
   const moedasGanhas = zeros();
+  const moedasPerdidas = zeros();
   const carga = zeros();
   const liquido = zeros();
   for (const id of RESOURCE_IDS) {
     const l = Math.trunc(r.gained[id] ?? 0);
     liquido[id] = l;
     // A multa já está descontada do líquido; somá-la de volta é o que
-    // separa o que entrou do que saiu.
-    moedasGanhas[id] = Math.max(0, l + (id === 'sucata' ? multa : 0));
+    // separa o que entrou do que saiu. O que ainda sobrar negativo é queda
+    // de saldo sem explicação, e aparece como tal em vez de sumir.
+    const bruto = l + (id === 'sucata' ? multa : 0);
+    moedasGanhas[id] = Math.max(0, bruto);
+    moedasPerdidas[id] = Math.max(0, -bruto);
     carga[id] = Math.max(0, Math.trunc(p?.carga?.[id] ?? 0));
   }
+
+  const cargaABordo = r.carga && RESOURCE_IDS.some((id) =>
+    Math.trunc(r.carga!.antes[id] ?? 0) > 0 || Math.trunc(r.carga!.depois[id] ?? 0) > 0)
+    ? r.carga : null;
 
   const matGanhos: Record<string, number> = {};
   const matPerdidos: Record<string, number> = {};
@@ -73,13 +97,14 @@ export function balancoDaAusencia(r: OfflineReport): BalancoDaAusencia {
 
   const patente = r.patente && r.patente.depois !== r.patente.antes ? r.patente : null;
   const naves = r.naves ?? [];
-  const quedas = r.quedas ?? 0;
+  const quedas = r.quedas ?? null;
 
   const perdas = {
     xp: xpPerdido, multa, carga, materiais: matPerdidos, matriz: [...(p?.matriz ?? [])],
+    moedas: moedasPerdidas,
   };
-  const houvePerda = quedas > 0 || multa > 0 || xpPerdido > 0
-    || RESOURCE_IDS.some((id) => carga[id] > 0)
+  const houvePerda = (quedas ?? 0) > 0 || multa > 0 || xpPerdido > 0
+    || RESOURCE_IDS.some((id) => carga[id] > 0 || moedasPerdidas[id] > 0)
     || Object.keys(matPerdidos).length > 0
     || (patente !== null && patente.depois < patente.antes)
     || naves.some((n) => n.depois < n.antes || n.xp < 0);
@@ -87,12 +112,14 @@ export function balancoDaAusencia(r: OfflineReport): BalancoDaAusencia {
   const ganhos = { xp: Math.max(0, xpLiquido + xpPerdido), moedas: moedasGanhas, materiais: matGanhos };
   const houveGanho = ganhos.xp > 0
     || RESOURCE_IDS.some((id) => moedasGanhas[id] > 0)
-    || Object.keys(matGanhos).length > 0;
+    || Object.keys(matGanhos).length > 0
+    || cargaABordo !== null;
 
   return {
     ganhos,
     perdas,
     liquido: { xp: xpLiquido, moedas: liquido },
+    carga: cargaABordo,
     quedas,
     patente,
     naves,

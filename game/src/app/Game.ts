@@ -412,6 +412,9 @@ export class Game {
    * jogador veria o relatório dizer "+900 sucata" com o contador parado.
    */
   private async creditarAusencia(): Promise<void> {
+    // A carga que SUBIU com o pedido. A que volta em `r.incursao` é o depois;
+    // os dois juntos são o que os abates renderam sem setor concluído.
+    const cargaAntes = { ...this.sim.state.run.carga };
     const r = await creditarAusencia(this.sim);
     if (!r || r.segundos <= 0) return;
 
@@ -449,8 +452,14 @@ export class Game {
         xp: r.xp ?? 0,
         itens: r.itensNovos ?? 0,
         niveis: this.sim.state.command.nivel - nivelAntes,
-        quedas: r.quedas ?? 0,
+        // SEM `?? 0`. Um Worker de antes de 10/09 não conta quedas, e cair em
+        // zero fazia o relatório afirmar "0 quedas" numa ausência em que a nave
+        // tinha caído nove vezes. Número desconhecido não aparece.
+        quedas: r.quedas,
         perdas: r.perdas,
+        // O depois é o estado JÁ adotado: `adotarIncursao` saneia o que veio
+        // (NaN e negativo viram zero), e o relatório mostra o que ficou a bordo.
+        carga: r.incursao ? { antes: cargaAntes, depois: { ...this.sim.state.run.carga } } : undefined,
         // A patente vem do SERVIDOR quando ele manda; a medição local é o
         // recuo para um Worker antigo, que ainda não devolve o campo.
         patente: r.patente ?? { antes: nivelAntes, depois: this.sim.state.command.nivel },

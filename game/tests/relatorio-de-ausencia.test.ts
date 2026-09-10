@@ -115,6 +115,34 @@ describe('o balanço separa ganho de perda', () => {
     expect(balancoDaAusencia({ ...base, patente: { antes: 10, depois: 10 } }).patente).toBeNull();
   });
 
+  it('sem o detalhe do servidor, o líquido negativo é a perda — e as quedas ficam desconhecidas', () => {
+    /**
+     * O caso medido em 10/09, com o Worker de antes da mudança: 506 abates,
+     * nove quedas, XP líquido −738. O servidor não mandava `perdas` nem
+     * `quedas`, e o relatório mostrou "506 abates · 0 quedas" e mais nada — o
+     * XP negativo sumia e o zero de quedas era inventado.
+     */
+    const b = balancoDaAusencia({
+      seconds: 329, capped: false, gained: { sucata: -40, nucleo: 0, cristal: 0 },
+      sectorsCleared: 0, kills: 506, chests: 0, xp: -738,
+    });
+    expect(b.quedas).toBeNull();
+    expect(b.perdas.xp).toBe(738);
+    expect(b.ganhos.xp).toBe(0);
+    expect(b.perdas.moedas.sucata).toBe(40);
+    expect(b.houvePerda).toBe(true);
+  });
+
+  it('a carga a bordo aparece, porque é o que os abates renderam sem setor concluído', () => {
+    const sim = new Sim(createState(35));
+    sim.jumpSector(3);
+    sim.state.run.carga = { sucata: 100, nucleo: 0, cristal: 0 };
+    const b = balancoDaAusencia(sim.applyOffline(60));
+    expect(b.carga).not.toBeNull();
+    expect(b.carga!.antes.sucata).toBe(100);
+    expect(b.carga!.depois.sucata).toBe(sim.state.run.carga.sucata);
+  });
+
   it('sem queda não há perda, e o resultado não se repete', () => {
     const sim = new Sim(createState(32));
     sim.jumpSector(2);

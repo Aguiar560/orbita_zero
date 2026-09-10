@@ -8,7 +8,7 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 10/09/2026 · **1.611 testes** em 157 arquivos · registro consolidado
+**Última atualização:** 10/09/2026 · **1.613 testes** em 157 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
@@ -45,7 +45,15 @@ já tinham tirado 136.154 e 11.543 de sucata sem ninguém ver.
 De brinde, o livro-caixa: a multa sobe como `morte` e o ganho como `drop`, em vez
 de um `drop` negativo que não diz de onde a sucata saiu.
 
-**Testes:** `tests/relatorio-de-ausencia.test.ts` (8). Suíte: 1.611 verdes.
+**Segunda rodada, no mesmo dia.** Um relatório de 5m29s veio "506 abates · 0
+quedas" e mais nada — com o Worker ainda sem a mudança. Reproduzido: setor 19,
+**nove quedas**, XP líquido −738, ~65K de sucata evaporada da carga. O cliente
+inventava o zero (`quedas ?? 0`), escondia o XP negativo (sem `perdas`, a perda
+valia zero) e não mostrava a carga, que é tudo o que 506 abates sem setor
+concluído rendem. Agora: número desconhecido não aparece, líquido negativo vai
+para "Perdeu" com ou sem detalhe, e a carga a bordo tem bloco próprio.
+
+**Testes:** `tests/relatorio-de-ausencia.test.ts` (10). Suíte: 1.613 verdes.
 
 ---
 

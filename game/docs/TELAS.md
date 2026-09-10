@@ -1144,11 +1144,18 @@ Blocos, nesta ordem, e cada um só aparece se tiver linha:
 - **Ganhou**: XP bruto do piloto, moedas brutas, materiais.
 - **Perdeu**: XP tirado pelas quedas, multa sobre a sucata do cofre, carga que
   evaporou, materiais, nós da Matriz devolvidos.
+- **Carga a bordo**: `antes → depois` de cada moeda. É o que os abates renderam
+  sem setor concluído — ainda não é saldo, e uma queda a leva.
 - **Naves**: cada nave que voou, com `nível antes → depois` e o XP líquido — a
   frota troca de casco sozinha quando o combustível seca.
 - **Resultado**: o líquido de XP e de cada moeda. Só quando houve perda; sem ela,
   ganho e resultado são o mesmo número.
 - Rodapé: abates, quedas, setores, baús.
+
+Número que o servidor não mandou **não aparece** — nunca vira zero. Um Worker
+antigo não contava quedas, e o `?? 0` fazia a tela afirmar "0 quedas" numa
+ausência em que a nave caiu nove vezes. Sem o detalhe das perdas, o líquido
+negativo de XP ou de moeda vai para "Perdeu" do mesmo jeito.
 
 **Por que é assim (10/09).** O relatório desenhava só o que era positivo. Uma
 ausência de 37 minutos com a nave presa num setor alto demais — 41 quedas,

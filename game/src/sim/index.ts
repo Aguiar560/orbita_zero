@@ -200,6 +200,15 @@ export interface OfflineReport {
   naves?: { casco: string; antes: number; depois: number; xp: number }[];
   /** Diferença do armazém. Só o que mudou. */
   materiais?: Record<string, number>;
+  /**
+   * A carga da incursão, antes e depois.
+   *
+   * É o que os abates renderam enquanto nenhum setor caiu — e é por isso que
+   * ela precisa aparecer: 506 abates sem setor concluído rendem só carga, e sem
+   * esta linha o relatório parecia dizer que a ausência não deu nada. Não é
+   * saldo: ela só vira moeda ao concluir o setor, e uma queda a leva.
+   */
+  carga?: { antes: Record<ResourceId, number>; depois: Record<ResourceId, number> };
 }
 
 export interface PerdasDaAusencia {
@@ -3023,6 +3032,7 @@ export class Sim {
     const beforeKills = this.state.stats.kills;
     const beforeChests = Object.values(this.state.chests).reduce((s, n) => s + n, 0);
     const beforeDeaths = this.state.stats.deaths;
+    const cargaAntes = { ...this.state.run.carga };
     const patenteAntes = this.state.command.nivel;
     const xpAntes = xpAcumuladoDe(this.state.command, curvaXpPersonagem);
     const navesAntes = new Map(Object.entries(this.state.naves)
@@ -3098,6 +3108,7 @@ export class Sim {
       patente: { antes: patenteAntes, depois: this.state.command.nivel },
       naves,
       materiais,
+      carga: { antes: cargaAntes, depois: { ...this.state.run.carga } },
     };
   }
 
