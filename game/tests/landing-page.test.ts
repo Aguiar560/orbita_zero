@@ -145,22 +145,25 @@ describe('a capa é uma página só', () => {
 describe('o que a capa promete, ela pode cumprir', () => {
   it('a captura é do jogo, e o arquivo existe', () => {
     expect(landing).toContain('CAPTURA DO JOGO · SEM EDIÇÃO');
-    for (const arte of ['tela', 'fabricacao', 'elementos', 'ficha-do-item']) {
+    for (const arte of ['tela', 'fabricacao', 'elementos']) {
       expect(landing).toContain(`/assets/landing/${arte}.webp`);
       expect(existsSync(join(process.cwd(), 'public', 'assets', 'landing', `${arte}.webp`)), arte)
         .toBe(true);
     }
   });
 
-  it('e a captura da dobra não é cortada pela borda', () => {
+  it('e a captura da dobra não é cortada nem coberta', () => {
     /**
      * Ela sangrava pela direita, e o corte comia a ficha do item — o argumento
-     * de loot inteiro. Cabe toda na coluna agora, e o detalhe legível vem da
-     * MESMA captura, recortado.
+     * de loot inteiro. Depois ganhou a ficha recortada por cima, que tapava
+     * outro pedaço para mostrar o que a própria captura já mostra: a ficha está
+     * lá dentro, aberta sobre o inventário.
+     *
+     * A captura fica inteira e sozinha.
      */
     expect(css).not.toContain('margin-right: -60px');
-    expect(css).toContain('.landing-detalhe');
-    expect(landing).toContain('/assets/landing/ficha-do-item.webp');
+    expect(semComentarios(css)).not.toContain('landing-detalhe');
+    expect(landingDesenhado).not.toContain('ficha-do-item');
   });
 
   it('e o bloco do passe conta a regra que o servidor aplica', () => {

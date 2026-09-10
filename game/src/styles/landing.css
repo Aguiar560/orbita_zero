@@ -177,17 +177,15 @@
 .landing-confianca i { width: 5px; height: 5px; border-radius: 50%; background: var(--lz-ciano); flex: none; }
 
 /**
- * A captura INTEIRA, e um detalhe legível por cima.
+ * A captura INTEIRA, sem nada por cima.
  *
- * Ela sangrava pela direita, e o argumento era escala: um print de 1440 px
- * exibido a 600 vira textura, e o leitor entende que "tem interface" sem ver O
- * QUE tem. O preço era alto demais — o corte comia justamente a ficha do item,
- * que é onde mora o argumento de loot, e a tela parecia quebrada em vez de
- * ampliada.
+ * Ela sangrava pela direita para caber maior, e o corte comia justamente a
+ * ficha do item — a tela lia como quebrada, não como ampliada.
  *
- * A saída é ter as duas coisas: a tela toda cabe na coluna, e a ficha aparece
- * recortada da MESMA captura, grande o bastante para se ler prefixo, sufixo e
- * tier. Nada de montagem — é o mesmo pixel, ampliado.
+ * A tentativa seguinte foi pendurar a ficha recortada no canto, como detalhe
+ * legível. Também saiu: a ficha já está DENTRO da captura, aberta sobre o
+ * inventário. Um detalhe que repete o que a imagem já mostra não acrescenta
+ * leitura, só tapa metade dela.
  */
 .landing-quadro { position: relative; }
 .landing-tela-do-jogo {
@@ -195,19 +193,6 @@
   border: 1px solid var(--lz-linha-forte);
   border-radius: 5px;
   box-shadow: 0 34px 90px rgba(0, 0, 0, .7);
-}
-.landing-detalhe {
-  position: absolute;
-  /* Pendurada mais para FORA do quadro do que para dentro: ela ilustra a
-     captura, e cobrir o painel do piloto — que é o argumento do "a IA pilota" —
-     seria o detalhe escondendo o que veio mostrar. */
-  left: -34px;
-  bottom: -38px;
-  width: min(36%, 186px);
-  border: 1px solid var(--lz-linha-forte);
-  border-radius: 5px;
-  background: var(--lz-fundo);
-  box-shadow: 0 22px 54px rgba(0, 0, 0, .8);
 }
 .landing-selo {
   position: absolute;
@@ -380,10 +365,6 @@
 @keyframes landing-modal-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 
 /* ── estreito ───────────────────────────────────────────────────────────── */
-
-@media (max-width: 1100px) {
-  .landing-quadro .landing-detalhe { display: none; }
-}
 
 @media (max-width: 900px) {
   .landing-dobra-grade { grid-template-columns: 1fr; gap: 34px; padding: 52px 20px; }
