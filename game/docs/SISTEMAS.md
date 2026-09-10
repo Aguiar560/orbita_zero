@@ -1322,6 +1322,12 @@ Sem `MP_ACCESS_TOKEN` configurado, o `/checkout` responde
 `pagamento_indisponivel` (503) e o resto do jogo funciona igual — foi o que
 permitiu construir e testar tudo antes de existir conta ativa no provedor.
 
+Quando o Mercado Pago recusa criar a cobrança, `motivoDoMP` grava em `recusas`
+a mensagem que ELE mandou (`http_401_unauthorized_use_of_live_credentials`,
+`http_400_collector_user_without_key_enabled_for`…), nunca o token. As três
+armadilhas da primeira ativação estão no `PLANO.md`. `MP_EMAIL_DO_PAGADOR`
+(opcional) troca o e-mail do pagador para o ambiente de teste.
+
 ### O teto que replica o jogo — Fase 5
 
 O servidor não *estima* o quanto um ganho é plausível: ele **reproduz o

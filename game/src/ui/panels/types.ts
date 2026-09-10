@@ -20,4 +20,13 @@ export interface Panel {
    * cascata que tentar alargar a coluna provocou.
    */
   overlay?: boolean;
+  /**
+   * Chamado quando a camada ABRE com este painel — não a cada re-render.
+   *
+   * O painel é um objeto só, que sobrevive a fechar e abrir; o que ele guarda
+   * em campo reaparece na reabertura. Este gancho deixa cada painel limpar o que
+   * já terminou (a Loja: a cobrança Pix paga continuava na tela em toda
+   * reabertura) sem perder o que ainda está em andamento.
+   */
+  aoAbrir?(sim: Sim): void;
 }

@@ -948,6 +948,9 @@ export class Shell {
     // o tutorial abre — ver `talvezAbrirTutorial`.
     const trocou = this.camadaHost.dataset.tela !== painel.id;
     this.camadaHost.dataset.tela = painel.id;
+    // Antes do render: é o painel que decide o que aparece ao ser REABERTO — e
+    // só ele sabe o que é estado de trabalho e o que já terminou.
+    if (trocou) painel.aoAbrir?.(this.sim);
     if (trocou) this.talvezAbrirTutorial(painel);
 
     clear(this.camadaHost).append(

@@ -769,6 +769,10 @@ mesma transação.
   RECEBIDO sozinha; fechar não cancela nada. O copia-e-cola tem o mesmo peso do
   QR porque quem joga no celular não tem uma segunda câmera para ler a própria
   tela. Recusa aparece **onde se clicou**, em português, e não só no rodapé.
+  Reabrir a Loja volta à vitrine quando a cobrança já terminou (paga, vencida
+  ou cancelada) — `ShopPanel.aoAbrir`, chamado pelo Shell só na abertura da
+  camada. A cobrança **pendente** continua na tela: quem fechou no meio do
+  pagamento precisa reencontrar o QR.
 - **VIP:** passe de 30 dias por 500 cristais, estado e cinco benefícios legíveis.
   Cristais se compram com dinheiro; o passe, com cristais — o selo "1 PASSE VIP"
   do pacote Comando é literal: 500 cristais dão exatamente um.

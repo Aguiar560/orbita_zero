@@ -1483,21 +1483,26 @@ O teste guarda as três fronteiras: ganho igual, ausência não avança de setor
 missão só no jogo aberto.
 
 ---
-## A compra de cristais — o que falta para valer dinheiro (09/09/2026)
+## A compra de cristais — ✅ valendo dinheiro (10/09/2026)
 
-O código está pronto e testado contra um provedor falso: `/checkout`,
-`/webhook/pagamento`, `/compra`, a varredura de cinco minutos e a tela do Pix.
-Sem credencial, o jogo funciona igual e o `/checkout` responde
-`pagamento_indisponivel`. O que falta não é código:
+Em produção. Primeira compra real: pacote Faísca, R$ 4,90, paga às 15:31 de
+10/09; `+80 cristal, compra` no livro 70 s depois, a tela mostrou RECEBIDO sem
+recarregar, e nenhuma linha de `/webhook/pagamento` em `recusas`. Credenciais de
+PRODUÇÃO da conta real; `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET` como segredos do
+Worker.
 
-1. **Destravar o painel do Mercado Pago** e gerar as credenciais.
-2. `wrangler secret put MP_ACCESS_TOKEN` e `wrangler secret put MP_WEBHOOK_SECRET`
-   — **no terminal do Rafael**. Segredo não passa por conversa.
-3. **Configurar a URL do webhook** no painel deles:
-   `…workers.dev/webhook/pagamento`.
-4. **Critério de aceite:** uma cobrança de **R$ 0,01** paga de verdade, com
-   credencial de teste, creditando os cristais na tela sem recarregar; e o livro
-   das recusas sem nenhuma linha de `/webhook/pagamento` no período.
+**Três armadilhas do Mercado Pago, na ordem em que apareceram** — cada uma só
+ficou legível depois de `motivoDoMP` passar a gravar a mensagem do provedor
+(antes o livro dizia só `http_401`):
+
+1. `http_401` — o valor gravado não era o Access Token. Conferir com
+   `GET /users/me` antes de gravar.
+2. `http_401_unauthorized_use_of_live_credentials` — token de **usuário de
+   teste** com pagador que não é de teste. `MP_EMAIL_DO_PAGADOR` existe para
+   isso, mas o e-mail `test_user_<ID>@testuser.com` não resolveu; o teste foi
+   feito direto em produção.
+3. `http_400_collector_user_without_key_enabled_for` — a conta não tinha
+   **chave Pix** cadastrada.
 
 Pendências de política, que são decisão e não implementação:
 

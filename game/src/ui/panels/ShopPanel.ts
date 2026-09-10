@@ -79,6 +79,26 @@ export class ShopPanel implements Panel {
     return SHOP.filter((item) => this.visible(sim, item) && sim.canBuyShopItem(item.id)).length;
   }
 
+  /**
+   * Reabrir a Loja volta à vitrine — a menos que haja um Pix esperando.
+   *
+   * A cobrança morava num campo do painel, que sobrevive a fechar e abrir.
+   * Depois de uma compra PAGA, toda reabertura mostrava de novo o QR e o
+   * "RECEBIDO" (relato de 10/09/2026); a única saída era o botão de voltar.
+   *
+   * A cobrança PENDENTE fica: quem fechou a Loja no meio do pagamento precisa
+   * reencontrar o QR, e abrir outra cobrança para o mesmo Pix seria pior. Paga,
+   * vencida e cancelada já disseram o que tinham a dizer.
+   */
+  aoAbrir(): void {
+    if (!this.cobranca || this.compraEstado === 'pendente') return;
+    this.cobranca = null;
+    this.compraEstado = 'pendente';
+    this.copiado = false;
+    this.avisoDaLoja = '';
+    this.feedback = 'SELECIONE UM PACOTE';
+  }
+
   render(sim: Sim): HTMLElement {
     const visible = SHOP.filter((item) => this.visible(sim, item));
     if (!visible.some((i) => i.id === this.selected)) this.selected = visible[0]?.id ?? 'carga';
