@@ -30,6 +30,8 @@ import { drenarProgresso, sincronizarProgresso } from './progresso';
 import { drenarMissoes, sincronizarMissoes } from './missoes';
 import { creditarAusencia } from './ausencia';
 import { devoRecarregar, marcarTentativa, vigiarVersao } from './versao';
+import { buscarRecados, marcarRecadosLidos } from './recados';
+import { mostrarRecado } from '@ui/RecadoDoComando';
 import { mostrarAvisoDeVersao } from '@ui/AvisoDeVersao';
 
 /**
@@ -356,6 +358,10 @@ export class Game {
     if (!this.sim.state.settings.guiaVisto) this.abrirGuia();
 
     await this.creditarAusencia();
+
+    // Por último, e sem `await`: o recado do comando é cortesia, não parte do
+    // boot. Uma rede lenta não pode atrasar o início do jogo por causa dele.
+    void this.entregarRecados();
 
     this.loop.start();
   }
@@ -854,6 +860,35 @@ export class Game {
     this.loop.setBackground(document.hidden);
     if (document.hidden) this.sim.save();
   };
+
+  /**
+   * Entrega o que o operador tem a dizer, um cartão de cada vez.
+   *
+   * ## Por que um de cada vez
+   *
+   * Dois cartões empilhados viram um bloco de texto que ninguém lê inteiro, e
+   * o segundo — que costuma ser o mais recente — é o que se perde. O próximo
+   * só aparece quando o anterior é fechado.
+   *
+   * ## E por que a leitura só é confirmada ao FECHAR
+   *
+   * Marcar na chegada faria o recado sumir para sempre para quem estava com a
+   * aba em outra janela quando ele apareceu. Ver não é ler.
+   */
+  private async entregarRecados(): Promise<void> {
+    const fila = [...await buscarRecados()];
+
+    const proximo = (): void => {
+      const recado = fila.shift();
+      if (!recado) return;
+      mostrarRecado(this.rootEl, recado, (id) => {
+        void marcarRecadosLidos([id]);
+        proximo();
+      });
+    };
+
+    proximo();
+  }
 
   /**
    * Saiu versão nova. Decide se avisa, se recarrega, ou se ignora.

@@ -7782,6 +7782,69 @@ select option:disabled { color: #667991; }
   .login-caixa { width: calc(100vw - 24px); padding-inline: 22px; }
 }
 
+/* ── recado do comando ───────────────────────────────────────────────────── */
+/*
+ * Ao contrário da faixa de versão, este PEDE um clique: ele só existe porque
+ * alguém quis que o jogador lesse. Fica no centro, e o jogo continua rodando
+ * atrás — exige um clique, não atenção exclusiva.
+ */
+.recado {
+  position: fixed;
+  z-index: 2200;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(430px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  border: 1px solid rgba(93, 195, 245, .5);
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(9, 26, 42, .98), rgba(3, 10, 18, .99));
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .74), inset 0 0 34px rgba(45, 178, 218, .07);
+  animation: recado-entra .18s ease-out;
+}
+.recado.saindo { animation: recado-sai .18s ease-in forwards; }
+@keyframes recado-entra { from { opacity: 0; transform: translate(-50%, -46%) scale(.98); } }
+@keyframes recado-sai { to { opacity: 0; transform: translate(-50%, -52%) scale(.98); } }
+
+/* Um fio de luz no topo, do mesmo vocabulário do cartão de patente nova. */
+.recado-feixe {
+  position: absolute;
+  inset: -1px auto auto 12%;
+  width: 76%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #6fd8ff, transparent);
+}
+.recado-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.recado-topo span {
+  color: #58c8ea;
+  font: 700 9px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .2em;
+}
+.recado-x {
+  min-width: 26px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6f8593;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.recado-x:hover { color: #cfe3ec; }
+.recado-conteudo p {
+  margin: 0;
+  color: #dbeaf3;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.recado-ok { min-height: 40px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .recado, .recado.saindo { animation: none; }
+}
+
 /* ── aviso de versão nova ────────────────────────────────────────────────── */
 /*
  * Rodapé, e não centro: o jogador pode estar no meio de um chefe, e uma janela

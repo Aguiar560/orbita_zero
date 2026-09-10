@@ -827,6 +827,11 @@ async function rotear(req: Request, env: Env): Promise<Response> {
       return abrirCobranca(req, env, usuario.id, origem);
     }
 
+    if (url.pathname === '/recados') {
+      if (req.method === 'GET') return recadosDe(env, usuario.id, origem);
+      if (req.method === 'POST') return marcarRecadosLidos(req, env, usuario.id, origem);
+    }
+
     if (url.pathname === '/compra' && req.method === 'POST') {
       return estadoDaCompra(req, env, usuario.id, origem);
     }
@@ -1458,6 +1463,77 @@ async function cursorDoLote(env: Env, id: string): Promise<Record<TipoDeDrop, nu
     elite: Math.max(0, l?.usados_elite ?? 0),
     chefe: Math.max(0, l?.usados_chefe ?? 0),
   } as Record<TipoDeDrop, number>;
+}
+
+// ── recado do comando ───────────────────────────────────────────────────────
+
+/**
+ * O que o operador tem a dizer para ESTE jogador, e ainda não foi entregue.
+ *
+ * ## Por que sem balde
+ *
+ * A leitura acontece uma vez por boot, e é a consulta mais barata do servidor:
+ * um índice, quase sempre zero linhas. Pendurar um balde aqui gastaria uma
+ * escrita em `limites` para proteger uma leitura que não custa nada — o
+ * remédio mais caro que a doença.
+ *
+ * O teto de linhas existe porque a lista é escrita à mão: se um dia alguém
+ * inserir mil recados para o mesmo jogador, o jogo não pode tentar mostrar mil.
+ */
+async function recadosDe(env: Env, usuario: string, origem: string): Promise<Response> {
+  const { results } = await env.DB.prepare(`
+    SELECT id, texto, criado_em FROM recados
+     WHERE usuario = ? AND lido_em IS NULL
+     ORDER BY criado_em
+     LIMIT 5
+  `).bind(usuario).all<{ id: number; texto: string; criado_em: number }>();
+
+  return json({ recados: results }, 200, origem);
+}
+
+/**
+ * O jogador leu. Marca a entrega.
+ *
+ * ## `AND usuario = ?` não é zelo
+ *
+ * Os ids são sequenciais e visíveis: sem esta cláusula, mandar `{ lidos: [1] }`
+ * apagaria da fila o recado de outra pessoa — que nunca o veria, e ninguém
+ * descobriria por quê.
+ *
+ * ## E por que não derruba o lote
+ *
+ * Um id que não existe, ou que não é dele, não invalida os outros: o `UPDATE`
+ * simplesmente não casa. É a mesma regra do inventário — um comando ruim não
+ * derruba o lote inteiro, senão o cliente reenvia para sempre.
+ */
+async function marcarRecadosLidos(
+  req: Request, env: Env, usuario: string, origem: string,
+): Promise<Response> {
+  const bruto = await req.text();
+  if (bruto.length > 1024) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+
+  let corpo: { lidos?: unknown };
+  try {
+    corpo = JSON.parse(bruto) as typeof corpo;
+  } catch {
+    return json({ erro: 'json_invalido' }, 400, origem);
+  }
+
+  const ids = Array.isArray(corpo.lidos)
+    ? corpo.lidos.filter((n): n is number => Number.isInteger(n)).slice(0, 5)
+    : [];
+  if (!ids.length) return json({ marcados: 0 }, 200, origem);
+
+  const agora = Math.floor(Date.now() / 1000);
+  let marcados = 0;
+  for (const id of ids) {
+    const r = await env.DB.prepare(
+      'UPDATE recados SET lido_em = ? WHERE id = ? AND usuario = ? AND lido_em IS NULL',
+    ).bind(agora, id, usuario).run();
+    marcados += r.meta.changes ?? 0;
+  }
+
+  return json({ marcados }, 200, origem);
 }
 
 // ── compra de cristais ──────────────────────────────────────────────────────
