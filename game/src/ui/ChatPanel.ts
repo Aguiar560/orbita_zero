@@ -247,7 +247,7 @@ export class ChatPanel {
       const coroa = m.vip
         ? h('span.chat-coroa', { text: '👑', title: 'Passe VIP ativo', 'aria-label': 'VIP' })
         : null;
-      this.log.append(h(`article.chat-mensagem${meu ? '.minha' : ''}`, {}, h('header', {}, coroa, autor, h('time', { text: new Date(m.criado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), datetime: new Date(m.criado).toISOString() })), h('p', { text: m.removida ? 'Mensagem removida pela moderação.' : m.texto })));
+      this.log.append(h(`article.chat-mensagem${meu ? '.minha' : ''}`, {}, h('header', {}, h('span.chat-quem', {}, coroa, autor), h('time', { text: new Date(m.criado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), datetime: new Date(m.criado).toISOString() })), h('p', { text: m.removida ? 'Mensagem removida pela moderação.' : m.texto })));
     }
     if (noFim && !this.carregando) this.log.scrollTop = this.log.scrollHeight;
     else if (this.carregando) this.log.scrollTop = topo + this.log.scrollHeight - altura;

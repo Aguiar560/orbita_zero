@@ -73,9 +73,20 @@ describe('todo caminho de saída carimba', () => {
 });
 
 describe('na tela', () => {
-  it('a coroa aparece antes do nome', () => {
+  it('a coroa aparece antes do nome, e colada nele', () => {
+    /**
+     * Soltas como irmãs do `time`, as duas caíam em cantos opostos: o
+     * `space-between` do cabeçalho empurrava a coroa para a esquerda e o nome
+     * para o meio, e o selo parecia ser de outra pessoa. Elas são uma coisa só,
+     * então moram no mesmo grupo.
+     */
     expect(painel).toContain('chat-coroa');
-    expect(painel).toContain("h('header', {}, coroa, autor");
+    expect(painel).toContain("h('span.chat-quem', {}, coroa, autor)");
+
+    const css = fonte('src', 'styles', 'chat.css');
+    expect(css).toContain('.chat-quem { display: flex;');
+    // O `space-between` continua, agora entre o GRUPO e a hora.
+    expect(css).toContain('.chat-mensagem header { display: flex; align-items: baseline; justify-content: space-between;');
   });
 
   it('e só quando o servidor disse que sim', () => {

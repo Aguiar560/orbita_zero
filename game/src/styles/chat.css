@@ -23,6 +23,11 @@
 .chat-mensagem { margin: 0 12px 8px 0; padding: 9px 11px; border: 1px solid #20394d; border-left: 2px solid #2d95bb; border-radius: 3px 9px 9px 9px; background: #0e2130c9; overflow-wrap: anywhere; }
 .chat-mensagem.minha { margin-left: 18px; margin-right: 0; border-left-color: #59d8c7; background: #0e302e99; }
 .chat-mensagem header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* A coroa e o nome são UMA coisa, e por isso moram no mesmo grupo.
+   Soltos como irmãos do `time`, o `space-between` do cabeçalho os empurrava
+   para cantos opostos: coroa na esquerda, nome no meio, hora na direita — e o
+   selo parecia de outra pessoa. */
+.chat-quem { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .chat-panel .chat-autor { min-height: 24px; padding: 0; background: none; border: 0; color: #72d7f4; font-weight: 700; text-align: left; }
 .chat-mensagem strong { color: #8bdfd2; font-size: 12px; }
 .chat-mensagem time { color: #829aa9; font-size: 10px; white-space: nowrap; }
