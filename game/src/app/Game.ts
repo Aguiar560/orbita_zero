@@ -29,6 +29,8 @@ import { drenarInventario, sincronizarFrota } from './inventario';
 import { drenarProgresso, sincronizarProgresso } from './progresso';
 import { drenarMissoes, sincronizarMissoes } from './missoes';
 import { creditarAusencia } from './ausencia';
+import { devoRecarregar, marcarTentativa, vigiarVersao } from './versao';
+import { mostrarAvisoDeVersao } from '@ui/AvisoDeVersao';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -38,6 +40,15 @@ import { creditarAusencia } from './ausencia';
  * o que passou desde o último save ao voltar.
  */
 const INTERVALO_DE_SUBIDA = 150;
+
+/**
+ * Quanto tempo a subida do save tem antes de a página trocar de versão.
+ *
+ * Meio segundo é o bastante para uma requisição sair pela rede e curto o
+ * bastante para ninguém notar. Não é uma espera pela RESPOSTA: se ela não vier,
+ * a fila continua no save local e sobe no próximo boot.
+ */
+const FOLGA_PARA_SUBIR = 600;
 
 /**
  * A ausência mínima saiu daqui na Fase 5 do Passo 9.
@@ -105,6 +116,10 @@ export class Game {
 
   /** Segundos desde a última tentativa de subir o save. */
   private relogioDaNuvem = 0;
+  /** A versão que o servidor já publica e esta aba ainda não tem. */
+  private versaoNova: string | null = null;
+  /** Trava: dois gatilhos podem pedir a recarga no mesmo instante. */
+  private recarregando = false;
 
   /**
    * A trilha de fundo.
@@ -158,7 +173,11 @@ export class Game {
     // `visibilitychange` e não `beforeunload`: este último não roda no celular,
     // que é onde fechar a aba sem avisar é a regra e não a exceção.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') void this.subirTratandoConflito(true);
+      if (document.visibilityState !== 'hidden') return;
+      void this.subirTratandoConflito(true);
+      // Aba escondida com versão nova esperando: ninguém está olhando, e este é
+      // o momento mais barato que existe para trocar de versão.
+      if (this.versaoNova) this.recarregarParaAtualizar();
     });
 
     this.rootEl.append(this.fpsNode);
@@ -180,6 +199,23 @@ export class Game {
     // gravação é idempotente.
     window.addEventListener('pagehide', () => this.sim.save());
     window.addEventListener('beforeunload', () => this.sim.save());
+
+    /**
+     * Deploy novo alcança quem já está dentro.
+     *
+     * A aba de um idle fica aberta por horas, e o bundle antigo continua
+     * rodando até alguém recarregar — o que ninguém faz, porque ninguém tem
+     * como saber que precisa. Ver `app/versao.ts`.
+     */
+    // O desligador é descartado de propósito: o `Game` vive enquanto a página
+    // vive, e guardar um cancelamento que ninguém chama é peça morta. Ele
+    // existe na assinatura para os testes, que criam e desfazem a vigia.
+    vigiarVersao((nova) => this.aoDescobrirVersao(nova));
+
+    // O fim do setor é o momento seguro: a onda acabou, o lote foi entregue e
+    // não há nada em voo na tela. Recarregar no meio de um chefe seria trocar
+    // um incômodo pequeno por um grande.
+    bus.on('sector:advanced', () => { if (this.versaoNova) this.recarregarParaAtualizar(); });
     bus.on('state:changed', () => this.vertical.refreshPlayer());
     // O lote é do SETOR, então o pedido acompanha o evento do setor, e não só
     // o relógio de 150 s da nuvem: o setor cai a cada ~3 min, e quem avança
@@ -298,6 +334,9 @@ export class Game {
     bus.on('musica:proxima', () => this.musica.proxima());
     bus.on('musica:anterior', () => this.musica.anterior());
     bus.on('preferencias:audio', () => this.musica.atualizar());
+    // Ler uma transmissão não pode custar uma nave. O laço para, mas música e
+    // interface continuam vivas; ao fechar a cena, a mesma incursão prossegue.
+    bus.on('narrativa:estado', ({ aberta }) => aberta ? this.loop.stop() : this.loop.start());
 
     /**
      * No boot vale a faixa SALVA, não a da galáxia.
@@ -815,6 +854,50 @@ export class Game {
     this.loop.setBackground(document.hidden);
     if (document.hidden) this.sim.save();
   };
+
+  /**
+   * Saiu versão nova. Decide se avisa, se recarrega, ou se ignora.
+   *
+   * Ignora quando esta aba já tentou recarregar por esta mesma versão: um
+   * deploy meio propagado devolveria o bundle velho de novo, e a página
+   * piscaria sem parar. Ver `devoRecarregar`.
+   */
+  private aoDescobrirVersao(nova: string): void {
+    if (!devoRecarregar(nova)) return;
+    this.versaoNova = nova;
+
+    // Escondida, ninguém perde nada: troca agora.
+    if (document.hidden) return this.recarregarParaAtualizar();
+
+    // Jogando: avisa e espera o fim do setor. A faixa é a saída para quem
+    // quiser antes disso.
+    mostrarAvisoDeVersao(this.rootEl, () => this.recarregarParaAtualizar());
+  }
+
+  /**
+   * Troca de versão sem perder o que ainda não subiu.
+   *
+   * ## Por que não espera a subida terminar
+   *
+   * Porque rede morta prenderia o jogador numa tela que ele já pediu para
+   * atualizar, sem nada acontecendo. E porque não precisa: `sim.save()` é
+   * LOCAL e síncrono, e a fila de movimentos (`state.pendentes`) mora dentro
+   * do save. O que não subir agora sobe no próximo boot, drenado pelo mesmo
+   * caminho de sempre.
+   *
+   * A subida sai assim mesmo, em melhor esforço, com uma folga curta antes do
+   * `reload` — quando a rede está viva ela chega, e o boot seguinte encontra
+   * menos coisa na fila.
+   */
+  private recarregarParaAtualizar(): void {
+    if (!this.versaoNova || this.recarregando) return;
+    this.recarregando = true;
+    // ANTES do reload: depois não existe "depois".
+    marcarTentativa(this.versaoNova);
+    this.sim.save();
+    void this.subirTratandoConflito(true);
+    window.setTimeout(() => location.reload(), FOLGA_PARA_SUBIR);
+  }
 
   /** Reaplica o layout — chamado quando a faixa é escondida/mostrada. */
   relayout(): void {

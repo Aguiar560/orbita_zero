@@ -7717,6 +7717,57 @@ select option:disabled { color: #667991; }
   .login-caixa { width: calc(100vw - 24px); padding-inline: 22px; }
 }
 
+/* ── aviso de versão nova ────────────────────────────────────────────────── */
+/*
+ * Rodapé, e não centro: o jogador pode estar no meio de um chefe, e uma janela
+ * no meio da tela interromperia a partida para anunciar uma correção que ele
+ * não pediu. Fica fora do caminho e o jogo continua.
+ *
+ * Acima da `.camada` (60) e dos toasts, pelo mesmo motivo que os toasts
+ * subiram: um aviso que aparece atrás de um painel aberto não é um aviso.
+ */
+.aviso-versao {
+  position: fixed;
+  z-index: 2100;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 24px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid rgba(93, 195, 245, .45);
+  border-radius: 6px;
+  background: rgba(6, 18, 30, .96);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .6), inset 0 0 24px rgba(45, 178, 218, .06);
+}
+.aviso-versao-texto { display: grid; gap: 3px; min-width: 0; }
+.aviso-versao-texto strong {
+  color: #a9eaff;
+  font: 700 11px/1 'Chakra Petch', sans-serif;
+  letter-spacing: .12em;
+}
+.aviso-versao-texto small { color: #8ba0ae; font-size: 11px; }
+.aviso-versao-acao { min-height: 36px; padding-inline: 18px; white-space: nowrap; }
+.aviso-versao-fechar {
+  min-width: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6f8593;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.aviso-versao-fechar:hover { color: #cfe3ec; }
+
+@media (max-width: 560px) {
+  .aviso-versao { left: 12px; right: 12px; transform: none; max-width: none; gap: 10px; padding-left: 12px; }
+  .aviso-versao-texto small { display: none; }
+}
+
 /* ── menu de perfil ──────────────────────────────────────────────────────── */
 /*
  * Fica colado na marca, no canto que o olho já usa para "quem sou eu aqui" em

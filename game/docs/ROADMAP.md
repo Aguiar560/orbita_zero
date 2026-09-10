@@ -8,8 +8,58 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.530 testes** em 147 arquivos · registro consolidado
+**Última atualização:** 09/09/2026 · **1.561 testes** em 150 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 09/09/2026 — o deploy alcança quem já está jogando
+
+Num idle a aba fica aberta por horas. O deploy saía e não chegava a ninguém que
+já estivesse dentro: o bundle antigo continuava rodando até alguém recarregar —
+o que ninguém faz, porque ninguém tem como saber que precisa. O jogador seguia
+com o defeito recém-corrigido e reportava o mesmo problema de novo.
+
+### Como se sabe
+
+O build carimba a mesma versão em dois lugares: dentro do bundle
+(`__VERSAO_DO_BUNDLE__`) e num `/versao.json` de trinta bytes. O cliente
+pergunta pelo arquivo a cada cinco minutos **e sempre que a aba volta a
+aparecer** — esta segunda parte é a que mais importa, porque o navegador
+estrangula temporizadores de fundo e a checagem agendada pode simplesmente não
+acontecer numa aba escondida há horas.
+
+**Service Worker não.** É a resposta padrão e seria a errada: acrescentaria um
+cache que o jogo não tem, com um ciclo de vida (`waiting`, `skipWaiting`) que é
+fonte conhecida de versões presas — o defeito que ele viria resolver, com mais
+peças.
+
+### Quando recarrega
+
+Nunca no meio de um setor. Os dois gatilhos são momentos em que não há nada em
+voo: **fim de setor** e **aba escondida**. Quem quiser antes disso tem a faixa
+no rodapé, que fica até ser resolvida — um `toast` some em segundos, e sumir é
+justamente o problema de hoje.
+
+E não perde nada: `sim.save()` é local e síncrono, a fila de movimentos mora
+dentro do save, e a subida sai em melhor esforço com 600 ms de folga. Esperar a
+resposta prenderia numa tela quem já pediu para atualizar — e não precisa, porque
+o que não subiu sobe no próximo boot.
+
+### O laço que quase aconteceu
+
+Deploy em CDN não propaga tudo junto: existe uma janela em que `/versao.json` já
+é o novo e o `index.html` ainda é o velho. Sem guarda, o bundle voltaria antigo,
+discordaria de novo e a página piscaria até a propagação terminar. Uma tentativa
+por versão **por aba** (`sessionStorage`, não `localStorage` — duas abas são
+duas partidas) fecha isso.
+
+### Medido
+
+- **1.561 testes em 150 arquivos**, com 22 novos em `atualizar-sem-f5.test.ts`.
+- Ensaio de deploy de verdade, contra o `dist/` servido: sem faixa antes, faixa
+  depois de o `versao.json` mudar, recarga ao clicar, e **nenhum laço** na
+  recarga seguinte com o bundle ainda velho — que é o cenário do CDN.
 
 ---
 

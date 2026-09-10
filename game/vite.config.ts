@@ -132,12 +132,51 @@ function labCalibrationPlugin(): Plugin {
   };
 }
 
+/**
+ * O carimbo deste build.
+ *
+ * Na Vercel é o commit, que é estável e diz QUAL versão está no ar — dá para
+ * ligar um relato de jogador a um diff. Fora dela é o relógio, que só precisa
+ * ser diferente do anterior.
+ */
+const VERSAO_DO_BUILD =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? Date.now().toString(36);
+
+/**
+ * Publica o carimbo num arquivo à parte, ao lado do bundle.
+ *
+ * Ele precisa ser um arquivo SEPARADO e minúsculo: o cliente vai buscá-lo a
+ * cada cinco minutos, e perguntar pelo `index.html` inteiro só para ler um
+ * número seria caro e ainda dependeria de adivinhar o nome do bundle dentro
+ * dele. Trinta bytes respondem a mesma pergunta.
+ *
+ * Não vive em `public/`: ali ele seria um arquivo versionado no git, que
+ * alguém teria de lembrar de atualizar a cada deploy — e esquecer significa o
+ * jogo inteiro parar de se atualizar, calado.
+ */
+function versaoPlugin(): Plugin {
+  return {
+    name: 'oz-versao',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'versao.json',
+        source: JSON.stringify({ versao: VERSAO_DO_BUILD }),
+      });
+    },
+  };
+}
+
 export default defineConfig({
+  // O mesmo carimbo entra DENTRO do bundle. É a comparação entre os dois que
+  // diz que esta aba ficou para trás. Ver `app/versao.ts`.
+  define: { __VERSAO_DO_BUNDLE__: JSON.stringify(VERSAO_DO_BUILD) },
   // O jogo e a wiki vivem no mesmo domínio. Caminho absoluto impede que uma
   // página reescrita como `/wiki/sistemas/missoes` procure o bundle em
   // `/wiki/sistemas/assets`, que não existe na hospedagem estática.
   base: '/',
-  plugins: [snapshotPlugin(), labCalibrationPlugin()],
+  plugins: [snapshotPlugin(), labCalibrationPlugin(), versaoPlugin()],
   server: { port: 5180, host: '127.0.0.1', open: false },
   resolve: {
     alias: {
