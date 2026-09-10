@@ -127,12 +127,15 @@ function kicker(texto: string): HTMLElement {
 }
 
 /**
- * A dobra: a promessa à esquerda, a tela do jogo sangrando pela direita.
+ * A dobra: a promessa à esquerda, a tela do jogo à direita — INTEIRA.
  *
- * A captura é grande de propósito. Um print de 1440 px exibido a 600 vira
- * textura: o leitor entende que "tem interface", não O QUE tem. Nesta escala
- * dá para ler o painel de comando, o combate e a ficha do item — que é
- * exatamente o argumento do jogo.
+ * Ela já sangrou pela borda, e o argumento era escala: um print de 1440 px
+ * exibido a 600 vira textura. O preço era alto demais — o corte comia
+ * justamente a ficha do item, e a tela parecia quebrada em vez de ampliada.
+ *
+ * Agora a captura cabe toda, e a ficha volta como DETALHE recortado da mesma
+ * imagem. A tela inteira mostra a escala do jogo; a ficha mostra o que se lê
+ * dentro dela.
  */
 function dobra(acoes: AcoesLanding): HTMLElement {
   return h('.landing-dobra', { id: 'landing-topo' },
@@ -154,10 +157,18 @@ function dobra(acoes: AcoesLanding): HTMLElement {
         ),
       ),
       h('.landing-quadro', {},
-        h('img', {
+        h('img.landing-tela-do-jogo', {
           src: '/assets/landing/tela.webp',
           alt: 'Tela do Órbita Zero: painel de comando à esquerda, combate contra um chefe '
             + 'no centro e inventário com a ficha do item à direita',
+          decoding: 'async', draggable: 'false',
+        }),
+        // O mesmo pixel, ampliado: a ficha do item recortada da captura acima.
+        // A tela inteira mostra a ESCALA do jogo; a ficha mostra o que se lê
+        // nela, que a tela inteira, reduzida à coluna, não deixa ver.
+        h('img.landing-detalhe', {
+          src: '/assets/landing/ficha-do-item.webp',
+          alt: 'Ficha de um item raro: prefixos, sufixos com tier e o ganho de poder',
           decoding: 'async', draggable: 'false',
         }),
         // O selo é uma promessa que a página precisa poder cumprir: a imagem é
