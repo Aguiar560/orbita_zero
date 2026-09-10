@@ -230,7 +230,10 @@ export function ignoraTetoDePeso(piso: number): boolean {
 export interface RecompensaDePiso {
   sucata: number;
   nucleos: number;
-  cristais: number;
+  // Sem `cristais`, e de propósito. O piso pagava 8 + 0,6 × piso, e a
+  // repetição um quarto disso — um ganho repetível da moeda paga, limitado só
+  // pela recarga das tentativas. E a Provação mora no save, não no servidor:
+  // não haveria como conferir o marco. Ver `balance/cristal.ts`.
   medalhas: number;
   itens: { quantidade: number; raridadeMin: Rarity };
   materiais: Record<string, number>;
@@ -374,8 +377,8 @@ function materiaisDoPiso(piso: number): Record<string, number> {
  * Recompensa do piso.
  *
  * O §35 pede explicitamente que NÃO suba tudo linearmente, e cada linha aqui
- * tem curva própria: sucata acompanha a escala, cristal só a cada cinco pisos,
- * medalha só nos marcos, e o piso de raridade sobe em degraus. É isso que faz o
+ * tem curva própria: sucata acompanha a escala, medalha só nos marcos, e o
+ * piso de raridade sobe em degraus. É isso que faz o
  * piso 50 valer por ser o piso 50, e não por ser cinquenta vezes o piso 1.
  *
  * O peso dos MODIFICADORES entra na conta: dois pisos da mesma profundidade
@@ -389,8 +392,6 @@ export function recompensaDoPiso(piso: number, peso: number): RecompensaDePiso {
   return {
     sucata: Math.round(1_500 * escala * bonusDeDificuldade),
     nucleos: Math.round(120 * escala * bonusDeDificuldade),
-    // Cristal em degrau, não contínuo: recebê-lo tem de ser um evento.
-    cristais: piso % 5 === 0 ? Math.round(8 + piso * 0.6) : 0,
     // Medalha SÓ em marco — é registro de feito, não moeda de rotina.
     medalhas: marco ? 1 + Math.floor(piso / 30) : 0,
     itens: { quantidade: marco ? 3 : 1, raridadeMin: pisoDeRaridade(piso) },

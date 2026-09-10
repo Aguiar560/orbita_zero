@@ -1,3 +1,4 @@
+import { cristalDoFimDeCadeia } from '@data/balance/cristal';
 import { describeGalaxy } from '@data/galaxies';
 import { PERSONAGENS } from '@data/personagens';
 import { RECURSOS } from '@data/recursos';
@@ -192,7 +193,9 @@ function objetivo(forma: Forma, galaxia: number, elemento: string): Objetivo {
   }
 }
 
-function recompensa(forma: Forma, galaxia: number, posicao: number, ultima: boolean): Recompensa {
+function recompensa(
+  forma: Forma, galaxia: number, posicao: number, ultima: boolean, setorDoObjetivo: number,
+): Recompensa {
   const g = escala(galaxia);
   const passo = 1 + posicao * 0.18;
   const r: Recompensa = {
@@ -203,12 +206,18 @@ function recompensa(forma: Forma, galaxia: number, posicao: number, ultima: bool
     xp: Math.round(500 * g * passo),
   };
 
-  // Cristal e medalha em MARCOS, não em toda missão: recebê-los tem de ser
-  // evento. É a mesma regra que a Provação usa para os pisos.
-  if (posicao === 4 || posicao === 9 || ultima) {
-    (r.moedas as Record<string, number>).cristal = Math.round(25 * (1 + galaxia * 0.25));
-    r.medalhas = ultima ? 2 : 1;
-  }
+  // Medalha em MARCOS, não em toda missão: recebê-la tem de ser evento.
+  if (posicao === 4 || posicao === 9 || ultima) r.medalhas = ultima ? 2 : 1;
+
+  /**
+   * Cristal SÓ no fim da cadeia, pela curva da moeda paga.
+   *
+   * Eram três pagamentos por cadeia — 25 × (1 + 0,25 × galáxia), ainda
+   * multiplicados pelo tier do contato — e as 33 cadeias somavam ~24 mil
+   * cristais. O orçamento da campanha inteira agora é ~700. Ver
+   * `balance/cristal.ts`.
+   */
+  if (ultima) (r.moedas as Record<string, number>).cristal = cristalDoFimDeCadeia(setorDoObjetivo);
   if (posicao === 5 || posicao === 11) r.baus = { prata: 1 };
   if (posicao === 9) r.baus = { ouro: 1 };
   if (ultima) r.baus = { ouro: 2 };
@@ -235,6 +244,13 @@ export function expandirCadeia(semente: SementeDeCadeia): MissaoDef[] {
     const id = `${semente.prefixo}_${String(i + 1).padStart(2, '0')}`;
     const anterior = i === 0 ? semente.depoisDe : `${semente.prefixo}_${String(i).padStart(2, '0')}`;
 
+    const alvo = objetivo(forma, galaxia, elemento);
+    const filtro = (alvo as { filtro?: { setorMin?: number; galaxiaMin?: number } }).filtro;
+    // Onde o objetivo acontece — é o que põe o cristal do fim da cadeia na
+    // altura certa da curva.
+    const setorDoObjetivo = filtro?.setorMin
+      ?? (filtro?.galaxiaMin !== undefined ? (filtro.galaxiaMin + 1) * 10 : setorInicial(galaxia));
+
     const def: MissaoDef = {
       id,
       giverId: semente.contato,
@@ -247,8 +263,8 @@ export function expandirCadeia(semente: SementeDeCadeia): MissaoDef[] {
           : forma.tipo === 'setor' || forma.tipo === 'galaxia' || forma.tipo === 'fusao' ? 'progressao'
             : 'eliminacao',
       ritmo: 'campanha',
-      objetivos: [objetivo(forma, galaxia, elemento)],
-      recompensa: recompensa(forma, galaxia, desloc + i, ultima),
+      objetivos: [alvo],
+      recompensa: recompensa(forma, galaxia, desloc + i, ultima, setorDoObjetivo),
       ...(anterior ? { requisitos: [{ tipo: 'missaoConcluida' as const, missaoId: anterior }] } : {}),
       ...(forma.tipo === 'entrega'
         ? { consomeNaEntrega: { [minerioDaGalaxia(galaxia)]: (objetivo(forma, galaxia, elemento) as { alvo: number }).alvo } }

@@ -22,6 +22,8 @@ export interface GameEvents {
   'wave:cleared': { wave: number; ofWaves: number };
   'boss:spawned': { id: string; name: string };
   'boss:defeated': { id: string; name: string; sector: number };
+  /** Uma missão foi entregue no cliente. O servidor ainda precisa conferir. */
+  'missao:entregue': { id: string };
   /** Pausa o combate enquanto uma transmissão canônica está sendo lida. */
   'narrativa:estado': { aberta: boolean };
 

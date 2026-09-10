@@ -189,13 +189,17 @@ describe('as recompensas (§35)', () => {
    * um número só com cinco nomes.
    */
   it('as linhas não sobem todas juntas', () => {
-    const cristais = todos.map((p) => p.recompensa.cristais);
     const medalhas = todos.map((p) => p.recompensa.medalhas);
 
-    // Cristal em degrau: a maioria dos pisos não dá nenhum.
-    expect(cristais.filter((c) => c === 0).length).toBeGreaterThan(60);
     // Medalha só em marco: dez pisos em cem.
     expect(medalhas.filter((m) => m > 0).length).toBe(10);
+  });
+
+  it('nenhum piso paga cristal', () => {
+    // A Provação pagava cristal a cada cinco pisos, e a repetição um quarto
+    // disso — ganho repetível da moeda paga, e num lugar que o servidor não
+    // confere. Ver `data/balance/cristal.ts`.
+    for (const p of todos) expect('cristais' in p.recompensa).toBe(false);
   });
 
   it('sucata e núcleos crescem com a profundidade', () => {

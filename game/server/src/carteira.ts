@@ -38,6 +38,7 @@ export const MOTIVOS = [
   'ajuste',   // correção administrativa, sempre com justificativa fora do banco
   'morte',    // multa cobrada ao perder a nave
   'semente',  // migração do save antigo para o servidor
+  'marco',    // cristal de marco da campanha, creditado SÓ pelo servidor (ver marcos.ts)
 ] as const;
 export type Motivo = (typeof MOTIVOS)[number];
 
@@ -122,6 +123,31 @@ export function divergencias(
  */
 export function podeDebitar(saldo: number, quantia: number): boolean {
   return quantia > 0 && saldo >= quantia;
+}
+
+/**
+ * O que o CLIENTE não pode lançar.
+ *
+ * `motivo_so_do_servidor`: compra, estorno e marco nascem aqui dentro. Aceitar
+ * do cliente seria deixar qualquer um declarar que pagou — ou que cumpriu um
+ * marco. Isso é tentativa, e derruba o lote.
+ *
+ * `cristal_so_do_servidor`: GANHO de cristal, venha com o motivo que vier. O
+ * cristal é a moeda que o jogo vende, e até 10/09/2026 esta rota o aceitava de
+ * qualquer um: `{moeda: 'cristal', quantia: 1000000, motivo: 'drop'}` entrava.
+ * Todo cristal ganho em jogo agora é marco, creditado por `marcos.ts`. Gastar
+ * continua valendo — ninguém trapaceia para ficar mais pobre.
+ *
+ * Este segundo caso NÃO derruba o lote: um cliente com o pacote antigo em cache
+ * ainda manda o cristal do chefe junto com a sucata do setor, e recusar tudo
+ * faria a fila dele travar para sempre. O cristal é descartado e contado.
+ */
+export type RecusaDoCliente = 'motivo_so_do_servidor' | 'cristal_so_do_servidor';
+
+export function recusaDoCliente(l: Lancamento): RecusaDoCliente | null {
+  if (l.motivo === 'compra' || l.motivo === 'estorno' || l.motivo === 'marco') return 'motivo_so_do_servidor';
+  if (l.moeda === 'cristal' && l.quantia > 0) return 'cristal_so_do_servidor';
+  return null;
 }
 
 // ─── o passe ────────────────────────────────────────────────────────────────

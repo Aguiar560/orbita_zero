@@ -2,11 +2,12 @@ import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, contaSemRanking, lerPlacar, normalizar, type MarcaRecebida } from './placar';
 import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
 import {
-  MOEDAS, TETO_POR_LANCAMENTO, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar,
+  MOEDAS, TETO_POR_LANCAMENTO, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar, recusaDoCliente,
   renovar, saldosDoLivro,
   type Lancamento, type Moeda, type Motivo, type Recusa,
 } from './carteira';
 import { excedeu } from './teto';
+import { marcosACreditar, origemDoMarco } from './marcos';
 import {
   assinaturaConfere, expirou, manifestoDoMP, novaCompra, pacotePorId,
   partesDaAssinatura, podePagar, valorConfere, type Compra,
@@ -934,6 +935,7 @@ async function movimentar(req: Request, env: Env, id: string, origem: string): P
   }
 
   const lancamentos: Lancamento[] = [];
+  let cristalDescartado = 0;
   for (const m of lista as { moeda?: unknown; quantia?: unknown; motivo?: unknown }[]) {
     const l: Lancamento = {
       usuario: id,
@@ -944,13 +946,17 @@ async function movimentar(req: Request, env: Env, id: string, origem: string): P
     };
     const recusa = conferirLancamento(l);
     if (recusa) return json({ erro: recusa }, 400, origem);
-    // `compra` e `estorno` nascem do provedor de pagamento, no servidor. Aceitar
-    // do cliente seria deixar qualquer um declarar que pagou.
-    if (l.motivo === 'compra' || l.motivo === 'estorno') {
-      return json({ erro: 'motivo_so_do_servidor' }, 403, origem);
-    }
+    // Ver `recusaDoCliente`: motivo do servidor derruba o lote; ganho de
+    // cristal é descartado sem derrubar o resto.
+    const doCliente = recusaDoCliente(l);
+    if (doCliente === 'motivo_so_do_servidor') return json({ erro: doCliente }, 403, origem);
+    if (doCliente === 'cristal_so_do_servidor') { cristalDescartado++; continue; }
     lancamentos.push(l);
   }
+
+  // Contado no livro das recusas: se isto crescer, há cliente velho em cache
+  // (normal por uns dias) ou alguém tentando (o motivo para olhar).
+  if (cristalDescartado) await anotarVarias(env, '/carteira', [{ motivo: 'cristal_so_do_servidor', n: cristalDescartado }]);
 
   for (const l of lancamentos) {
     const r = await lancar(env, l);
@@ -2247,8 +2253,13 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
   if ('erro' in conferido) return json({ erro: conferido.erro }, 409, origem);
 
   // O preço sai do livro-caixa, que é real. Se o saldo não cobrir, nada muda.
+  //
+  // Em NÚCLEOS, desde 10/09/2026. A escada de cascos sempre foi calibrada em
+  // núcleos (`data/balance/cascos.ts`: 35% da renda de núcleos), mas era
+  // cobrada em cristal — e o casco mais caro saía por 4,5 milhões da moeda
+  // vendida a R$ 0,05. Cristal não compra poder de nave.
   const pago = await lancar(env, {
-    usuario: id, moeda: 'cristal', quantia: -conferido.custo, motivo: 'loja', em: agora,
+    usuario: id, moeda: 'nucleo', quantia: -conferido.custo, motivo: 'loja', em: agora,
   });
   if (!pago.ok && conferido.custo > 0) return json({ erro: pago.erro }, 409, origem);
 
@@ -2382,7 +2393,78 @@ async function gravarMissoes(req: Request, env: Env, id: string, origem: string)
   }
 
   if (escritas.length) await env.DB.batch(escritas);
-  return json({ ...(await missoesDe(env, id)), recusadas }, 200, origem);
+  // Uma entrega conferida pode ser um marco de cristal. É o SERVIDOR que paga
+  // o cristal da missão, nunca o `resgatarMissao` do cliente.
+  const marcos = await creditarMarcos(env, id);
+  return json({ ...(await missoesDe(env, id)), recusadas, marcos }, 200, origem);
+}
+
+/**
+ * Credita os marcos de cristal que a conta cumpriu e ainda não recebeu.
+ *
+ * Chamado depois de gravar progresso e missões — as duas únicas coisas que
+ * cumprem marco. A conta é refeita do zero a cada chamada (setor, entregas e o
+ * que o livro já tem), então um crédito que falhar agora sai na próxima: não
+ * existe estado "marco pendente" para desencontrar do livro.
+ *
+ * ## Um batch, e não um `lancar` por marco
+ *
+ * Na primeira chamada depois desta mudança, uma conta antiga pode ter dezenas de
+ * marcos atrasados de uma vez. Um `lancar` por marco seriam dezenas de viagens
+ * ao banco numa requisição só. O batch faz tudo junto e é atômico: se outra aba
+ * creditou um dos marcos no meio (o índice único recusa), o batch inteiro volta
+ * e a próxima chamada recalcula sem aquele.
+ *
+ * Nunca derruba quem chamou: o progresso já foi gravado quando isto roda.
+ */
+async function creditarMarcos(
+  env: Env, id: string,
+): Promise<{ id: string; cristais: number; rotulo: string }[]> {
+  try {
+    const agora = Math.floor(Date.now() / 1000);
+    const [prog, entregues, lancados] = await Promise.all([
+      env.DB.prepare('SELECT melhor_setor FROM progresso WHERE usuario = ?').bind(id)
+        .first<{ melhor_setor: number }>(),
+      env.DB.prepare('SELECT missao FROM missoes WHERE usuario = ? AND entregue_em IS NOT NULL').bind(id)
+        .all<{ missao: string }>(),
+      env.DB.prepare("SELECT origem FROM transacoes WHERE usuario = ? AND motivo = 'marco'").bind(id)
+        .all<{ origem: string }>(),
+    ]);
+
+    const faltam = marcosACreditar(
+      id,
+      prog?.melhor_setor ?? 1,
+      new Set(entregues.results.map((r) => r.missao)),
+      new Set(lancados.results.map((r) => r.origem)),
+    );
+    if (!faltam.length) return [];
+
+    const escritas: D1PreparedStatement[] = [];
+    let total = 0;
+    for (const m of faltam) {
+      const l: Lancamento = {
+        usuario: id, moeda: 'cristal', quantia: m.cristais, motivo: 'marco',
+        origem: origemDoMarco(id, m.id), em: agora,
+      };
+      if (conferirLancamento(l)) continue;
+      total += l.quantia;
+      escritas.push(env.DB
+        .prepare('INSERT INTO transacoes (usuario, moeda, quantia, motivo, origem, em) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(l.usuario, l.moeda, l.quantia, l.motivo, l.origem, l.em));
+    }
+    if (!total) return [];
+    escritas.push(env.DB.prepare(`
+      INSERT INTO saldos (usuario, moeda, quantia, atualizado_em) VALUES (?, 'cristal', ?, ?)
+      ON CONFLICT(usuario, moeda) DO UPDATE SET
+        quantia = quantia + excluded.quantia, atualizado_em = excluded.atualizado_em
+    `).bind(id, total, agora));
+
+    await env.DB.batch(escritas);
+    return faltam.map((m) => ({ id: m.id, cristais: m.cristais, rotulo: m.rotulo }));
+  } catch (erro) {
+    await anotarExcecaoDeAuditoria(env, '/marcos', erro);
+    return [];
+  }
 }
 
 // ── progressão ──────────────────────────────────────────────────────────────
@@ -2655,7 +2737,10 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   }
 
   await env.DB.batch(escritas);
-  return json({ ...(await progressoDe(env, id)), recusados }, 200, origem);
+  // O setor alcançado pode ter passado de um chefe: é aqui que a primeira
+  // vitória vira cristal. Depois de gravar — o marco lê o setor já atualizado.
+  const marcos = await creditarMarcos(env, id);
+  return json({ ...(await progressoDe(env, id)), recusados, marcos }, 200, origem);
 }
 // ── ausência: o servidor simula o que aconteceu ─────────────────────────────
 

@@ -3,7 +3,9 @@
 /**
  * `sucata`  — moeda de farm, sai dos abates. Paga melhorias comuns.
  * `nucleo`  — sai de abates. Paga melhorias avançadas e fabricação.
- * `cristal` — sai de chefes e baús. Paga frota, loja e baús.
+ * `cristal` — a moeda vendida. O jogo só a dá em MARCOS (primeira vitória
+ *             sobre chefe, missões), creditados pelo servidor; ~700 na
+ *             campanha. Paga VIP, cápsulas e serviços. Ver `balance/cristal.ts`.
  *
  * Não existe moeda de prestígio: o jogo não reinicia. Toda progressão é
  * acumulativa e a dificuldade vem da curva de setor, que é infinita.

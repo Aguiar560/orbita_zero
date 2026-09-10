@@ -1,4 +1,5 @@
 import type { ElementId, StatMap } from '@sim/types';
+import { precoDoCascoOriginal } from './balance/cascos';
 import { getElement } from './elements';
 import { SPACESHIPS2_HULLS } from './hulls-spaceships2';
 
@@ -68,7 +69,13 @@ export interface Hull {
   shot: ShotStyle;
   /** Contribuição de base para os atributos. */
   stats: StatMap;
-  /** Custo de desbloqueio em cristais; 0 = inicial. */
+  /**
+   * Custo de desbloqueio em NÚCLEOS; 0 = inicial.
+   *
+   * Dizia "em cristais" e era cobrado em cristal, enquanto a escada inteira foi
+   * calibrada em núcleos (ver `balance/cascos.ts`). Desde 10/09/2026 é núcleo
+   * dos dois lados: cristal é a moeda vendida e não compra poder de nave.
+   */
   cost: number;
   /** Setor mínimo alcançado alguma vez para o casco aparecer no hangar. */
   requiresSector: number;
@@ -171,7 +178,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#a86bff',
     shot: { sprite: 'void/tiro/zapper_0', speed: 900, color: '#c79bff', scale: 1, spread: 0.05 },
     stats: { dano: 16, cadencia: 4.6, vida: 165, escudo: 90, regen: 5, velocidade: 245, projeteis: 2, perfuracao: 1 },
-    cost: 90,
+    cost: precoDoCascoOriginal(14),
     requiresSector: 14,
   },
   {
@@ -192,7 +199,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#ff9a4d',
     shot: { sprite: 'void/tiro/foguetes_0', speed: 640, color: '#ffb056', scale: 1, spread: 0.09 },
     stats: { dano: 34, cadencia: 2.8, vida: 240, escudo: 150, regen: 9, velocidade: 230, projeteis: 2, explosao: 34 },
-    cost: 260,
+    cost: precoDoCascoOriginal(28),
     requiresSector: 28,
   },
   {
@@ -216,7 +223,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 96, cadencia: 2.4, vida: 400, escudo: 320, regen: 18, velocidade: 260,
       projeteis: 2, perfuracao: 3, critChance: 0.15, critDano: 0.7, explosao: 40, iaSkill: 0.1,
     },
-    cost: 1200,
+    cost: precoDoCascoOriginal(48),
     requiresSector: 48,
   },
 
@@ -248,7 +255,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#4fc3ff',
     shot: ION,
     stats: { dano: 9, cadencia: 3.4, vida: 130, escudo: 60, regen: 4, velocidade: 220, projeteis: 2 },
-    cost: 30,
+    cost: precoDoCascoOriginal(8),
     requiresSector: 8,
   },
   {
@@ -263,7 +270,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#ff7a3d',
     shot: PYRO,
     stats: { dano: 8, cadencia: 4.6, vida: 115, escudo: 30, regen: 2.5, velocidade: 235, projeteis: 1, critChance: 0.05 },
-    cost: 45,
+    cost: precoDoCascoOriginal(12),
     requiresSector: 12,
   },
   {
@@ -278,7 +285,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#4fc3ff',
     shot: ION_HEAVY,
     stats: { dano: 14, cadencia: 3.1, vida: 180, escudo: 120, regen: 8, velocidade: 215, projeteis: 2, perfuracao: 1 },
-    cost: 120,
+    cost: precoDoCascoOriginal(20),
     requiresSector: 20,
   },
   {
@@ -293,7 +300,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#ff7a3d',
     shot: PYRO_HEAVY,
     stats: { dano: 17, cadencia: 4.2, vida: 160, escudo: 70, regen: 4, velocidade: 240, projeteis: 2, critChance: 0.1, critDano: 0.3 },
-    cost: 180,
+    cost: precoDoCascoOriginal(26),
     requiresSector: 26,
   },
   {
@@ -309,7 +316,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#5ad8ff',
     shot: LANCE,
     stats: { dano: 22, cadencia: 3.8, vida: 210, escudo: 140, regen: 9, velocidade: 285, projeteis: 2, sorte: 0.15, perfuracao: 1 },
-    cost: 320,
+    cost: precoDoCascoOriginal(34),
     requiresSector: 34,
   },
   {
@@ -325,7 +332,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#ff6a5a',
     shot: PYRO_HEAVY,
     stats: { dano: 26, cadencia: 3.6, vida: 190, escudo: 110, regen: 7, velocidade: 275, projeteis: 2, critChance: 0.18, critDano: 0.6 },
-    cost: 320,
+    cost: precoDoCascoOriginal(34),
     requiresSector: 34,
   },
   {
@@ -340,7 +347,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#8ae6ff',
     shot: LANCE,
     stats: { dano: 38, cadencia: 3.4, vida: 280, escudo: 220, regen: 14, velocidade: 250, projeteis: 3, perfuracao: 3, explosao: 18 },
-    cost: 700,
+    cost: precoDoCascoOriginal(45),
     requiresSector: 45,
   },
   {
@@ -355,7 +362,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#ff5a3d',
     shot: TESLA,
     stats: { dano: 52, cadencia: 2.3, vida: 210, escudo: 90, regen: 5, velocidade: 300, projeteis: 2, critChance: 0.25, critDano: 1.0, explosao: 26 },
-    cost: 900,
+    cost: precoDoCascoOriginal(55),
     requiresSector: 55,
   },
   {
@@ -373,7 +380,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 90, cadencia: 1.6, vida: 420, escudo: 380, regen: 22, velocidade: 290,
       projeteis: 2, perfuracao: 2, critChance: 0.2, critDano: 0.8, explosao: 34, sorte: 0.4, iaSkill: 0.15,
     },
-    cost: 2400,
+    cost: precoDoCascoOriginal(70),
     requiresSector: 70,
   },
 
@@ -394,7 +401,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#4aa8ff',
     shot: elemShot('raio', 900, 0.05),
     stats: { dano: 9, cadencia: 6.2, vida: 120, escudo: 55, regen: 3, velocidade: 250, projeteis: 2 },
-    cost: 40,
+    cost: precoDoCascoOriginal(6),
     requiresSector: 6,
   },
   {
@@ -410,7 +417,7 @@ const CORE_HULLS: readonly Hull[] = [
     trail: '#5ce6ff',
     shot: elemShot('gelo', 700, 0.06),
     stats: { dano: 13, cadencia: 2.6, vida: 260, escudo: 180, regen: 11, velocidade: 190, projeteis: 1, resGelo: 0.25 },
-    cost: 150,
+    cost: precoDoCascoOriginal(16),
     requiresSector: 16,
   },
   {
@@ -429,7 +436,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 24, cadencia: 3.6, vida: 210, escudo: 130, regen: 8, velocidade: 240,
       projeteis: 2, sorte: 0.35, sucataGanho: 0.3, nucleoGanho: 0.25,
     },
-    cost: 380,
+    cost: precoDoCascoOriginal(30),
     requiresSector: 30,
   },
   {
@@ -448,7 +455,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 58, cadencia: 2.2, vida: 175, escudo: 80, regen: 4, velocidade: 235,
       projeteis: 2, explosao: 46, danoFogo: 0.2,
     },
-    cost: 420,
+    cost: precoDoCascoOriginal(32),
     requiresSector: 32,
   },
   {
@@ -467,7 +474,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 40, cadencia: 3, vida: 200, escudo: 150, regen: 7, velocidade: 275,
       projeteis: 2, perfuracao: 2, critChance: 0.26, critDano: 0.9, danoCosmico: 0.2,
     },
-    cost: 860,
+    cost: precoDoCascoOriginal(44),
     requiresSector: 44,
   },
   {
@@ -486,7 +493,7 @@ const CORE_HULLS: readonly Hull[] = [
       dano: 62, cadencia: 3.3, vida: 340, escudo: 260, regen: 26, velocidade: 265,
       projeteis: 2, perfuracao: 2, iaSkill: 0.18, danoQuimico: 0.25, resQuimico: 0.2,
     },
-    cost: 1600,
+    cost: precoDoCascoOriginal(58),
     requiresSector: 58,
   },
 

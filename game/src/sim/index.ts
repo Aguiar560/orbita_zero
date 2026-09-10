@@ -1001,6 +1001,11 @@ export class Sim {
     const fator = multiplicadorDoTier(tier);
 
     for (const [moeda, n] of Object.entries(r.moedas ?? {})) {
+      // O cristal da missão é creditado pelo SERVIDOR quando ele confere a
+      // entrega — e sem o tier do contato, que multiplicava a moeda paga até
+      // 3×. Creditar aqui também pagaria duas vezes (e a carteira recusa
+      // cristal vindo do cliente). Ver `data/balance/cristal.ts`.
+      if (moeda === 'cristal') continue;
       this.grant(moeda as ResourceId, Math.round(n * fator));
     }
     for (const [rec, n] of Object.entries(r.materiais ?? {})) {
@@ -1070,6 +1075,10 @@ export class Sim {
     }
 
     toast(`${def.nome} — recompensa recebida`, 'epic');
+    // O cristal da missão é do servidor: a entrega precisa chegar lá para ele
+    // conferir e pagar. Anunciar aqui deixa quem cuida da rede drenar na hora,
+    // em vez de o cristal aparecer minutos depois no ciclo da nuvem.
+    bus.emit('missao:entregue', { id: def.id });
     this.touch();
     return true;
   }
@@ -1225,7 +1234,6 @@ export class Sim {
     const rec = def.recompensa;
     this.grant('sucata', Math.round(rec.sucata * fator));
     this.grant('nucleo', Math.round(rec.nucleos * fator));
-    if (rec.cristais) this.grant('cristal', Math.round(rec.cristais * fator));
     for (const [id, n] of Object.entries(rec.materiais)) {
       this.guardarMaterial(id, Math.max(1, Math.round(n * fator)));
     }
@@ -1638,7 +1646,11 @@ export class Sim {
     this.grantXp(e.bounty * (e.kind === 'chefe' ? 12 : e.kind === 'elite' ? 5 : 2));
 
     if (e.kind === 'chefe' && e.boss) {
-      this.grantCarga('cristal', Math.max(1, Math.floor(e.bounty * 0.02)));
+      // O chefe NÃO paga cristal aqui. Pagava `floor(bounty × 0,02)` em todo
+      // abate — 330.826 no setor 300, e farmar um chefe rendia milhões por
+      // hora da moeda que o jogo vende. Agora a PRIMEIRA vitória paga um marco,
+      // creditado pelo servidor quando o setor alcançado passa do chefe. Ver
+      // `data/balance/cristal.ts`.
       this.state.stats.bossKills++;
       // Chefe de galáxia amplia a carga (§28). É idempotente por id, então
       // rematar o mesmo chefe — coisa comum, com a trava de setor — não concede
@@ -2581,10 +2593,10 @@ export class Sim {
     if (def) {
       // Os recursos do baú escalam com o setor: um baú de bronze aos 60 não
       // pode valer o mesmo que aos 3.
+      // Nunca cristal: o tipo de `resources` já o exclui (ver `data/chests.ts`).
       const scale = 1 + this.encounter.bounty * 0.05;
-      for (const id of RESOURCE_IDS) {
-        const amount = def.resources[id];
-        if (amount) this.grant(id, id === 'cristal' ? amount : amount * scale);
+      for (const [id, amount] of Object.entries(def.resources) as [ResourceId, number][]) {
+        if (amount) this.grant(id, amount * scale);
       }
     }
 
@@ -2970,7 +2982,7 @@ export class Sim {
    * nível são o ritmo da progressão, e o servidor não pode conferi-los porque
    * é o cliente que os declara (ver Fase 5). O que o servidor confere é o que
    * ele sabe — que o casco existe, não é protótipo, não é de piloto, ainda não
-   * é seu, e que há cristal. Os dois conjuntos são diferentes de propósito.
+   * é seu, e que há núcleo. Os dois conjuntos são diferentes de propósito.
    */
   podeComprarCasco(id: string): boolean {
     const hull = HULLS.find((h) => h.id === id);
@@ -2981,7 +2993,8 @@ export class Sim {
     if (hull.piloto) return false;
     if (this.alcanceLiberado < hull.requiresSector) return false;
     if (this.nivelLiberado < nivelExigido(hull.requiresSector)) return false;
-    return this.can('cristal', hull.cost);
+    // Núcleos: o servidor cobra em núcleos desde 10/09/2026. Ver `Hull.cost`.
+    return this.can('nucleo', hull.cost);
   }
 
   /**

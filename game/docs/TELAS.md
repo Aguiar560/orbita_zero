@@ -681,6 +681,10 @@ cada um para saber qual estava em uso, qual tinha combustível e qual dava para
 comprar. Naves que o jogador tem mostram barra de tanque; as à venda mostram o
 preço, porque numa nave à venda a barra não diz nada (ela sai da loja cheia).
 
+O preço é em **núcleos**, com o ícone do núcleo ao lado, desde 10/09/2026 — era
+cristal, a moeda vendida, e o casco mais caro saía por 4,5 milhões dela. O botão
+da ficha diz "N núcleos". Ver *O cristal ganho em jogo* no `SISTEMAS.md`.
+
 A **ficha** tem tudo o mais: arte grande, arquétipo, nota, barras de eixo,
 combustível com autonomia e custo de reabastecer, e a ação — Ativar, comprar,
 ou o setor que falta.

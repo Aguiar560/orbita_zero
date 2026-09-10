@@ -950,7 +950,8 @@ do relógio o teto de tentativas (5/6), o rastreador de missões (4/5), o acesso
 ao controle manual no nível 25+ (`VIP_MANUAL_LEVEL`) e as duas automações exclusivas. O cliente não concede
 pacotes de cristais nem estende o passe: **o servidor debita e o servidor
 carimba a validade**, e a tela só pede. Os cristais, por sua vez, se compram com
-dinheiro de verdade — ver *A compra de cristais*, no §12.
+dinheiro de verdade — ver *A compra de cristais*, no §12 — ou, em jogo, só em
+marcos creditados pelo servidor: ver *O cristal ganho em jogo*, no mesmo §12.
 
 O gate aparece em três lugares e nos três ele é **visível, não silencioso**: o
 botão PILOTAR fica desabilitado com o motivo no `title`, Ajustes desenha a
@@ -1127,14 +1128,14 @@ aplicada.
 | `GET·PUT /save` | o blob do save, **sem dinheiro e sem frota** (`semODinheiro`) | — |
 | `PUT /apelido` | nome público, único por forma normalizada | `apelido` |
 | `PUT /marcas` · `GET /placar` · `GET /online` | ranking e presença | `marcas` |
-| `GET·POST /carteira` | saldos e a fila de movimentos | `sincronia` |
+| `GET·POST /carteira` | saldos e a fila de movimentos. **Ganho de cristal vindo do cliente é descartado** (e contado em `recusas`); gasto passa | `sincronia` |
 | `POST /lote` | o pote de itens do setor, rolado pelo servidor | `sincronia` |
 | `GET·POST /inventario` | mochila, equipado e o lote de comandos | `sincronia` |
-| `GET·POST /progresso` | XP, Matriz, melhor setor, casco em campo, semente | `sincronia` |
-| `GET·POST /missoes` | passos, entrega e a confiança derivada | `sincronia` |
+| `GET·POST /progresso` | XP, Matriz, melhor setor, casco em campo, semente. O POST credita os **marcos de cristal** cumpridos e os devolve em `marcos` | `sincronia` |
+| `GET·POST /missoes` | passos, entrega e a confiança derivada. O POST credita os **marcos de cristal** cumpridos e os devolve em `marcos` | `sincronia` |
 | `POST /ausencia` | o que rendeu **e o que custou** com a aba fechada: quedas, multa, carga perdida, patente e nível de cada nave antes/depois. A multa sobe como lançamento `morte`, separada do ganho (`drop`), e a Matriz encolhida pela queda de patente é regravada | `sincronia` |
 | `POST /sintetizar` | a fusão | `acao` |
-| `POST /frota` | comprar casco, registrar o do piloto | `acao` |
+| `POST /frota` | comprar casco (**em núcleos**), registrar o do piloto | `acao` |
 | `POST /vip` | o passe, pago em cristais | `acao` |
 | `POST /checkout` | abre uma cobrança Pix. **Não credita nada** | `acao` |
 | `POST /compra` | a tela do Pix perguntando se o dinheiro caiu | `cobranca` |
@@ -1216,6 +1217,48 @@ que acontece logo depois de um setor cair, encontrava o chão. Hoje:
 
 Não afrouxa a cota do D1: **o balde não muda quantas escritas o jogo tenta, só
 quantas ele recusa.**
+
+### O cristal ganho em jogo — só marcos, só o servidor (10/09/2026)
+
+O cristal é a renda do jogo: vendido a ~R$ 0,05, gasto no VIP (500/30 dias),
+nas cápsulas (15/60/240) e nos serviços (6/12/25/30). A regra decidida pelo
+Rafael: **~700 cristais na campanha inteira** para quem não paga, a maior parte
+no mid e no endgame, e **nada repetível**.
+
+| fonte | valor | quem credita |
+|---|---|---|
+| primeira vitória sobre cada chefe (setores 10…300) | `32 × (setor/300)²`, mín. 1 → 1 a 32 | servidor, quando `melhor_setor` passa do chefe |
+| missão final de cada cadeia de contato | `31 × (setor do objetivo/300)²` → 1 a 31 | servidor, ao conferir a entrega |
+| missões do Kael e aliados (9) | 3 a 20, em `CRISTAL_DAS_MISSOES_FIXAS` | servidor, ao conferir a entrega |
+| chefe repetido, baús, Provação, ausência, abate | **0** | — |
+
+Medido: **700** do setor 1 ao 300 — 91 no início (≤100), 165 no meio, 444 no
+fim — mais 62 nas cadeias de Janus e Umbra, cujo objetivo final fica no 301 e no
+311. O tier do contato **não** multiplica o cristal.
+
+**Onde mora.** Os valores em `data/balance/cristal.ts`; a lista de marcos e
+quando cada um se cumpre em `sim/marcos-de-cristal.ts` (cliente e servidor leem
+o mesmo arquivo); o crédito em `creditarMarcos` (`server/src/index.ts`), com a
+parte pura em `server/src/marcos.ts`. Cada marco é um lançamento `motivo =
+'marco'`, `origem = usuario:marco`, e o índice único `(motivo, origem)` que já
+protegia o webhook barra a segunda vez — sem migração nova. Os marcos atrasados
+de uma conta antiga entram num batch só na primeira chamada.
+
+**O que o servidor confia.** O setor alcançado é declarado pelo cliente. O que
+limita o estrago é o orçamento: mentir o setor 300 rende no máximo ~340 cristais
+de chefe, uma vez por conta — contra o infinito que `/carteira` aceitava até
+10/09, quando `{moeda: 'cristal', quantia: 1000000, motivo: 'drop'}` entrava.
+
+**O que havia antes.** O chefe pagava `floor(bounty × 0,02)` em todo abate: 1
+cristal no setor 10, 2.489 no 100, 330.826 no 300 — 2,1 milhões numa passada, e
+milhões por hora farmando. Os cascos da escada custavam até 4,5 milhões de
+cristais (calibrados em núcleos, cobrados em cristal). O único cristal do livro
+de produção até então eram 7, o maior deles o chefe do setor 20.
+
+**O casco custa núcleos.** A escada (`POSTO_POR_CASCO`) já era calibrada em
+núcleos; os 18 originais saem de `precoDoCascoOriginal` — 15% da renda de
+núcleos acumulada até o setor do casco, um pouco abaixo da escada no mesmo
+setor. `/frota` debita `nucleo`.
 
 ### A compra de cristais — três caminhos até o mesmo crédito
 

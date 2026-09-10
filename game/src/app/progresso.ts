@@ -4,6 +4,7 @@ import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { nivelPorXpAcumulado, xpAcumuladoDe } from '@sim/nivel';
 
 import { tokenValido } from './conta';
+import { avisarMarcos, type MarcoCreditado } from './marcos';
 import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
@@ -40,6 +41,8 @@ interface Remoto {
   materiais: Record<string, number>;
   /** O casco em campo, guardado pelo servidor. Vazio = nunca escolheu. */
   cascoEmCampo?: string;
+  /** Marcos de cristal que ESTA chamada creditou. Ver `app/marcos.ts`. */
+  marcos?: MarcoCreditado[];
 }
 
 let sincronizado = false;
@@ -336,6 +339,9 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
   // `adotar` move o marco junto. O marco só anda quando o servidor confirma:
   // andar antes perderia o ganho da requisição que falhou, em silêncio.
   adotar(sim, r);
+  // O setor alcançado pode ter passado de um chefe: a primeira vitória vira
+  // cristal no servidor, e é aqui que o jogador fica sabendo.
+  await avisarMarcos(sim, r.marcos);
 }
 
 /** Esquece o espelho ao trocar de conta. */

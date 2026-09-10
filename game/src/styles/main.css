@@ -7273,7 +7273,7 @@ select option:disabled { color: #667991; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .hangar-linha-fuel { width: 46px; }
-.hangar-linha-preco { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hangar-linha-preco { color: var(--muted); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
 /* O ponto de "em uso" é a única marca que precisa ser vista sem ler. */
 .hangar-pip {
   width: 7px; height: 7px; border-radius: 50%;

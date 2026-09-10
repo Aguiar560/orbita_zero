@@ -8,8 +8,51 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 10/09/2026 · **1.613 testes** em 157 arquivos · registro consolidado
+**Última atualização:** 10/09/2026 · **1.632 testes** em 158 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 10/09/2026 — o cristal fica escasso, e só o servidor o cria
+
+**O pedido:** "os cristais são a fonte de renda do jogo, então devem ser
+escassos". Decisões do Rafael: ~700 na campanha inteira, a maior parte no mid e
+endgame; só marcos, nada repetível; casco em núcleos.
+
+**A medição que motivou** (levantamento *Mapa do Cristal*): uma passada de 1 a
+300 dava **2,1 milhões** de cristais, 98,7% do abate de chefe —
+`floor(bounty × 0,02)` em todo abate, 330.826 no chefe do 300. E dois achados
+piores no caminho:
+
+- **`/carteira` aceitava cristal de qualquer cliente.** Um POST com `{moeda:
+  'cristal', quantia: 1000000, motivo: 'drop'}` entrava. Para a moeda vendida por
+  dinheiro, era o buraco maior.
+- **Os 29 cascos da escada eram calibrados em núcleos e cobrados em cristal** —
+  até 4,5 milhões, R$ 187 mil pela tabela de pacotes.
+
+**O que mudou:**
+
+1. `data/balance/cristal.ts`: curva `pico × (setor/300)²` para chefe (pico 32) e
+   fim de cadeia (pico 31), tabela para as 9 missões fixas. Medido: **700** no
+   1–300 (13% / 24% / 63%), mais 62 depois do 300.
+2. O cliente não gera cristal: chefe, baús (tipo exclui cristal), Provação (campo
+   removido) e missão (`resgatarMissao` pula a moeda) pagam zero localmente.
+3. O servidor credita os marcos em `/progresso` e `/missoes` (`creditarMarcos`),
+   um batch, idempotente pelo índice único `(motivo, origem)` com `motivo =
+   'marco'`. O cliente mostra "+N cristais · rótulo" e drena na hora ao vencer
+   chefe e entregar missão.
+4. `/carteira` descarta ganho de cristal do cliente sem derrubar o lote
+   (`recusaDoCliente`), e conta em `recusas`.
+5. Casco em núcleos dos dois lados; originais por `precoDoCascoOriginal` (15% da
+   renda acumulada).
+6. Wiki: artigo novo *Cristais e passe VIP*, gerado das tabelas; Provação e
+   naves sem cristal.
+
+**Testes:** `tests/cristal-escasso.test.ts` (18). Um deles passava no vazio na
+primeira versão — `resgatarMissao` recusava a entrega e o "zero cristal" era
+verdade por outro motivo; agora ele exige a entrega.
+
+**Precisa de deploy do Worker** (sem migração).
 
 ---
 

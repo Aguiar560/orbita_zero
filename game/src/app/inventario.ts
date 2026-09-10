@@ -225,7 +225,7 @@ export async function sintetizar(
  * A frota, que também saiu do save.
  *
  * Casco é PODER: cada um tem atributos-base próprios, e os melhores custam
- * cristal. Escrever um id em `state.fleet` entregava de graça o que a loja
+ * caro, em núcleos. Escrever um id em `state.fleet` entregava de graça o que a loja
  * cobra — era o que sobrava depois de o item ser fechado.
  */
 async function chamarFrota(corpo?: unknown): Promise<string[] | null> {

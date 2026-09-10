@@ -338,6 +338,26 @@ export class Game {
     // escolha -- o sintoma que o Rafael relatou como "volta pra nave nucleo
     // vektor".
     bus.on('casco:emCampo', ({ casco }) => { void drenarProgresso(this.sim, casco); });
+    /**
+     * Marco de cristal cumprido: fala com o servidor NA HORA.
+     *
+     * O cristal ganho em jogo é creditado pelo servidor (`app/marcos.ts`), e só
+     * quando ele fica sabendo. No ciclo normal da nuvem isso levaria até 150 s,
+     * e o jogador venceria o chefe sem ver recompensa nenhuma.
+     *
+     * O chefe drena no PRÓXIMO tique: `boss:defeated` sai de dentro de
+     * `completeEncounter`, antes de o setor seguinte ser liberado — e é o setor
+     * liberado que o servidor lê para saber que o chefe caiu.
+     */
+    bus.on('boss:defeated', () => { setTimeout(() => { void drenarProgresso(this.sim); }, 0); });
+    // Juntadas num envio só: "Entregar tudo" emite uma por missão, e dez
+    // chamadas seguidas estourariam o balde de fichas da sincronia.
+    let entregaAgendada = false;
+    bus.on('missao:entregue', () => {
+      if (entregaAgendada) return;
+      entregaAgendada = true;
+      setTimeout(() => { entregaAgendada = false; void drenarMissoes(this.sim); }, 500);
+    });
 
     /**
      * Cada galáxia começa com a sua faixa.

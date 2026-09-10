@@ -1,6 +1,14 @@
 import type { ElementId, Rarity, ResourceId, SlotId } from '@sim/types';
+import { CRISTAL_DAS_MISSOES_FIXAS } from './balance/cristal';
 import { expandirTodas } from './missoes-cadeias';
 import { SEMENTES } from './missoes-sementes';
+
+/**
+ * O cristal de uma missão escrita à mão sai da tabela de `balance/cristal.ts`,
+ * e não de um número no bloco dela: a moeda paga tem um orçamento só, e ele
+ * precisa caber inteiro numa tela para alguém conferir.
+ */
+const cristalFixo = (id: string): number => CRISTAL_DAS_MISSOES_FIXAS[id] ?? 0;
 
 /**
  * Missões (§27).
@@ -298,7 +306,7 @@ export const MISSOES: readonly MissaoDef[] = [
     descricao: 'Cada frota tem uma cabeça. Corte três.',
     categoria: 'eliminacao', ritmo: 'campanha',
     objetivos: [{ fato: 'chefe', alvo: 3, texto: 'Derrotar 3 chefes' }],
-    recompensa: { moedas: { cristal: 40 }, medalhas: 1, baus: { ouro: 1 } },
+    recompensa: { moedas: { cristal: cristalFixo('elim_chefes') }, medalhas: 1, baus: { ouro: 1 } },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_04_manifesto' }, { tipo: 'missaoConcluida', missaoId: 'elim_primeiros' }],
   },
   {
@@ -372,7 +380,7 @@ export const MISSOES: readonly MissaoDef[] = [
       texto: 'Entregar 120 de Titânio',
     }],
     consomeNaEntrega: { titanio: 120 },
-    recompensa: { concessao: 'missao_carga_2', moedas: { cristal: 25 } },
+    recompensa: { concessao: 'missao_carga_2', moedas: { cristal: cristalFixo('entrega_titanio') } },
     requisitos: [{ tipo: 'setorAlcancado', valor: 20 }],
   },
 
@@ -416,7 +424,7 @@ export const MISSOES: readonly MissaoDef[] = [
       filtro: { qual: 'personagem', nivelMin: 25 },
       texto: 'Chegar ao nível 25 de comando',
     }],
-    recompensa: { moedas: { cristal: 30 }, medalhas: 1 },
+    recompensa: { moedas: { cristal: cristalFixo('prog_nivel_25') }, medalhas: 1 },
   },
   {
     id: 'prog_fusao',
@@ -626,7 +634,7 @@ export const MISSOES: readonly MissaoDef[] = [
       { fato: 'recurso', alvo: 180, filtro: { recurso: 'pirita' }, somaQuantidade: true, texto: 'Reunir 180 de pirita' },
     ],
     consomeNaEntrega: { pirita: 180 },
-    recompensa: { moedas: { cristal: 30 }, materiais: { ferrita: 90 }, xp: 1_400 },
+    recompensa: { moedas: { cristal: cristalFixo('kael_08_lastro') }, materiais: { ferrita: 90 }, xp: 1_400 },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_07_arqueiro' }],
   },
   {
@@ -638,7 +646,7 @@ export const MISSOES: readonly MissaoDef[] = [
     objetivos: [
       { fato: 'chefe', alvo: 6, filtro: { setorMin: 11 }, texto: 'Derrotar 6 chefes no setor 11 ou além' },
     ],
-    recompensa: { moedas: { cristal: 60 }, medalhas: 1, baus: { ouro: 1 }, xp: 2_000 },
+    recompensa: { moedas: { cristal: cristalFixo('kael_09_cabecas') }, medalhas: 1, baus: { ouro: 1 }, xp: 2_000 },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_08_lastro' }],
   },
   {
@@ -663,7 +671,7 @@ export const MISSOES: readonly MissaoDef[] = [
       { fato: 'galaxia', alvo: 1, filtro: { galaxiaMin: 3 }, texto: 'Concluir a galáxia 4' },
       { fato: 'recurso', alvo: 220, filtro: { recurso: 'titanio' }, somaQuantidade: true, texto: 'Reunir 220 de titânio' },
     ],
-    recompensa: { moedas: { sucata: 22_000, cristal: 45 }, xp: 4_000, baus: { ouro: 2 } },
+    recompensa: { moedas: { sucata: 22_000, cristal: cristalFixo('kael_11_silencio') }, xp: 4_000, baus: { ouro: 2 } },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_10_bancada' }],
   },
   {
@@ -676,7 +684,7 @@ export const MISSOES: readonly MissaoDef[] = [
       { fato: 'abate', alvo: 900, filtro: { setorMin: 81 }, texto: 'Abater 900 inimigos no setor 81 ou além' },
       { fato: 'chefe', alvo: 10, filtro: { setorMin: 81 }, texto: 'Derrotar 10 chefes no setor 81 ou além' },
     ],
-    recompensa: { moedas: { cristal: 120 }, medalhas: 2, xp: 12_000, baus: { ouro: 3 } },
+    recompensa: { moedas: { cristal: cristalFixo('kael_13_conta') }, medalhas: 2, xp: 12_000, baus: { ouro: 3 } },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'org_xeno_2' }],
   },
   {
@@ -689,7 +697,7 @@ export const MISSOES: readonly MissaoDef[] = [
       { fato: 'galaxia', alvo: 1, filtro: { galaxiaMin: 9 }, texto: 'Concluir a galáxia 10' },
       { fato: 'item', alvo: 6, filtro: { raridadeMin: 3 }, texto: 'Recolher 6 peças Épicas ou melhores' },
     ],
-    recompensa: { moedas: { sucata: 80_000, cristal: 90 }, materiais: { obsidiana: 120 }, xp: 20_000 },
+    recompensa: { moedas: { sucata: 80_000, cristal: cristalFixo('kael_14_ultima_doca') }, materiais: { obsidiana: 120 }, xp: 20_000 },
     requisitos: [{ tipo: 'missaoConcluida', missaoId: 'kael_13_conta' }],
   },
   {
@@ -701,7 +709,7 @@ export const MISSOES: readonly MissaoDef[] = [
     objetivos: [
       { fato: 'chefe', alvo: 15, filtro: { setorMin: 91 }, texto: 'Derrotar 15 chefes no setor 91 ou além' },
     ],
-    recompensa: { moedas: { cristal: 200 }, medalhas: 3, xp: 30_000, baus: { singularidade: 1 } },
+    recompensa: { moedas: { cristal: cristalFixo('kael_15_assinatura') }, medalhas: 3, xp: 30_000, baus: { singularidade: 1 } },
     recompensaExclusiva: {
       nome: 'PAINEL DE VOSS',
       de: 'KAEL VOSS',

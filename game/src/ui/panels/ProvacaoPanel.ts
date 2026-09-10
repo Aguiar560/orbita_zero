@@ -483,7 +483,6 @@ export class ProvacaoPanel implements Panel {
 
     out.push(ficha('sucata', fmt(Math.round(r.sucata * f)), `${fmt(Math.round(r.sucata * f))} de sucata`));
     out.push(ficha('nucleo', fmt(Math.round(r.nucleos * f)), `${fmt(Math.round(r.nucleos * f))} de núcleos`));
-    if (r.cristais) out.push(ficha('cristal', fmt(Math.round(r.cristais * f)), 'cristais'));
     for (const [id, n] of Object.entries(r.materiais)) {
       const d = RECURSO_POR_ID.get(id);
       out.push(h('.mis-premio.r-recurso', { title: `${fmt(Math.round(n * f))} de ${d?.nome ?? id}` },

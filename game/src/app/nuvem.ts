@@ -397,7 +397,7 @@ function semODinheiro(estado: GameState): GameState {
     // — nem o nível nem o XP, desde a Fase 4 — sobe junto: o que resta em
     // `naves` é a existência da entrada, e nada mais.
     // A frota mora na tabela `frota` desde a Fase 3c. Casco é poder — os
-    // melhores custam cristal —, então a lista não pode ser escrita pelo
+    // melhores custam caro, em núcleos —, então a lista não pode ser escrita pelo
     // cliente e subir como se fosse verdade.
     fleet: [],
     // XP, nível, Matriz e materiais moram no servidor desde a Fase 4. O

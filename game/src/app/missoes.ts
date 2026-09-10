@@ -2,6 +2,7 @@ import { API_URL } from '@data/servidor';
 import type { Sim } from '@sim/index';
 
 import { tokenValido } from './conta';
+import { avisarMarcos, type MarcoCreditado } from './marcos';
 import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
@@ -35,6 +36,8 @@ interface Remoto {
   missoes: Record<string, { passos: number[]; iniciada: boolean; entregueEm: number | null }>;
   confianca: Record<string, number>;
   recusadas?: { missao: string; motivo: string }[];
+  /** Marcos de cristal que ESTA chamada creditou. Ver `app/marcos.ts`. */
+  marcos?: MarcoCreditado[];
 }
 
 let sincronizado = false;
@@ -112,6 +115,9 @@ export async function drenarMissoes(sim: Sim): Promise<void> {
   const r = await chamar({ missoes: paraOServidor(sim) });
   if (!r) return;
   adotar(sim, r);
+  // A entrega conferida pode ter sido um marco: o cristal da missão chega por
+  // aqui, e não pelo `resgatarMissao` do cliente.
+  await avisarMarcos(sim, r.marcos);
 }
 
 export const missoesProntas = (): boolean => sincronizado;

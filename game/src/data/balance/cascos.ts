@@ -194,6 +194,37 @@ export const setorDaEscada = (indice: number): number => Math.round(
 export const FRACAO_DA_RENDA = 0.35;
 export const NUCLEOS_POR_RECOMPENSA = 8.91;
 
+/**
+ * O preço dos 18 cascos ORIGINAIS, também em núcleos.
+ *
+ * ## Por que existe
+ *
+ * Os originais tinham preço escrito à mão — 30 a 2.400 — e eram cobrados em
+ * CRISTAL, a moeda vendida por dinheiro. Em 10/09/2026 o casco passou a custar
+ * núcleos (cristal não compra poder de nave), e 30 a 2.400 núcleos seriam
+ * decoração: é o mesmo defeito que a escada já tinha medido, "0,03% da renda".
+ *
+ * ## Por que da renda ACUMULADA, e não da janela como a escada
+ *
+ * A janela deu preços erráticos nos originais: dois cascos no mesmo setor (os
+ * Falcões) e janelas de tamanho muito diferente fariam um sair de graça e o
+ * seguinte custar menos que o anterior. A fração do acumulado é suave e só
+ * cresce. Com 15%, cada original sai um pouco abaixo do casco da escada no
+ * mesmo setor — que é o certo, porque a escada é mais forte.
+ */
+export const FRACAO_DOS_ORIGINAIS = 0.15;
+
+/** Renda de núcleos somada do setor 1 até `setor`, pela conta do jogo. */
+export function rendaDeNucleosAte(setor: number): number {
+  let total = 0;
+  for (let s = 1; s <= setor; s++) total += curvaRecompensa(s);
+  return total * NUCLEOS_POR_RECOMPENSA;
+}
+
+export function precoDoCascoOriginal(setor: number): number {
+  return Math.max(10, Math.round(rendaDeNucleosAte(setor) * FRACAO_DOS_ORIGINAIS / 10) * 10);
+}
+
 export interface PostoNaEscada {
   degrau: DegrauDeCasco;
   /** Posição na ordem de aquisição, de 0 a 28. */

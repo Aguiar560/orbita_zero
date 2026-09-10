@@ -265,7 +265,7 @@ export const TUTORIAIS: Readonly<Record<string, readonly PassoDoTour[]>> = {
     {
       alvo: '.loj-saldos',
       titulo: 'Três moedas, três origens',
-      texto: 'Sucata vem de abate e desmanche, núcleos de combate, cristais de chefe. O câmbio só anda numa direção — da mais comum para a mais rara.',
+      texto: 'Sucata vem de abate e desmanche, núcleos de combate. Cristais vêm de marcos — a primeira vitória sobre cada chefe e missões — ou de pacotes. O câmbio só anda numa direção — da mais comum para a mais rara.',
       escala: 1.05,
     },
   ],

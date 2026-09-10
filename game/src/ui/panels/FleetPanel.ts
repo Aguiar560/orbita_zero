@@ -11,6 +11,7 @@ import { AXES, especialidadeLabel, shipProfile } from '@sim/ships';
 import { comprarCasco } from '@app/inventario';
 import type { Sim } from '@sim/index';
 import { h, progressBar, spriteIcon } from '../dom';
+import { RESOURCE_META } from '../recursos';
 import { nivelExigido } from '@data/balance/curvas';
 import { curvaXpNave, NIVEL_MAX } from '@data/balance/curvas';
 import type { Panel } from './types';
@@ -30,7 +31,7 @@ export class FleetPanel implements Panel {
         && !sim.frotaDisponivel.includes(hull.id)
         && sim.alcanceLiberado >= hull.requiresSector
         && sim.state.command.nivel >= nivelExigido(hull.requiresSector)
-        && sim.can('cristal', hull.cost),
+        && sim.can('nucleo', hull.cost),
     ).length;
   }
 
@@ -145,7 +146,12 @@ export class FleetPanel implements Panel {
             tanque < 0.15 ? '#ff5d7a' : tanque < 0.4 ? '#ffb638' : '#6ee49a',
             3,
           ))]
-        : [h('span.hangar-linha-preco.tiny', { text: revelado ? `${fmt(hull.cost)}◈` : '—' })]),
+        // O ícone do NÚCLEO, e não um glifo: o preço mudou de moeda em 10/09, e
+        // um "◈" solto não diz qual das três se gasta.
+        : [revelado
+          ? h('span.hangar-linha-preco.tiny', { title: `${fmt(hull.cost)} núcleos` },
+            h('span', { text: fmt(hull.cost) }), spriteIcon(RESOURCE_META.nucleo.icon, 12))
+          : h('span.hangar-linha-preco.tiny', { text: '—' })]),
       ...(emUso ? [h('i.hangar-pip', { title: 'Em uso' })] : []),
     );
   }
@@ -210,12 +216,12 @@ export class FleetPanel implements Panel {
             })
         : revelado
           ? h('button.btn.buy', {
-              disabled: !sim.can('cristal', hull.cost),
+              disabled: !sim.can('nucleo', hull.cost),
               // A compra é do SERVIDOR desde a Fase 3c: casco é poder, e
               // escrever um id em `state.fleet` entregava de graça o que a loja
-              // cobra. O preço sai do livro-caixa, lá.
+              // cobra. O preço sai do livro-caixa, lá — em núcleos.
               onclick: () => { void comprarCasco(sim, hull.id); },
-            }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} cristais` : 'Adicionar ao hangar' }))
+            }, h('span', { text: hull.cost > 0 ? `${fmt(hull.cost)} núcleos` : 'Adicionar ao hangar' }))
           : h('.fleet-action', { text: `Alcance o setor ${hull.requiresSector}` }),
 
       // A lore vem DEPOIS da ação, no fim da ficha. Ela é o que se lê depois de

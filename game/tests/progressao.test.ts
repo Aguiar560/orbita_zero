@@ -290,7 +290,8 @@ describe('nível exigido, além do setor', () => {
     const s = createState(2);
     const nave = HULLS.find((h) => h.requiresSector > 20)!;
     s.universe.bestSectorEver = nave.requiresSector;
-    s.resources.cristal = 1e9;
+    // Núcleos: o casco é pago em núcleos desde 10/09/2026 (ver `Hull.cost`).
+    s.resources.nucleo = 1e9;
 
     const sim = new Sim(s);
     s.command.nivel = 1;

@@ -22,6 +22,19 @@ import { FAMILIA_LABEL, RECURSOS, RECURSO_POR_ID } from '@data/recursos';
 import { SCREEN_UNLOCKS } from '@data/screen-unlocks';
 import { RECEITAS, chanceDeSubir } from '@data/balance/fusao';
 import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
+import { ALVO_DA_CAMPANHA, SETOR_FINAL_DA_CAMPANHA } from '@data/balance/cristal';
+import { CHESTS } from '@data/chests';
+import { SHOP } from '@data/shop';
+import { MARCOS_DE_CRISTAL } from '@sim/marcos-de-cristal';
+import { VIP_COST_CRYSTALS, VIP_DURATION_DAYS } from '@sim/vip';
+
+/** Os marcos de chefe, para a tabela do artigo de cristais. */
+const MARCOS_DE_CHEFE = MARCOS_DE_CRISTAL.filter((m) => m.tipo === 'chefe');
+const MARCOS_DE_MISSAO = MARCOS_DE_CRISTAL.filter((m) => m.tipo === 'missao');
+const faixaDeCristal = (lista: readonly { cristais: number }[]): string => {
+  const valores = lista.map((m) => m.cristais);
+  return `${Math.min(...valores)} a ${Math.max(...valores)}`;
+};
 
 type Artigo = {
   titulo: string;
@@ -189,6 +202,40 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
       { titulo: 'Custos e resultado', corpo: 'A barra inferior apresenta Núcleos, Essência e, quando necessário, minério. O botão só libera quando alvo e materiais são válidos. Depois da execução, a tela compara Antes e Agora.', dica: 'Engenharia trabalha identidade e tier dos afixos; ela não transforma a base, o slot ou o nível do item.' },
     ],
   },
+  '/guia/cristais': {
+    titulo: 'Cristais e passe VIP',
+    resumo: 'Para que serve o cristal, como ganhar jogando, e por que naves custam núcleos.',
+    imagem: '/assets/landing/tela.webp',
+    imagemAlt: 'Interface do Órbita Zero com os saldos de sucata, núcleos e cristais',
+    leitura: '4 min',
+    secoes: [
+      {
+        titulo: 'O que é o cristal',
+        corpo: `O cristal é a moeda especial do Órbita Zero. Ele paga o passe VIP (${VIP_COST_CRYSTALS} cristais por ${VIP_DURATION_DAYS} dias), as cápsulas da Câmara de Aquisição (${CHESTS.filter((c) => c.buy > 0).map((c) => `${c.name.replace('Cápsula de ', '')} ${c.buy}`).join(' · ')}) e serviços da Central: ${SHOP.filter((s) => s.currency === 'cristal').map((s) => `${s.name} ${s.cost}`).join(' · ')}. Pode ser comprado em pacotes na Loja.`,
+      },
+      {
+        titulo: 'Como ganhar jogando',
+        corpo: `O jogo dá cristal em MARCOS, e cada marco paga uma única vez: a primeira vitória sobre cada chefe (${faixaDeCristal(MARCOS_DE_CHEFE)} cristais, crescendo com o setor), a missão final de cada cadeia de contato e as missões principais do Kael Voss. Somando tudo, a campanha do setor 1 ao ${SETOR_FINAL_DA_CAMPANHA} rende cerca de ${ALVO_DA_CAMPANHA} cristais, a maior parte na segunda metade.`,
+        dica: 'Repetir um chefe, abrir baús e repetir pisos da Provação não dão cristal. O que rende é avançar.',
+      },
+      {
+        titulo: 'Primeira vitória sobre cada chefe',
+        corpo: MARCOS_DE_CHEFE.map((m) => `Setor ${m.setor}: ${m.cristais}`).join(' · '),
+      },
+      {
+        titulo: 'Missões que pagam cristal',
+        corpo: `${MARCOS_DE_MISSAO.length} missões, de ${faixaDeCristal(MARCOS_DE_MISSAO)} cristais cada. O valor não muda com o tier do contato. O catálogo de missões mostra o cristal de cada uma.`,
+      },
+      {
+        titulo: 'Quando o cristal chega',
+        corpo: 'O cristal é creditado pelo servidor assim que ele registra o feito: ao passar do setor do chefe ou ao conferir a entrega da missão. Um aviso “+N cristais” aparece na tela e o saldo no topo atualiza sozinho.',
+      },
+      {
+        titulo: 'Naves custam núcleos',
+        corpo: 'Os cascos do Hangar são comprados com núcleos, e o preço cresce com o setor em que a nave aparece. O cristal não compra poder de nave: ele serve para conveniência, cápsulas e o passe.',
+      },
+    ],
+  },
   '/guia/conta': {
     titulo: 'Conta, privacidade e suporte',
     resumo: 'Login, apelido, recuperação, dados visíveis e como pedir ajuda.',
@@ -226,7 +273,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
 };
 
 const NAV = [
-  ['COMECE AQUI', [['/guia/inicio', 'Primeiros passos'], ['/guia/combate', 'Combate e elementos'], ['/guia/progressao', 'Progressão']]],
+  ['COMECE AQUI', [['/guia/inicio', 'Primeiros passos'], ['/guia/combate', 'Combate e elementos'], ['/guia/progressao', 'Progressão'], ['/guia/cristais', 'Cristais e VIP']]],
   ['UNIVERSO', [['/universo/historia', 'História central'], ['/universo/personagens', 'Os quatro pilotos'], ['/universo/faccoes', 'Facções e diplomacia']]],
   ['SISTEMAS', [['/sistemas/fabricacao', 'Fabricação'], ['/sistemas/missoes', 'Missões'], ['/sistemas/equipamentos', 'Equipamentos'], ['/sistemas/provacao', 'Provação'], ['/sistemas/engenharia', 'Engenharia']]],
   ['SUPORTE', [['/guia/conta', 'Conta e privacidade']]],
@@ -379,7 +426,7 @@ function referenciaEngenharia(): string {
 function recompensaProvacao(piso: ReturnType<typeof pisoDaProvacao>): string {
   const r = piso.recompensa;
   const materiais = Object.entries(r.materiais).map(([id, qtd]) => `${numero.format(qtd)} ${recursoLabel(id)}`);
-  return [`${numero.format(r.sucata)} sucata`, `${numero.format(r.nucleos)} núcleos`, r.cristais ? `${r.cristais} cristais` : '', r.medalhas ? `${r.medalhas} medalha(s)` : '', `${r.itens.quantidade} item(ns) ${rarityInfo(r.itens.raridadeMin).name}+`, ...materiais, r.chanceExclusivo ? `${numero.format(r.chanceExclusivo * 100)}% exclusivo` : ''].filter(Boolean).join(' · ');
+  return [`${numero.format(r.sucata)} sucata`, `${numero.format(r.nucleos)} núcleos`, r.medalhas ? `${r.medalhas} medalha(s)` : '', `${r.itens.quantidade} item(ns) ${rarityInfo(r.itens.raridadeMin).name}+`, ...materiais, r.chanceExclusivo ? `${numero.format(r.chanceExclusivo * 100)}% exclusivo` : ''].filter(Boolean).join(' · ');
 }
 
 function referenciaProvacao(): string {
@@ -468,7 +515,7 @@ function paginaNaves(): string {
       return `<article class="wiki-data-card" data-search="${escapeHtml(`${nave.name} ${elemento.name} ${nave.blurb}`.toLowerCase())}">
         <div class="wiki-data-art" style="--accent:${elemento.color}">${sprite(nave.sprite)}<span>T${nave.tier}</span></div>
         <div class="wiki-data-copy"><span style="color:${elemento.color}">${escapeHtml(elemento.name)}</span><h2>${escapeHtml(nave.name)}</h2><p>${escapeHtml(nave.blurb)}</p>
-        <dl><div><dt>ACESSO</dt><dd>${nave.piloto ? 'Piloto inicial' : nave.prototype ? 'Protótipo' : nave.cost > 0 ? `${nave.cost} cristais` : `Setor ${nave.requiresSector}`}</dd></div><div><dt>PAPEL</dt><dd>${(nave.stats.dano ?? 0) >= (nave.stats.vida ?? 0) ? 'Ofensivo' : 'Resistente'}</dd></div></dl></div>
+        <dl><div><dt>ACESSO</dt><dd>${nave.piloto ? 'Piloto inicial' : nave.prototype ? 'Protótipo' : nave.cost > 0 ? `${numero.format(nave.cost)} núcleos · setor ${nave.requiresSector}` : `Setor ${nave.requiresSector}`}</dd></div><div><dt>PAPEL</dt><dd>${(nave.stats.dano ?? 0) >= (nave.stats.vida ?? 0) ? 'Ofensivo' : 'Resistente'}</dd></div></dl></div>
       </article>`;
     }).join('')}</div>`;
 }

@@ -88,7 +88,7 @@ export function passosDoOnboarding(manualDisponivel: boolean): readonly PassoDoT
     {
       alvo: '.resources',
       titulo: 'Seus recursos',
-      texto: 'Sucata, núcleos e cristais. Saem de combate e de desmontar o que não presta — e é com eles que se fabrica, melhora e recalibra.',
+      texto: 'Sucata e núcleos saem de combate e de desmontar o que não presta — é com eles que se fabrica, melhora e compra nave. Cristais são raros: vêm de marcos, como a primeira vitória sobre cada chefe.',
       escala: 1.06,
     },
     {
