@@ -634,7 +634,11 @@ export class VerticalMode {
       this.syncEncounter(true);
       this.refreshPlayer(true);
     }
-    this.syncEncounter();
+    // Não durante a pausa de vitória: o encontro JÁ foi concluído no sim (ver
+    // `beginVictory`), e ressincronizar aqui montaria a próxima onda — banner,
+    // chave de acesso do chefe — por trás do painel de conquista. O fim da
+    // pausa força a sincronização.
+    if (this.victory <= 0) this.syncEncounter();
     if (this.chefeBloqueado) {
       const e = this.sim.encounter;
       if (this.sim.temChaveDaGalaxia(galaxyOfSector(e.sector))) this.syncEncounter(true);
@@ -2196,10 +2200,8 @@ export class VerticalMode {
   private checkCleared(): void {
     if (this.victory > 0) {
       this.victory -= this.lastDt;
-      if (this.victory <= 0) {
-        this.sim.completeEncounter();
-        this.syncEncounter(true);
-      }
+      // A pausa é só tela: o encontro foi concluído no começo dela.
+      if (this.victory <= 0) this.syncEncounter(true);
       return;
     }
     if (this.cleared) return;
@@ -2335,6 +2337,25 @@ export class VerticalMode {
      * e o marco do setor já reiniciado — o painel mostraria tudo em branco.
      */
     this.victoryResumo = this.victoryLast ? this.sim.resumoDaIncursao() : null;
+
+    /**
+     * O encontro é concluído AGORA, no começo da pausa — e não no fim dela.
+     *
+     * Era no fim. Os 5 s do painel "SETOR CONCLUÍDO" eram uma janela em que a
+     * onda estava vencida, as peças coletadas, e o save ainda dizia "última
+     * onda": recarregar a página ali trazia a guarda de elite de volta, com
+     * drop novo, e dava para repetir para sempre (relato de 10/09/2026). Valia
+     * para a pausa de qualquer onda, com janela menor.
+     *
+     * O painel não perde nada: o resumo foi lido logo acima, e o rótulo, o
+     * setor e o tipo saem de `e`, copiado antes. A pausa virou só tela.
+     *
+     * Na Provação não se conclui: `concluirPisoDaProvacao` já fechou o
+     * desafio, e o encontro ativo agora é o da CAMPANHA. Concluí-lo era o que
+     * o fim da pausa fazia, e dava ao jogador uma onda da campanha de graça a
+     * cada piso vencido.
+     */
+    if (!d) this.sim.completeEncounter();
 
     this.victoryHold = this.victoryLast ? VICTORY_HOLD_SETOR : VICTORY_HOLD;
     this.victory = this.victoryHold;

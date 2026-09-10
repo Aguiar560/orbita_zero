@@ -1154,6 +1154,14 @@ luminosa e cursor — continua legível mesmo quando um dos sinais passa desperc
 O fundo permanece visível sob uma vinheta, porque a transição é parte do combate,
 não um modal que tira o jogador da cena.
 
+A pausa é **só tela**: `beginVictory` conclui o encontro no sim no começo dela
+(`completeEncounter`), e o painel desenha o resumo lido um instante antes. Era no
+fim, e recarregar a página durante os 5 s do "SETOR CONCLUÍDO" trazia a última
+onda de volta com drop novo — farm infinito da elite (10/09/2026). Durante a
+pausa a cena também não ressincroniza o encontro, para não montar a próxima onda
+por trás do painel. Na Provação o fim da pausa concluía o encontro da campanha
+(o desafio já tinha sido fechado), dando uma onda de graça; isso também saiu.
+
 ---
 
 ## Relatório de ausência — `Shell.showOfflineReport`

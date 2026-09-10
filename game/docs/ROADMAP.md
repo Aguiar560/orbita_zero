@@ -13,6 +13,17 @@ de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
 
 ---
 
+## 10/09/2026 — recarregar na vitória não repete a onda
+
+Relato: recarregar durante o painel "SETOR CONCLUÍDO" voltava à guarda de elite,
+e dava para farmar os itens dela para sempre. Causa: `completeEncounter` rodava
+no FIM da pausa de 5 s; até lá o save dizia "última onda". Agora roda no começo
+(`beginVictory`), e a pausa é só tela. De brinde, pelo código: o fim da pausa de
+um piso da Provação concluía a onda da campanha, que já era o encontro ativo.
+Teste em `tests/vitoria-conclui-na-hora.test.ts`.
+
+---
+
 ## 10/09/2026 — a peça do chefe espera espaço
 
 **O pedido:** "o player não sabe quantos itens irá ganhar" ao matar o chefe com
