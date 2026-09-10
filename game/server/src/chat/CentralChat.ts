@@ -1,7 +1,7 @@
 import type { Usuario } from '../auth';
 import type { EnvChat } from './worker';
 import {
-  CHAT, ErroChat, cursorChat, idChatValido, participanteChat, textoChat,
+  CHAT, ErroChat, chegadaNoGlobal, cursorChat, idChatValido, participanteChat, textoChat,
   type EventoChat, type MensagemChat, type PerfilChat,
 } from '../../../src/shared/chat';
 
@@ -91,6 +91,11 @@ export class CentralChat {
     }
     return { id: u.id, apelido: row?.apelido ?? 'Visitante', podeEnviar,
       moderador: !u.anonima && this.env.CHAT_MODERADORES.split(',').map(s => s.trim()).includes(u.id) };
+  }
+  /** Desde quando (ms) o jogador vê o global. Lida do banco do JOGO, onde mora o apelido. */
+  private async chegada(usuario: string): Promise<number> {
+    const row = await this.env.DB.prepare('SELECT criado_em FROM apelidos WHERE usuario=?').bind(usuario).first<{ criado_em: number }>();
+    return chegadaNoGlobal(row?.criado_em, Date.now());
   }
   private async bloqueado(a: string, b: string): Promise<boolean> {
     return !!await this.sql('SELECT 1 FROM chat_bloqueios WHERE (usuario=? AND alvo=?) OR (usuario=? AND alvo=?)', a, b, b, a).first();
@@ -203,11 +208,16 @@ export class CentralChat {
       await this.conversa(d.conversa, id);
       const antes = cursorChat(d.antes);
       const apos = cursorChat(d.apos);
+      // O global começa na chegada do jogador — ver `chegadaNoGlobal`. Filtrado
+      // aqui, e não no painel: escondido só na tela, o histórico continuaria
+      // viajando até o navegador de quem não deveria vê-lo. Privada não tem
+      // corte: as duas pontas aceitaram a conversa, e o passado dela é delas.
+      const desde = d.conversa === 'global' ? await this.chegada(id) : 0;
       const mensagens = await this.sql(`SELECT m.* FROM chat_mensagens m WHERE conversa=?
-        AND (?=0 OR m.id<?) AND (?=0 OR m.id>?)
+        AND (?=0 OR m.id<?) AND (?=0 OR m.id>?) AND m.criado>=?
         AND NOT EXISTS (SELECT 1 FROM chat_bloqueios b WHERE
           (b.usuario=? AND b.alvo=m.autor) OR (b.alvo=? AND b.usuario=m.autor))
-        ORDER BY m.id ${apos ? 'ASC' : 'DESC'} LIMIT ?`, d.conversa, antes, antes, apos, apos, id, id, CHAT.pagina).all<MensagemChat>();
+        ORDER BY m.id ${apos ? 'ASC' : 'DESC'} LIMIT ?`, d.conversa, antes, antes, apos, apos, desde, id, id, CHAT.pagina).all<MensagemChat>();
       return {
         mensagens: await this.comCoroa(apos ? mensagens.results : mensagens.results.reverse()),
       };

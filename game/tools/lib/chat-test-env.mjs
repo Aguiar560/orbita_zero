@@ -24,12 +24,15 @@ export async function ambienteChat() {
   await mf.ready;
   const contas = await mf.getD1Database('DB');
   const db = await mf.getD1Database('CHAT_DB');
-  await contas.prepare('CREATE TABLE apelidos (usuario TEXT PRIMARY KEY,apelido TEXT)').run();
+  // `criado_em` (segundos) é a chegada do jogador: o global começa nela.
+  await contas.prepare('CREATE TABLE apelidos (usuario TEXT PRIMARY KEY,apelido TEXT,criado_em INTEGER NOT NULL)').run();
   const schema = await readFile(new URL('../../server/chat-schema.sql', import.meta.url), 'utf8');
   // D1 exec exige uma instrução por linha; prepare aceita SQL com quebras.
   for (const sql of schema.replace(/^--.*$/gm, '').split(';').map(s => s.trim()).filter(Boolean)) await db.prepare(sql).run();
+  // Os pilotos fixos chegaram ontem: veem todo o global que o teste produzir.
+  const ontem = Math.floor(Date.now() / 1000) - 86400;
   for (const [id, nome] of [['alfa', 'Piloto Alfa'], ['beta', 'Piloto Beta'], ['gama', 'Piloto Gama'], ['moderador', 'Comandante'], ['spam', 'Spam Teste']]) {
-    await contas.prepare('INSERT INTO apelidos VALUES(?,?)').bind(id, nome).run();
+    await contas.prepare('INSERT INTO apelidos(usuario,apelido,criado_em) VALUES(?,?,?)').bind(id, nome, ontem).run();
   }
   const b64 = v => Buffer.from(typeof v === 'string' ? v : JSON.stringify(v)).toString('base64url');
   async function token(id, extras = {}) {

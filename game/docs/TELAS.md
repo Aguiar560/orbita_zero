@@ -20,7 +20,9 @@ denúncia pelo nome do autor. Moderação aparece apenas se autorizada pelo Work
 o servidor também verifica cada ação. Mensagens são sempre `textContent`.
 
 Contas anônimas só leem global; conta vinculada com apelido pode escrever. Sem
-paywall VIP. Campo de texto não aciona WASD/espaço; o combate não pausa.
+paywall VIP. O global começa na **chegada** do piloto (`apelidos.criado_em`):
+quem acabou de entrar não vê a conversa de antes dele; o corte é no Worker
+social, não na tela (ver `chegadaNoGlobal`). Privadas não têm corte. Campo de texto não aciona WASD/espaço; o combate não pausa.
 
 Status: publicado no domínio canônico; Worker/D1/cron ativos e validação real de
 conta anônima concluída. Ativação/limites/retenção/testes e rollback em

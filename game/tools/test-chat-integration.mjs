@@ -24,7 +24,15 @@ try {
   const global = await api('alfa', { op: 'enviar', conversa: 'global', texto: 'Olá, pilotos! 🚀 <img src=x onerror=alert(1)>', clienteId: 'global-1' });
   await aguardar(() => beta.eventos.some(e => e.mensagem?.id === global.mensagem.id));
   ok(gama.eventos.some(e => e.mensagem?.id === global.mensagem.id), 'Global entregue ao terceiro jogador');
-  ok((await api('anonimo', { op: 'historico', conversa: 'global' }, 200, { email: '', is_anonymous: true })).mensagens.length === 1, 'Anônimo lê global');
+  // Quem chega não herda o global de antes dele — nem visitante, nem piloto novo.
+  ok((await api('anonimo', { op: 'historico', conversa: 'global' }, 200, { email: '', is_anonymous: true })).mensagens.length === 0, 'Visitante não herda o global anterior');
+  await e.contas.prepare('INSERT INTO apelidos(usuario,apelido,criado_em) VALUES(?,?,?)').bind('novato', 'Recruta', Math.ceil(Date.now() / 1000)).run();
+  ok((await api('novato', { op: 'historico', conversa: 'global' })).mensagens.length === 0, 'Piloto novo não vê o global de antes da chegada');
+  ok((await api('beta', { op: 'historico', conversa: 'global' })).mensagens.some(m => m.id === global.mensagem.id), 'Piloto antigo continua vendo o global');
+  // `criado_em` tem resolução de segundo: a próxima mensagem precisa cair depois dele.
+  await new Promise(r => setTimeout(r, 1100));
+  const boasVindas = await api('gama', { op: 'enviar', conversa: 'global', texto: 'Bem-vindo, recruta', clienteId: 'boas-vindas' });
+  ok((await api('novato', { op: 'historico', conversa: 'global' })).mensagens.map(m => m.id).join() === String(boasVindas.mensagem.id), 'Piloto novo vê o global a partir da chegada');
   const repetida = await api('alfa', { op: 'enviar', conversa: 'global', texto: global.mensagem.texto, clienteId: 'global-1' });
   ok(repetida.mensagem.id === global.mensagem.id, 'Reenvio idempotente');
   await api('alfa', { op: 'enviar', conversa: 'global', texto: 'Outro texto', clienteId: 'global-1' }, 409);
@@ -88,7 +96,7 @@ try {
   const leitores = [];
   for (let i = 0; i < 25; i++) {
     const id = `carga-${i}`;
-    await e.contas.prepare('INSERT INTO apelidos VALUES(?,?)').bind(id, `Carga ${i}`).run();
+    await e.contas.prepare('INSERT INTO apelidos(usuario,apelido,criado_em) VALUES(?,?,?)').bind(id, `Carga ${i}`, Math.floor(Date.now() / 1000)).run();
     leitores.push(await e.socket(id));
   }
   await aguardar(() => leitores.every(l => l.eventos.some(e => e.tipo === 'pronto')));

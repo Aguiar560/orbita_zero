@@ -8,8 +8,23 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 10/09/2026 · **1.632 testes** em 158 arquivos · registro consolidado
+**Última atualização:** 10/09/2026 · **1.670 testes** em 165 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 10/09/2026 — o piloto novo não herda o chat global
+
+Pedido: quem entra no jogo não vê a conversa anterior, só a partir dele. O
+`historico` global do `CentralChat` agora corta em `m.criado >= chegada`, e a
+chegada é o `apelidos.criado_em` do banco do jogo (`chegadaNoGlobal`, em
+`src/shared/chat.ts`). Um carimbo novo gravado no primeiro acesso ao chat foi
+descartado: esvaziaria o global de todos os jogadores antigos no dia do deploy.
+Sem apelido (visitante), a chegada é agora. Privadas sem corte. Medido:
+`npm run chat:test` com 103 verificações (novas: visitante e piloto novo não
+herdam, antigo continua vendo, o novo vê o que vem depois); unitário em
+`tests/chat-global-desde-a-chegada.test.ts`. **Exige deploy do Worker social**
+(`wrangler.chat.toml`), que não vai com o push.
 
 ---
 

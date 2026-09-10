@@ -9,6 +9,7 @@ documento é a fonte para distinguir o que foi apenas preparado do que ficou ati
 
 - Botão CHAT independente dos painéis reconstruídos pelo Shell; global, privadas, ajustes e moderação para contas autorizadas pelo servidor.
 - Histórico paginado de 50 mensagens; janela de até 150 mensagens por conversa no cliente, sem gravá-las no save/localStorage. Conta anônima pode ler global; escrever exige conta não anônima e apelido no banco do jogo.
+- O histórico **global** começa na chegada do jogador: `apelidos.criado_em` do banco do jogo (o apelido é obrigatório para jogar, e a data não muda ao renomear). Sem apelido, a chegada é o momento do pedido — o visitante só vê o que chegar ao vivo. Filtro no `historico` do `CentralChat` (`m.criado>=?`), nunca no painel. Privadas não têm corte. Desde 10/09/2026.
 - Busca por prefixo de apelido, solicitação, aceite/recusa, conversas offline, não lidas, preferências de novos contatos, bloqueio e denúncia. Busca inclui jogadores que já abriram o chat; não consulta e-mails nem lista todas as contas.
 - Texto/emojis, no máximo 400 pontos de código / 1600 bytes / 5 linhas. HTML é texto, links não são clicáveis. Sem anexos, áudio, presença, grupos ou monetização.
 - Moderação server-side: evidência denunciada, acesso auditado, remoção com tombstone, silêncio/suspensão por 1–720 horas, revogação e encerramento da denúncia. Não existe consulta administrativa livre a privadas alheias.

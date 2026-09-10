@@ -256,6 +256,11 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
         corpo: 'Todo novo piloto escolhe um apelido antes de entrar no jogo. Ele aparece no perfil, ranking e recursos sociais; e-mail, identificadores técnicos e detalhes de sessão permanecem ocultos para proteger jogadores e streamers.',
       },
       {
+        titulo: 'Chat: global e privadas',
+        corpo: 'O botão CHAT abre o canal global e as conversas privadas. O canal global começa quando você entra no jogo, isto é, quando escolhe o apelido: as mensagens trocadas antes disso não aparecem para quem acabou de chegar. Daí em diante você vê tudo, inclusive o que foi dito enquanto estava fora (o global guarda 7 dias). Escrever exige conta vinculada e apelido; conversas privadas precisam ser aceitas pelos dois pilotos, que veem toda a conversa, e duram 90 dias.',
+        dica: 'Trocar de apelido não reinicia o canal: a data de chegada é a do primeiro apelido.',
+      },
+      {
         titulo: 'Conta de teste',
         corpo: 'Contas administrativas de teste usam a capacidade completa de 70 espaços. Se um estado local antigo ultrapassar esse limite, ao abrir o jogo a carga é normalizada para 70/70, preservando favoritos e priorizando as peças mais fortes. Essa correção não altera inventários de jogadores comuns.',
       },

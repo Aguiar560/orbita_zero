@@ -54,6 +54,25 @@ export function cursorChat(valor: unknown): number {
   return typeof valor === 'number' && Number.isSafeInteger(valor) && valor >= 0 ? valor : 0;
 }
 
+/**
+ * A partir de quando (ms) o jogador enxerga o canal GLOBAL.
+ *
+ * Quem chega não herda a conversa de antes dele: o canal começa no momento em
+ * que ele entrou no jogo. A entrada é o `criado_em` do apelido (segundos), e
+ * não um carimbo novo do chat, por dois motivos: o apelido é obrigatório para
+ * jogar, então a data dele É a chegada; e ela já existe para todo mundo — um
+ * carimbo novo gravado no primeiro acesso ao chat esvaziaria o global de todos
+ * os jogadores antigos no dia do deploy. Trocar de apelido não mexe na data.
+ *
+ * Sem apelido (visitante), a chegada é agora: vê o que for dito daqui em diante.
+ * Uma data no futuro (relógio torto) também vira agora, para não esconder as
+ * mensagens ao vivo que ele já está recebendo.
+ */
+export function chegadaNoGlobal(apelidoCriadoEm: unknown, agora: number): number {
+  if (typeof apelidoCriadoEm !== 'number' || !Number.isFinite(apelidoCriadoEm) || apelidoCriadoEm <= 0) return agora;
+  return Math.min(apelidoCriadoEm * 1000, agora);
+}
+
 export function origemChatPermitida(origem: string | null, lista: string): boolean {
   // Produção e previews precisam ser explicitamente cadastrados: sem curingas.
   if (!origem || origem === 'null') return false;
