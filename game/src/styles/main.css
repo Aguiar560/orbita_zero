@@ -5784,14 +5784,14 @@ select option:disabled { color: #667991; }
 .galaxy-command-sector > span { z-index: 1; color: #d2e7f2; font: 700 13px/1 'Chakra Petch', sans-serif; }
 .galaxy-command-sector > small { overflow: hidden; max-width: 100%; color: #b7d8e6; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .galaxy-command-lock { display: block; width: 40px; height: 40px; object-fit: contain; opacity: .86; filter: grayscale(.2) drop-shadow(0 3px 5px rgba(0, 0, 0, .85)) drop-shadow(0 0 5px rgba(116, 193, 224, .18)); }
-.galaxy-command-sector-detail { position: relative; overflow: hidden; min-height: 272px; }
+.galaxy-command-sector-detail { position: relative; overflow: visible; min-height: 272px; }
 .galaxy-command-sector-scenery { position: absolute; z-index: 0; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .92; }
 .galaxy-command-detail-shade { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgba(3, 13, 22, .94), rgba(3, 13, 22, .76) 46%, rgba(3, 13, 22, .18) 72%, rgba(3, 13, 22, .28)); }
-.galaxy-command-detail-content { position: relative; z-index: 2; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; min-height: 272px; padding: 12px 14px; }
+.galaxy-command-detail-content { position: relative; z-index: 2; display: grid; grid-template-rows: auto auto auto; gap: 10px; min-height: 272px; padding: 12px 14px; }
 .galaxy-command-detail-title { display: flex; flex-direction: column; gap: 2px; padding-bottom: 7px; border-bottom: 1px solid color-mix(in srgb, var(--gal-cor, #29cdff) 32%, transparent); }
 .galaxy-command-detail-title strong { color: #d9f3ff; font: 700 20px/1 'Chakra Petch', sans-serif; letter-spacing: .4px; }
 .galaxy-command-detail-title span { color: #4ecff9; font-size: 10px; font-weight: 700; letter-spacing: .8px; }
-.galaxy-command-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 31%); gap: 20px; }
+.galaxy-command-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 31%); align-content: start; gap: 20px; }
 .galaxy-command-threats { display: grid; align-content: start; gap: 7px; }
 .galaxy-command-threats > small, .galaxy-command-sector-stats > small { color: #53cdf8; font: 700 10px/1 'Chakra Petch', sans-serif; letter-spacing: .7px; }
 .galaxy-command-enemies { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 5px; }
@@ -5910,14 +5910,14 @@ select option:disabled { color: #667991; }
   .galaxy-command-tip small { font-size: 8px; }
   .galaxy-command-tip p { font-size: 8px; line-height: 1.2; }
 
-  .galaxy-command-center { grid-template-rows: 202px 224px 132px; gap: 8px; }
+  .galaxy-command-center { grid-template-rows: 202px auto auto; gap: 8px; }
   .galaxy-command-sectors { padding: 7px; }
   .galaxy-command-grid { gap: 5px; margin-top: 4px; }
   .galaxy-command-sector { min-height: 74px; padding: 4px 2px; }
   .galaxy-command-sector .sprite { transform: scale(.76); }
   .galaxy-command-sector > span { font-size: 11px; }
   .galaxy-command-sector > small { font-size: 7px; }
-  .galaxy-command-sector-detail, .galaxy-command-detail-content { min-height: 224px; }
+  .galaxy-command-sector-detail, .galaxy-command-detail-content { min-height: 370px; }
   .galaxy-command-detail-content { gap: 6px; padding: 8px 10px; }
   .galaxy-command-detail-title { padding-bottom: 4px; }
   .galaxy-command-detail-title strong { font-size: 16px; }
