@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Órbita Zero</title>
+  <defs>
+    <radialGradient id="bg" cx="32" cy="25" r="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c2940"/>
+      <stop offset="0.62" stop-color="#061320"/>
+      <stop offset="1" stop-color="#02070e"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="11" y1="14" x2="55" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#bdf5ff"/>
+      <stop offset="0.42" stop-color="#48d9ff"/>
+      <stop offset="1" stop-color="#078fd4"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="62" height="62" rx="12" fill="url(#bg)" stroke="#1688ba" stroke-width="2"/>
+  <path d="M8 32C8 16.7 19.1 7 34.5 7c9.2 0 16.7 3.2 21.5 8.2" fill="none" stroke="#36ccff" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+  <circle cx="56" cy="15" r="3.5" fill="#ffc441" stroke="#fff0a3" stroke-width="1"/>
+
+  <circle cx="22" cy="33" r="12" fill="none" stroke="url(#cyan)" stroke-width="6"/>
+  <path d="M10 47 33 17" fill="none" stroke="#bdf5ff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M38 21h16L37 45h18" fill="none" stroke="url(#cyan)" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

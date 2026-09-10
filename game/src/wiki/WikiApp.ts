@@ -213,6 +213,10 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
         corpo: 'Informe apelido, horário aproximado, tela, ação realizada e uma captura. Nunca envie senha, token, código de sessão ou acesso ao provedor social.',
         dica: 'Para bugs de item, inclua o nome da peça, raridade, setor e o que aconteceu antes de ela sumir ou deixar de atualizar.',
       },
+      {
+        titulo: 'Identidade no navegador',
+        corpo: 'A insígnia ØZ identifica o jogo na aba e nos atalhos do navegador. O mesmo favicon é usado na página principal e em todas as rotas da Wiki, para que a documentação continue visualmente ligada ao universo do jogo.',
+      },
     ],
   },
 };
