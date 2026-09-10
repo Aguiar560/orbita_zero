@@ -2022,6 +2022,19 @@ select option:disabled { color: #667991; }
 .offline-row { display: flex; align-items: center; gap: 10px; padding: 7px 11px; background: rgba(255, 255, 255, 0.04); border-radius: 8px; font-size: 13px; }
 .offline-row strong { margin-left: auto; font-variant-numeric: tabular-nums; }
 .offline-extra { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
+/* Ganho, perda, naves e resultado podem somar muitas linhas: o relatório rola
+   por dentro em vez de empurrar o botão para fora da tela. */
+.offline-modal { max-height: 88vh; overflow-y: auto; scrollbar-width: thin; }
+.offline-secao { display: flex; flex-direction: column; gap: 6px; }
+.offline-secao h3 {
+  margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.offline-alerta {
+  padding: 9px 12px; border-radius: 8px; color: var(--bad);
+  background: rgba(255, 93, 122, 0.1); border: 1px solid rgba(255, 93, 122, 0.45);
+}
+.offline-patente.caiu { color: var(--bad); }
 
 /* ── responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 1400px) {

@@ -8,8 +8,44 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 09/09/2026 · **1.586 testes** em 153 arquivos · registro consolidado
+**Última atualização:** 10/09/2026 · **1.611 testes** em 157 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 10/09/2026 — a ausência mostra o que tirou
+
+**O relato:** "entrei agora e não recebi nada". O relatório dizia só
+"3,21K abates" depois de 37 min fora.
+
+**A medição.** Reproduzida em Node a simulação do servidor com os dados de
+produção da conta: no setor 18 ela dá exatamente **3.209 abates, 41 quedas,
+XP −6.657 e sucata −7.204** — e o livro-caixa tinha o lançamento real, `drop
+−7.297`. A causa imediata foi o modo de teste: a cena era imortal, o servidor
+simula com a nave e as regras reais. Mas o defeito vale para qualquer jogador
+que feche a aba num setor que não aguenta. Ausências anteriores da mesma conta
+já tinham tirado 136.154 e 11.543 de sucata sem ninguém ver.
+
+**Três defeitos, uma causa — perda muda:**
+
+1. **O relatório só desenhava o positivo**, e o servidor só devolvia o líquido.
+   `applyOffline` agora conta queda a queda (escutando `sector:failed` durante o
+   laço síncrono): quedas, multa do cofre, carga evaporada, XP do piloto, nós da
+   Matriz devolvidos, patente e nível de cada nave antes/depois, materiais. O
+   modal ganhou blocos Ganhou / Perdeu / Naves / Resultado e um aviso vermelho
+   quando houve queda.
+2. **O XP perdido voltava.** O cliente adotava o XP pós-ausência com `Math.max`
+   e a drenagem seguinte reenviava a diferença. A sucata perdida ficava
+   perdida, o XP não. `adotarAusencia` aceita o valor menor e preserva só o que
+   o cliente ainda não tinha enviado.
+3. **A Matriz não encolhia.** A queda de patente devolve o último nó, mas
+   `/ausencia` não regravava a coluna — o servidor ficava com mais nós do que a
+   patente paga, e a alocação seguinte seria recusada inteira. Agora regrava.
+
+De brinde, o livro-caixa: a multa sobe como `morte` e o ganho como `drop`, em vez
+de um `drop` negativo que não diz de onde a sucata saiu.
+
+**Testes:** `tests/relatorio-de-ausencia.test.ts` (8). Suíte: 1.611 verdes.
 
 ---
 

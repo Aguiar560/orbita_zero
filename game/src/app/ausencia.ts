@@ -42,6 +42,12 @@ export interface RelatorioDeAusencia {
   baus?: number;
   xp?: number;
   itensNovos?: number;
+  /** Ver `OfflineReport`: o que saiu, e não só o que entrou. */
+  quedas?: number;
+  perdas?: OfflineReport['perdas'];
+  patente?: OfflineReport['patente'];
+  naves?: OfflineReport['naves'];
+  materiais?: OfflineReport['materiais'];
   /**
    * A incursão como o servidor a deixou: setor, onda e carga.
    *

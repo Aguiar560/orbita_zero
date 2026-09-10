@@ -2773,14 +2773,25 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
   // ── escreve de volta ──────────────────────────────────────────────────────
   const escritas: D1PreparedStatement[] = [];
 
+  /**
+   * A multa das quedas vai com o nome dela, e o ganho com o dele.
+   *
+   * Era um lançamento só, pela diferença, sempre como `drop` — e o livro
+   * registrava "drop −136.154 de sucata", que é uma frase sem sentido: drop
+   * não tira nada. Separar deixa o livro responder "de onde saiu isto" do
+   * mesmo jeito que responde para a morte ao vivo, que já sobe como `morte`.
+   * O crédito vai antes do débito para a multa nunca esbarrar num saldo que o
+   * próprio ganho da ausência cobriria.
+   */
+  const multa = Math.max(0, Math.trunc(relatorio.perdas?.multa ?? 0));
   for (const moeda of MOEDAS) {
     const d = Math.trunc(sim.state.resources[moeda] - antes.saldos[moeda]);
-    if (d !== 0) {
-      const r = await lancar(env, { usuario: id, moeda, quantia: d, motivo: 'drop', em: agora });
-      // Um lançamento recusado não derruba a ausência inteira: o resto do
-      // progresso é legítimo e já foi simulado.
-      void r;
-    }
+    const cobrado = moeda === 'sucata' ? multa : 0;
+    const ganho = d + cobrado;
+    // Um lançamento recusado não derruba a ausência inteira: o resto do
+    // progresso é legítimo e já foi simulado.
+    if (ganho !== 0) await lancar(env, { usuario: id, moeda, quantia: ganho, motivo: 'drop', em: agora });
+    if (cobrado > 0) await lancar(env, { usuario: id, moeda, quantia: -cobrado, motivo: 'morte', em: agora });
   }
 
   /**
@@ -2796,13 +2807,25 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     INSERT INTO progresso (usuario, xp, melhor_setor, matriz, casco_em_campo, semente, atualizado_em)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(usuario) DO UPDATE SET
-      xp = excluded.xp, melhor_setor = excluded.melhor_setor, atualizado_em = excluded.atualizado_em
+      xp = excluded.xp, melhor_setor = excluded.melhor_setor,
+      matriz = excluded.matriz, atualizado_em = excluded.atualizado_em
   `).bind(
     id, xpAcumuladoDe(sim.state.command, curvaXpPersonagem),
     Math.max(prog.melhorSetor, sim.state.run.sector),
+    /**
+     * A Matriz VOLTA da simulação, porque a queda de patente a encolhe.
+     *
+     * `cobrarMorte` devolve o último nó quando a patente cai. Esta coluna não
+     * era regravada aqui, então a ausência derrubava o nível e deixava os nós
+     * no lugar: o servidor ficava com mais nós do que a patente paga, e a
+     * próxima alocação do jogador era recusada inteira por `conferirMatriz`.
+     * A simulação parte da Matriz do servidor, então o que ela devolve é a
+     * mesma lista com a cobrança aplicada — nunca a do cliente.
+     */
+    JSON.stringify(sim.state.command.allocated),
     // A ausência não escolhe nave: o `DO UPDATE` acima não toca na coluna, e
     // estes valores só existem para o caso de a linha ainda não existir.
-    JSON.stringify(prog.matriz), prog.cascoEmCampo, prog.semente, agora,
+    prog.cascoEmCampo, prog.semente, agora,
   ));
 
   for (const [casco, nave] of Object.entries(sim.state.naves)) {
@@ -2846,6 +2869,13 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
     baus: relatorio.chests,
     xp: Math.round(xpAcumuladoDe(sim.state.command, curvaXpPersonagem) - antes.xp),
     itensNovos: [...depois].filter((u) => !antes.uids.has(u)).length,
+    // O que saiu, e não só o que entrou. Sem estes campos uma ausência que
+    // esvaziou o cofre chegava ao jogador como "3,21K abates" e mais nada.
+    quedas: relatorio.quedas ?? 0,
+    perdas: relatorio.perdas,
+    patente: relatorio.patente,
+    naves: relatorio.naves,
+    materiais: relatorio.materiais,
     // A incursão como ficou. O cliente adota — é o que faz morrer perder a
     // carga e concluir o setor guardá-la, igual ao jogo ao vivo.
     incursao: {

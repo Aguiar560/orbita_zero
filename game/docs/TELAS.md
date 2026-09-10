@@ -1128,6 +1128,36 @@ não um modal que tira o jogador da cena.
 
 ---
 
+## Relatório de ausência — `Shell.showOfflineReport`
+
+O modal que abre no boot quando o servidor creditou mais de dois minutos de
+aba fechada. Lê a resposta de `POST /ausencia` (repassada por
+`Game.creditarAusencia`); a conta de bruto × líquido mora em
+`sim/balanco-da-ausencia.ts`, e a tela só desenha.
+
+Blocos, nesta ordem, e cada um só aparece se tiver linha:
+
+- **Aviso vermelho** com o número de quedas, quando houve alguma — e o que
+  fazer: recuar um setor antes de sair, ou reforçar o equipamento.
+- **Patente**: `75 → 76 — há ponto de Matriz` em azul, ou `Patente caiu: 75 → 74`
+  em vermelho.
+- **Ganhou**: XP bruto do piloto, moedas brutas, materiais.
+- **Perdeu**: XP tirado pelas quedas, multa sobre a sucata do cofre, carga que
+  evaporou, materiais, nós da Matriz devolvidos.
+- **Naves**: cada nave que voou, com `nível antes → depois` e o XP líquido — a
+  frota troca de casco sozinha quando o combustível seca.
+- **Resultado**: o líquido de XP e de cada moeda. Só quando houve perda; sem ela,
+  ganho e resultado são o mesmo número.
+- Rodapé: abates, quedas, setores, baús.
+
+**Por que é assim (10/09).** O relatório desenhava só o que era positivo. Uma
+ausência de 37 minutos com a nave presa num setor alto demais — 41 quedas,
+7.297 de sucata tirada do cofre, XP perdido — chegou como "3,21K abates" e mais
+nada, e o jogador leu "não rendeu nada" quando tinha perdido. Não existe linha de
+item: a ausência não solta item (`tests/offline-online.test.ts`).
+
+---
+
 ## O que falta nas telas
 
 | Tela | Falta |

@@ -124,6 +124,7 @@ import {
 export { XP_GANHO_GLOBAL };
 
 import { cobrarMorte } from './morte';
+import { xpAcumuladoDe } from './nivel';
 import { activeElement, defenseElement, dps, resistance, resolveStats } from './stats';
 import { buildEncounter, encounterLabel, WAVES_PER_SECTOR, type Encounter } from './progression';
 import { dropChance, openChest, rollItem, scoreItem } from './loot';
@@ -174,6 +175,42 @@ export interface OfflineReport {
   niveis?: number;
   /** Peças novas no inventário. */
   itens?: number;
+  /**
+   * Quantas vezes a nave caiu.
+   *
+   * Tudo daqui para baixo existe pelo mesmo defeito, medido em 10/09: uma
+   * ausência de 37 minutos num setor alto demais derrubou a nave 41 vezes,
+   * levou 7.297 de sucata do cofre e XP do piloto — e o relatório mostrou só
+   * "3,21K abates", porque ele desenhava apenas o que era POSITIVO. A perda
+   * acontecia e ninguém a via. O relatório agora mostra o que entrou e o que
+   * saiu, separados.
+   */
+  quedas?: number;
+  /** O que as quedas levaram, somado ao longo da ausência. */
+  perdas?: PerdasDaAusencia;
+  /** Patente antes e depois. Pode DESCER: morrer tira XP e derruba nível. */
+  patente?: { antes: number; depois: number };
+  /**
+   * Cada nave que voou, com nível antes e depois e o XP líquido.
+   *
+   * Lista e não uma nave só: sem combustível a frota troca de casco sozinha
+   * no meio da ausência, e mostrar só a primeira esconderia o que a segunda
+   * ganhou ou perdeu.
+   */
+  naves?: { casco: string; antes: number; depois: number; xp: number }[];
+  /** Diferença do armazém. Só o que mudou. */
+  materiais?: Record<string, number>;
+}
+
+export interface PerdasDaAusencia {
+  /** A multa sobre a sucata DEPOSITADA — a morte cobra do cofre, não só da carga. */
+  multa: number;
+  /** A carga da incursão que evaporou nas quedas. */
+  carga: Record<ResourceId, number>;
+  /** XP do piloto tirado pelas quedas. Já está descontado do `xp` líquido. */
+  xpPiloto: number;
+  /** Nós da Matriz devolvidos por patente perdida, na ordem em que saíram. */
+  matriz: string[];
 }
 
 /**
@@ -2985,18 +3022,65 @@ export class Sim {
     const beforeSector = this.state.run.sector;
     const beforeKills = this.state.stats.kills;
     const beforeChests = Object.values(this.state.chests).reduce((s, n) => s + n, 0);
+    const beforeDeaths = this.state.stats.deaths;
+    const patenteAntes = this.state.command.nivel;
+    const xpAntes = xpAcumuladoDe(this.state.command, curvaXpPersonagem);
+    const navesAntes = new Map(Object.entries(this.state.naves)
+      .map(([casco, n]) => [casco, { nivel: n.nivel, xp: xpAcumuladoDe(n, curvaXpNave) }]));
+    const armazemAntes = { ...this.state.armazem };
+
+    /**
+     * As perdas são SOMADAS queda a queda, e não medidas por diferença.
+     *
+     * A diferença de saldo mistura as duas coisas: um setor que caiu e
+     * depositou 5.000 de carga, somado a dez quedas que cobraram 5.000 de
+     * multa, dá zero — e zero é "não aconteceu nada", que é a mentira que o
+     * relatório contava. `failEncounter` já anuncia o que cada queda levou;
+     * escutar durante o laço é ler esse número em vez de reconstruí-lo.
+     *
+     * O laço é síncrono, então nenhuma outra simulação emite no meio dele — nem
+     * no Worker, onde o `bus` é do módulo e as requisições dividem o isolado.
+     */
+    const perdas: PerdasDaAusencia = {
+      multa: 0, carga: { sucata: 0, nucleo: 0, cristal: 0 }, xpPiloto: 0, matriz: [],
+    };
+    const pararDeOuvir = bus.on('sector:failed', ({ perdido, resumo }) => {
+      perdas.multa += resumo.sucata;
+      perdas.xpPiloto += resumo.xpPersonagem;
+      perdas.matriz.push(...resumo.nosDevolvidos);
+      for (const id of RESOURCE_IDS) perdas.carga[id] += perdido[id] ?? 0;
+    });
 
     const STEP = 2;
     const steps = Math.min(Math.floor(total / STEP), 12000);
     const eff = OFFLINE_EFFICIENCY;
 
-    for (let i = 0; i < steps; i++) {
-      this.abstractTick(STEP * eff);
+    try {
+      for (let i = 0; i < steps; i++) {
+        this.abstractTick(STEP * eff);
+      }
+    } finally {
+      pararDeOuvir();
     }
 
     const gained = {} as Record<ResourceId, number>;
     for (const id of RESOURCE_IDS) gained[id] = this.state.resources[id] - before[id];
     const afterChests = Object.values(this.state.chests).reduce((s, n) => s + n, 0);
+
+    const naves: NonNullable<OfflineReport['naves']> = [];
+    for (const [casco, n] of Object.entries(this.state.naves)) {
+      const antes = navesAntes.get(casco) ?? { nivel: 1, xp: 0 };
+      const xp = xpAcumuladoDe(n, curvaXpNave) - antes.xp;
+      if (n.nivel !== antes.nivel || Math.abs(xp) >= 1) {
+        naves.push({ casco, antes: antes.nivel, depois: n.nivel, xp });
+      }
+    }
+
+    const materiais: Record<string, number> = {};
+    for (const id of new Set([...Object.keys(armazemAntes), ...Object.keys(this.state.armazem)])) {
+      const d = Math.trunc((this.state.armazem[id] ?? 0) - (armazemAntes[id] ?? 0));
+      if (d !== 0) materiais[id] = d;
+    }
 
     this.touch();
     return {
@@ -3006,6 +3090,14 @@ export class Sim {
       sectorsCleared: this.state.run.sector - beforeSector,
       kills: Math.floor(this.state.stats.kills - beforeKills),
       chests: afterChests - beforeChests,
+      // ACUMULADO, e não o campo `xp`, que é o resto dentro do nível e cai a
+      // cada nível subido. Mesma conta que o servidor faz.
+      xp: xpAcumuladoDe(this.state.command, curvaXpPersonagem) - xpAntes,
+      quedas: this.state.stats.deaths - beforeDeaths,
+      perdas,
+      patente: { antes: patenteAntes, depois: this.state.command.nivel },
+      naves,
+      materiais,
     };
   }
 

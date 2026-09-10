@@ -179,6 +179,53 @@ export async function sincronizarProgresso(sim: Sim): Promise<boolean> {
 }
 
 /**
+ * Adota o progresso que a AUSÊNCIA acabou de gravar — inclusive para baixo.
+ *
+ * ## Por que `sincronizarProgresso` não serve aqui
+ *
+ * `adotar` nunca rebaixa XP, e isso é certo para uma leitura comum: o
+ * servidor pode estar atrasado em relação ao que o jogador acabou de ganhar.
+ * Depois da ausência é o contrário. O servidor simulou as quedas e gravou o XP
+ * MENOR de propósito; com o `Math.max`, o cliente mantinha o valor antigo, e
+ * a drenagem seguinte mandava a diferença como ganho — devolvendo, em
+ * silêncio, o XP e a patente que as quedas tinham tirado. A sucata perdida
+ * ficava perdida (carteira não tem `max`), o XP voltava: metade da punição.
+ *
+ * ## O que se preserva
+ *
+ * Só o que o cliente tem e o servidor ainda não recebeu — a diferença entre o
+ * local e o marco, que é exatamente o que a próxima drenagem mandaria. A
+ * ausência partiu do XP do SERVIDOR, então esse pendente não passou por ela e
+ * soma por cima do resultado.
+ */
+export async function adotarAusencia(sim: Sim): Promise<boolean> {
+  const r = await chamar();
+  if (!r) return false;
+
+  if (sincronizado) {
+    const s = sim.state;
+    const pendente = Math.max(0, xpAcumuladoDe(s.command, curvaXpPersonagem) - marco.xp);
+    const piloto = nivelPorXpAcumulado(r.xp + pendente, curvaXpPersonagem);
+    s.command.nivel = piloto.nivel;
+    s.command.xp = piloto.resto;
+
+    for (const [casco, xp] of Object.entries(r.naves)) {
+      const nave = s.naves[casco];
+      if (!nave) continue;
+      const falta = Math.max(0, xpAcumuladoDe(nave, curvaXpNave) - (marco.naves[casco] ?? 0));
+      const v = nivelPorXpAcumulado(xp + falta, curvaXpNave);
+      nave.nivel = v.nivel;
+      nave.xp = v.resto;
+    }
+  }
+
+  // Com o local já rebaixado, o `Math.max` de `adotar` não tem o que
+  // desfazer — ele só move o marco e adota Matriz, setor e armazém.
+  adotar(sim, r);
+  return true;
+}
+
+/**
  * Envia o que mudou desde a última vez e adota o que voltar.
  *
  * ## Por que o delta é medido contra um marco, e não acumulado numa fila

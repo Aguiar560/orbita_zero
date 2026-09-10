@@ -1132,7 +1132,7 @@ aplicada.
 | `GET·POST /inventario` | mochila, equipado e o lote de comandos | `sincronia` |
 | `GET·POST /progresso` | XP, Matriz, melhor setor, casco em campo, semente | `sincronia` |
 | `GET·POST /missoes` | passos, entrega e a confiança derivada | `sincronia` |
-| `POST /ausencia` | o que rendeu com a aba fechada | `sincronia` |
+| `POST /ausencia` | o que rendeu **e o que custou** com a aba fechada: quedas, multa, carga perdida, patente e nível de cada nave antes/depois. A multa sobe como lançamento `morte`, separada do ganho (`drop`), e a Matriz encolhida pela queda de patente é regravada | `sincronia` |
 | `POST /sintetizar` | a fusão | `acao` |
 | `POST /frota` | comprar casco, registrar o do piloto | `acao` |
 | `POST /vip` | o passe, pago em cristais | `acao` |

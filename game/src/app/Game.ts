@@ -26,7 +26,7 @@ import { apelidoAtual, buscarMeuApelido, enviarMarcas } from './placar';
 import { drenarCarteira, espelharNoSim, sincronizar as sincronizarCarteira } from './carteira';
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota } from './inventario';
-import { drenarProgresso, sincronizarProgresso } from './progresso';
+import { adotarAusencia, drenarProgresso, sincronizarProgresso } from './progresso';
 import { drenarMissoes, sincronizarMissoes } from './missoes';
 import { creditarAusencia } from './ausencia';
 import { devoRecarregar, marcarTentativa, vigiarVersao } from './versao';
@@ -422,7 +422,10 @@ export class Game {
     await Promise.all([
       sincronizarCarteira(),
       drenarInventario(this.sim),
-      sincronizarProgresso(this.sim),
+      // `adotarAusencia` e não `sincronizarProgresso`: a ausência pode ter
+      // TIRADO XP, e a sincronização comum nunca rebaixa — devolveria na
+      // drenagem seguinte a patente que as quedas derrubaram.
+      adotarAusencia(this.sim),
     ]);
     // `sincronizarCarteira` enche o espelho; quem desenha lê `state.resources`.
     // Sem esta linha o relatório da ausência anuncia um ganho que o topo da
@@ -445,7 +448,14 @@ export class Game {
         // Os três que o servidor já mandava e ninguém lia.
         xp: r.xp ?? 0,
         itens: r.itensNovos ?? 0,
-        niveis: Math.max(0, this.sim.state.command.nivel - nivelAntes),
+        niveis: this.sim.state.command.nivel - nivelAntes,
+        quedas: r.quedas ?? 0,
+        perdas: r.perdas,
+        // A patente vem do SERVIDOR quando ele manda; a medição local é o
+        // recuo para um Worker antigo, que ainda não devolve o campo.
+        patente: r.patente ?? { antes: nivelAntes, depois: this.sim.state.command.nivel },
+        naves: r.naves ?? [],
+        materiais: r.materiais ?? {},
       });
     }
   }

@@ -13,6 +13,9 @@ import { PerfilMenu } from './PerfilMenu';
 import { encerrarSelecao, escolherElemento, selecaoPendente } from './selecao';
 import { ELEMENTS, getElement } from '@data/elements';
 import { getHull } from '@data/hulls';
+import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
+import { NODE_BY_ID } from '@data/tree';
+import { balancoDaAusencia } from '@sim/balanco-da-ausencia';
 import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
 import { temTutorial } from '@data/tutoriais';
 import type { Panel } from './panels/types';
@@ -1116,46 +1119,112 @@ export class Shell {
     if (report.seconds < 60) return;
 
     /**
-     * O XP entra na MESMA grade das moedas, e em primeiro lugar.
+     * O que entrou e o que saiu, em blocos separados.
      *
-     * O relatório mostrava só "N abates" e a grade vinha vazia sempre que
-     * nenhum setor caía — porque o abate paga em CARGA, e a carga só vira saldo
-     * ao concluir o setor. O jogador voltava de doze minutos lendo "22 abates"
-     * e concluía que a ausência não rendeu nada. Rendeu XP o tempo todo: o
-     * servidor mandava o número e ninguém o lia.
+     * O relatório desenhava só o que era POSITIVO. Numa ausência em que a nave
+     * caiu 41 vezes, levando sucata do cofre e XP do piloto, a grade vinha
+     * vazia e sobrava "3,21K abates" — o jogador lia "não rendeu nada" quando
+     * na verdade tinha perdido. Medido em 10/09. A conta de bruto e líquido
+     * mora em `balancoDaAusencia`; aqui só se desenha.
+     *
+     * NÃO existe linha de item, e a ausência dela é a regra: a ausência não
+     * solta item, nenhum. O item é a recompensa de ESTAR LÁ — ele cai numa
+     * cápsula que a nave precisa coletar. Ver tests/offline-online.test.ts.
      */
+    const b = balancoDaAusencia(report);
+    const VERMELHO = '#ff5d7a';
+    const sinal = (v: number): string => (v < 0 ? `−${fmt(Math.abs(Math.round(v)))}` : `+${fmt(Math.round(v))}`);
     const linha = (icone: string, rotulo: string, valor: string, cor: string): HTMLElement =>
       h('.offline-row', {}, spriteIcon(icone, 22), h('span', { text: rotulo }),
         h('strong', { text: valor, style: { color: cor } }));
+    const material = (id: string): { icone: string; nome: string } => {
+      const r = RECURSO_POR_ID.get(id);
+      return { icone: r ? iconeDeRecurso(r) : 'node/exp', nome: r?.nome ?? id };
+    };
+    const secao = (titulo: string, linhas: (HTMLElement | null)[]): HTMLElement | null => {
+      const cheias = linhas.filter(Boolean) as HTMLElement[];
+      return cheias.length ? h('.offline-secao', {}, h('h3', { text: titulo }), h('.offline-grid', {}, ...cheias)) : null;
+    };
 
-    const rows = [
-      (report.xp ?? 0) > 0 ? linha('node/exp', 'XP', `+${fmt(report.xp!)}`, '#9fe8ff') : null,
+    const ganhos = secao('Ganhou', [
+      b.ganhos.xp > 0 ? linha('node/exp', 'XP do piloto', `+${fmt(b.ganhos.xp)}`, '#9fe8ff') : null,
       ...RESOURCE_IDS
-        .filter((id) => report.gained[id] > 0)
+        .filter((id) => b.ganhos.moedas[id] > 0)
         .map((id) => linha(RESOURCE_META[id].icon, RESOURCE_META[id].label,
-          `+${fmt(report.gained[id])}`, RESOURCE_META[id].color)),
-      // NÃO existe linha de item aqui, e a ausência dela é a regra: a ausência
-      // não solta item, nenhum. O item é a recompensa de ESTAR LÁ — ele cai numa
-      // cápsula que a nave precisa coletar. Uma linha "peças novas" que nunca
-      // aparece é pior que nenhuma: ela ensina o oposto da regra a quem lê o
-      // código. Ver tests/offline-online.test.ts.
-    ].filter(Boolean) as HTMLElement[];
+          `+${fmt(b.ganhos.moedas[id])}`, RESOURCE_META[id].color)),
+      ...Object.entries(b.ganhos.materiais).map(([id, n]) => {
+        const m = material(id);
+        return linha(m.icone, m.nome, `+${fmt(n)}`, 'var(--text)');
+      }),
+    ]);
+
+    const perdas = secao('Perdeu', [
+      b.perdas.xp > 0 ? linha('node/exp', 'XP do piloto', `−${fmt(b.perdas.xp)}`, VERMELHO) : null,
+      b.perdas.multa > 0
+        ? linha(RESOURCE_META.sucata.icon, 'Sucata do cofre (multa das quedas)', `−${fmt(b.perdas.multa)}`, VERMELHO)
+        : null,
+      ...RESOURCE_IDS
+        .filter((id) => b.perdas.carga[id] > 0)
+        .map((id) => linha(RESOURCE_META[id].icon, `${RESOURCE_META[id].label} da carga (evaporou nas quedas)`,
+          `−${fmt(b.perdas.carga[id])}`, VERMELHO)),
+      ...Object.entries(b.perdas.materiais).map(([id, n]) => {
+        const m = material(id);
+        return linha(m.icone, m.nome, `−${fmt(n)}`, VERMELHO);
+      }),
+      ...b.perdas.matriz.map((no) =>
+        linha('node/exp', `Nó da Matriz devolvido: ${NODE_BY_ID.get(no)?.name ?? no}`, '−1', VERMELHO)),
+    ]);
+
+    // A nave tem nível próprio, e ele cai junto com o do piloto. Mostrar só a
+    // patente deixaria de fora metade do que a queda cobra.
+    const naves = secao('Naves', b.naves.map((n) => {
+      const nome = getHull(n.casco).name;
+      const nivel = n.depois === n.antes ? `nível ${n.depois}` : `nível ${n.antes} → ${n.depois}`;
+      const cor = n.depois < n.antes || n.xp < 0 ? VERMELHO : '#9fe8ff';
+      return linha('node/exp', `${nome} · ${nivel}`, `${sinal(n.xp)} XP`, cor);
+    }));
+
+    // O resultado só aparece quando houve perda: sem ela, ganho e resultado são
+    // o mesmo número, e repeti-lo seria ruído.
+    const resultado = b.houvePerda
+      ? secao('Resultado', [
+        linha('node/exp', 'XP do piloto', sinal(b.liquido.xp), b.liquido.xp < 0 ? VERMELHO : '#9fe8ff'),
+        ...RESOURCE_IDS
+          .filter((id) => b.liquido.moedas[id] !== 0)
+          .map((id) => linha(RESOURCE_META[id].icon, RESOURCE_META[id].label, sinal(b.liquido.moedas[id]),
+            b.liquido.moedas[id] < 0 ? VERMELHO : RESOURCE_META[id].color)),
+      ])
+      : null;
+
+    const patente = b.patente
+      ? b.patente.depois > b.patente.antes
+        // Subir de patente é acontecimento, e não um número: ele dá ponto de
+        // Matriz, que é uma decisão esperando o jogador.
+        ? h('p.offline-patente', {
+          text: `Patente ${b.patente.antes} → ${b.patente.depois} — há ponto de Matriz para gastar.`,
+        })
+        : h('p.offline-patente.caiu', { text: `Patente caiu: ${b.patente.antes} → ${b.patente.depois}.` })
+      : null;
 
     const modal = h('.modal-backdrop', {},
-      h('.modal', {},
+      h('.modal.offline-modal', {},
         h('h2', { text: 'Relatório de ausência' }),
         h('p.muted', { text: `A frota operou sozinha por ${duration(report.seconds)}${report.capped ? ' (teto atingido)' : ''}.` }),
-        // Subir de patente é o único acontecimento aqui, e não um número: ele
-        // dá ponto de Matriz, que é uma decisão esperando o jogador.
-        (report.niveis ?? 0) > 0
-          ? h('p.offline-patente', {
-            text: report.niveis === 1 ? 'Subiu uma patente — há ponto de Matriz para gastar.'
-              : `Subiu ${report.niveis} patentes — há pontos de Matriz para gastar.`,
+        b.quedas > 0
+          ? h('p.offline-alerta', {
+            text: `A nave caiu ${fmt(b.quedas)} ${b.quedas === 1 ? 'vez' : 'vezes'}. O setor em que ela ficou está `
+              + 'acima do que ela aguenta — recue um setor antes de sair, ou reforce o equipamento.',
           })
           : null,
-        h('.offline-grid', {}, ...rows),
+        patente,
+        ganhos,
+        perdas,
+        naves,
+        resultado,
+        b.vazio ? h('p.muted', { text: 'Nada entrou e nada saiu: a frota não decolou.' }) : null,
         h('.offline-extra', {},
           h('span', { text: `${fmt(report.kills)} abates` }),
+          h('span', { text: `${fmt(b.quedas)} quedas` }),
           report.sectorsCleared > 0 ? h('span', { text: `${report.sectorsCleared} setores` }) : null,
           report.chests > 0 ? h('span', { text: `${report.chests} baús` }) : null,
         ),
