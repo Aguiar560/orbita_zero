@@ -434,6 +434,15 @@ O mapa é camada em tela cheia. Clicar numa fase já saltava para ela, mas a
 camada continuava aberta **por cima do combate que o próprio clique acabou de
 começar** — e o jogador tinha de fechá-la para ver o que pediu.
 
+### Barreira de acesso ao chefe
+
+Ao selecionar um setor de chefe, a ficha mostra um cartão de acesso separado,
+fora do detalhe do setor, com a arte da chave, a quantidade no Armazém e a ação
+de entrada. A mesma barreira aparece ao concluir o setor anterior (9, 19, 29…):
+o setor seguinte é liberado no mapa, mas a nave permanece no setor concluído até
+o jogador confirmar. A confirmação consome uma chave exclusiva da galáxia;
+cancelar mantém a nave onde está e não gasta nada.
+
 
 ---
 

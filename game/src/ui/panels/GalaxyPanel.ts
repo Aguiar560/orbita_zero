@@ -96,6 +96,16 @@ export class GalaxyPanel implements Panel {
       bus.emit('panel:close');
     };
 
+    const cartaoDeAcesso = selected.isBoss ? h('.galaxy-command-access-card', { style: { '--key-cor': chaveSelecionada.cor } as Partial<CSSStyleDeclaration> },
+      h('img', { src: `/assets/${chaveSelecionada.arte}`, alt: '', 'aria-hidden': 'true' }),
+      h('.galaxy-command-access-copy', {},
+        h('small', { text: acessoLiberado ? 'CHAVE DE ACESSO' : 'CHAVE DE ACESSO REQUERIDA' }),
+        h('strong', { text: `${chaveSelecionada.nome} · ${quantidadeChave} disponível` }),
+        h('span', { text: acessoLiberado ? 'Deseja entrar no setor do chefe?' : 'Conclua os setores anteriores para obter esta chave.' }),
+      ),
+      h('button.galaxy-command-access-button', { disabled: !acessoLiberado || !selecionavel, onclick: selecionarSetor, text: acessoLiberado ? 'ENTRAR NO SETOR' : 'SEM CHAVE' }),
+    ) : null;
+
     const colunaRegiao = h('.galaxy-command-col.galaxy-command-region', {},
       this.sectionTitle('REGIÃO'),
       h('.galaxy-command-nav', {},
@@ -189,15 +199,11 @@ export class GalaxyPanel implements Panel {
                 ['Poder inimigo', fmt(sectorDamage(selected.sector))], ['Recompensa base', fmt(sectorBounty(selected.sector))],
               ].map(([label, value]) => h('.galaxy-command-stat-row', {}, h('span', { text: label }), h('b', { text: value }))),
             ),
-            selected.isBoss ? h('.galaxy-command-key-status', { style: { '--key-cor': chaveSelecionada.cor } as Partial<CSSStyleDeclaration> },
-              h('img', { src: `/assets/${chaveSelecionada.arte}`, alt: '', 'aria-hidden': 'true' }),
-              h('span', {}, h('small', { text: 'CHAVE DE ACESSO' }), h('b', { text: `${chaveSelecionada.nome} · ${quantidadeChave} disponível` })),
-              h('em', { text: acessoLiberado ? 'PRONTA' : 'NECESSÁRIA' }),
-            ) : null,
           ),
           h('button.galaxy-command-select', { disabled: !selecionavel || !acessoLiberado, onclick: selecionarSetor, text: !acessoLiberado ? 'CHAVE NECESSÁRIA' : selecionavel ? (setorAtual ? 'SETOR ATUAL' : 'SELECIONAR SETOR') : 'SETOR BLOQUEADO' }),
         ),
       ),
+      cartaoDeAcesso,
       h('.galaxy-command-bottom', {},
         h('.galaxy-command-modifiers', {}, this.sectionTitle('MODIFICADORES DA REGIÃO'),
           ...[['Ondas mais agressivas', `+${Math.max(5, Math.round(selected.phase * 2.5))}% inimigos`], ['Regeneração inimiga', `+${Math.max(2, selected.phase)}% vida dos inimigos`], ['Tempo de recarga reduzido', `-${Math.max(4, selected.phase)}% tempo entre ondas`]].map(([label, value], index) => h('.galaxy-command-modifier', {}, galaxyIcon(['threat-aerial', 'region-activity', 'region-environment'][index]!, 'galaxy-command-modifier-icon'), h('span', {}, h('b', { text: label }), h('small', { text: value })))),

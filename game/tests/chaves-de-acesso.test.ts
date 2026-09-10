@@ -3,6 +3,7 @@ import { BOSSES } from '@data/bosses';
 import { CHAVE_POR_ID, CHAVES_DE_ACESSO } from '@data/chaves-de-acesso';
 import { createState, migrate, SAVE_VERSION } from '@sim/state';
 import { Sim } from '@sim/index';
+import { WAVES_PER_SECTOR } from '@sim/progression';
 
 describe('chaves de acesso', () => {
   it('mantém uma chave exclusiva para cada galáxia e chefe', () => {
@@ -40,5 +41,22 @@ describe('chaves de acesso', () => {
     const source = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8'));
     expect(source).toContain('boss:access-requested');
     expect(source).toContain('Você possui ${quantidade}');
+  });
+
+  it('segura o avanço do setor anterior até confirmar a chave', () => {
+    const state = createState();
+    const chave = CHAVES_DE_ACESSO[0]!;
+    state.run.sector = 9;
+    state.run.wave = WAVES_PER_SECTOR + 1;
+    state.chavesAcesso[chave.id] = 1;
+    const sim = new Sim(state);
+
+    sim.completeEncounter();
+    expect(sim.state.run.sector).toBe(9);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(2); // garantia do setor 9 + a chave inicial
+
+    expect(sim.prepararAcessoAoChefe(chave.bossId)).toBe(true);
+    expect(sim.state.run.sector).toBe(10);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
   });
 });

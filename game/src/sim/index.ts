@@ -293,6 +293,9 @@ export class Sim {
   // `tirarMarco` lê `this.state`, que só existe depois. O construtor marca.
   private marco!: MarcoDeSetor;
 
+  /** Setor de chefe aguardando confirmação da chave após concluir o anterior. */
+  private pendingBossSector: number | undefined;
+
   /**
    * O resultado da última luta da Provação, para as telas do §30–§33.
    *
@@ -740,6 +743,13 @@ export class Sim {
    * conquista.
    */
   recuarUmSetor(): boolean {
+    // Após concluir o setor anterior, a barreira mantém o ponteiro nele. Cancelar
+    // a entrada deve apenas fechar a oferta — nunca recuar mais um setor.
+    if (this.pendingBossSector !== undefined && this.pendingBossSector === this.state.run.sector + 1) {
+      this.pendingBossSector = undefined;
+      this.touch();
+      return true;
+    }
     if (this.state.run.sector <= 1) return false;
     // `jumpSector` zera as quedas.
     this.jumpSector(this.state.run.sector - 1);
@@ -747,7 +757,9 @@ export class Sim {
   }
 
   jumpSector(sector: number): void {
-    this.state.run.sector = Math.max(1, Math.floor(sector));
+    const destino = Math.max(1, Math.floor(sector));
+    this.pendingBossSector = isBossSector(destino) && !this.testMode ? destino : undefined;
+    this.state.run.sector = destino;
     this.state.run.wave = 1;
     // As quedas são DESTE setor, então trocar de setor zera a conta.
     //
@@ -1689,6 +1701,15 @@ export class Sim {
     if (restante > 0) this.state.chavesAcesso[chave.id] = restante;
     else delete this.state.chavesAcesso[chave.id];
     run.chaveAcessoConsumida = bossId;
+    if (this.pendingBossSector !== undefined && bossForSector(this.pendingBossSector).id === bossId) {
+      run.sector = this.pendingBossSector;
+      run.wave = 1;
+      run.falhasNoSetor = 0;
+      this.pendingBossSector = undefined;
+      this.marcarSetor();
+      this.refreshEncounter();
+      bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
+    }
     bus.emit('access-key:consumed', { galaxia: chave.galaxia, id: chave.id });
     this.touch();
     return true;
@@ -1826,8 +1847,10 @@ export class Sim {
        * acima): o acesso é conquistado, só o ponteiro é que fica parado. Quando
        * o jogador voltar, ele escolhe se avança.
        */
-      if (!abstract && !this.state.settings.repetirSetor) run.sector = proximo;
-      if (!abstract && run.sector === proximo && isBossSector(proximo) && !this.testMode) {
+      const aguardandoChave = !abstract && !this.state.settings.repetirSetor && isBossSector(proximo) && !this.testMode;
+      if (!abstract && !this.state.settings.repetirSetor && !aguardandoChave) run.sector = proximo;
+      if (aguardandoChave) {
+        this.pendingBossSector = proximo;
         const boss = bossForSector(proximo);
         bus.emit('boss:access-requested', { sector: proximo, galaxia: galaxyOfSector(proximo), bossId: boss.id });
       }
@@ -1842,7 +1865,7 @@ export class Sim {
       // e com a trava de repetir o setor run.sector nem chega a mudar.
       this.registrar({ tipo: 'setor', setor: e.sector, galaxia: galaxyOfSector(e.sector) });
       this.registrar({ tipo: 'galaxia', galaxia: galaxyOfSector(this.state.universe.bestSectorEver) });
-      bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
+      if (!aguardandoChave) bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
     } else {
       run.wave++;
     }
