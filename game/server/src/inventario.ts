@@ -141,6 +141,34 @@ export function derivarColeta(
 }
 
 /**
+ * Quantas peças ainda cabem na MOCHILA, depois dos descartes do lote.
+ *
+ * ## Por que o servidor passou a contar
+ *
+ * O teto de 70 (`CARGA_MAXIMA`) existia só no navegador. O servidor gravava
+ * toda coleta que chegava, e em 10/09/2026 a conta de teste tinha 71 peças na
+ * mochila dele — o cliente cortava a lista na tela e a sincronização seguinte
+ * a trazia de volta.
+ *
+ * O teto é o ABSOLUTO, igual para todos: a capacidade de cada jogador (15 a
+ * 70, por concessão) mora no save e não é conferível aqui. O que o servidor
+ * garante é que ninguém passa de 70, por defeito ou por console.
+ *
+ * Os descartes do mesmo lote entram na conta: coletar nove e descartar sete é
+ * o ritmo normal, e contar só as coletas recusaria o jogador que está no teto
+ * e desmanchando tudo que cai.
+ */
+export function vagasNaMochila(
+  mochila: readonly string[],
+  descartar: readonly string[],
+  teto: number,
+): number {
+  const saem = new Set(descartar);
+  const ficam = mochila.filter((uid) => !saem.has(uid)).length;
+  return Math.max(0, teto - ficam);
+}
+
+/**
  * A peça pode ir para esta nave?
  *
  * `naveAceita` é o MESMO arquivo que o cliente usa — nenhuma cópia da regra.

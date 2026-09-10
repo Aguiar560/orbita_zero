@@ -801,6 +801,19 @@ export class Sim {
 
     this.state.inventory = ordenados.slice(0, CARGA_MAXIMA);
     const removidos = antes - this.state.inventory.length;
+    /**
+     * O corte vai para o SERVIDOR também.
+     *
+     * Era só o `slice` acima, e o inventário é espelho do servidor desde a
+     * Fase 3b: a sincronização seguinte trazia as peças cortadas de volta. Em
+     * 10/09/2026 a conta de teste tinha 71 na mochila do servidor e a tela
+     * voltava a mostrar 71/70 a cada boot — e, sem vaga nunca, o aviso de
+     * espaço do chefe não tinha como aparecer.
+     */
+    for (const item of ordenados.slice(CARGA_MAXIMA)) {
+      this.state.comandosDeItem.push({ tipo: 'descartar', uid: item.uid });
+    }
+    if (removidos > 0) bus.emit('itens:comando', {});
     this.touch();
     toast(`Carga de teste normalizada: ${CARGA_MAXIMA}/${CARGA_MAXIMA}`, 'good');
     return removidos;

@@ -17,7 +17,8 @@ import {
   rolarDoCursor, setorValido, sorteValida,
   type TipoDeDrop,
 } from './lote';
-import { conferirComandos, derivarColeta, planejarEquipar, type Comandos } from './inventario';
+import { conferirComandos, derivarColeta, planejarEquipar, vagasNaMochila, type Comandos } from './inventario';
+import { CARGA_MAXIMA } from '@data/balance/capacidade';
 import {
   cascoDoPiloto, conferirCompraDeCasco, conferirFusao, fundir,
 } from './fabrica';
@@ -2033,6 +2034,8 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
    * o que deixava o inventário dele permanentemente à frente do servidor.
    */
   let faltaram: Partial<Record<TipoDeDrop, number>> = {};
+  /** Peças coletadas que não couberam no teto de 70. Contadas, não gravadas. */
+  let acimaDoTeto = 0;
 
   // ── coletar ───────────────────────────────────────────────────────────────
   const pedido = comandos.coletar ?? {};
@@ -2071,9 +2074,18 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
     const coleta = derivarColeta(rolado, zerado, pedido);
     faltaram = coleta.faltaram;
 
+    // O teto absoluto da mochila. Ver `vagasNaMochila`: o cursor anda igual —
+    // a peça saiu do pote —, mas o que passa de 70 não é gravado.
+    const mochila = await env.DB
+      .prepare('SELECT uid FROM itens WHERE usuario = ? AND nave IS NULL')
+      .bind(id).all<{ uid: string }>();
+    let vagas = vagasNaMochila(mochila.results.map((l) => l.uid), comandos.descartar ?? [], CARGA_MAXIMA);
+
     for (const item of coleta.itens) {
       // Caiu e já foi descartado neste mesmo lote: não grava.
       if (descartados.has(item.uid)) { nascidosEMortos.add(item.uid); continue; }
+      if (vagas <= 0) { acimaDoTeto++; continue; }
+      vagas--;
       // O `equipar` deste mesmo lote precisa ENXERGAR o que acabou de cair. As
       // escritas só rodam no fim, então um `SELECT` não encontraria a peça — e
       // era isso que derrubava o lote inteiro. Ver `planejarEquipar`.
@@ -2142,11 +2154,14 @@ async function aplicarComandos(req: Request, env: Env, id: string, origem: strin
   }
 
   if (escritas.length) await env.DB.batch(escritas);
+  // Um cliente que coletou além do teto é defeito (o jogo não coleta sem vaga)
+  // ou console. Nos dois casos precisa aparecer no livro, e não só sumir.
+  if (acimaDoTeto) await anotarVarias(env, '/inventario', [{ motivo: 'acima_do_teto', n: acimaDoTeto }]);
   // Os recusados vão na resposta em vez de derrubarem o lote. O cliente adota a
   // lista que volta, então uma peça recusada simplesmente aparece desequipada —
   // que é a verdade.
   return json({
-    itens: await inventarioDe(env, id), recusados: plano.recusados, faltaram,
+    itens: await inventarioDe(env, id), recusados: plano.recusados, faltaram, acimaDoTeto,
   }, 200, origem);
 }
 // ── síntese e frota ─────────────────────────────────────────────────────────

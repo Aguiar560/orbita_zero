@@ -817,7 +817,9 @@ export class Shell {
   private avisarEspacoParaOChefe(): void {
     const pecas = this.sim.pecasDoChefe();
     const livres = this.sim.espacosLivres;
-    if (pecas <= livres || this.sim.testMode) return;
+    // Vale no modo de teste também: é a conta do Rafael que testa isto, e a
+    // capacidade do teste (70) é o mesmo teto que o servidor aplica a todos.
+    if (pecas <= livres) return;
     this.root.querySelector('.aviso-chefe')?.remove();
 
     const cartao = h('.dica-escudo.pecas-retidas.aviso-chefe', { role: 'alert' });

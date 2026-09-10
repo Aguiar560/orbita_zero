@@ -60,7 +60,9 @@ describe('equipar chega ao servidor antes da recarga', () => {
      */
     const sim = fonte('sim', 'index.ts');
     const avisos = sim.split("bus.emit('itens:comando', {});").length - 1;
-    expect(avisos).toBe(2); // equipar e desequipar
+    // Equipar, desequipar e o corte da normalização da conta de teste, que
+    // desde 10/09/2026 manda o descarte para o servidor em vez de só esconder.
+    expect(avisos).toBe(3);
   });
 
   it('e o servidor é a autoridade sobre o que está equipado', () => {

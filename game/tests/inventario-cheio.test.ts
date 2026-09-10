@@ -20,6 +20,7 @@ import { bus } from '@app/Bus';
 import { Sim } from '@sim/index';
 import { createState, migrate } from '@sim/state';
 import { PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
+import { vagasNaMochila } from '../server/src/inventario';
 
 const shell = readFileSync(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8');
 
@@ -230,5 +231,33 @@ describe('as peças do chefe esperam espaço', () => {
     sim.refreshEncounter();
     expect(sim.encounter.kind).toBe('chefe');
     expect(sim.pecasDoChefe()).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('o teto absoluto de 70', () => {
+  /**
+   * Relato de 10/09/2026: a conta de teste tinha 71 peças na mochila do
+   * SERVIDOR. O teto só existia no navegador, e a normalização da conta de teste
+   * cortava a lista só na tela — a sincronização seguinte trazia as peças de
+   * volta.
+   */
+  it('o servidor conta as vagas depois dos descartes do lote', () => {
+    const mochila = Array.from({ length: 70 }, (_, i) => `m${i}`);
+    expect(vagasNaMochila(mochila, [], 70)).toBe(0);
+    expect(vagasNaMochila(mochila, ['m1', 'm2', 'fora'], 70)).toBe(2);
+    expect(vagasNaMochila([...mochila, 'm70'], [], 70)).toBe(0);
+  });
+
+  it('a normalização da conta de teste manda o corte para o servidor', () => {
+    const sim = new Sim(createState(41));
+    sim.state.settings.testMode = true;
+    sim.state.inventory = Array.from({ length: 73 }, (_, i) => peca(`p${i}`, 1));
+    expect(sim.normalizarCargaDeTeste()).toBe(3);
+    expect(sim.state.inventory).toHaveLength(70);
+    const descartes = sim.state.comandosDeItem.filter((c) => c.tipo === 'descartar');
+    expect(descartes).toHaveLength(3);
+    // O que sobe é exatamente o que saiu da tela.
+    const ficaram = new Set(sim.state.inventory.map((i) => i.uid));
+    for (const d of descartes) expect(ficaram.has(d.uid!)).toBe(false);
   });
 });
