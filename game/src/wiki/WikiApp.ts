@@ -205,6 +205,10 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
         corpo: 'Todo novo piloto escolhe um apelido antes de entrar no jogo. Ele aparece no perfil, ranking e recursos sociais; e-mail, identificadores técnicos e detalhes de sessão permanecem ocultos para proteger jogadores e streamers.',
       },
       {
+        titulo: 'Conta de teste',
+        corpo: 'Contas administrativas de teste usam a capacidade completa de 70 espaços. Se um estado local antigo ultrapassar esse limite, ao abrir o jogo a carga é normalizada para 70/70, preservando favoritos e priorizando as peças mais fortes. Essa correção não altera inventários de jogadores comuns.',
+      },
+      {
         titulo: 'Apagar progresso',
         corpo: 'Apagar o progresso é uma ação destrutiva. Depois da confirmação, a sessão é encerrada para impedir que o cliente continue usando dados que já não existem.',
       },

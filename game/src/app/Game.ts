@@ -315,6 +315,11 @@ export class Game {
       this.sim.save();
     }
 
+    // Saves locais de teste antigos podem ter recebido mais itens do que a
+    // capacidade liberada. Corrigir depois da drenagem garante que a tela
+    // nunca abra com uma carga impossível, sem afetar jogadores comuns.
+    if (this.sim.testMode && this.sim.normalizarCargaDeTeste() > 0) this.sim.save();
+
     if (!this.sim.state.piloto) {
       await new EscolhaDePiloto(this.sim, this.rootEl).mostrar();
       this.vertical.refreshPlayer(true);

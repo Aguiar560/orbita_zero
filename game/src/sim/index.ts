@@ -717,12 +717,47 @@ export class Sim {
 
   setTestMode(on: boolean): void {
     this.state.settings.testMode = on;
+    if (on) this.normalizarCargaDeTeste();
     // Nada de escrever no save aqui. O hangar, os setores, a loja e a
     // capacidade são liberados por LEITURA (ver `alcanceLiberado` e vizinhos),
     // e é isso que faz desligar o modo devolver o save intacto. A versão
     // anterior empurrava os cascos em `state.fleet` e não os tirava.
     if (!on) this.state.settings.speed = 1;
     this.touch();
+  }
+
+  /**
+   * Corrige saves locais de teste que ficaram acima da capacidade visual.
+   *
+   * O modo de teste libera 70 espaços, mas versões antigas do botão de
+   * concessão de itens podiam deixar 125 peças no estado local. Isso fazia a
+   * tela mostrar `125/70` e, pior, tornava impossível saber qual peça seria
+   * perdida no próximo drop. A correção é exclusiva do modo de teste: não
+   * altera inventários de jogadores comuns e mantém favoritos antes de usar
+   * poder, raridade e nível como critério de triagem.
+   *
+   * Devolve quantas peças foram removidas para o chamador decidir se precisa
+   * persistir o save. Equipamentos ficam fora de `inventory` e não são
+   * tocados.
+   */
+  normalizarCargaDeTeste(): number {
+    if (!this.testMode || this.state.inventory.length <= CARGA_MAXIMA) return 0;
+
+    const antes = this.state.inventory.length;
+    const ordenados = [...this.state.inventory].sort((a, b) => {
+      if (Boolean(a.favorite) !== Boolean(b.favorite)) return a.favorite ? -1 : 1;
+      const brutoA = scoreItem(this.state, a);
+      const brutoB = scoreItem(this.state, b);
+      const poderA = Number.isFinite(brutoA) ? brutoA : 0;
+      const poderB = Number.isFinite(brutoB) ? brutoB : 0;
+      return poderB - poderA || b.rarity - a.rarity || b.ilvl - a.ilvl;
+    });
+
+    this.state.inventory = ordenados.slice(0, CARGA_MAXIMA);
+    const removidos = antes - this.state.inventory.length;
+    this.touch();
+    toast(`Carga de teste normalizada: ${CARGA_MAXIMA}/${CARGA_MAXIMA}`, 'good');
+    return removidos;
   }
 
   // ── recursos ──────────────────────────────────────────────────────────────
