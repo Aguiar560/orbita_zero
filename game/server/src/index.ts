@@ -1950,7 +1950,10 @@ interface LinhaDeItem { uid: string; dados: string; nave: string | null; slot: s
 /** A mochila e o equipado, do jeito que o cliente desenha. */
 async function inventarioDe(env: Env, usuario: string) {
   const { results } = await env.DB
-    .prepare('SELECT uid, dados, nave, slot FROM itens WHERE usuario = ?')
+    // Por ordem de GRAVAÇÃO: é a ordem de chegada que o Inventário mostra em
+    // "Mais recentes". Sem o ORDER BY o SQLite não promete ordem nenhuma — ela
+    // sai do índice que o plano escolher, e mudaria sem ninguém mexer aqui.
+    .prepare('SELECT uid, dados, nave, slot FROM itens WHERE usuario = ? ORDER BY rowid')
     .bind(usuario)
     .all<LinhaDeItem>();
 

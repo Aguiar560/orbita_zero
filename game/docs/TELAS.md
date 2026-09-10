@@ -348,9 +348,14 @@ aparecem no Hangar: seriam uma fileira permanente de bloqueado sem chave.
 
 `ui/panels/InventoryPanel.ts` · 233 linhas · **painel fixo, sem aba**
 
-Grade de peças com filtro por raridade (7 botões), filtro por elemento, cinco
-ordens (poder, raridade, slot, nível, melhor tier), favoritos, venda e
-desmontagem em lote. A ficha antecipa os dois retornos e vem de `ui/ItemCard.ts`.
+Grade de peças com filtro por raridade (7 botões), filtro por elemento, seis
+ordens (**mais recentes**, poder, raridade, slot, nível, melhor tier), favoritos,
+venda e desmontagem em lote.
+
+"Mais recentes" é o padrão desde 10/09/2026: em "Ganho de poder" a peça que
+acabava de cair entrava no meio das outras e o jogador se perdia. A ordem de
+chegada é a posição na mochila (`ordemDeChegada`) — `stash` põe a nova no fim e
+o servidor devolve a mochila `ORDER BY rowid`. A ficha antecipa os dois retornos e vem de `ui/ItemCard.ts`.
 
 No celular, toque substitui hover: o primeiro toque abre a ficha completa e
 seleciona a peça; o jogador então abre **Anatomia** pelo dock e toca no soquete

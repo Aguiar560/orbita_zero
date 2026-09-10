@@ -16,6 +16,23 @@ function melhorTier(item: Item): number {
   return item.affixes.reduce((m, a) => Math.max(m, a.tier ?? 1), 0);
 }
 
+/**
+ * As peças da mais nova para a mais antiga.
+ *
+ * A ordem de chegada É a posição na mochila: `stash` põe a peça nova no fim, e
+ * o servidor devolve a mochila por ordem de gravação (`ORDER BY rowid` em
+ * `inventarioDe`). Não há carimbo de data na peça, e não precisa haver — a
+ * lista já é a história.
+ *
+ * Exceção conhecida: a peça que volta do soquete ao desequipar mantém a
+ * posição de quando CHEGOU, e não a de quando voltou. Na tela local ela vai para
+ * o fim até a próxima sincronização.
+ */
+export function ordemDeChegada(mochila: readonly Item[], lista: Item[]): Item[] {
+  const posicao = new Map(mochila.map((item, i) => [item.uid, i]));
+  return lista.sort((a, b) => (posicao.get(b.uid) ?? -1) - (posicao.get(a.uid) ?? -1));
+}
+
 import { scoreItem, classeDeExclusivo } from '@sim/loot';
 import type { Item, Rarity, SlotId } from '@sim/types';
 import type { Sim } from '@sim/index';
@@ -86,7 +103,15 @@ export class InventoryPanel implements Panel {
   private slot: SlotId | 'todos' = 'todos';
   /** Só favoritos — o inventário nasce com 15 espaços, então marcar importa. */
   private soFavoritos = false;
-  private sort: 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'poder';
+  /**
+   * A ordem da grade. Nasce em "Mais recentes".
+   *
+   * Era "Ganho de poder", e a peça que acabava de cair entrava no meio das
+   * outras, no lugar que o poder dela mandava — o jogador via a cápsula ser
+   * coletada e não achava a peça (pedido de 10/09/2026). Com a mais nova
+   * primeiro, o que chegou está sempre no mesmo lugar: o começo da grade.
+   */
+  private sort: 'recentes' | 'poder' | 'raridade' | 'slot' | 'tier' | 'nivel' = 'recentes';
   /** Seleção exclusiva das ações em lote; não interfere na peça da Anatomia. */
   private readonly selecionados = new Set<string>();
   /** Aguarda o segundo clique para separar seleção de equipamento. */
@@ -153,6 +178,7 @@ export class InventoryPanel implements Panel {
           h('select.select', {
             onchange: (e: Event) => { this.sort = (e.target as HTMLSelectElement).value as typeof this.sort; sim.touch(); },
           },
+            h('option', { value: 'recentes', text: 'Mais recentes', selected: this.sort === 'recentes' }),
             h('option', { value: 'poder', text: 'Ganho de poder', selected: this.sort === 'poder' }),
             h('option', { value: 'raridade', text: 'Raridade', selected: this.sort === 'raridade' }),
             h('option', { value: 'slot', text: 'Slot', selected: this.sort === 'slot' }),
@@ -228,6 +254,8 @@ export class InventoryPanel implements Panel {
       && (!this.soFavoritos || i.favorite));
 
     switch (this.sort) {
+      case 'recentes':
+        return ordemDeChegada(sim.state.inventory, list);
       case 'raridade':
         return list.sort((a, b) => b.rarity - a.rarity || b.ilvl - a.ilvl);
       case 'slot':
