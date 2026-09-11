@@ -261,6 +261,11 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
         dica: 'Trocar de apelido não reinicia o canal: a data de chegada é a do primeiro apelido.',
       },
       {
+        titulo: 'Jogar em outro idioma',
+        corpo: 'O jogo está em português. Quando o navegador está em outro idioma, um aviso em inglês no canto inferior esquerdo explica como ligar o tradutor do próprio navegador (botão direito → Traduzir). Menus e painéis são traduzidos; o texto desenhado na cena de combate continua em português. Nomes de naves, chefes e galáxias, e o nome Órbita Zero, ficam protegidos do tradutor, para o mesmo lugar não ter um nome no painel e outro no combate.',
+        dica: 'Fechar o aviso em GOT IT vale para sempre naquele navegador. Ele também some sozinho quando a página já foi traduzida.',
+      },
+      {
         titulo: 'Conta de teste',
         corpo: 'Contas administrativas de teste usam a capacidade completa de 70 espaços. Se um estado local antigo ultrapassar esse limite, ao abrir o jogo a carga é normalizada para 70/70, preservando favoritos e priorizando as peças mais fortes. Essa correção não altera inventários de jogadores comuns.',
       },

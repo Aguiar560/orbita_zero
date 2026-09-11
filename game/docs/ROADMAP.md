@@ -8,8 +8,34 @@ Os dois documentos ao lado não são isto:
 design, e [`FASE-0-AUDITORIA.md`](FASE-0-AUDITORIA.md) é o diagnóstico de um
 momento — o ponto de partida, que não se reescreve.
 
-**Última atualização:** 10/09/2026 · **1.670 testes** em 165 arquivos · registro consolidado
+**Última atualização:** 10/09/2026 · **1.684 testes** em 166 arquivos · registro consolidado
 de agosto em [`ATUALIZACAO-2026-08-25.md`](ATUALIZACAO-2026-08-25.md).
+
+---
+
+## 10/09/2026 — quem joga de fora lê onde fica o tradutor
+
+Com o jogo no itch.io, chegam visitantes que não leem português, e a página não
+consegue ligar o tradutor do navegador por eles. Duas peças:
+
+- **Aviso em inglês** (`ui/AvisoDeIdioma.ts` + `styles/idioma.css`), só quando
+  nenhum idioma do navegador é português (`ui/idioma.ts`). Canto inferior
+  esquerdo, `translate="no"`, some quando o Chrome marca a página como traduzida,
+  e "GOT IT" vale para sempre naquele navegador. Sai antes da divisão
+  wiki/jogo, então aparece nas duas, e é import sob demanda.
+- **Nomes protegidos** (`ui/nomes-proprios.ts`): todo texto de `h()` marca com
+  `translate="no"` a marca, as 53 naves, os 30 chefes e as 30 galáxias — no
+  próprio elemento quando o texto é o nome, num `<span>` quando o nome está no
+  meio da frase. Motivo: o combate é canvas e não é traduzido, e o mesmo lugar
+  com dois nomes parece dois lugares. Inimigos comuns ficaram de fora ("Dardo",
+  "Cometa" são palavras de frase). Em português nada disso roda.
+
+Medido no navegador de desenvolvimento com `navigator.languages` trocado para
+inglês: aviso aparece, "GOT IT" grava e não volta; `Coroa Quebrada` sai em
+`<span translate="no">` no meio da frase. Em `pt-BR`, zero aviso e zero marcação.
+O tradutor do Chrome em si não dá para acionar daqui — falta conferir por fora.
+Testes em `tests/aviso-de-idioma.test.ts`. A wiki não usa `h()`, então os nomes
+nela não estão protegidos.
 
 ---
 

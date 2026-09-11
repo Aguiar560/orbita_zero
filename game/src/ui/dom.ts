@@ -1,4 +1,5 @@
 import { assets } from '@render/Assets';
+import { escreverComNomesProtegidos, nosComNomesProtegidos } from './nomes-proprios';
 
 type Child = Node | string | number | false | null | undefined;
 
@@ -38,7 +39,10 @@ export function h<K extends keyof HTMLElementTagNameMap>(
         el.className = `${el.className} ${value as string}`.trim();
         break;
       case 'text':
-        el.textContent = String(value);
+        // Nome de nave, chefe ou galáxia sai marcado para o tradutor do
+        // navegador não mexer — ver `nomes-proprios.ts`. Em português é só
+        // `textContent`.
+        escreverComNomesProtegidos(el, String(value));
         break;
       case 'title':
         // `title` abre um balão branco do navegador, fora da linguagem do
@@ -76,7 +80,8 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 
   for (const child of children.flat(3) as Child[]) {
     if (child === null || child === undefined || child === false) continue;
-    el.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    if (typeof child === 'string') el.append(...nosComNomesProtegidos(child));
+    else el.append(child instanceof Node ? child : document.createTextNode(String(child)));
   }
   return el;
 }

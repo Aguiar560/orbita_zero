@@ -153,6 +153,15 @@ rolando: `O JOGO`, `COMO FUNCIONA` e `JOGO LIMPO`.
 aparece depois da escolha explícita — a capa fica limpa para quem só está
 olhando.
 
+### Quem chega sem ler português
+
+Navegador sem português em nenhum idioma da lista → aviso em inglês no canto
+inferior esquerdo (`ui/AvisoDeIdioma.ts`), de onde fica o tradutor do navegador.
+Vale na capa, no jogo e na wiki; "GOT IT" fecha para sempre naquele navegador.
+Nesse mesmo caso, `h()` marca nomes de naves, chefes, galáxias e a marca com
+`translate="no"` (`ui/nomes-proprios.ts`), porque o combate é canvas e não é
+traduzido. Em português, nada disso roda.
+
 ### A promessa, e por que é essa
 
 A dobra diz **"Sua nave luta sozinha. As decisões são suas."** É a única frase

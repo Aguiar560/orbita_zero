@@ -1,8 +1,17 @@
+import { navegadorForaDoPortugues } from './ui/idioma';
+
 const rootEncontrado = document.getElementById('app');
 if (!rootEncontrado) throw new Error('#app não encontrado');
 const root: HTMLElement = rootEncontrado;
 
 async function iniciar(): Promise<void> {
+  // Quem chega com o navegador fora do português lê um aviso, em inglês, de
+  // onde fica o tradutor. Import sob demanda: o jogador brasileiro não baixa.
+  if (navegadorForaDoPortugues()) {
+    void import('./ui/AvisoDeIdioma').then((m) => m.mostrarAvisoDeIdioma())
+      .catch((err: unknown) => console.warn('[idioma]', err));
+  }
+
   // A wiki compartilha o domínio, mas não deve baixar a simulação, áudio e
   // renderização do jogo. A importação dinâmica mantém as duas experiências
   // isoladas em bundles próprios.
