@@ -1,0 +1,16 @@
+{
+  "duration": 30,
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "codec": "H.264/AAC",
+  "bytes": 25894900,
+  "capture": "gameplay-viral-01.webm — vertical, recorded from current local build",
+  "reusedFootage": false,
+  "repeatedScreens": false,
+  "croppedScreens": false,
+  "narration": "pt-BR-AntonioNeural, roteiro original do jogo",
+  "music": "trilha original procedural sci-fi, 174 BPM",
+  "destination": "orbitazero.com.br",
+  "checks": "capture.cjs checks: defeat, build, physical key, quantity, consumption and boss victory"
+}

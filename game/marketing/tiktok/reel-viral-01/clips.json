@@ -1,0 +1,56 @@
+{
+  "viewport": {
+    "width": 720,
+    "height": 1280
+  },
+  "clips": [
+    {
+      "name": "falha-no-chefe",
+      "start": 7.112,
+      "duration": 4.622
+    },
+    {
+      "name": "ajuste-de-build",
+      "start": 12.968,
+      "duration": 18.099
+    },
+    {
+      "name": "chave-caindo",
+      "start": 31.952,
+      "duration": 2.5109999999999992
+    },
+    {
+      "name": "confirmacao-da-chave",
+      "start": 34.856,
+      "duration": 2.5319999999999965
+    },
+    {
+      "name": "tentativa-vitoriosa",
+      "start": 38.753,
+      "duration": 9.061999999999998
+    },
+    {
+      "name": "mapa-galactico",
+      "start": 53.161,
+      "duration": 2.75
+    },
+    {
+      "name": "gameplay-cta",
+      "start": 56.865,
+      "duration": 4.704000000000001
+    }
+  ],
+  "checks": {
+    "derrotaReal": true,
+    "trocaDeBuildReal": true,
+    "chaveFisicaVisivel": true,
+    "chaveNoArmazem": true,
+    "chaveAntesDoCartao": true,
+    "cartaoMostraQuantidade": true,
+    "chaveConsumida": true,
+    "chefeDerrotado": true
+  },
+  "source": "Gravação vertical inédita do build local atual em 11/09/2026",
+  "reusedFootage": false,
+  "network": "Somente http://127.0.0.1:5185; demais requisições bloqueadas"
+}
