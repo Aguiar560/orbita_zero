@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { access, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 import { BOSSES } from '@data/bosses';
 import { CHANCES_DROP_CHAVE_POR_FASE, CHAVE_POR_ID, CHAVES_DE_ACESSO, chanceDropChavePorAbate } from '@data/chaves-de-acesso';
 import { createState, migrate, SAVE_VERSION } from '@sim/state';
@@ -9,12 +12,31 @@ describe('chaves de acesso', () => {
   it('mantém uma chave exclusiva para cada galáxia e chefe', () => {
     expect(CHAVES_DE_ACESSO).toHaveLength(BOSSES.length);
     expect(new Set(CHAVES_DE_ACESSO.map((c) => c.id)).size).toBe(BOSSES.length);
+    expect(new Set(CHAVES_DE_ACESSO.map((c) => c.arte)).size).toBe(BOSSES.length);
     CHAVES_DE_ACESSO.forEach((chave, galaxia) => {
       expect(chave.galaxia).toBe(galaxia);
       expect(chave.bossId).toBe(BOSSES[galaxia]!.id);
       expect(CHAVE_POR_ID.get(chave.id)).toBe(chave);
-      expect(chave.arte).toMatch(/^chaves\/chave-/);
+      expect(chave.arte).toMatch(new RegExp(`^chaves/chave-${String(galaxia + 1).padStart(2, '0')}-.*\\.webp$`));
     });
+  });
+
+  it('entrega 30 artes próprias, transparentes e prontas para a interface', async () => {
+    await Promise.all(CHAVES_DE_ACESSO.map(async (chave) => {
+      const arquivo = new URL(`../public/assets/${chave.arte}`, import.meta.url);
+      await access(arquivo);
+      const metadata = await sharp(fileURLToPath(arquivo)).metadata();
+      expect(metadata.width).toBe(256);
+      expect(metadata.height).toBe(256);
+      expect(metadata.hasAlpha).toBe(true);
+    }));
+  });
+
+  it('usa a arte própria também quando a chave cai fisicamente do inimigo', async () => {
+    const source = await readFile(new URL('../src/modes/vertical/VerticalMode.ts', import.meta.url), 'utf8');
+    expect(source).toContain('chave.chave.arte');
+    expect(source).toContain('assets.prefetch(arte)');
+    expect(source).toContain('assets.peek(item.icon)');
   });
 
   it('guarda chaves fora do inventário e migra dados inválidos', () => {
@@ -38,7 +60,7 @@ describe('chaves de acesso', () => {
   });
 
   it('pede confirmação antes de avançar para o setor do chefe', async () => {
-    const source = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8'));
+    const source = await readFile(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8');
     expect(source).toContain('boss:access-requested');
     expect(source).toContain('Você possui ${quantidade}');
   });

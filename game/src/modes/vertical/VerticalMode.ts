@@ -1676,7 +1676,7 @@ export class VerticalMode {
     );
     for (const item of rolls) this.spawnLoot(e.x, e.y, item);
     const chave = this.sim.rollChaveDuranteAbate(this.sim.state.run.sector, e.counts && this.sim.state.run.restam <= 0);
-    if (chave && !this.spawnChave(e.x, e.y, chave.chave.id, chave.chave.cor, chave.garantida)) {
+    if (chave && !this.spawnChave(e.x, e.y, chave.chave.id, chave.chave.cor, chave.chave.arte, chave.garantida)) {
       this.sim.cancelarChaveGarantida(chave.chave.id);
     }
   }
@@ -1703,7 +1703,7 @@ export class VerticalMode {
     p.vx = this.rng.range(-40, 40);
   }
 
-  private spawnChave(x: number, y: number, chaveId: string, color: string, garantida = false): boolean {
+  private spawnChave(x: number, y: number, chaveId: string, color: string, arte: string, garantida = false): boolean {
     if (!garantida && this.pickups.size >= this.pickups.capacity - 1) return false;
     let p = this.pickups.spawn();
     // A chave obrigatória do último inimigo não pode desaparecer porque as 80
@@ -1722,8 +1722,9 @@ export class VerticalMode {
       }
     }
     if (!p) return false;
-    p.kind = 'chave'; p.chaveId = chaveId; p.chaveGarantida = garantida; p.item = null; p.icon = ''; p.color = color;
+    p.kind = 'chave'; p.chaveId = chaveId; p.chaveGarantida = garantida; p.item = null; p.icon = arte; p.color = color;
     p.x = x; p.y = y; p.vy = 40; p.vx = this.rng.range(-40, 40);
+    assets.prefetch(arte);
     // A garantia continua sendo uma queda visível, mas não pode ser perdida
     // por distância: a cápsula vai direto para a nave como um item magnético.
     p.magnet = garantida;
@@ -2956,10 +2957,19 @@ export class VerticalMode {
       s.ctx.strokeRect(item.x - 13, item.y - 13 + bob, 26, 26);
       s.ctx.globalAlpha = 1;
       if (item.kind === 'chave') {
+        const arte = assets.peek(item.icon);
         const ctx = s.ctx;
-        ctx.save(); ctx.translate(item.x, item.y + bob); ctx.rotate(-0.35);
-        ctx.strokeStyle = item.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(-5, 0, 8, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(18, 0); ctx.lineTo(18, 6); ctx.moveTo(11, 0); ctx.lineTo(11, 5); ctx.stroke(); ctx.restore();
+        if (arte) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(arte, item.x - 23, item.y - 23 + bob, 46, 46);
+          ctx.restore();
+        } else {
+          // Fallback de poucos quadros enquanto a arte própria termina de carregar.
+          ctx.save(); ctx.translate(item.x, item.y + bob); ctx.rotate(-0.35);
+          ctx.strokeStyle = item.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(-5, 0, 8, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(18, 0); ctx.lineTo(18, 6); ctx.moveTo(11, 0); ctx.lineTo(11, 5); ctx.stroke(); ctx.restore();
+        }
       } else s.sprite(item.icon, item.x, item.y + bob, { scale: 0.5 });
     });
   }
