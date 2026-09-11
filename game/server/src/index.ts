@@ -39,6 +39,7 @@ import {
 } from './alerta';
 import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corpo';
 import { lerPainelAdmin, podeLerPainelAdmin } from './painel-admin';
+import { concederVipDeTeste } from './vip-de-teste';
 import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
@@ -834,7 +835,9 @@ async function rotear(req: Request, env: Env): Promise<Response> {
     }
 
     if (url.pathname === '/progresso') {
-      if (req.method === 'GET') return json(await progressoDe(env, usuario.id), 200, origem);
+      if (req.method === 'GET') {
+        return json(await progressoComRecompensas(env, usuario.id, Math.floor(Date.now() / 1000)), 200, origem);
+      }
       if (req.method === 'POST') return gravarProgresso(req, env, usuario.id, origem);
     }
 
@@ -2561,6 +2564,13 @@ async function progressoDe(env: Env, usuario: string) {
   };
 }
 
+/** Lê a verdade do progresso e aplica recompensas que dependem só dela. */
+async function progressoComRecompensas(env: Env, usuario: string, agora: number) {
+  const progresso = await progressoDe(env, usuario);
+  const vipRecompensa = await concederVipDeTeste(env, usuario, progresso.nivel, agora);
+  return { ...progresso, vipRecompensa };
+}
+
 /**
  * Aplica os ganhos de progressão e a alocação da Matriz.
  *
@@ -2784,7 +2794,7 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   // O setor alcançado pode ter passado de um chefe: é aqui que a primeira
   // vitória vira cristal. Depois de gravar — o marco lê o setor já atualizado.
   const marcos = await creditarMarcos(env, id);
-  return json({ ...(await progressoDe(env, id)), recusados, marcos }, 200, origem);
+  return json({ ...(await progressoComRecompensas(env, id, agora)), recusados, marcos }, 200, origem);
 }
 // ── ausência: o servidor simula o que aconteceu ─────────────────────────────
 

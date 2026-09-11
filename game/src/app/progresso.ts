@@ -5,6 +5,7 @@ import { nivelPorXpAcumulado, xpAcumuladoDe } from '@sim/nivel';
 
 import { tokenValido } from './conta';
 import { avisarMarcos, type MarcoCreditado } from './marcos';
+import { espelharNoSim, sincronizar as sincronizarCarteira } from './carteira';
 import { relatarFalha, relatarSucesso } from './recusa';
 
 /**
@@ -43,6 +44,8 @@ interface Remoto {
   cascoEmCampo?: string;
   /** Marcos de cristal que ESTA chamada creditou. Ver `app/marcos.ts`. */
   marcos?: MarcoCreditado[];
+  /** O servidor concedeu agora o passe de agradecimento do teste. */
+  vipRecompensa?: boolean;
 }
 
 let sincronizado = false;
@@ -173,11 +176,18 @@ function adotar(sim: Sim, r: Remoto): void {
   sim.touch();
 }
 
+/** Atualiza imediatamente o espelho do VIP que o servidor acabou de conceder. */
+async function adotarRecompensaVip(sim: Sim, r: Remoto): Promise<void> {
+  if (!r.vipRecompensa) return;
+  if (await sincronizarCarteira()) espelharNoSim(sim);
+}
+
 /** Busca o progresso do servidor. Chamado no boot. */
 export async function sincronizarProgresso(sim: Sim): Promise<boolean> {
   const r = await chamar();
   if (!r) return false;
   adotar(sim, r);
+  await adotarRecompensaVip(sim, r);
   return true;
 }
 
@@ -225,6 +235,7 @@ export async function adotarAusencia(sim: Sim): Promise<boolean> {
   // Com o local já rebaixado, o `Math.max` de `adotar` não tem o que
   // desfazer — ele só move o marco e adota Matriz, setor e armazém.
   adotar(sim, r);
+  await adotarRecompensaVip(sim, r);
   return true;
 }
 
@@ -339,6 +350,7 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
   // `adotar` move o marco junto. O marco só anda quando o servidor confirma:
   // andar antes perderia o ganho da requisição que falhou, em silêncio.
   adotar(sim, r);
+  await adotarRecompensaVip(sim, r);
   // O setor alcançado pode ter passado de um chefe: a primeira vitória vira
   // cristal no servidor, e é aqui que o jogador fica sabendo.
   await avisarMarcos(sim, r.marcos);

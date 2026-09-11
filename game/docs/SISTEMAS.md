@@ -940,6 +940,7 @@ nave continua vindo apenas de item, craft e Matriz.
 | Recalibração | troca identidade/qualidade, preservando o tier da linha |
 | Baús | debita cristais e credita a cápsula escolhida no estoque |
 | VIP | 500 cristais por 30 dias; renovações acumulam duração |
+| Cortesia de teste | uma única extensão VIP de 30 dias ao alcançar o nível 25; soma sobre um passe ativo |
 
 `shopLimit` deriva a cota, em vez de salvar um relógio ou estoque. As compras
 realizadas ficam em `state.shop`; subir de nível libera operações novas até o

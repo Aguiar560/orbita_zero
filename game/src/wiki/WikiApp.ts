@@ -215,7 +215,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
     secoes: [
       {
         titulo: 'O que é o cristal',
-        corpo: `O cristal é a moeda especial do Órbita Zero. Ele paga o passe VIP (${VIP_COST_CRYSTALS} cristais por ${VIP_DURATION_DAYS} dias), as cápsulas da Câmara de Aquisição (${CHESTS.filter((c) => c.buy > 0).map((c) => `${c.name.replace('Cápsula de ', '')} ${c.buy}`).join(' · ')}) e serviços da Central: ${SHOP.filter((s) => s.currency === 'cristal').map((s) => `${s.name} ${s.cost}`).join(' · ')}. Pode ser comprado em pacotes na Loja.`,
+        corpo: `O cristal é a moeda especial do Órbita Zero. Ele paga o passe VIP (${VIP_COST_CRYSTALS} cristais por ${VIP_DURATION_DAYS} dias), as cápsulas da Câmara de Aquisição (${CHESTS.filter((c) => c.buy > 0).map((c) => `${c.name.replace('Cápsula de ', '')} ${c.buy}`).join(' · ')}) e serviços da Central: ${SHOP.filter((s) => s.currency === 'cristal').map((s) => `${s.name} ${s.cost}`).join(' · ')}. Pode ser comprado em pacotes na Loja. Durante o período de testes, toda conta recebe uma única cortesia de ${VIP_DURATION_DAYS} dias ao alcançar o nível 25 de comando; se já houver um passe ativo, os dias são somados.`,
       },
       {
         titulo: 'Como ganhar jogando',
