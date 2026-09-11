@@ -930,6 +930,23 @@ contida das telas de trabalho; cor de raridade e elemento acompanha texto e
 
 ---
 
+## Comando — `id: 'admin-dashboard'`
+
+`ui/panels/AdminDashboardPanel.ts` · exclusivo da conta administrativa
+
+O detalhe da aba **Pilotos** reúne o retrato operacional de cada conta. **Nave
+em campo** exibe o nome público do casco, não o identificador técnico. A fonte
+principal é `progresso.casco_em_campo`; para contas anteriores à coluna e para
+a nave inicial de quem nunca fez uma troca, o painel recupera `hull` do último
+save válido. Ausência real dos dois registros aparece como **registro
+indisponível**, sem escolher uma nave por suposição.
+
+A escolha inicial de piloto também grava o casco concedido como nave em campo
+no mesmo lote que cria a frota. Assim contas novas entram no Comando já com a
+informação definida, enquanto o fallback mantém as contas antigas legíveis.
+
+---
+
 ## Laboratório — `id: 'laboratorio'`
 
 `ui/panels/LaboratorioPanel.ts` · camada · sandbox sem recompensas

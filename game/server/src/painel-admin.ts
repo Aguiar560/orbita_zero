@@ -1,4 +1,5 @@
 import { ADMINS } from '@data/servidor';
+import { HULL_BY_ID } from '@data/hulls';
 import { nivelDoPiloto } from './progresso';
 
 /** Janela que define "online" em toda a operação do jogo. */
@@ -144,6 +145,7 @@ interface AcumuladoDoJogador {
   materiais: Record<string, number>;
   primeiroAcesso: number | null;
   cascoEmCampo: string | null;
+  cascoDoSave: string | null;
   abates: number;
   chefesAbatidos: number;
   mortes: number;
@@ -224,7 +226,7 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
         apelido: null, xp: 0, melhorSetor: 1, ultimaAtividade: null,
         naves: 0, itensNaMochila: 0, itensEquipados: 0, missoesConcluidas: 0,
         tempoDeJogo: 0, recursos: {}, materiais: {}, primeiroAcesso: null,
-        cascoEmCampo: null, abates: 0, chefesAbatidos: 0, mortes: 0,
+        cascoEmCampo: null, cascoDoSave: null, abates: 0, chefesAbatidos: 0, mortes: 0,
         itensEncontrados: 0, bausAbertos: 0, medalhas: 0,
       };
       porUsuario.set(usuario, jogador);
@@ -246,9 +248,12 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
     jogador.ultimaAtividade = Number(linha.atualizado_em) || null;
     try {
       const estado = JSON.parse(linha.estado) as {
-        playtime?: unknown; medalhas?: unknown;
+        playtime?: unknown; medalhas?: unknown; hull?: unknown;
         stats?: { kills?: unknown; bossKills?: unknown; deaths?: unknown; itemsFound?: unknown; chestsOpened?: unknown };
       };
+      if (typeof estado.hull === 'string' && HULL_BY_ID.has(estado.hull)) {
+        jogador.cascoDoSave = estado.hull;
+      }
       jogador.tempoDeJogo = Math.max(0, Number(estado.playtime) || 0);
       jogador.abates = Math.max(0, Number(estado.stats?.kills) || 0);
       jogador.chefesAbatidos = Math.max(0, Number(estado.stats?.bossKills) || 0);
@@ -272,6 +277,15 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
   for (const linha of materiais.results ?? []) {
     if (!linha.material) continue;
     garantir(linha.usuario).materiais[linha.material] = Math.max(0, Number(linha.quantia) || 0);
+  }
+
+  // Contas criadas antes de `progresso.casco_em_campo`, e também a nave
+  // inicial de quem nunca trocou de casco, podem ter a coluna vazia. O save
+  // continua guardando o casco efetivamente exibido em campo, então ele é o
+  // fallback fiel para o retrato administrativo — sem escolher uma nave pelo
+  // jogador nem transformar a contagem da frota em palpite.
+  for (const jogador of porUsuario.values()) {
+    if (!jogador.cascoEmCampo && jogador.cascoDoSave) jogador.cascoEmCampo = jogador.cascoDoSave;
   }
 
   const desdeOnline = agora - JANELA_ONLINE_SEGUNDOS;

@@ -1,4 +1,5 @@
 import { buscarPainelAdmin, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin, type PainelAdmin } from '@app/painel-admin';
+import { HULL_BY_ID } from '@data/hulls';
 import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import type { Sim } from '@sim/index';
@@ -268,7 +269,9 @@ export class AdminDashboardPanel implements Panel {
     return h('.admin-detalhe-piloto', {},
       h('.admin-detalhe-titulo', {}, h('strong', { text: jogador.apelido ?? 'Cadastro pendente' }), h('span', { text: `ID ${jogador.codigo}` })),
       h('.admin-cartoes', {},
-        this.cartao('NAVE EM CAMPO', (jogador.cascoEmCampo ?? 'não definida').replaceAll('_', ' ')),
+        this.cartao('NAVE EM CAMPO', jogador.cascoEmCampo
+          ? (HULL_BY_ID.get(jogador.cascoEmCampo)?.name ?? jogador.cascoEmCampo.replaceAll('_', ' '))
+          : 'registro indisponível'),
         this.cartao('GALÁXIA', String(Math.floor((jogador.melhorSetor - 1) / 10) + 1), `setor ${jogador.melhorSetor}`),
         this.cartao('ABATES', fmt(jogador.abates), `${fmt(jogador.chefesAbatidos)} chefes`),
         this.cartao('MORTES', fmt(jogador.mortes)),

@@ -2275,9 +2275,20 @@ async function adquirirCasco(req: Request, env: Env, id: string, origem: string)
     // Só concede se a frota está VAZIA. Depois disso, escolher piloto de novo
     // seria um casco grátis por chamada.
     if (frota.length) return json({ erro: 'casco_ja_e_seu' }, 409, origem);
-    await env.DB
-      .prepare("INSERT OR IGNORE INTO frota (usuario, casco, origem, em) VALUES (?, ?, 'piloto', ?)")
-      .bind(id, casco, agora).run();
+    await env.DB.batch([
+      env.DB
+        .prepare("INSERT OR IGNORE INTO frota (usuario, casco, origem, em) VALUES (?, ?, 'piloto', ?)")
+        .bind(id, casco, agora),
+      // A primeira nave já nasce em campo. Antes, só a frota era gravada e
+      // `casco_em_campo` continuava vazio até uma troca manual; o Comando
+      // mostrava "não definida" mesmo com o jogador pilotando normalmente.
+      env.DB
+        .prepare("INSERT OR IGNORE INTO progresso (usuario, atualizado_em) VALUES (?, ?)")
+        .bind(id, agora),
+      env.DB
+        .prepare("UPDATE progresso SET casco_em_campo = ? WHERE usuario = ? AND casco_em_campo = ''")
+        .bind(casco, id),
+    ]);
     return json({ frota: await frotaDe(env, id) }, 200, origem);
   }
 

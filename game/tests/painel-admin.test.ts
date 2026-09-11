@@ -20,7 +20,10 @@ describe('painel administrativo', () => {
           if (sql === 'SELECT usuario, primeiro_em FROM contas') return { results: [{ usuario: primeiro, primeiro_em: 900 }, { usuario: segundo, primeiro_em: 900 }] };
           if (sql.includes('FROM apelidos')) return { results: [{ usuario: primeiro, apelido: 'Vetor' }] };
           if (sql.includes('FROM progresso')) return { results: [{ usuario: primeiro, xp: 0, melhor_setor: 12, casco_em_campo: 'nucleo_vektor' }, { usuario: segundo, xp: 0, melhor_setor: 2, casco_em_campo: '' }] };
-          if (sql.includes('FROM saves')) return { results: [{ usuario: primeiro, atualizado_em: 990, estado: JSON.stringify({ playtime: 120, stats: { kills: 4 } }) }] };
+          if (sql.includes('FROM saves')) return { results: [
+            { usuario: primeiro, atualizado_em: 990, estado: JSON.stringify({ playtime: 120, stats: { kills: 4 } }) },
+            { usuario: segundo, atualizado_em: 500, estado: JSON.stringify({ hull: 'nucleo_vektor' }) },
+          ] };
           if (sql.includes('FROM saldos')) return { results: [{ usuario: primeiro, moeda: 'sucata', quantia: 25 }, { usuario: segundo, moeda: 'cristal', quantia: 3 }] };
           if (sql.includes('FROM materiais')) return { results: [{ usuario: primeiro, material: 'ferro', quantia: 7 }] };
           if (sql.includes('FROM transacoes')) return { results: [{ moeda: 'sucata', entradas: 40, saidas: 10, operacoes: 3 }] };
@@ -42,8 +45,22 @@ describe('painel administrativo', () => {
     expect(painel.resumo.naves).toBe(4);
     expect(painel.resumo.itensNaMochila).toBe(9);
     expect(painel.jogadores[0]).toMatchObject({ codigo: '12345678', apelido: 'Vetor', online: true });
-    expect(painel.jogadores[1]).toMatchObject({ codigo: '87654321', apelido: null, ultimaAtividade: null });
+    expect(painel.jogadores[1]).toMatchObject({
+      codigo: '87654321', apelido: null, cascoEmCampo: 'nucleo_vektor', ultimaAtividade: 500,
+    });
     expect(JSON.stringify(painel)).not.toContain('12345678-aaaa');
+  });
+
+  it('mostra o nome público do casco no detalhe do piloto', () => {
+    const painel = fonte('src/ui/panels/AdminDashboardPanel.ts');
+    expect(painel).toContain('HULL_BY_ID.get(jogador.cascoEmCampo)?.name');
+    expect(painel).not.toContain("cascoEmCampo ?? 'não definida'");
+  });
+
+  it('registra a nave inicial como casco em campo', () => {
+    const worker = fonte('server/src/index.ts');
+    const aquisicao = worker.slice(worker.indexOf('async function adquirirCasco'), worker.indexOf('async function missoesDe'));
+    expect(aquisicao).toContain("UPDATE progresso SET casco_em_campo = ? WHERE usuario = ? AND casco_em_campo = ''");
   });
 
   it('fecha a rota no servidor, não apenas pela aba escondida', () => {
