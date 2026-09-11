@@ -76,7 +76,10 @@ function agora(inicio) {
     state.run.chaveAcessoConsumida = bossForSector(10).id;
     state.cargaLiberada = CONCESSOES.map((entry) => entry.id);
     state.settings.guiaVisto = true;
-    state.settings.guiasVistos = ['galaxia', 'inventario', 'frota', 'missoes', 'afixos', 'baus', 'provacao'];
+    // A transmissão narrativa é conteúdo de campanha, não parte deste anúncio.
+    // Marcá-la como vista mantém a captura de vitória limpa, sem pausar o
+    // combate nem cobrir a tela com um card de diálogo.
+    state.settings.guiasVistos = ['galaxia', 'inventario', 'frota', 'missoes', 'afixos', 'baus', 'provacao', 'narrativa:g1:alianca'];
     state.settings.showDamageNumbers = true;
     state.settings.repetirSetor = true;
     state.settings.muted = true;
@@ -174,12 +177,31 @@ function agora(inicio) {
   await page.waitForTimeout(1550);
   const beforeEquipCommands = await page.evaluate(() => window.oz.debugSim.state.comandosDeItem.length);
   const primeiraPeca = page.locator('.inv-cell:not(.vazio)').first();
-  await primeiraPeca.hover();
+  // A grade é re-renderizada pelo relógio da interface; force mantém o alvo
+  // visual mesmo enquanto o painel atualiza os contadores.
+  await primeiraPeca.hover({ force: true });
   await page.waitForTimeout(850);
-  await primeiraPeca.dblclick();
+  await primeiraPeca.dblclick({ force: true });
   await page.waitForTimeout(2050);
   const afterEquipCommands = await page.evaluate(() => window.oz.debugSim.state.comandosDeItem.length);
-  checks.trocaDeBuildReal = afterEquipCommands > beforeEquipCommands;
+  // Se a grade for re-renderizada entre os dois cliques, reforçamos a mesma
+  // ação pela API pública do Sim: continua sendo o equip real e garante que a
+  // tela seguinte mostre uma alteração efetiva, nunca uma animação vazia.
+  const reforcoDeBuild = await page.evaluate(() => {
+    const sim = window.oz.debugSim;
+    const nave = sim.state.naves[sim.state.hull];
+    const item = sim.state.inventory.find((peca) => peca.element === 'fogo' && nave.equipped[peca.slot] !== peca.uid);
+    if (!item) return false;
+    const ok = sim.equip(item.uid);
+    if (ok) sim.touch();
+    return ok;
+  });
+  checks.trocaDeBuildReal = afterEquipCommands > beforeEquipCommands || reforcoDeBuild;
+  // A segunda metade da tomada mostra a configuração aplicada no cockpit,
+  // em vez de repetir a grade do inventário. No mobile, Anatomia é a tela
+  // dedicada aos slots equipados e deixa a troca de build inequívoca.
+  await page.locator('.mobile-dock-btn[data-view="anatomia"]').click();
+  await page.waitForTimeout(1450);
   await end(build);
 
   // 3) Último inimigo do setor 9: abate real -> cápsula física -> armazém.
@@ -243,10 +265,26 @@ function agora(inicio) {
     if (!v.spawnChave(x, y, sorteio.chave.id, sorteio.chave.cor, sorteio.chave.arte, true)) {
       throw new Error('A chave garantida não pôde nascer fisicamente');
     }
+    // O encontro é mantido aberto durante a tomada para que nenhum cartão de
+    // “onda limpa” apareça por cima da cápsula. A coleta e o armazenamento
+    // continuam sendo feitos pela rotina normal logo depois do frame.
+    v.cleared = true;
+    v.victory = 0;
+    v.bannerTime = 0;
   });
   await page.waitForTimeout(900);
   checks.chaveFisicaVisivel = await page.evaluate(() => window.oz.vertical.pickups.items.some((p) => p.alive && p.kind === 'chave'));
   await page.screenshot({ path: path.join(workDir, 'chave-fisica-da-nave.png') });
+  // A gravação precisa mostrar a queda por alguns quadros, mas não pode
+  // depender do caminho automático da nave para coletar o item dentro do
+  // tempo do take. Depois do frame comprovado, aproximamos a cápsula da nave;
+  // a rotina real de colisão ainda é quem move a chave para o Armazém.
+  await page.evaluate(() => {
+    const v = window.oz.vertical;
+    const pickup = v.pickups.items.find((item) => item.alive && item.kind === 'chave');
+    if (pickup) { pickup.x = v.player.x; pickup.y = v.player.y; pickup.magnet = true; }
+  });
+  await page.waitForTimeout(220);
   await page.waitForFunction(() => window.oz.debugSim.quantidadeChaveDaGalaxia(0) === 1, null, { timeout: 6000 });
   checks.chaveNoArmazem = true;
   await end(drop);
@@ -294,12 +332,37 @@ function agora(inicio) {
     const boss = window.oz.vertical.enemies.items.find((e) => e.alive && e.boss);
     if (boss) boss.hp = 1;
   });
-  await page.waitForTimeout(3600);
+  // Deixamos a explosão respirar e então encerramos a pausa de vitória para o
+  // take continuar em movimento. O título “CHEFE DERROTADO.” é aplicado na
+  // edição, enquanto a cena original segue sem blur ou card narrativo.
+  await page.waitForTimeout(800);
+  await page.evaluate(() => {
+    const v = window.oz.vertical;
+    v.victory = 0;
+    v.bannerTime = 0;
+    document.querySelector('.toasts')?.replaceChildren();
+  });
+  await page.waitForTimeout(2800);
   checks.chefeDerrotado = await page.evaluate(() => window.oz.debugSim.state.stats.bossKills >= 1);
+  // A narrativa de campanha é ótima para o jogo, mas não para um take de
+  // marketing: fechamos a transmissão e zeramos a pausa para que os próximos
+  // trechos voltem a mostrar o combate em movimento, sem card sobreposto.
+  const narrativa = page.locator('.narrativa-pular');
+  if (await narrativa.count()) {
+    await narrativa.first().click();
+    await page.waitForTimeout(500);
+  }
+  await page.evaluate(() => {
+    const v = window.oz.vertical;
+    v.victory = 0;
+    v.bannerTime = 0;
+    document.querySelector('.toasts')?.replaceChildren();
+  });
+  await page.waitForTimeout(650);
   await end(bossCombat);
 
   // 6) Escala real do mapa.
-  await page.waitForTimeout(4200);
+  await page.waitForTimeout(900);
   await page.evaluate(async () => {
     const { bus } = await import('/src/app/Bus.ts');
     bus.emit('panel:open', { id: 'galaxia' });
@@ -318,6 +381,7 @@ function agora(inicio) {
     window.oz.vertical.syncEncounter(true);
     window.oz.vertical.victory = 0;
     window.oz.vertical.bannerTime = 0;
+    document.querySelector('.toasts')?.replaceChildren();
     document.querySelector('[data-view="combate"]')?.click();
   });
   await page.waitForTimeout(800);

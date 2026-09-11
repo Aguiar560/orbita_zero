@@ -23,13 +23,14 @@ const shots = [
   { id: 'pressure', source: 'falha-no-chefe', media: 1.48, dur: 1.40, accent: '#ff6a72', title: 'MAS NÃO VENCE SOZINHO.', sub: '' },
   { id: 'failure', source: 'falha-no-chefe', media: 2.88, dur: 1.70, accent: '#ff6a72', title: 'A IA NÃO ERROU.', sub: 'MINHA BUILD ERROU.' },
   { id: 'build-read', source: 'ajuste-de-build', media: 0.25, dur: 2.80, accent: '#66e6ff', title: 'EU IGNOREI O ELEMENTO.', sub: 'A GALÁXIA AVISOU.' },
-  { id: 'build-change', source: 'ajuste-de-build', media: 3.05, dur: 2.10, accent: '#79ff4b', title: 'MUDEI A ESTRATÉGIA.', sub: 'UMA PEÇA. OUTRA RESPOSTA.' },
+  { id: 'build-change', source: 'ajuste-de-build', media: 4.80, dur: 2.10, accent: '#79ff4b', title: 'MUDEI A ESTRATÉGIA.', sub: 'UMA PEÇA. OUTRA RESPOSTA.' },
   { id: 'drop', source: 'chave-caindo', media: 0.70, dur: 2.50, accent: '#ffb13b', title: 'UMA CHAVE CAIU', sub: 'DO INIMIGO.' },
   { id: 'access', source: 'confirmacao-da-chave', media: 0.10, dur: 2.40, accent: '#63ddff', title: '1 CHAVE. 1 TENTATIVA.', sub: 'A ENTRADA CONSUME A CHAVE.' },
   { id: 'entry', source: 'tentativa-vitoriosa', media: 0.05, dur: 3.00, accent: '#63ddff', title: 'AGORA EU TINHA UM PLANO.', sub: '' },
   { id: 'fight', source: 'tentativa-vitoriosa', media: 3.05, dur: 3.40, accent: '#ffca64', title: '', sub: '' },
-  // O card real de vitória entra no fim do take, depois da explosão do chefe.
-  { id: 'victory', source: 'tentativa-vitoriosa', media: 8.70, dur: 2.70, accent: '#79ff4b', title: 'CHEFE DERROTADO.', sub: '' },
+  // A explosão é o pico visual; o card narrativo fica fora do reel para não
+  // congelar a tela nem esconder o combate.
+  { id: 'victory', source: 'tentativa-vitoriosa', media: 6.35, dur: 2.70, accent: '#79ff4b', title: 'CHEFE DERROTADO.', sub: '' },
   { id: 'map', source: 'mapa-galactico', media: 0.15, dur: 2.40, accent: '#63ddff', title: '30 GALÁXIAS · 300 SETORES', sub: '' },
   { id: 'cta', source: 'gameplay-cta', media: 0.25, dur: 4.30, accent: '#63ddff', title: 'SUA NAVE LUTA.', sub: 'AS DECISÕES SÃO SUAS.' },
 ];
