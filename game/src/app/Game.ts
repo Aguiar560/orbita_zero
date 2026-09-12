@@ -518,6 +518,11 @@ export class Game {
         patente: r.patente ?? { antes: nivelAntes, depois: this.sim.state.command.nivel },
         naves: r.naves ?? [],
         materiais: r.materiais ?? {},
+      }, () => {
+        // Se uma atualização apareceu enquanto o relatório cobria a tela, o
+        // fechamento dele é um ponto explícito de retomada: salva e troca de
+        // versão sem depender de clique na faixa nem do fim de outro setor.
+        if (this.versaoNova) this.recarregarParaAtualizar();
       });
     }
   }

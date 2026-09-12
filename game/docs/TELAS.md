@@ -1245,6 +1245,15 @@ rolagem vertical é própria do relatório, com gesto de toque. Assim o rodapé 
 o botão **Retomar comando** continuam alcançáveis mesmo quando há muitas
 linhas de ganhos, perdas ou naves.
 
+O relatório nunca fica cobrindo o idle indefinidamente: fecha sozinho após
+**15 segundos** ou imediatamente com qualquer clique/toque, inclusive dentro
+do próprio cartão. A recarga de uma atualização normalmente não cria ausência,
+porque o jogo salva antes dela; se uma rede lenta ou um retorno posterior fizer
+o servidor contabilizar mais de dois minutos, o mesmo fechamento automático se
+aplica. Se uma nova versão já estiver esperando, fechar o relatório também
+salva e recarrega a página — não depende de clicar na faixa de atualização nem
+de terminar outro setor.
+
 **Por que é assim (10/09).** O relatório desenhava só o que era positivo. Uma
 ausência de 37 minutos com a nave presa num setor alto demais — 41 quedas,
 7.297 de sucata tirada do cofre, XP perdido — chegou como "3,21K abates" e mais

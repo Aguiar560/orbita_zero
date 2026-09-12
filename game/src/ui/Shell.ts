@@ -49,6 +49,9 @@ import { chaveDaGalaxia } from '@data/chaves-de-acesso';
 /** Frequência de re-render do painel ativo. */
 const PANEL_HZ = 5;
 
+/** O relatório informa o retorno, mas nunca fica cobrindo o idle indefinidamente. */
+const OFFLINE_REPORT_AUTO_CLOSE_MS = 15_000;
+
 /**
  * Camada de interface em DOM sobre os dois canvas.
  *
@@ -1225,7 +1228,7 @@ export class Shell {
   }
 
   /** Modal de boas-vindas com o resumo do progresso offline. */
-  showOfflineReport(report: OfflineReport): void {
+  showOfflineReport(report: OfflineReport, aoFechar?: () => void): void {
     if (report.seconds < 60) return;
 
     /**
@@ -1364,13 +1367,26 @@ export class Shell {
         report.capped
           ? h('p.muted.tiny', { text: 'Aumente o teto com o nó de Legado "Piloto Automático".' })
           : null,
-        h('button.btn.primary.big', { onclick: () => modal.remove() }, h('span', { text: 'Retomar comando' })),
+        h('button.btn.primary.big', {}, h('span', { text: 'Retomar comando' })),
       ),
     );
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
+
+    let fechado = false;
+    let relogio: number | null = null;
+    const fechar = (): void => {
+      if (fechado) return;
+      fechado = true;
+      if (relogio !== null) window.clearTimeout(relogio);
+      relogio = null;
+      modal.remove();
+      aoFechar?.();
+    };
+
+    // Não há ação dentro deste resumo além de fechá-lo: qualquer clique ou
+    // toque serve para retomar a visão do jogo, inclusive no próprio cartão.
+    modal.addEventListener('click', fechar);
     this.root.append(modal);
+    relogio = window.setTimeout(fechar, OFFLINE_REPORT_AUTO_CLOSE_MS);
   }
 
   showFatal(message: string): void {

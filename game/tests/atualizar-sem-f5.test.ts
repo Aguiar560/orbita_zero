@@ -208,6 +208,12 @@ describe('quando o jogo recarrega, e o que ele salva antes', () => {
     expect(game).toContain('if (document.hidden) return this.recarregarParaAtualizar();');
   });
 
+  it('não fica esperando outro setor quando o relatório de ausência fecha', () => {
+    const inicio = game.indexOf('this.shell.showOfflineReport({');
+    const trecho = game.slice(inicio, game.indexOf('\n    }\n  }', inicio));
+    expect(trecho).toContain('if (this.versaoNova) this.recarregarParaAtualizar();');
+  });
+
   it('e grava o save LOCAL antes de trocar de página', () => {
     /**
      * A fila de movimentos mora dentro do save (`state.pendentes`), e o save é

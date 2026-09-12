@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@app/conta', () => ({ tokenValido: async () => 'token-de-teste' }));
@@ -9,6 +11,8 @@ import { balancoDaAusencia } from '@sim/balanco-da-ausencia';
 import { curvaXpPersonagem } from '@data/balance/curvas';
 import { TREE_NODES } from '@data/tree';
 import { nivelPorXpAcumulado, xpAcumuladoAte, xpAcumuladoDe } from '@sim/nivel';
+
+const shell = readFileSync(new URL('../src/ui/Shell.ts', import.meta.url), 'utf8');
 
 /**
  * O relatório de ausência mostra o que SAIU, e não só o que entrou.
@@ -26,6 +30,22 @@ import { nivelPorXpAcumulado, xpAcumuladoAte, xpAcumuladoDe } from '@sim/nivel';
  * sucata perdida ficava perdida, o XP não.
  */
 
+describe('o relatório não cobre o idle indefinidamente', () => {
+  const inicio = shell.indexOf('showOfflineReport(report: OfflineReport');
+  const trecho = shell.slice(inicio, shell.indexOf('\n  showFatal(', inicio));
+
+  it('fecha sozinho em 15 segundos', () => {
+    expect(shell).toContain('const OFFLINE_REPORT_AUTO_CLOSE_MS = 15_000;');
+    expect(trecho).toContain('window.setTimeout(fechar, OFFLINE_REPORT_AUTO_CLOSE_MS)');
+    expect(trecho).toContain('window.clearTimeout(relogio)');
+  });
+
+  it('qualquer clique ou toque convertido em clique também fecha', () => {
+    expect(trecho).toContain("modal.addEventListener('click', fechar)");
+    expect(trecho).not.toContain('if (e.target === modal)');
+  });
+});
+
 /** Um piloto no nível 10 com o cofre e o porão cheios, num setor que o mata. */
 function simNaParede(): Sim {
   const sim = new Sim(createState(31));
@@ -33,7 +53,12 @@ function simNaParede(): Sim {
   sim.state.command.xp = 0; // faixa vazia: a primeira queda já derruba o nível
   sim.state.command.allocated = TREE_NODES.slice(0, 3).map((n) => n.id);
   sim.state.resources.sucata = 50_000;
-  sim.jumpSector(80);
+  // Estado já existente no setor 80: o teste mede a ausência, não a entrada
+  // pelo mapa (que corretamente exige a chave do chefe dessa galáxia).
+  sim.state.run.sector = 80;
+  sim.state.universe.bestSector = 80;
+  sim.state.universe.bestSectorEver = 80;
+  sim.refreshEncounter();
   sim.state.run.carga = { sucata: 3_000, nucleo: 40, cristal: 0 };
   return sim;
 }
