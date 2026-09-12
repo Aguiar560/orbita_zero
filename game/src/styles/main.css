@@ -9341,4 +9341,17 @@ select option:disabled { color: #667991; }
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
+  /* O relatório pode crescer bastante (ganhos, perdas, carga e naves). A
+     regra geral de `.modal` esconde overflow para os diálogos curtos, mas
+     aqui o próprio cartão precisa receber o gesto e manter o botão final
+     alcançável no viewport estreito. */
+  .modal.offline-modal {
+    box-sizing: border-box;
+    max-height: calc(100dvh - max(20px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom))));
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-width: thin;
+  }
 }

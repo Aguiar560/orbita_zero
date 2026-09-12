@@ -1230,6 +1230,11 @@ antigo não contava quedas, e o `?? 0` fazia a tela afirmar "0 quedas" numa
 ausência em que a nave caiu nove vezes. Sem o detalhe das perdas, o líquido
 negativo de XP ou de moeda vai para "Perdeu" do mesmo jeito.
 
+Em telas estreitas, o cartão usa a altura visual disponível (`100dvh`) e a
+rolagem vertical é própria do relatório, com gesto de toque. Assim o rodapé e
+o botão **Retomar comando** continuam alcançáveis mesmo quando há muitas
+linhas de ganhos, perdas ou naves.
+
 **Por que é assim (10/09).** O relatório desenhava só o que era positivo. Uma
 ausência de 37 minutos com a nave presa num setor alto demais — 41 quedas,
 7.297 de sucata tirada do cofre, XP perdido — chegou como "3,21K abates" e mais

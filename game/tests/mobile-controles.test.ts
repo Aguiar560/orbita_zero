@@ -40,4 +40,9 @@ describe('superfícies mobile', () => {
   it('usa fluxo normal e rolagem vertical na caixa comum das telas', () => {
     expect(css).toMatch(/\.camada-caixa \{[\s\S]*?display: block !important;[\s\S]*?overflow-y: auto !important/);
   });
+
+  it('mantém o relatório de ausência rolável e o botão final acessível', () => {
+    expect(css).toMatch(/\.modal\.offline-modal \{[\s\S]*?max-height: calc\(100dvh[\s\S]*?overflow-y: auto !important/);
+    expect(css).toContain('-webkit-overflow-scrolling: touch;');
+  });
 });
