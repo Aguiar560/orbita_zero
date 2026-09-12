@@ -173,11 +173,17 @@ describe('VIP de agradecimento do período de testes', () => {
     sqlite.close();
   });
 
-  it('as duas faixas falam idiomas iguais e chaves diferentes', () => {
-    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_PRIMEIRA_FAIXA]).toMatch(/^Thank you/);
-    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_SEGUNDA_FAIXA]).toMatch(/^Thank you/);
-    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_PRIMEIRA_FAIXA]).toContain('30-day');
-    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_SEGUNDA_FAIXA]).toContain('7-day');
+  it('as duas faixas falam português, dizem os dias certos e têm chaves diferentes', () => {
+    // A migração 0018 é explícita: o recado guarda o texto pronto, em
+    // português, do jeito que aparece na tela. Nada de chave de tradução.
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_PRIMEIRA_FAIXA]).toMatch(/^Obrigado/);
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_SEGUNDA_FAIXA]).toMatch(/^Obrigado/);
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_PRIMEIRA_FAIXA]).toContain('30 dias');
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_SEGUNDA_FAIXA]).toContain('7 dias');
+    // E cada uma promete a SUA faixa: trocar os textos de lugar é o erro que
+    // ninguém percebe até o jogador cobrar os trinta dias que leu.
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_PRIMEIRA_FAIXA]).not.toContain('7 dias');
+    expect(MENSAGENS_DA_RECOMPENSA_VIP[DIAS_DA_SEGUNDA_FAIXA]).not.toContain('30 dias');
     expect(CHAVES_DO_RECADO_VIP[DIAS_DA_PRIMEIRA_FAIXA])
       .not.toBe(CHAVES_DO_RECADO_VIP[DIAS_DA_SEGUNDA_FAIXA]);
   });

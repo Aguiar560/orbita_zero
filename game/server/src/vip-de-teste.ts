@@ -31,8 +31,10 @@ const SEGUNDOS_POR_DIA = 24 * 60 * 60;
 /**
  * As mensagens, uma por faixa.
  *
- * Em inglês porque a primeira foi, e quem já recebeu leu assim — trocar de
- * idioma no meio de uma promoção faria a segunda leva parecer outra coisa.
+ * Em português, como manda a migração `0018`: o texto vai para a coluna do
+ * jeito que aparece na tela, e "patente" é a palavra que o jogador lê no menu
+ * de perfil. A primeira leva saiu em inglês, em 11/09 — quem recebeu continua
+ * com aquele texto gravado, porque um recado entregue não é reescrito.
  *
  * A chave é por FAIXA, e não uma só: o índice único em `(usuario, chave)` é o
  * que impede a mensagem de nascer duas vezes, e uma chave compartilhada entre
@@ -42,9 +44,9 @@ const SEGUNDOS_POR_DIA = 24 * 60 * 60;
  */
 export const MENSAGENS_DA_RECOMPENSA_VIP: Record<number, string> = {
   [DIAS_DA_PRIMEIRA_FAIXA]:
-    'Thank you for helping us test Órbita Zero! You reached Command Level 25 and you are one of the first 10 pilots to do it — your reward is a free 30-day VIP Pass. Your time in the game is helping us make it better.',
+    'Obrigado por ajudar a testar o Órbita Zero! Você chegou à patente 25 e está entre os 10 primeiros pilotos a conseguir — a recompensa é um Passe VIP de 30 dias. O seu tempo em jogo é o que está deixando o jogo melhor.',
   [DIAS_DA_SEGUNDA_FAIXA]:
-    'Thank you for helping us test Órbita Zero! You reached Command Level 25 and received a free 7-day VIP Pass. Your time in the game is helping us make it better.',
+    'Obrigado por ajudar a testar o Órbita Zero! Você chegou à patente 25 e recebeu um Passe VIP de 7 dias. O seu tempo em jogo é o que está deixando o jogo melhor.',
 };
 
 export const CHAVES_DO_RECADO_VIP: Record<number, string> = {
