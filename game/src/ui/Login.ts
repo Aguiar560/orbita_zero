@@ -1,6 +1,7 @@
 import {
-  NOME_DO_PROVEDOR, cadastrar, entrar, entrarComProvedor, recolherSessaoDaUrl,
-  sair, sessaoGuardada, tokenValido, type Provedor, type Sessao,
+  NOME_DO_PROVEDOR, cadastrar, codigoIndicacaoPendente, entrar, entrarComProvedor,
+  limparCodigoIndicacaoPendente, recolherSessaoDaUrl, sair, sessaoGuardada,
+  tokenValido, type Provedor, type Sessao,
 } from '@app/conta';
 import { reivindicarSessao } from '@app/sessao-unica';
 import { clear, h } from './dom';
@@ -93,6 +94,20 @@ export class Login {
   private async autorizarSessao(host: HTMLElement): Promise<boolean> {
     const primeira = await reivindicarSessao(false);
     if (primeira.estado === 'ativa') return true;
+    if (primeira.estado === 'email_nao_confirmado') {
+      sair();
+      this.recado = 'Confirme seu e-mail pelo link enviado antes de entrar no jogo.';
+      return false;
+    }
+    if (primeira.estado === 'confirmacao_email_nao_configurada') {
+      sair();
+      this.recado = 'As contas estão temporariamente bloqueadas enquanto a confirmação de e-mail é configurada.';
+      return false;
+    }
+    if (primeira.estado === 'verificacao_email_indisponivel') {
+      this.recado = 'Não foi possível verificar a confirmação do e-mail. Tente novamente.';
+      return false;
+    }
     if (primeira.estado !== 'conflito') {
       this.recado = 'Não foi possível verificar a sessão ativa. Tente novamente.';
       return false;
@@ -170,6 +185,7 @@ export class Login {
     // quer entrar ou criar uma conta.
     if (!this.modo) return;
     const modo = this.modo;
+    const codigoIndicacao = codigoIndicacaoPendente();
 
     const email = h('input.login-campo', {
       type: 'email', placeholder: 'seu@email.com', autocomplete: 'email',
@@ -268,6 +284,20 @@ export class Login {
             ? 'Uma conta guarda seu progresso e o leva para outros aparelhos.'
             : 'Entre para sincronizar seu progresso.',
         }),
+
+        ...(codigoIndicacao ? [
+          h('.login-indicacao', {},
+            h('span', { text: 'CONVITE RECEBIDO' }),
+            h('strong', { text: codigoIndicacao }),
+            h('p', { text: modo === 'criar'
+              ? 'Ao criar a conta, ela ficará vinculada a quem enviou este convite.'
+              : 'O convite só será aplicado se o provedor criar uma conta nova. Contas existentes não mudam de vínculo.' }),
+            h('button', {
+              type: 'button', text: 'Remover convite',
+              onclick: () => { limparCodigoIndicacaoPendente(); this.render(pronto); },
+            }),
+          ),
+        ] : []),
 
         email, senha,
 

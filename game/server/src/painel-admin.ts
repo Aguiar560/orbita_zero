@@ -81,6 +81,12 @@ export interface PainelAdmin {
     recursos: RecursoTotal[];
     materiais: { material: string; quantia: number }[];
     movimentacao: { moeda: string; entradas: number; saidas: number; operacoes: number }[];
+    indicacoes: {
+      vinculados: number; compradores: number; receitaCentavos: number;
+      pendentes: number; liberados: number; revertidos: number; divida: number;
+      bloqueados: number; tentativasRecusadas: number;
+      vinculados24h: number; maiorConcentracaoCompras: number;
+    };
   };
   frota: {
     cascos: RegistroDeCasco[];
@@ -148,6 +154,12 @@ interface RegistroDeMovimento { moeda: string; entradas: number; saidas: number;
 interface RegistroDeRaridade { raridade: number; total: number; equipados: number; }
 interface RegistroDeMissaoGeral { iniciadas: number; entregues: number; em_andamento: number; }
 interface RegistroDeMissaoPopular { missao: string; total: number; }
+interface RegistroDeIndicacoes {
+  vinculados: number; compradores: number; receita_centavos: number;
+  pendentes: number; liberados: number; revertidos: number; divida: number;
+  bloqueados: number; tentativas_recusadas: number;
+  vinculados_24h: number; maior_concentracao_compras: number;
+}
 
 interface AcumuladoDoJogador {
   apelido: string | null;
@@ -182,10 +194,11 @@ interface AcumuladoDoJogador {
  * união é expandida por subconsultas correlacionadas. Contas antigas que só
  * possuem um save continuam entrando no retrato.
  */
-export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Promise<PainelAdmin> {
+export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: string }, agora: number): Promise<PainelAdmin> {
   const [
     contas, apelidos, progressos, atividades, naves, itens, equipamentos, missoes, saldos,
     frotaPorCasco, materiais, movimentos, emCampo, raridades, missoesGerais, missoesPopulares,
+    indicacoes,
   ] = await Promise.all([
     env.DB.prepare('SELECT usuario, primeiro_em FROM contas').all<RegistroDeConta>(),
     env.DB.prepare('SELECT usuario, apelido FROM apelidos').all<RegistroDeApelido>(),
@@ -241,6 +254,28 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
       SELECT missao, COUNT(*) AS total FROM missoes
        WHERE entregue_em IS NOT NULL GROUP BY missao ORDER BY total DESC LIMIT 12
     `).all<RegistroDeMissaoPopular>(),
+    (['1', 'true', 'on'].includes((env.INDICACOES_ATIVAS ?? '').trim().toLowerCase())
+      ? env.DB.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM decisoes_indicacao WHERE estado = 'vinculada') AS vinculados,
+        (SELECT COUNT(DISTINCT indicado) FROM recompensas_indicacao) AS compradores,
+        (SELECT COALESCE(SUM(MAX(0, r.base_centavos - COALESCE(c.centavos_reembolsados, 0))), 0)
+           FROM recompensas_indicacao r JOIN compras c ON c.id = r.compra) AS receita_centavos,
+        (SELECT COALESCE(SUM(CASE WHEN estado = 'pendente'
+          THEN MAX(0, comissao_centavos - revertidos_centavos) ELSE 0 END), 0)
+          FROM recompensas_indicacao) AS pendentes,
+        (SELECT COALESCE(SUM(liberados_centavos), 0) FROM recompensas_indicacao) AS liberados,
+        (SELECT COALESCE(SUM(revertidos_centavos), 0) FROM recompensas_indicacao) AS revertidos,
+        (SELECT COALESCE(SUM(divida_centavos), 0) FROM carteiras_indicacao) AS divida,
+        (SELECT COUNT(*) FROM codigos_indicacao WHERE ativo = 0) AS bloqueados,
+        (SELECT COUNT(*) FROM decisoes_indicacao WHERE motivo = 'codigo_invalido') AS tentativas_recusadas,
+        (SELECT COUNT(*) FROM decisoes_indicacao
+          WHERE estado = 'vinculada' AND decidida_em > ?) AS vinculados_24h,
+        (SELECT COALESCE(MAX(total), 0) FROM (
+          SELECT COUNT(*) AS total FROM recompensas_indicacao GROUP BY indicador
+        )) AS maior_concentracao_compras
+    `).bind(agora - 86_400).all<RegistroDeIndicacoes>()
+      : Promise.resolve({ results: [] as RegistroDeIndicacoes[] })),
   ]);
 
   const porUsuario = new Map<string, AcumuladoDoJogador>();
@@ -420,6 +455,7 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
     faixa, jogadores: jogadores.filter((jogador) => jogador.nivel >= min && jogador.nivel <= max).length,
   }));
   const missãoGeral = missoesGerais.results?.[0];
+  const indicaçãoGeral = indicacoes.results?.[0];
 
   return {
     geradoEm: agora, janelaOnlineSegundos: JANELA_ONLINE_SEGUNDOS, resumo, jogadores,
@@ -430,6 +466,19 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
         moeda: linha.moeda, entradas: Number(linha.entradas) || 0,
         saidas: Number(linha.saidas) || 0, operacoes: Number(linha.operacoes) || 0,
       })),
+      indicacoes: {
+        vinculados: Number(indicaçãoGeral?.vinculados) || 0,
+        compradores: Number(indicaçãoGeral?.compradores) || 0,
+        receitaCentavos: Number(indicaçãoGeral?.receita_centavos) || 0,
+        pendentes: Number(indicaçãoGeral?.pendentes) || 0,
+        liberados: Number(indicaçãoGeral?.liberados) || 0,
+        revertidos: Number(indicaçãoGeral?.revertidos) || 0,
+        divida: Number(indicaçãoGeral?.divida) || 0,
+        bloqueados: Number(indicaçãoGeral?.bloqueados) || 0,
+        tentativasRecusadas: Number(indicaçãoGeral?.tentativas_recusadas) || 0,
+        vinculados24h: Number(indicaçãoGeral?.vinculados_24h) || 0,
+        maiorConcentracaoCompras: Number(indicaçãoGeral?.maior_concentracao_compras) || 0,
+      },
     },
     frota: {
       cascos: (frotaPorCasco.results ?? []).map((linha) => ({ casco: linha.casco, total: Number(linha.total) || 0 })),

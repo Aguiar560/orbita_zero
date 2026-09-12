@@ -1,6 +1,6 @@
 import { usuarioDoToken } from './auth';
 import { apelidoValido, conferir, contaSemRanking, lerPlacar, normalizar, type MarcaRecebida } from './placar';
-import { podeGravar, podeLer, podeUsar, type NomeDeBalde } from './ritmo';
+import { podeGravar, podeLer, podeLerIndicacao, podeUsar, type NomeDeBalde } from './ritmo';
 import {
   MOEDAS, TETO_POR_LANCAMENTO, VIP_CUSTO_CRISTAIS, conferirLancamento, podeDebitar, recusaDoCliente,
   renovar, saldosDoLivro,
@@ -44,10 +44,21 @@ import {
   encerrarSessao, instanciaValida, pulsarSessao, reivindicarSessao, verificarSessao,
 } from './sessao-unica';
 import {
+  acessoAoChefeDe, chavesDe, consumirChave, creditarChaves, ganhosSaos, liberarAcesso,
+} from './chaves';
+import {
+  ESPERA_INDICACAO_SEGUNDOS, INTERVALO_SAQUE_INDICACAO_SEGUNDOS,
+  MARCOS_INDICACAO, NIVEL_QUALIFICADOR_INDICACAO, PERCENTUAL_INDICACAO_BPS,
+  SAQUE_MINIMO_INDICACAO_CENTAVOS,
+  codigoDosBytes, codigoIndicacaoValido, comissaoDeIndicacao,
+  comissaoRevertida, normalizarCodigoIndicacao,
+} from './indicacoes';
+import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
 } from './missoes';
 import type { Item } from '@sim/types';
+import { cifrarChavePix, decifrarChavePix, mascararChavePix, normalizarChavePix } from './pix-indicacoes';
 
 /**
  * A API do Órbita Zero.
@@ -82,6 +93,10 @@ export interface Env {
   SUPABASE_URL: string;
   /** Origens que podem chamar esta API, separadas por vírgula. */
   ORIGENS: string;
+  /** Liga o programa apenas depois de aplicar a migração e revisar os termos. */
+  INDICACOES_ATIVAS?: string;
+  /** Chave AES-GCM (segredo) usada somente para cifrar dados Pix no Worker. */
+  INDICACOES_PIX_SECRET?: string;
   /**
    * Para onde mandar o aviso de recusas. SEGREDO, e opcional.
    *
@@ -121,6 +136,8 @@ export interface Env {
 
 /** O pagador quando `MP_EMAIL_DO_PAGADOR` não está definido. */
 const PAGADOR_PADRAO = 'comprador@orbitazero.dev';
+const indicacoesAtivas = (env: Pick<Env, 'INDICACOES_ATIVAS'>): boolean =>
+  ['1', 'true', 'on'].includes((env.INDICACOES_ATIVAS ?? '').trim().toLowerCase());
 
 // O ritmo de gravação mora em `ritmo.ts`: é um balde de fichas, não um
 // intervalo fixo. Ver lá o defeito que a mudança conserta.
@@ -186,6 +203,466 @@ async function contaDesde(env: Env, usuario: string, agora: number): Promise<num
     .run();
 
   return primeiro;
+}
+
+type ResultadoDaAtivacaoDeIndicacao =
+  | { estado: 'vinculada' }
+  | { estado: 'sem_indicacao' }
+  | { estado: 'preexistente' }
+  | { estado: 'codigo_invalido' }
+  | { estado: 'conta_teste' };
+
+/**
+ * Sela a indicação na primeira entrada autenticada.
+ *
+ * Uma linha `sem_indicacao` é tão importante quanto uma vinculada: sem ela,
+ * ausência de vínculo seria indistinguível de "ainda não decidiu", e uma
+ * conta antiga poderia reivindicar um indicador depois de já existir.
+ */
+async function ativarIndicacao(
+  env: Env, usuario: string, codigoBruto: unknown, agora: number,
+): Promise<ResultadoDaAtivacaoDeIndicacao> {
+  const decisao = await env.DB.prepare(
+    'SELECT estado FROM decisoes_indicacao WHERE usuario = ?',
+  ).bind(usuario).first<{ estado: string }>();
+  if (decisao) return { estado: 'preexistente' };
+
+  const contaTeste = await env.DB.prepare(
+    'SELECT usuario FROM contas_teste WHERE usuario = ?',
+  ).bind(usuario).first<{ usuario: string }>();
+  if (contaTeste) {
+    await env.DB.batch([
+      env.DB.prepare(
+        'INSERT OR IGNORE INTO contas (usuario, primeiro_em) VALUES (?, ?)',
+      ).bind(usuario, agora),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO decisoes_indicacao
+          (usuario, estado, indicador, codigo, decidida_em, motivo)
+        VALUES (?, 'bloqueada', NULL, NULL, ?, 'conta_teste')
+      `).bind(usuario, agora),
+    ]);
+    return { estado: 'conta_teste' };
+  }
+
+  const codigo = normalizarCodigoIndicacao(codigoBruto);
+  if (!codigo) {
+    await env.DB.batch([
+      env.DB.prepare(
+        'INSERT OR IGNORE INTO contas (usuario, primeiro_em) VALUES (?, ?)',
+      ).bind(usuario, agora),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO decisoes_indicacao
+          (usuario, estado, indicador, codigo, decidida_em, motivo)
+        VALUES (?, 'sem_indicacao', NULL, NULL, ?, NULL)
+      `).bind(usuario, agora),
+    ]);
+    return { estado: 'sem_indicacao' };
+  }
+
+  if (!codigoIndicacaoValido(codigo)) {
+    await selarCodigoInvalido(env, usuario, agora);
+    return { estado: 'codigo_invalido' };
+  }
+
+  const dono = await env.DB.prepare(`
+    SELECT c.usuario
+      FROM codigos_indicacao c
+      LEFT JOIN contas_teste t ON t.usuario = c.usuario
+     WHERE c.codigo = ? AND c.ativo = 1 AND t.usuario IS NULL
+  `).bind(codigo).first<{ usuario: string }>();
+
+  if (!dono || dono.usuario === usuario) {
+    await selarCodigoInvalido(env, usuario, agora);
+    return { estado: 'codigo_invalido' };
+  }
+
+  await env.DB.batch([
+    env.DB.prepare(
+      'INSERT OR IGNORE INTO contas (usuario, primeiro_em) VALUES (?, ?)',
+    ).bind(usuario, agora),
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO decisoes_indicacao
+        (usuario, estado, indicador, codigo, decidida_em, motivo)
+      VALUES (?, 'vinculada', ?, ?, ?, NULL)
+    `).bind(usuario, dono.usuario, codigo, agora),
+  ]);
+  return { estado: 'vinculada' };
+}
+
+async function selarCodigoInvalido(env: Env, usuario: string, agora: number): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      'INSERT OR IGNORE INTO contas (usuario, primeiro_em) VALUES (?, ?)',
+    ).bind(usuario, agora),
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO decisoes_indicacao
+        (usuario, estado, indicador, codigo, decidida_em, motivo)
+      VALUES (?, 'sem_indicacao', NULL, NULL, ?, 'codigo_invalido')
+    `).bind(usuario, agora),
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO recados (usuario, texto, criado_em, chave)
+      VALUES (?, 'O código de convite não foi reconhecido. A conta entrou sem indicação.', ?, 'indicacao:codigo-invalido')
+    `).bind(usuario, agora),
+  ]);
+}
+
+async function codigoDeIndicacao(
+  env: Env, usuario: string, agora: number,
+): Promise<{ codigo: string; ativo: boolean } | null> {
+  const existente = await env.DB.prepare(
+    'SELECT codigo, ativo FROM codigos_indicacao WHERE usuario = ?',
+  ).bind(usuario).first<{ codigo: string; ativo: number }>();
+  if (existente) return { codigo: existente.codigo, ativo: Boolean(existente.ativo) };
+
+  const teste = await env.DB.prepare(
+    'SELECT usuario FROM contas_teste WHERE usuario = ?',
+  ).bind(usuario).first<{ usuario: string }>();
+  if (teste) return null;
+
+  for (let tentativa = 0; tentativa < 8; tentativa++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(10));
+    const codigo = codigoDosBytes(bytes);
+    try {
+      await env.DB.prepare(`
+        INSERT INTO codigos_indicacao (codigo, usuario, criado_em, ativo)
+        VALUES (?, ?, ?, 1)
+      `).bind(codigo, usuario, agora).run();
+      return { codigo, ativo: true };
+    } catch { // colisão ou corrida: a consulta abaixo distingue quem ganhou
+      const ganhou = await env.DB.prepare(
+        'SELECT codigo FROM codigos_indicacao WHERE usuario = ?',
+      ).bind(usuario).first<{ codigo: string }>();
+      if (ganhou) return { codigo: ganhou.codigo, ativo: true };
+    }
+  }
+  return null;
+}
+
+async function resumoDeIndicacao(env: Env, usuario: string): Promise<{
+  codigo: string | null;
+  codigoAtivo: boolean;
+  vinculados: number;
+  qualificadosNivel25: number;
+  compradores: number;
+  pendenteCentavos: number;
+  disponivelCentavos: number;
+  reservadoCentavos: number;
+  recebidoCentavos: number;
+  dividaCentavos: number;
+  proximaLiberacao: number | null;
+  proximoSaque: number | null;
+  pix: { tipo: string; chaveMascarada: string } | null;
+  marcos: Array<{ jogadores: number; cristais: number; atingido: boolean }>;
+  saques: Array<{ id: string; centavos: number; estado: string; solicitadoEm: number; pagoEm: number | null }>;
+}> {
+  const agora = Math.floor(Date.now() / 1000);
+  const codigo = await codigoDeIndicacao(env, usuario, agora);
+  const [vinculos, xps, recompensas, carteira, pix, marcoRows, saques, ultimoSaque, pagos] = await Promise.all([
+    env.DB.prepare(`
+      SELECT COUNT(*) AS n FROM decisoes_indicacao
+       WHERE indicador = ? AND estado = 'vinculada'
+    `).bind(usuario).first<{ n: number }>(),
+    env.DB.prepare(`
+      SELECT COALESCE(p.xp, 0) AS xp
+        FROM decisoes_indicacao d
+        LEFT JOIN progresso p ON p.usuario = d.usuario
+       WHERE d.indicador = ? AND d.estado = 'vinculada'
+    `).bind(usuario).all<{ xp: number }>(),
+    env.DB.prepare(`
+      SELECT COUNT(DISTINCT indicado) AS compradores,
+             SUM(CASE WHEN estado = 'pendente'
+                      THEN MAX(0, comissao_centavos - revertidos_centavos) ELSE 0 END) AS pendentes,
+             MIN(CASE WHEN estado = 'pendente' THEN liberar_em END) AS proxima
+        FROM recompensas_indicacao WHERE indicador = ?
+    `).bind(usuario).first<{
+      compradores: number; pendentes: number; proxima: number | null;
+    }>(),
+    env.DB.prepare(`
+      SELECT disponivel_centavos, reservado_centavos, divida_centavos
+        FROM carteiras_indicacao WHERE usuario = ?
+    `).bind(usuario).first<{
+      disponivel_centavos: number; reservado_centavos: number; divida_centavos: number;
+    }>(),
+    env.DB.prepare(`
+      SELECT tipo, chave_mascarada FROM dados_pix_indicacao WHERE usuario = ?
+    `).bind(usuario).first<{ tipo: string; chave_mascarada: string }>(),
+    env.DB.prepare('SELECT jogadores FROM marcos_indicacao WHERE indicador = ?')
+      .bind(usuario).all<{ jogadores: number }>(),
+    env.DB.prepare(`
+      SELECT id, centavos, estado, solicitado_em, pago_em
+        FROM saques_indicacao WHERE usuario = ?
+       ORDER BY solicitado_em DESC LIMIT 12
+    `).bind(usuario).all<{
+      id: string; centavos: number; estado: string; solicitado_em: number; pago_em: number | null;
+    }>(),
+    env.DB.prepare('SELECT MAX(solicitado_em) AS em FROM saques_indicacao WHERE usuario = ?')
+      .bind(usuario).first<{ em: number | null }>(),
+    env.DB.prepare("SELECT SUM(centavos) AS total FROM saques_indicacao WHERE usuario = ? AND estado = 'pago'")
+      .bind(usuario).first<{ total: number }>(),
+  ]);
+  const qualificadosNivel25 = xps.results.filter((linha) =>
+    nivelDoPiloto(Math.max(0, Number(linha.xp) || 0)) >= NIVEL_QUALIFICADOR_INDICACAO).length;
+  const atingidos = new Set(marcoRows.results.map((linha) => Number(linha.jogadores)));
+  const proximoSaque = ultimoSaque?.em
+    ? Number(ultimoSaque.em) + INTERVALO_SAQUE_INDICACAO_SEGUNDOS
+    : null;
+  return {
+    codigo: codigo?.codigo ?? null,
+    codigoAtivo: codigo?.ativo ?? false,
+    vinculados: Number(vinculos?.n) || 0,
+    qualificadosNivel25,
+    compradores: Number(recompensas?.compradores) || 0,
+    pendenteCentavos: Number(recompensas?.pendentes) || 0,
+    disponivelCentavos: Number(carteira?.disponivel_centavos) || 0,
+    reservadoCentavos: Number(carteira?.reservado_centavos) || 0,
+    recebidoCentavos: Number(pagos?.total) || 0,
+    dividaCentavos: Number(carteira?.divida_centavos) || 0,
+    proximaLiberacao: recompensas?.proxima ?? null,
+    proximoSaque: proximoSaque && proximoSaque > agora ? proximoSaque : null,
+    pix: pix ? { tipo: pix.tipo, chaveMascarada: pix.chave_mascarada } : null,
+    marcos: MARCOS_INDICACAO.map((marco) => ({ ...marco, atingido: atingidos.has(marco.jogadores) })),
+    saques: saques.results.map((saque) => ({
+      id: saque.id, centavos: Number(saque.centavos) || 0, estado: saque.estado,
+      solicitadoEm: saque.solicitado_em, pagoEm: saque.pago_em,
+    })),
+  };
+}
+
+/** Chave semanal adicional para serializar pedidos concorrentes no D1. */
+function janelaSemanalDeSaque(agora: number): string {
+  const diaLocal = Math.floor((agora - 3 * 60 * 60) / (24 * 60 * 60));
+  const diaDaSemanaComSegundaZero = ((diaLocal + 3) % 7 + 7) % 7;
+  return String(diaLocal - diaDaSemanaComSegundaZero);
+}
+
+async function salvarPixDeIndicacao(
+  req: Request, env: Env, usuario: string, origem: string,
+): Promise<Response> {
+  if (!indicacoesAtivas(env)) return json({ erro: 'indicacoes_desativadas' }, 404, origem);
+  if (!env.INDICACOES_PIX_SECRET) return json({ erro: 'pix_indisponivel' }, 503, origem);
+  const bruto = await req.text();
+  if (bruto.length > 2048) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+  let corpo: { tipo?: unknown; chave?: unknown };
+  try { corpo = JSON.parse(bruto) as typeof corpo; }
+  catch { return json({ erro: 'json_invalido' }, 400, origem); }
+  const pix = normalizarChavePix(corpo.tipo, corpo.chave);
+  if (!pix) return json({ erro: 'chave_pix_invalida' }, 400, origem);
+  const agora = Math.floor(Date.now() / 1000);
+  const chaveCifrada = await cifrarChavePix(pix.chave, env.INDICACOES_PIX_SECRET);
+  const chaveMascarada = mascararChavePix(pix.tipo, pix.chave);
+  await env.DB.prepare(`
+    INSERT INTO dados_pix_indicacao (usuario, tipo, chave_cifrada, chave_mascarada, atualizado_em)
+    VALUES (?, ?, ?, ?, ?) ON CONFLICT(usuario) DO UPDATE SET
+      tipo = excluded.tipo, chave_cifrada = excluded.chave_cifrada,
+      chave_mascarada = excluded.chave_mascarada, atualizado_em = excluded.atualizado_em
+  `).bind(usuario, pix.tipo, chaveCifrada, chaveMascarada, agora).run();
+  return json({ tipo: pix.tipo, chaveMascarada }, 200, origem);
+}
+
+async function solicitarSaqueDeIndicacao(
+  req: Request, env: Env, usuario: string, origem: string,
+): Promise<Response> {
+  if (!indicacoesAtivas(env)) return json({ erro: 'indicacoes_desativadas' }, 404, origem);
+  if (!env.INDICACOES_PIX_SECRET) return json({ erro: 'pix_indisponivel' }, 503, origem);
+  const bruto = await req.text();
+  if (bruto.length > 1024) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+  let corpo: { centavos?: unknown };
+  try { corpo = JSON.parse(bruto || '{}') as typeof corpo; }
+  catch { return json({ erro: 'json_invalido' }, 400, origem); }
+  const centavos = Number(corpo.centavos);
+  if (!Number.isSafeInteger(centavos) || centavos <= 0) return json({ erro: 'valor_invalido' }, 400, origem);
+  if (centavos < SAQUE_MINIMO_INDICACAO_CENTAVOS) {
+    return json({ erro: 'saque_abaixo_do_minimo', minimoCentavos: SAQUE_MINIMO_INDICACAO_CENTAVOS }, 400, origem);
+  }
+  const agora = Math.floor(Date.now() / 1000);
+  const [codigo, pix, carteira, ultimo] = await Promise.all([
+    env.DB.prepare('SELECT ativo FROM codigos_indicacao WHERE usuario = ?')
+      .bind(usuario).first<{ ativo: number }>(),
+    env.DB.prepare(`
+      SELECT tipo, chave_cifrada, chave_mascarada FROM dados_pix_indicacao WHERE usuario = ?
+    `).bind(usuario).first<{ tipo: string; chave_cifrada: string; chave_mascarada: string }>(),
+    env.DB.prepare(`
+      SELECT disponivel_centavos FROM carteiras_indicacao WHERE usuario = ?
+    `).bind(usuario).first<{ disponivel_centavos: number }>(),
+    env.DB.prepare('SELECT MAX(solicitado_em) AS em FROM saques_indicacao WHERE usuario = ?')
+      .bind(usuario).first<{ em: number | null }>(),
+  ]);
+  if (!codigo?.ativo) return json({ erro: 'codigo_bloqueado' }, 403, origem);
+  if (!pix) return json({ erro: 'pix_ausente' }, 409, origem);
+  if (centavos > (Number(carteira?.disponivel_centavos) || 0)) {
+    return json({ erro: 'saldo_insuficiente' }, 409, origem);
+  }
+  const proximo = Number(ultimo?.em) + INTERVALO_SAQUE_INDICACAO_SEGUNDOS;
+  if (ultimo?.em && agora < proximo) return json({ erro: 'saque_semanal', proximoSaque: proximo }, 409, origem);
+
+  const id = crypto.randomUUID();
+  const janela = janelaSemanalDeSaque(agora);
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO saques_indicacao
+          (id, usuario, centavos, tipo_pix, chave_pix_cifrada, chave_pix_mascarada,
+           janela_semana, estado, solicitado_em)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'solicitado', ?)
+      `).bind(id, usuario, centavos, pix.tipo, pix.chave_cifrada, pix.chave_mascarada, janela, agora),
+      env.DB.prepare(`
+        INSERT INTO movimentos_indicacao (usuario, tipo, quantia_centavos, origem, criado_em)
+        VALUES (?, 'saque_reservado', ?, ?, ?)
+      `).bind(usuario, -centavos, id, agora),
+    ]);
+  } catch {
+    return json({ erro: 'saque_ja_solicitado' }, 409, origem);
+  }
+  return json({ id, estado: 'solicitado', centavos, solicitadoEm: agora }, 201, origem);
+}
+
+/** Bloqueia ou reabre um código, sempre com operador e motivo no histórico. */
+async function administrarCodigoDeIndicacao(
+  req: Request, env: Env, admin: string, origem: string,
+): Promise<Response> {
+  const bruto = await req.text();
+  if (bruto.length > 2048) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+  let corpo: { codigo?: unknown; acao?: unknown; motivo?: unknown };
+  try { corpo = JSON.parse(bruto) as typeof corpo; }
+  catch { return json({ erro: 'json_invalido' }, 400, origem); }
+
+  const codigo = normalizarCodigoIndicacao(corpo.codigo);
+  const acao = corpo.acao === 'desbloquear' ? 'desbloquear'
+    : corpo.acao === 'bloquear' ? 'bloquear' : '';
+  const motivo = typeof corpo.motivo === 'string'
+    ? corpo.motivo.trim().replace(/\s+/g, ' ').slice(0, 160)
+    : '';
+  if (!codigoIndicacaoValido(codigo) || !acao || motivo.length < 5) {
+    return json({ erro: 'dados_invalidos' }, 400, origem);
+  }
+
+  const dono = await env.DB.prepare(
+    'SELECT usuario, ativo FROM codigos_indicacao WHERE codigo = ?',
+  ).bind(codigo).first<{ usuario: string; ativo: number }>();
+  if (!dono) return json({ erro: 'codigo_desconhecido' }, 404, origem);
+
+  const agora = Math.floor(Date.now() / 1000);
+  const ativo = acao === 'desbloquear' ? 1 : 0;
+  const comandos: D1PreparedStatement[] = [
+    env.DB.prepare('UPDATE codigos_indicacao SET ativo = ? WHERE codigo = ?')
+      .bind(ativo, codigo),
+    env.DB.prepare(`
+      INSERT INTO acoes_indicacao_admin (admin, codigo, acao, motivo, criado_em)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(admin, codigo, acao, motivo, agora),
+    env.DB.prepare(`
+      INSERT INTO recados (usuario, texto, criado_em, chave)
+      VALUES (?, ?, ?, NULL)
+    `).bind(
+      dono.usuario,
+      ativo
+        ? 'Seu código de indicação foi reativado pela equipe.'
+        : 'Seu código de indicação foi bloqueado pela equipe. Fale com o suporte se precisar de revisão.',
+      agora,
+    ),
+  ];
+  if (!ativo) {
+    comandos.push(env.DB.prepare(`
+      UPDATE recompensas_indicacao SET estado = 'bloqueada'
+       WHERE indicador = ? AND estado = 'pendente'
+    `).bind(dono.usuario));
+  } else {
+    comandos.push(env.DB.prepare(`
+      UPDATE recompensas_indicacao SET estado = 'pendente'
+       WHERE indicador = ? AND estado = 'bloqueada'
+    `).bind(dono.usuario));
+  }
+  await env.DB.batch(comandos);
+  return json({ codigo, ativo: Boolean(ativo) }, 200, origem);
+}
+
+async function listarSaquesDeIndicacao(env: Env, origem: string): Promise<Response> {
+  if (!env.INDICACOES_PIX_SECRET) return json({ erro: 'pix_indisponivel' }, 503, origem);
+  const { results } = await env.DB.prepare(`
+    SELECT s.id, s.usuario, s.centavos, s.tipo_pix, s.chave_pix_cifrada,
+           s.chave_pix_mascarada, s.estado, s.solicitado_em,
+           s.pago_em, s.referencia_pagamento, c.divida_centavos
+      FROM saques_indicacao s
+      LEFT JOIN carteiras_indicacao c ON c.usuario = s.usuario
+     WHERE s.estado IN ('solicitado', 'analise')
+     ORDER BY s.solicitado_em ASC LIMIT 100
+  `).all<{
+    id: string; usuario: string; centavos: number; tipo_pix: string;
+    chave_pix_cifrada: string; chave_pix_mascarada: string; estado: string;
+    solicitado_em: number; pago_em: number | null; referencia_pagamento: string | null;
+    divida_centavos: number;
+  }>();
+  const saques = await Promise.all(results.map(async (saque) => ({
+    id: saque.id, usuario: saque.usuario, centavos: saque.centavos,
+    tipoPix: saque.tipo_pix,
+    chavePix: await decifrarChavePix(saque.chave_pix_cifrada, env.INDICACOES_PIX_SECRET!),
+    chavePixMascarada: saque.chave_pix_mascarada, estado: saque.estado,
+    solicitadoEm: saque.solicitado_em, dividaCentavos: Number(saque.divida_centavos) || 0,
+  })));
+  return json({ saques }, 200, origem);
+}
+
+/** Registra o resultado de um Pix executado e conferido fora do jogo. */
+async function administrarSaqueDeIndicacao(
+  req: Request, env: Env, admin: string, origem: string,
+): Promise<Response> {
+  const bruto = await req.text();
+  if (bruto.length > 4096) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+  let corpo: { id?: unknown; acao?: unknown; referencia?: unknown; motivo?: unknown };
+  try { corpo = JSON.parse(bruto) as typeof corpo; }
+  catch { return json({ erro: 'json_invalido' }, 400, origem); }
+  const id = typeof corpo.id === 'string' ? corpo.id.trim() : '';
+  const acao = corpo.acao === 'pagar' ? 'pagar' : corpo.acao === 'recusar' ? 'recusar' : '';
+  const referencia = typeof corpo.referencia === 'string' ? corpo.referencia.trim().slice(0, 160) : '';
+  const motivo = typeof corpo.motivo === 'string' ? corpo.motivo.trim().replace(/\s+/g, ' ').slice(0, 240) : '';
+  if (!id || !acao || (acao === 'pagar' && referencia.length < 5)
+      || (acao === 'recusar' && motivo.length < 5)) {
+    return json({ erro: 'dados_invalidos' }, 400, origem);
+  }
+  const saque = await env.DB.prepare(`
+    SELECT s.usuario, s.centavos, s.estado, COALESCE(c.divida_centavos, 0) AS divida
+      FROM saques_indicacao s LEFT JOIN carteiras_indicacao c ON c.usuario = s.usuario
+     WHERE s.id = ?
+  `).bind(id).first<{ usuario: string; centavos: number; estado: string; divida: number }>();
+  if (!saque) return json({ erro: 'saque_desconhecido' }, 404, origem);
+  if (!['solicitado', 'analise'].includes(saque.estado)) return json({ erro: 'saque_ja_decidido' }, 409, origem);
+  if (acao === 'pagar' && Number(saque.divida) > 0) {
+    return json({ erro: 'saque_com_estorno_pendente' }, 409, origem);
+  }
+  const agora = Math.floor(Date.now() / 1000);
+  if (acao === 'pagar') {
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE saques_indicacao SET estado = 'pago', revisado_em = ?, revisado_por = ?,
+          pago_em = ?, referencia_pagamento = ?, motivo = NULL
+         WHERE id = ? AND estado IN ('solicitado', 'analise')
+      `).bind(agora, admin, agora, referencia, id),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO movimentos_indicacao (usuario, tipo, quantia_centavos, origem, criado_em)
+        VALUES (?, 'saque_pago', ?, ?, ?)
+      `).bind(saque.usuario, -saque.centavos, id, agora),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO recados (usuario, texto, criado_em, chave)
+        VALUES (?, ?, ?, ?)
+      `).bind(saque.usuario, 'Seu saque por Pix foi marcado como pago.', agora, `saque-pago:${id}`),
+    ]);
+  } else {
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE saques_indicacao SET estado = 'recusado', revisado_em = ?, revisado_por = ?, motivo = ?
+         WHERE id = ? AND estado IN ('solicitado', 'analise')
+      `).bind(agora, admin, motivo, id),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO movimentos_indicacao (usuario, tipo, quantia_centavos, origem, criado_em)
+        VALUES (?, 'saque_devolvido', ?, ?, ?)
+      `).bind(saque.usuario, saque.centavos, id, agora),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO recados (usuario, texto, criado_em, chave)
+        VALUES (?, ?, ?, ?)
+      `).bind(saque.usuario, `Seu saque não foi concluído: ${motivo}`, agora, `saque-recusado:${id}`),
+    ]);
+  }
+  return json({ id, estado: acao === 'pagar' ? 'pago' : 'recusado' }, 200, origem);
 }
 
 /**
@@ -377,6 +854,7 @@ export default {
   async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
     await avisarDasRecusas(env);
     await varrerCobrancas(env);
+    if (indicacoesAtivas(env)) await liberarRecompensasDeIndicacao(env);
   },
 } satisfies ExportedHandler<Env>;
 
@@ -723,6 +1201,14 @@ async function rotear(req: Request, env: Env): Promise<Response> {
 
     const usuario = await usuarioDoToken(req.headers.get('authorization'), env.SUPABASE_URL);
     if (!usuario) return json({ erro: 'nao_autenticado' }, 401, origem);
+    if (usuario.confirmacaoEmail === 'token_invalido') return json({ erro: 'nao_autenticado' }, 401, origem);
+    if (usuario.confirmacaoEmail === 'nao_confirmado') return json({ erro: 'email_nao_confirmado' }, 403, origem);
+    if (usuario.confirmacaoEmail === 'configuracao_insegura') {
+      return json({ erro: 'confirmacao_email_nao_configurada' }, 503, origem);
+    }
+    if (usuario.confirmacaoEmail === 'indisponivel') {
+      return json({ erro: 'verificacao_email_indisponivel' }, 503, origem);
+    }
 
     if (url.pathname === '/sessao') {
       const agora = Math.floor(Date.now() / 1000);
@@ -733,13 +1219,22 @@ async function rotear(req: Request, env: Env): Promise<Response> {
       }
       if (req.method === 'POST') {
         const bruto = await req.text();
-        if (bruto.length > 512) return json({ erro: 'corpo_grande_demais' }, 413, origem);
-        let corpo: { instancia?: unknown; acao?: unknown; forcar?: unknown };
+        if (bruto.length > 1024) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+        let corpo: { instancia?: unknown; acao?: unknown; forcar?: unknown; codigoIndicacao?: unknown };
         try { corpo = JSON.parse(bruto) as typeof corpo; }
         catch { return json({ erro: 'json_invalido' }, 400, origem); }
         if (!instanciaValida(corpo.instancia)) return json({ erro: 'instancia_invalida' }, 400, origem);
         if (corpo.acao === 'reivindicar') {
-          return json(await reivindicarSessao(env, usuario.id, corpo.instancia, corpo.forcar === true, agora), 200, origem);
+          const sessao = await reivindicarSessao(env, usuario.id, corpo.instancia, corpo.forcar === true, agora);
+          // Mesmo desligado, sela como sem indicação quem nasce depois da
+          // migração. Senão uma conta criada durante a implantação pareceria
+          // nova quando a flag fosse ligada dias depois.
+          if (!indicacoesAtivas(env)) {
+            await ativarIndicacao(env, usuario.id, undefined, agora);
+            return json(sessao, 200, origem);
+          }
+          const indicacao = await ativarIndicacao(env, usuario.id, corpo.codigoIndicacao, agora);
+          return json({ ...sessao, indicacao }, 200, origem);
         }
         if (corpo.acao === 'pulsar') {
           return json(await pulsarSessao(env, usuario.id, corpo.instancia, agora), 200, origem);
@@ -750,6 +1245,20 @@ async function rotear(req: Request, env: Env): Promise<Response> {
         }
         return json({ erro: 'acao_invalida' }, 400, origem);
       }
+    }
+
+    if (url.pathname === '/indicacao' && req.method === 'GET') {
+      if (!indicacoesAtivas(env)) return json({ ativo: false }, 200, origem);
+      if (!podeLerIndicacao(usuario.id, Math.floor(Date.now() / 1000))) {
+        return json({ erro: 'rapido_demais' }, 429, origem);
+      }
+      return json({ ativo: true, ...await resumoDeIndicacao(env, usuario.id) }, 200, origem);
+    }
+    if (url.pathname === '/indicacao/pix' && req.method === 'PUT') {
+      return salvarPixDeIndicacao(req, env, usuario.id, origem);
+    }
+    if (url.pathname === '/indicacao/saque' && req.method === 'POST') {
+      return solicitarSaqueDeIndicacao(req, env, usuario.id, origem);
     }
 
     if (url.pathname === '/save') {
@@ -825,6 +1334,27 @@ async function rotear(req: Request, env: Env): Promise<Response> {
       return json(await lerPainelAdmin(env, Math.floor(Date.now() / 1000)), 200, origem);
     }
 
+    if (url.pathname === '/admin/indicacoes/codigo' && req.method === 'POST') {
+      if (!podeLerPainelAdmin(usuario.id)) return json({ erro: 'nao_autorizado' }, 403, origem);
+      const permissao = await consumirFicha(
+        env, usuario.id, 'admin', Math.floor(Date.now() / 1000),
+      );
+      if (!permissao.pode) {
+        return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+      }
+      return administrarCodigoDeIndicacao(req, env, usuario.id, origem);
+    }
+    if (url.pathname === '/admin/indicacoes/saques' && req.method === 'GET') {
+      if (!podeLerPainelAdmin(usuario.id)) return json({ erro: 'nao_autorizado' }, 403, origem);
+      return listarSaquesDeIndicacao(env, origem);
+    }
+    if (url.pathname === '/admin/indicacoes/saque' && req.method === 'POST') {
+      if (!podeLerPainelAdmin(usuario.id)) return json({ erro: 'nao_autorizado' }, 403, origem);
+      const permissao = await consumirFicha(env, usuario.id, 'admin', Math.floor(Date.now() / 1000));
+      if (!permissao.pode) return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+      return administrarSaqueDeIndicacao(req, env, usuario.id, origem);
+    }
+
     if (url.pathname === '/carteira' && req.method === 'GET') {
       // Mesma defesa do placar: leitura barata, mas perguntada com frequência
       // pela tela da Loja. Balde em memória, não linha no banco.
@@ -849,6 +1379,64 @@ async function rotear(req: Request, env: Env): Promise<Response> {
     if (url.pathname === '/inventario') {
       if (req.method === 'GET') return json({ itens: await inventarioDe(env, usuario.id) }, 200, origem);
       if (req.method === 'POST') return aplicarComandos(req, env, usuario.id, origem);
+    }
+
+    /**
+     * As chaves de acesso, que saíram do save em 12/09/2026.
+     *
+     * O GET devolve o estoque E o acesso pago, porque a pergunta do cliente é
+     * sempre as duas juntas: "quantas tenho, e já paguei a entrada deste
+     * chefe?". Duas rotas seriam duas requisições para uma decisão só.
+     *
+     * `consumir` é a razão de tudo isto existir do lado de cá: enquanto a
+     * chave morava no save, a entrada no chefe era palavra do cliente, e a
+     * trava do servidor tinha de ser uma decisão em vez de uma verificação.
+     */
+    if (url.pathname === '/chaves') {
+      const agora = Math.floor(Date.now() / 1000);
+      if (req.method === 'GET') {
+        return json({
+          chaves: await chavesDe(env, usuario.id),
+          acesso: await acessoAoChefeDe(env, usuario.id),
+        }, 200, origem);
+      }
+      if (req.method === 'POST') {
+        const bruto = await req.text();
+        if (bruto.length > CORPO_MAX_BYTES) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+        let corpo: { acao?: unknown; ganhos?: unknown; chave?: unknown; boss?: unknown };
+        try { corpo = JSON.parse(bruto) as typeof corpo; }
+        catch { return json({ erro: 'json_invalido' }, 400, origem); }
+
+        if (corpo.acao === 'consumir') {
+          // Ação deliberada, com o jogador olhando: balde de ação, não o de
+          // sincronia. Ver o comentário de `BALDES` em `ritmo.ts`.
+          const permissao = await consumirFicha(env, usuario.id, 'acao', agora);
+          if (!permissao.pode) return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+          if (typeof corpo.chave !== 'string' || typeof corpo.boss !== 'string') {
+            return json({ erro: 'corpo_incompleto' }, 400, origem);
+          }
+          const pago = await consumirChave(env, usuario.id, corpo.chave, corpo.boss, agora);
+          if (!pago) return json({ erro: 'sem_chave' }, 409, origem);
+          return json({
+            chaves: await chavesDe(env, usuario.id), acesso: corpo.boss,
+          }, 200, origem);
+        }
+
+        if (corpo.acao === 'liberar') {
+          await liberarAcesso(env, usuario.id);
+          return json({ chaves: await chavesDe(env, usuario.id), acesso: null }, 200, origem);
+        }
+
+        const permissao = await consumirFicha(env, usuario.id, 'sincronia', agora);
+        if (!permissao.pode) return json({ erro: 'rapido_demais', esperar: permissao.esperar }, 429, origem);
+        const ganhos = ganhosSaos(corpo.ganhos ?? {});
+        if (typeof ganhos === 'string') return json({ erro: ganhos }, 400, origem);
+        await creditarChaves(env, usuario.id, ganhos);
+        return json({
+          chaves: await chavesDe(env, usuario.id),
+          acesso: await acessoAoChefeDe(env, usuario.id),
+        }, 200, origem);
+      }
     }
 
     if (url.pathname === '/sintetizar' && req.method === 'POST') {
@@ -1809,6 +2397,7 @@ async function estadoDaCompra(
 interface LinhaDeCompra {
   id: string; usuario: string; pacote: string; cristais: number; centavos: number;
   estado: string; provedor_id: string | null; criada_em: number; paga_em: number | null;
+  centavos_reembolsados: number; reembolsada_em: number | null;
 }
 
 /** A linha da compra. Com `usuario`, é também a autorização. */
@@ -1887,65 +2476,70 @@ async function receberPagamento(req: Request, env: Env): Promise<Response> {
   return ok;
 }
 
-/** Consulta o pagamento no provedor e credita, se for o caso. */
+/** Consulta o pagamento no provedor e credita ou reverte a indicação. */
 async function creditarPagamento(env: Env, pagamentoId: string): Promise<void> {
   const pago = await lerPagamentoNoMP(env, pagamentoId);
-  // Ainda não aprovado é o caminho normal: o MP avisa a cada mudança de estado.
-  if (!pago || pago.estado !== 'approved') return;
+  if (!pago) return;
 
-  const linha = await lerCompra(env, pago.referencia);
+  let linha = await lerCompra(env, pago.referencia);
   if (!linha) {
     await anotarMotivo(env, '/webhook/pagamento', 'compra_desconhecida', 404).catch(() => {});
     return;
   }
 
+  const agora = Math.floor(Date.now() / 1000);
   const compra = paraCompra(linha);
 
-  const recusa = podePagar(compra);
-  if (recusa) return; // já encerrada: o reenvio do webhook é o caminho normal
+  // Um pagamento que já entrou no livro pode ter sido reembolsado entre o
+  // crédito e a atualização de `compras`. Essa leitura fecha a rara janela de
+  // falha sem creditar um pagamento que o provedor já devolveu.
+  const creditoAnterior = await env.DB.prepare(`
+    SELECT quantia FROM transacoes WHERE motivo = 'compra' AND origem = ?
+  `).bind(pagamentoId).first<{ quantia: number }>();
+  const deveCreditar = pago.estado === 'approved' || Boolean(creditoAnterior);
 
-  if (!valorConfere(compra, pago.centavos)) {
-    await anotarMotivo(env, '/webhook/pagamento', 'valor_divergente', 409).catch(() => {});
-    return;
+  if (deveCreditar && !podePagar(compra)) {
+    if (!valorConfere(compra, pago.centavos)) {
+      await anotarMotivo(env, '/webhook/pagamento', 'valor_divergente', 409).catch(() => {});
+      return;
+    }
+
+    /** O crédito vem antes do estado; o índice do livro torna a repetição segura. */
+    const r = await lancar(env, {
+      usuario: compra.usuario,
+      moeda: 'cristal',
+      quantia: compra.cristais,
+      motivo: 'compra',
+      origem: pagamentoId,
+      em: agora,
+    });
+
+    if (!r.ok && r.erro !== 'repetido') {
+      await anotarMotivo(env, '/webhook/pagamento', `credito_${r.erro}`, 500).catch(() => {});
+      return;
+    }
+
+    if (indicacoesAtivas(env)) {
+      await registrarRecompensaDaCompra(env, compra, pagamentoId, pago.centavos, agora);
+    }
+    await env.DB.prepare(
+      "UPDATE compras SET estado = 'paga', provedor_id = ?, paga_em = COALESCE(paga_em, ?) WHERE id = ?",
+    ).bind(pagamentoId, agora, compra.id).run();
+    linha = await lerCompra(env, compra.id) ?? linha;
   }
 
-  const agora = Math.floor(Date.now() / 1000);
-
-  /**
-   * O crédito vem ANTES de marcar a compra como paga.
-   *
-   * Se a ordem fosse a inversa e a escrita do livro falhasse, a compra ficaria
-   * marcada como paga sem os cristais terem entrado — e um reenvio do webhook
-   * seria recusado por `compra_ja_encerrada`. O jogador pagaria e não receberia,
-   * sem caminho de conserto automático.
-   *
-   * Nesta ordem, uma falha entre as duas deixa o crédito feito e a compra ainda
-   * pendente: o reenvio tenta de novo, o livro recusa por `repetido` — é o
-   * índice único fazendo o trabalho dele — e a marcação se completa.
-   */
-  const r = await lancar(env, {
-    usuario: compra.usuario,
-    moeda: 'cristal',
-    quantia: compra.cristais,
-    motivo: 'compra',
-    origem: pagamentoId,
-    em: agora,
-  });
-
-  if (!r.ok && r.erro !== 'repetido') {
-    await anotarMotivo(env, '/webhook/pagamento', `credito_${r.erro}`, 500).catch(() => {});
-    return;
+  if (indicacoesAtivas(env) && (linha.estado === 'paga' || linha.estado === 'reembolsada')
+      && pago.reembolsadosCentavos > linha.centavos_reembolsados) {
+    await processarReembolsoDaIndicacao(env, linha, pago.reembolsadosCentavos, agora);
   }
-
-  await env.DB.prepare(
-    "UPDATE compras SET estado = 'paga', provedor_id = ?, paga_em = ? WHERE id = ?",
-  ).bind(pagamentoId, agora, compra.id).run();
 }
 
 /** O estado e o valor de um pagamento, direto da API do provedor. */
 async function lerPagamentoNoMP(
   env: Env, id: string,
-): Promise<{ estado: string; centavos: number; referencia: string } | null> {
+): Promise<{
+  estado: string; centavos: number; referencia: string; reembolsadosCentavos: number;
+} | null> {
   if (!env.MP_ACCESS_TOKEN) return null;
   try {
     const r = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(id)}`, {
@@ -1962,19 +2556,187 @@ async function lerPagamentoNoMP(
     }
 
     const d = await r.json() as {
-      status?: string; transaction_amount?: number; external_reference?: string;
+      status?: string; transaction_amount?: number; transaction_amount_refunded?: number;
+      external_reference?: string;
     };
     return {
       estado: String(d.status ?? ''),
       // Reais viram centavos INTEIROS aqui, no ponto de entrada. Deixar o
       // decimal circular pelo resto do código é como um centavo se perde.
       centavos: Math.round((Number(d.transaction_amount) || 0) * 100),
+      reembolsadosCentavos: Math.max(0, Math.round((Number(d.transaction_amount_refunded) || 0) * 100)),
       referencia: String(d.external_reference ?? ''),
     };
   } catch { // contado como `sem_resposta`: ver o `if (!r.ok)` acima
     await anotarMotivo(env, '/mp/consultar', 'sem_resposta', 502).catch(() => {});
     return null;
   }
+}
+
+interface LinhaDeRecompensaDeIndicacao {
+  compra: string;
+  pagamento: string;
+  indicador: string;
+  indicado: string;
+  base_centavos: number;
+  comissao_centavos: number;
+  revertidos_centavos: number;
+  liberados_centavos: number;
+  estado: string;
+  liberar_em: number;
+}
+
+/** Fotografa a comissão da compra; reenvios do webhook não duplicam a linha. */
+async function registrarRecompensaDaCompra(
+  env: Env, compra: Compra, pagamentoId: string, centavosPagos: number, agora: number,
+): Promise<void> {
+  const comissao = comissaoDeIndicacao(centavosPagos);
+  if (!comissao) return;
+  await env.DB.prepare(`
+    INSERT OR IGNORE INTO recompensas_indicacao
+      (compra, pagamento, indicador, indicado, base_centavos,
+       percentual_bps, comissao_centavos, criada_em, liberar_em)
+    SELECT ?, ?, d.indicador, ?, ?, ?, ?, ?, ?
+      FROM decisoes_indicacao d
+      INNER JOIN codigos_indicacao codigo_ativo
+        ON codigo_ativo.usuario = d.indicador AND codigo_ativo.ativo = 1
+      LEFT JOIN contas_teste indicador_teste ON indicador_teste.usuario = d.indicador
+      LEFT JOIN contas_teste indicado_teste ON indicado_teste.usuario = d.usuario
+     WHERE d.usuario = ? AND d.estado = 'vinculada'
+       AND d.indicador IS NOT NULL
+       AND indicador_teste.usuario IS NULL AND indicado_teste.usuario IS NULL
+  `).bind(
+    compra.id, pagamentoId, compra.usuario, centavosPagos,
+    PERCENTUAL_INDICACAO_BPS, comissao, agora, agora + ESPERA_INDICACAO_SEGUNDOS,
+    compra.usuario,
+  ).run();
+}
+
+/** Libera, em lotes curtos, as recompensas que atravessaram os sete dias. */
+async function liberarRecompensasDeIndicacao(env: Env): Promise<void> {
+  const agora = Math.floor(Date.now() / 1000);
+  const { results } = await env.DB.prepare(`
+    SELECT compra, pagamento, indicador, indicado, base_centavos,
+           comissao_centavos, revertidos_centavos, liberados_centavos,
+           estado, liberar_em
+      FROM recompensas_indicacao
+     WHERE estado = 'pendente' AND liberar_em <= ?
+     ORDER BY liberar_em LIMIT 100
+  `).bind(agora).all<LinhaDeRecompensaDeIndicacao>();
+
+  for (const recompensa of results) {
+    try {
+    const nominal = Math.max(0, recompensa.comissao_centavos - recompensa.revertidos_centavos);
+    if (!nominal) {
+      await env.DB.prepare(`
+        UPDATE recompensas_indicacao SET estado = 'revertida', revertida_em = ?
+         WHERE compra = ? AND estado = 'pendente'
+      `).bind(agora, recompensa.compra).run();
+      continue;
+    }
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO carteiras_indicacao
+          (usuario, disponivel_centavos, reservado_centavos, divida_centavos, atualizado_em)
+        VALUES (?, 0, 0, 0, ?)
+      `).bind(recompensa.indicador, agora),
+      env.DB.prepare(`
+        UPDATE recompensas_indicacao SET estado = 'liberada', liberada_em = ?
+         WHERE compra = ? AND estado = 'pendente'
+      `).bind(agora, recompensa.compra),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO recados (usuario, texto, criado_em, chave)
+        VALUES (?, ?, ?, ?)
+      `).bind(
+        recompensa.indicador,
+        `Uma comissão de R$ ${(nominal / 100).toFixed(2).replace('.', ',')} foi liberada para saque.`,
+        agora, `indicacao:${recompensa.compra}`,
+      ),
+    ]);
+    } catch (erro) {
+      // Uma linha ruim não impede as outras 99 nem envenena o próximo lote.
+      await anotarExcecaoDeAuditoria(env, '/indicacoes:liberar', erro);
+    }
+  }
+}
+
+/** Ajusta só a comissão: o tratamento do saldo da compra pertence ao fluxo financeiro geral. */
+async function processarReembolsoDaIndicacao(
+  env: Env, compra: LinhaDeCompra, centavosReembolsadosBrutos: number, agora: number,
+): Promise<void> {
+  const recompensa = await env.DB.prepare(`
+    SELECT compra, pagamento, indicador, indicado, base_centavos,
+           comissao_centavos, revertidos_centavos, liberados_centavos,
+           estado, liberar_em
+      FROM recompensas_indicacao WHERE compra = ?
+  `).bind(compra.id).first<LinhaDeRecompensaDeIndicacao>();
+
+  if (!recompensa) {
+    const centavosReembolsados = Math.min(compra.centavos, Math.max(0, centavosReembolsadosBrutos));
+    await marcarCompraReembolsada(env, compra, centavosReembolsados, agora);
+    return;
+  }
+
+  const centavosReembolsados = Math.min(
+    recompensa.base_centavos, Math.max(0, centavosReembolsadosBrutos),
+  );
+
+  const totalRevertido = comissaoRevertida(
+    recompensa.comissao_centavos, centavosReembolsados, recompensa.base_centavos,
+  );
+  const estado = totalRevertido >= recompensa.comissao_centavos
+    ? 'revertida'
+    : recompensa.estado;
+
+  if (recompensa.estado === 'pendente') {
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE recompensas_indicacao
+           SET revertidos_centavos = ?, estado = ?, revertida_em = ?
+         WHERE compra = ?
+      `).bind(totalRevertido, estado, agora, compra.id),
+      comandoParaMarcarCompraReembolsada(env, compra, centavosReembolsados, agora),
+    ]);
+    return;
+  }
+
+  if (recompensa.estado === 'bloqueada') {
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE recompensas_indicacao
+           SET revertidos_centavos = ?, revertida_em = ?
+         WHERE compra = ?
+      `).bind(totalRevertido, agora, compra.id),
+      comandoParaMarcarCompraReembolsada(env, compra, centavosReembolsados, agora),
+    ]);
+    return;
+  }
+
+  await env.DB.batch([
+    env.DB.prepare(`
+      UPDATE recompensas_indicacao
+         SET revertidos_centavos = ?, estado = ?, revertida_em = ?
+       WHERE compra = ?
+    `).bind(totalRevertido, estado, agora, compra.id),
+    comandoParaMarcarCompraReembolsada(env, compra, centavosReembolsados, agora),
+  ]);
+}
+
+function comandoParaMarcarCompraReembolsada(
+  env: Env, compra: LinhaDeCompra, centavos: number, agora: number,
+): D1PreparedStatement {
+  const integral = centavos >= compra.centavos;
+  return env.DB.prepare(`
+    UPDATE compras SET centavos_reembolsados = ?, reembolsada_em = ?,
+      estado = CASE WHEN ? THEN 'reembolsada' ELSE estado END
+     WHERE id = ?
+  `).bind(centavos, agora, integral ? 1 : 0, compra.id);
+}
+
+async function marcarCompraReembolsada(
+  env: Env, compra: LinhaDeCompra, centavos: number, agora: number,
+): Promise<void> {
+  await comandoParaMarcarCompraReembolsada(env, compra, centavos, agora).run();
 }
 
 // ── inventário ──────────────────────────────────────────────────────────────
@@ -2602,6 +3364,54 @@ async function progressoComRecompensas(env: Env, usuario: string, agora: number)
   return { ...progresso, vipRecompensa };
 }
 
+/** Concede, uma única vez, todos os marcos que o indicador já atravessou. */
+async function concederMarcosDeIndicacao(env: Env, indicado: string, agora: number): Promise<void> {
+  if (!indicacoesAtivas(env)) return;
+  const vinculo = await env.DB.prepare(`
+    SELECT d.indicador
+      FROM decisoes_indicacao d
+      INNER JOIN codigos_indicacao c ON c.usuario = d.indicador AND c.ativo = 1
+      LEFT JOIN contas_teste t1 ON t1.usuario = d.usuario
+      LEFT JOIN contas_teste t2 ON t2.usuario = d.indicador
+     WHERE d.usuario = ? AND d.estado = 'vinculada'
+       AND t1.usuario IS NULL AND t2.usuario IS NULL
+  `).bind(indicado).first<{ indicador: string }>();
+  if (!vinculo?.indicador) return;
+
+  const { results } = await env.DB.prepare(`
+    SELECT COALESCE(p.xp, 0) AS xp
+      FROM decisoes_indicacao d
+      LEFT JOIN progresso p ON p.usuario = d.usuario
+     WHERE d.indicador = ? AND d.estado = 'vinculada'
+  `).bind(vinculo.indicador).all<{ xp: number }>();
+  const qualificados = results.filter((linha) =>
+    nivelDoPiloto(Math.max(0, Number(linha.xp) || 0)) >= NIVEL_QUALIFICADOR_INDICACAO).length;
+
+  for (const marco of MARCOS_INDICACAO) {
+    if (qualificados < marco.jogadores) continue;
+    const origem = `indicacao-marco:${vinculo.indicador}:${marco.jogadores}`;
+    const credito = await lancar(env, {
+      usuario: vinculo.indicador, moeda: 'cristal', quantia: marco.cristais,
+      motivo: 'marco_indicacao', origem, em: agora,
+    });
+    if (!credito.ok && credito.erro !== 'repetido') continue;
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO marcos_indicacao (indicador, jogadores, cristais, criado_em)
+        VALUES (?, ?, ?, ?)
+      `).bind(vinculo.indicador, marco.jogadores, marco.cristais, agora),
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO recados (usuario, texto, criado_em, chave)
+        VALUES (?, ?, ?, ?)
+      `).bind(
+        vinculo.indicador,
+        `Marco de indicações: ${marco.jogadores} pilotos chegaram ao nível ${NIVEL_QUALIFICADOR_INDICACAO}. Você recebeu ${marco.cristais} cristais.`,
+        agora, origem,
+      ),
+    ]);
+  }
+}
+
 /**
  * Aplica os ganhos de progressão e a alocação da Matriz.
  *
@@ -2825,6 +3635,8 @@ async function gravarProgresso(req: Request, env: Env, id: string, origem: strin
   // O setor alcançado pode ter passado de um chefe: é aqui que a primeira
   // vitória vira cristal. Depois de gravar — o marco lê o setor já atualizado.
   const marcos = await creditarMarcos(env, id);
+  await concederMarcosDeIndicacao(env, id, agora)
+    .catch((erro) => anotarExcecaoDeAuditoria(env, '/indicacoes:marcos', erro));
   return json({ ...(await progressoComRecompensas(env, id, agora)), recusados, marcos }, 200, origem);
 }
 // ── ausência: o servidor simula o que aconteceu ─────────────────────────────

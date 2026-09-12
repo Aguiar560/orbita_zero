@@ -2739,6 +2739,16 @@ medição.
 | **Escala de afixo fracionário** | crítico, sorte e sincronia escalavam com ilvl; sorte chegava a 3699% e o baú soltava Divino em metade dos itens | ✅ resolvido em `1.5` |
 | **`sharp` com CVE de libvips** | `npm audit`; é ferramenta de build, não entra no bundle | etapa própria |
 
+## Programa de indicações — implementação concluída, ativação pendente
+
+O programa financeiro está implementado e documentado na Wiki:
+vínculo único, 10% dos centavos efetivamente pagos, sete dias de retenção,
+estorno/dívida, chave Pix cifrada, saque mínimo de R$ 15,00 com uma solicitação
+a cada sete dias em fila manual e marcos de
+indicados no nível 25. A flag continua desligada até aplicar a migração,
+configurar o segredo, revisar termos/privacidade/contabilidade e homologar todo
+o fluxo. A migração remota e a ativação da flag continuam pendentes.
+
 ---
 
 ## Como verificar cada etapa

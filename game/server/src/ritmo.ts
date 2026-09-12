@@ -180,6 +180,8 @@ export const BALDES = {
    * não de horas.
    */
   provedor: { refil: 20, capacidade: 3 },
+  /** Ações raras do painel; separadas dos cliques normais do jogador. */
+  admin: { refil: 5, capacidade: 10 },
 } as const;
 
 export type NomeDeBalde = keyof typeof BALDES;
@@ -215,24 +217,37 @@ export function podeUsar(
  */
 const LEITURAS_POR_MINUTO = 30;
 const leituras = new Map<string, { fichas: number; em: number }>();
+const leiturasDeIndicacao = new Map<string, { fichas: number; em: number }>();
 
-export function podeLer(usuario: string, agora: number): boolean {
-  const b = leituras.get(usuario);
+function podeLerDoMapa(
+  mapa: Map<string, { fichas: number; em: number }>,
+  usuario: string, agora: number, porMinuto: number,
+): boolean {
+  const b = mapa.get(usuario);
   const fichas = b
-    ? Math.min(LEITURAS_POR_MINUTO, b.fichas + ((agora - b.em) / 60) * LEITURAS_POR_MINUTO)
-    : LEITURAS_POR_MINUTO;
+    ? Math.min(porMinuto, b.fichas + ((agora - b.em) / 60) * porMinuto)
+    : porMinuto;
 
   if (fichas < 1) return false;
 
   // O mapa não pode crescer para sempre: um isolado longevo com muitos
   // jogadores viraria vazamento. Acima do teto, esquece os mais antigos.
-  if (leituras.size > 5000) {
-    for (const [k] of leituras) {
-      leituras.delete(k);
-      if (leituras.size <= 4000) break;
+  if (mapa.size > 5000) {
+    for (const [k] of mapa) {
+      mapa.delete(k);
+      if (mapa.size <= 4000) break;
     }
   }
 
-  leituras.set(usuario, { fichas: fichas - 1, em: agora });
+  mapa.set(usuario, { fichas: fichas - 1, em: agora });
   return true;
+}
+
+export function podeLer(usuario: string, agora: number): boolean {
+  return podeLerDoMapa(leituras, usuario, agora, LEITURAS_POR_MINUTO);
+}
+
+/** Perfil é barato, mas não precisa aceitar um laço de consultas. */
+export function podeLerIndicacao(usuario: string, agora: number): boolean {
+  return podeLerDoMapa(leiturasDeIndicacao, usuario, agora, 6);
 }

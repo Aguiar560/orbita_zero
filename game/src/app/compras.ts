@@ -31,7 +31,7 @@ export interface Cobranca {
 
 export interface EstadoDaCompra {
   compra: string;
-  estado: 'pendente' | 'paga' | 'expirada' | 'cancelada';
+  estado: 'pendente' | 'paga' | 'expirada' | 'cancelada' | 'reembolsada';
   cristais: number;
   centavos: number;
   /** Passou da validade. Não impede o pagamento — ver `podePagar` no servidor. */

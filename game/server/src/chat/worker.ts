@@ -60,6 +60,9 @@ export default {
       if (path !== '/chat/api' || req.method !== 'POST') return responder({ erro: 'Rota inexistente.' }, 404);
       const usuario = await usuarioDoToken(req.headers.get('authorization'), env.SUPABASE_URL);
       if (!usuario) return responder({ erro: 'Entre novamente na sua conta.' }, 401);
+      if (usuario.confirmacaoEmail === 'token_invalido') return responder({ erro: 'Entre novamente na sua conta.' }, 401);
+      if (usuario.confirmacaoEmail === 'nao_confirmado') return responder({ erro: 'Confirme seu e-mail antes de usar o jogo.' }, 403);
+      if (usuario.confirmacaoEmail !== 'confirmado') return responder({ erro: 'A confirmação de e-mail está temporariamente indisponível.' }, 503);
       const pedido = await corpoLimitado(req);
       const resposta = await central.fetch(new Request('https://chat/operacao', {
         method: 'POST', body: JSON.stringify({ usuario, pedido }),

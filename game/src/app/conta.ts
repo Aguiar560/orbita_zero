@@ -37,6 +37,47 @@ import { SUPABASE_ANON, SUPABASE_URL } from '@data/servidor';
  */
 
 const CHAVE = 'oz.sessao.v1';
+const CHAVE_INDICACAO = 'oz.indicacao.pendente.v1';
+
+const normalizarCodigoIndicacao = (valor: string): string =>
+  valor.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/** Código trazido pelo link, guardado até a primeira sessão autenticada. */
+export function codigoIndicacaoPendente(): string | null {
+  try {
+    const codigo = normalizarCodigoIndicacao(localStorage.getItem(CHAVE_INDICACAO) ?? '');
+    return /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{10}$/.test(codigo) ? codigo : null;
+  } catch { return null; }
+}
+
+export function limparCodigoIndicacaoPendente(): void {
+  try { localStorage.removeItem(CHAVE_INDICACAO); } catch { /* armazenamento indisponível */ }
+}
+
+/** Captura `?ref=` antes que o retorno do provedor limpe a barra de endereço. */
+function capturarCodigoIndicacaoDaUrl(): void {
+  if (typeof location === 'undefined') return;
+  const busca = new URLSearchParams(location.search);
+  if (!busca.has('ref')) return;
+  const codigo = normalizarCodigoIndicacao(busca.get('ref') ?? '');
+  try {
+    if (/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{10}$/.test(codigo)) {
+      localStorage.setItem(CHAVE_INDICACAO, codigo);
+    } else {
+      localStorage.removeItem(CHAVE_INDICACAO);
+    }
+  } catch { /* o cadastro continua, apenas sem atribuição */ }
+
+  // O vínculo já está guardado; deixar o código na barra faria o jogador
+  // copiar e reenviar sem perceber o link de outra pessoa.
+  if (typeof history !== 'undefined') {
+    busca.delete('ref');
+    const restante = busca.toString();
+    history.replaceState(null, '', `${location.pathname}${restante ? `?${restante}` : ''}${location.hash}`);
+  }
+}
+
+capturarCodigoIndicacaoDaUrl();
 
 export interface Sessao {
   accessToken: string;
@@ -63,7 +104,7 @@ interface RespostaDeToken {
   access_token?: string;
   refresh_token?: string;
   expires_in?: number;
-  user?: { id?: string; email?: string; is_anonymous?: boolean };
+  user?: { id?: string; email?: string; is_anonymous?: boolean; email_confirmed_at?: string | null };
   error_description?: string;
   msg?: string;
   error_code?: string;
@@ -112,6 +153,9 @@ async function chamar(rota: string, corpo: unknown): Promise<ResultadoDeConta> {
     // quem acabou de se cadastrar com sucesso.
     return { ok: false, erro: 'Conta criada. Confirme o e-mail para entrar.' };
   }
+  if (!dados.user.email || !dados.user.email_confirmed_at) {
+    return { ok: false, erro: 'Confirme o e-mail antes de entrar.' };
+  }
 
   const sessao: Sessao = {
     accessToken: dados.access_token,
@@ -127,8 +171,27 @@ async function chamar(rota: string, corpo: unknown): Promise<ResultadoDeConta> {
   return { ok: true, sessao };
 }
 
-export const cadastrar = (email: string, senha: string): Promise<ResultadoDeConta> =>
-  chamar('signup', { email, password: senha });
+async function confirmacaoObrigatoriaConfigurada(): Promise<boolean | null> {
+  try {
+    const resposta = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      headers: { apikey: SUPABASE_ANON },
+    });
+    if (!resposta.ok) return null;
+    const dados = await resposta.json() as { mailer_autoconfirm?: boolean };
+    return dados.mailer_autoconfirm === false;
+  } catch { return null; }
+}
+
+export const cadastrar = async (email: string, senha: string): Promise<ResultadoDeConta> => {
+  const confirmacaoObrigatoria = await confirmacaoObrigatoriaConfigurada();
+  if (confirmacaoObrigatoria === null) {
+    return { ok: false, erro: 'Não foi possível verificar a confirmação de e-mail. Tente novamente.' };
+  }
+  if (!confirmacaoObrigatoria) {
+    return { ok: false, erro: 'Novas contas estão temporariamente indisponíveis enquanto a confirmação de e-mail é configurada.' };
+  }
+  return chamar('signup', { email, password: senha });
+};
 
 export const entrar = (email: string, senha: string): Promise<ResultadoDeConta> =>
   chamar('token?grant_type=password', { email, password: senha });

@@ -1,18 +1,19 @@
 /**
  * Verificação do token do Supabase, dentro do Worker.
  *
- * ## Por que verificamos aqui, e não perguntamos ao Supabase
+ * ## Assinatura local, confirmação de e-mail autoritativa
  *
  * O Supabase assina os tokens com ES256 e publica as chaves PÚBLICAS num JWKS.
- * Isso permite ao Worker conferir a assinatura sozinho, com WebCrypto, sem
- * nenhum segredo compartilhado guardado aqui e sem uma ida à rede por
- * requisição.
+ * Isso permite ao Worker conferir assinatura, emissor e validade sozinho. A
+ * confirmação de e-mail é diferente: ela não é uma claim obrigatória do JWT,
+ * então, depois dessa conferência local, consultamos `/auth/v1/user`. A resposta
+ * é armazenada por poucos minutos no isolate para não colocar uma ida de rede
+ * em todo pedido.
  *
  * As duas alternativas são piores:
  *
- * - **Chamar o Supabase a cada requisição** (`/auth/v1/user`) acrescenta a
- *   latência de uma rede inteira ao caminho quente, e faz a disponibilidade do
- *   login virar a disponibilidade do jogo.
+ * - **Confiar em `user_metadata`** deixaria o próprio jogador declarar que
+ *   confirmou o e-mail. A autorização usa apenas o registro oficial do Auth.
  * - **Guardar o segredo HS256 no Worker** significa que um vazamento do Worker
  *   permite FORJAR tokens, não só ler os que passaram. Com ES256 a chave
  *   privada nunca sai do servidor de autenticação — o pior caso aqui é um
@@ -20,13 +21,23 @@
  *   fazer com uma chave pública.
  */
 
+import { SUPABASE_ANON } from '@data/servidor';
+
 export interface Usuario {
   /** `sub` do token: o id do usuário no Supabase. É a chave de tudo. */
   id: string;
   email?: string;
   anonima: boolean;
   expiraEm: number;
+  confirmacaoEmail: EstadoDaConfirmacaoEmail;
 }
+
+export type EstadoDaConfirmacaoEmail =
+  | 'confirmado'
+  | 'nao_confirmado'
+  | 'configuracao_insegura'
+  | 'token_invalido'
+  | 'indisponivel';
 
 interface Jwk extends JsonWebKey {
   kid?: string;
@@ -44,6 +55,78 @@ interface Jwk extends JsonWebKey {
  */
 let chaves: Map<string, CryptoKey> | null = null;
 let buscando: Promise<Map<string, CryptoKey>> | null = null;
+
+let configuracaoEmail: { estado: 'obrigatoria' | 'insegura' | 'indisponivel'; ate: number } | null = null;
+const confirmacoesEmail = new Map<string, { estado: EstadoDaConfirmacaoEmail; ate: number }>();
+
+/**
+ * Confere somente os campos autoritativos devolvidos pelo Supabase Auth.
+ *
+ * Separada da chamada HTTP para a regra poder ser testada sem fabricar JWT ou
+ * depender da rede. O id também precisa coincidir: uma resposta válida sobre
+ * outra conta nunca confirma o token apresentado.
+ */
+export function perfilTemEmailConfirmado(
+  perfil: { id?: string; email?: string; email_confirmed_at?: string | null },
+  usuarioEsperado: string,
+): boolean {
+  return perfil.id === usuarioEsperado
+    && Boolean(perfil.email)
+    && Boolean(perfil.email_confirmed_at);
+}
+
+async function estadoDaConfiguracaoEmail(urlBase: string): Promise<'obrigatoria' | 'insegura' | 'indisponivel'> {
+  const agora = Date.now();
+  if (configuracaoEmail && configuracaoEmail.ate > agora) return configuracaoEmail.estado;
+  try {
+    const resposta = await fetch(`${urlBase}/auth/v1/settings`, {
+      headers: { apikey: CHAVE_PUBLICA_SUPABASE },
+    });
+    if (!resposta.ok) throw new Error(`settings ${resposta.status}`);
+    const dados = await resposta.json() as { mailer_autoconfirm?: boolean };
+    const estado = dados.mailer_autoconfirm === false ? 'obrigatoria' : 'insegura';
+    configuracaoEmail = { estado, ate: agora + 60_000 };
+    return estado;
+  } catch {
+    configuracaoEmail = { estado: 'indisponivel', ate: agora + 15_000 };
+    return 'indisponivel';
+  }
+}
+
+// Pública por desenho. É a mesma anon key embarcada no cliente; nunca usar
+// service_role aqui, pois ela ampliaria privilégio sem necessidade.
+const CHAVE_PUBLICA_SUPABASE = SUPABASE_ANON;
+
+async function confirmarEmailNoAuth(
+  token: string, urlBase: string, usuario: string, expiraEm: number,
+): Promise<EstadoDaConfirmacaoEmail> {
+  const configuracao = await estadoDaConfiguracaoEmail(urlBase);
+  if (configuracao === 'insegura') return 'configuracao_insegura';
+  if (configuracao === 'indisponivel') return 'indisponivel';
+
+  const agora = Date.now();
+  const chave = `${usuario}:${expiraEm}`;
+  const guardada = confirmacoesEmail.get(chave);
+  if (guardada && guardada.ate > agora) return guardada.estado;
+  try {
+    const resposta = await fetch(`${urlBase}/auth/v1/user`, {
+      headers: { apikey: CHAVE_PUBLICA_SUPABASE, authorization: `Bearer ${token}` },
+    });
+    if (resposta.status === 401 || resposta.status === 403) return 'token_invalido';
+    if (!resposta.ok) return 'indisponivel';
+    const perfil = await resposta.json() as {
+      id?: string; email?: string; email_confirmed_at?: string | null;
+    };
+    const estado: EstadoDaConfirmacaoEmail = perfil.id !== usuario
+      ? 'token_invalido'
+      : perfilTemEmailConfirmado(perfil, usuario) ? 'confirmado' : 'nao_confirmado';
+    if (confirmacoesEmail.size > 1_000) confirmacoesEmail.clear();
+    confirmacoesEmail.set(chave, { estado, ate: agora + (estado === 'confirmado' ? 300_000 : 30_000) });
+    return estado;
+  } catch {
+    return 'indisponivel';
+  }
+}
 
 async function carregarChaves(urlBase: string): Promise<Map<string, CryptoKey>> {
   // `/auth/v1/.well-known/jwks.json`, e nao `/auth/v1/jwks`.
@@ -143,7 +226,12 @@ export async function usuarioDoToken(
     if (typeof carga.exp !== 'number' || carga.exp <= agora) return null;
     if (carga.iss !== `${urlBase}/auth/v1`) return null;
 
-    return { id: carga.sub, email: carga.email, anonima: carga.is_anonymous ?? !carga.email, expiraEm: carga.exp };
+    const confirmacaoEmail = await confirmarEmailNoAuth(token, urlBase, carga.sub, carga.exp);
+    return {
+      id: carga.sub, email: carga.email,
+      anonima: carga.is_anonymous ?? !carga.email,
+      expiraEm: carga.exp, confirmacaoEmail,
+    };
   } catch {
     return null;
   }

@@ -1116,7 +1116,7 @@ vez de apagar o teste**.
 
 ## 12. O servidor — `server/src/`, D1 no Cloudflare
 
-O jogo deixou de ser só cliente. Um Worker de 19 arquivos e 6.259 linhas guarda
+O jogo deixou de ser só cliente. Um Worker de 23 arquivos e 6.837 linhas guarda
 tudo o que vale poder, e **importa `@sim` e `@data` — os mesmos arquivos do
 navegador, nunca uma cópia.** É isso que garante que a regra cobrada é a regra
 aplicada.
@@ -1141,14 +1141,23 @@ aplicada.
 | `POST /checkout` | abre uma cobrança Pix. **Não credita nada** | `acao` |
 | `POST /compra` | a tela do Pix perguntando se o dinheiro caiu | `cobranca` |
 | `POST /webhook/pagamento` | o provedor avisando. **A única rota sem token** | — |
+| `GET /indicacao` | código e totais agregados do próprio jogador | memória, 6/min |
+| `PUT /indicacao/pix` | valida e cifra a chave Pix | ação autenticada |
+| `POST /indicacao/saque` | reserva o saldo do pedido semanal | ação autenticada |
+| `POST /admin/indicacoes/codigo` | bloqueia ou reativa código com motivo auditável | `admin` |
+| `GET /admin/indicacoes/saques` | fila Pix autorizada | `admin` |
+| `POST /admin/indicacoes/saque` | registra pagamento ou recusa | `admin` |
 | `POST /erro-do-cliente` | o `TypeError` que aconteceu no navegador | `cliente` |
 
-### As tabelas — 17 migrações
+### As tabelas — 22 migrações
 
 `saves` · `apelidos` · `marcas` · `limites` · `contas` · `saldos` ·
 `transacoes` · `assinaturas` · `lotes` · `itens` · `frota` · `progresso` ·
 `naves_progresso` · `materiais` · `excedentes` · `missoes` · `recusas` ·
-`compras`.
+`compras` · `codigos_indicacao` · `decisoes_indicacao` ·
+`recompensas_indicacao` · `carteiras_indicacao` · `movimentos_indicacao` ·
+`dados_pix_indicacao` · `saques_indicacao` · `marcos_indicacao` ·
+`acoes_indicacao_admin`.
 
 **Migração primeiro, deploy depois.** Em 08/09 a `0013` não foi aplicada, o
 Worker subiu lendo `progresso.semente` e a rota inteira passou horas devolvendo
@@ -1532,3 +1541,36 @@ copia e cola. Um sucesso zera a contagem, e cada rota conta sozinha.
 `if (!r.ok)` relate. As duas exceções — `nuvem.ts`, que guarda em `ultimoErro`, e
 `placar.ts`, que devolve a falha descrita — estão numa lista explícita com o
 motivo escrito, e o teste confere que elas continuam descrevendo a falha.
+
+---
+
+## Programa de indicações — `server/src/indicacoes.ts`
+
+O programa é de um nível e paga comissão em dinheiro. O cliente captura `?ref=` no link,
+mas o Worker decide o vínculo pelo UUID autenticado na primeira reivindicação
+de sessão. Cada conta recebe uma decisão única (`vinculada`, `sem_indicacao` ou
+`bloqueada`); contas que já existiam no lançamento são seladas como
+`preexistente` na migração 0022. Código inválido, autovínculo e contas de teste
+não geram comissão.
+
+Depois que uma compra Pix é confirmada pelo Mercado Pago, a comissão é
+fotografada em `recompensas_indicacao`. Ela vale 10% dos centavos efetivamente
+pagos e fica pendente por 7 dias. O cron muda o estado; gatilhos do D1 atualizam
+o livro financeiro de modo atômico. Reembolsos retiram do disponível e a falta
+vira `divida_centavos`, compensada antes das próximas comissões. A carteira de
+cristais fica separada.
+
+O perfil abre uma central com saldos, código, link, Pix cifrado/mascarado,
+solicitação de no mínimo R$ 15,00 e no máximo uma por janela móvel de sete dias,
+histórico e marcos de indicados que chegaram ao nível 25. O piso considera
+somente o saldo liberado; valores em retenção ou já reservados não contam.
+Os bônus dos marcos — 300/700/1.500/2.500/4.000 cristais em 10/25/50/75/100 —
+são a única parte que usa a carteira premium. Nomes, e-mails e compras dos
+indicados não aparecem. A feature é protegida por `INDICACOES_ATIVAS` e requer
+também `INDICACOES_PIX_SECRET` para dados Pix.
+
+Administradores podem bloquear ou reativar um código pelo painel, informando um
+motivo de 5 a 160 caracteres. A ação entra em `acoes_indicacao_admin`; bloquear
+desativa novos vínculos, comissões e saques e congela pendentes sem apagar o
+histórico. Reativar devolve os pendentes à fila. O payout atual é manual: a rota
+administrativa só marca pago depois do Pix externo e exige sua referência.

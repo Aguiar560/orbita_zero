@@ -27,6 +27,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { perfilTemEmailConfirmado } from '../server/src/auth';
 
 const fonte = (f: string): string => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
 
@@ -102,5 +103,31 @@ describe('a porta de entrada exige sessão', () => {
   it('o Game não trata mais "entrou sem conta"', () => {
     // Se voltasse a tratar, seria sinal de que o `null` voltou junto.
     expect(fonte('app/Game.ts')).not.toMatch(/mostrar\([^)]*\)[^;]*\?\?/);
+  });
+
+  it('exige confirmação autoritativa do mesmo usuário', () => {
+    expect(perfilTemEmailConfirmado({
+      id: 'piloto-1', email: 'piloto@orbita.zero', email_confirmed_at: '2026-09-12T12:00:00Z',
+    }, 'piloto-1')).toBe(true);
+    expect(perfilTemEmailConfirmado({
+      id: 'piloto-1', email: 'piloto@orbita.zero', email_confirmed_at: null,
+    }, 'piloto-1')).toBe(false);
+    expect(perfilTemEmailConfirmado({
+      id: 'outro-piloto', email: 'piloto@orbita.zero', email_confirmed_at: '2026-09-12T12:00:00Z',
+    }, 'piloto-1')).toBe(false);
+  });
+
+  it('fecha cliente, API principal e chat quando o e-mail não foi confirmado', () => {
+    const conta = fonte('app/conta.ts');
+    expect(conta).toContain('dados.mailer_autoconfirm === false');
+    expect(conta).toContain('Confirme o e-mail antes de entrar.');
+
+    const api = readFileSync(new URL('../server/src/index.ts', import.meta.url), 'utf8');
+    expect(api).toContain("usuario.confirmacaoEmail === 'nao_confirmado'");
+    expect(api).toContain("erro: 'email_nao_confirmado'");
+
+    const chat = readFileSync(new URL('../server/src/chat/worker.ts', import.meta.url), 'utf8');
+    expect(chat).toContain("usuario.confirmacaoEmail === 'nao_confirmado'");
+    expect(chat).toContain("usuario.confirmacaoEmail !== 'confirmado'");
   });
 });

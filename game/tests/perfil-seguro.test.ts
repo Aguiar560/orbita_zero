@@ -10,7 +10,7 @@ describe('perfil seguro para transmissão', () => {
     expect(source).not.toContain('sessao.email');
     expect(source).not.toContain('sessao.usuarioId');
     expect(source).not.toContain('sessao.expiraEm');
-    expect(source).not.toContain('navigator.clipboard');
+    expect(source).toContain('navigator.clipboard.writeText(link)');
     expect(source).not.toContain('title:');
   });
 

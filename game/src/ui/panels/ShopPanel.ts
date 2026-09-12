@@ -66,7 +66,7 @@ export class ShopPanel implements Panel {
   private comprando = false;
   /** A cobrança Pix aberta. Enquanto existe, ela ocupa o lugar da vitrine. */
   private cobranca: Cobranca | null = null;
-  private compraEstado: 'pendente' | 'paga' | 'expirada' | 'cancelada' = 'pendente';
+  private compraEstado: 'pendente' | 'paga' | 'expirada' | 'cancelada' | 'reembolsada' = 'pendente';
   /** Qual pacote está esperando resposta do `/checkout`. */
   private abrindo: string | null = null;
   /** Já existe um laço perguntando pelo pagamento? Ver `esperarOPix`. */
@@ -272,7 +272,8 @@ export class ShopPanel implements Panel {
   private pixScreen(sim: Sim, cobranca: Cobranca): HTMLElement {
     const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const pago = this.compraEstado === 'paga';
-    const vencida = this.compraEstado === 'expirada' || this.compraEstado === 'cancelada';
+    const vencida = this.compraEstado === 'expirada' || this.compraEstado === 'cancelada'
+      || this.compraEstado === 'reembolsada';
 
     // O laço vive aqui, e não no clique: assim ele volta sozinho quando o
     // jogador sai para a aba do VIP e retorna. Ver `esperarOPix`.

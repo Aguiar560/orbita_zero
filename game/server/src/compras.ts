@@ -22,7 +22,7 @@ import { CRYSTAL_PACKAGES, cristaisDoPacote, type CrystalPackage } from '@sim/vi
  * `index.ts`.
  */
 
-export type EstadoDaCompra = 'pendente' | 'paga' | 'expirada' | 'cancelada';
+export type EstadoDaCompra = 'pendente' | 'paga' | 'expirada' | 'cancelada' | 'reembolsada';
 
 export interface Compra {
   id: string;
@@ -100,6 +100,7 @@ export function novaCompra(
  */
 export function podePagar(compra: Compra): RecusaDeCompra | null {
   if (compra.estado === 'paga') return 'compra_ja_encerrada';
+  if (compra.estado === 'reembolsada') return 'compra_ja_encerrada';
   if (compra.estado === 'cancelada') return 'compra_ja_encerrada';
   return null;
 }

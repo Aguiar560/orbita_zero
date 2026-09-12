@@ -226,7 +226,7 @@ describe('a ordem das operações no servidor', () => {
      * requisição declarasse o próprio pagamento.
      */
     expect(corpo).toContain('lerPagamentoNoMP(env, pagamentoId)');
-    expect(corpo).toContain("pago.estado !== 'approved'");
+    expect(corpo).toContain("pago.estado === 'approved'");
   });
 });
 

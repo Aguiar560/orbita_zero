@@ -24,6 +24,15 @@ e o tipo de `Login.mostrar()` é a regra: ele resolve com a sessão, nunca com
 `null`. Duas portas hoje: e-mail/senha e **Google** (Supabase OAuth em pop-up).
 `Entrar` e `Criar conta` são caminhos separados na capa.
 
+**Confirmação de e-mail.** Cadastro por e-mail/senha permanece inelegível para
+todo recurso autenticado até o Supabase Auth devolver `email_confirmed_at`. A
+API não confia em metadado enviado pelo navegador nem presume confirmação a
+partir do JWT: depois de validar assinatura, emissor e expiração, consulta
+`/auth/v1/user` com o token do próprio jogador. Save, sessão, compra, indicação,
+admin e chat passam por essa porta. Configuração automática, indisponibilidade
+do Auth ou resposta inconclusiva fecham o acesso. Contas sociais seguem a
+confirmação autoritativa que o provedor entrega ao Supabase.
+
 **Sessão única.** Depois do login, a aba reivindica uma instância própria no
 D1. Se outra aba, navegador ou dispositivo já estiver ativo, a nova entrada
 para e pergunta antes de assumir. Confirmar atualiza a instância no servidor;
@@ -112,6 +121,31 @@ antes de existir texto de terceiro na tela, não depois.
 ### F5 — Sem CSP nem cabeçalhos de segurança · médio
 
 Não há configuração. Só passa a importar quando houver sessão para roubar.
+
+## Indicações e dados de compra
+
+O link de convite carrega somente um código aleatório de dez caracteres. Ele não
+codifica UUID, e-mail ou apelido. O código fica no armazenamento local apenas
+até a primeira sessão; o vínculo definitivo é criado no Worker a partir do JWT
+validado pelo Supabase. Metadados editáveis do usuário não participam da
+atribuição.
+
+Uma conta só pode decidir uma vez. Contas antigas são seladas como
+`preexistente`, autovínculo é recusado e contas de teste não entram no programa.
+A comissão financeira nasce exclusivamente de uma compra aprovada pelo
+provedor, equivale a 10% dos centavos pagos, fica retida por sete dias e possui
+chave idempotente. Reembolso gera reversão auditável; se já tiver sido sacada,
+vira dívida financeira compensada antes de novas liberações. A carteira de
+cristais nunca participa desse acerto.
+
+Chaves Pix são validadas, cifradas em AES-GCM com segredo fora do repositório e
+exibidas mascaradas. Cada saque guarda uma fotografia cifrada; somente a rota
+administrativa autorizada decifra. Cada solicitação exige no mínimo R$ 15,00
+de saldo liberado e bloqueia outra por sete dias completos. O perfil mostra
+apenas agregados. Política
+de privacidade e termos devem informar finalidade, retenção, pagamento,
+reembolso, tratamento da chave, proibição de contas artificiais e atendimento
+antes de `INDICACOES_ATIVAS=1`.
 
 ## Arquitetura proposta
 

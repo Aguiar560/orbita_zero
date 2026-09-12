@@ -52,7 +52,12 @@ Nenhum destes passos é automatizável por aqui — todos exigem sua conta.
 1. Criar projeto em supabase.com (plano gratuito).
 2. Anotar a **Project URL**. O domínio é **`.supabase.co`**, não `.supabase.com`
    — o segundo nem resolve, e o erro apareceria só como falha de verificação.
-3. Em **Authentication → Providers**, ligar e-mail (e o que mais quiser).
+3. Em **Authentication → Providers → Email**, ligar e-mail e **Confirm Email**.
+   Conferir em `/auth/v1/settings` que `mailer_autoconfirm` responde `false`.
+   Se responder `true`, o cliente bloqueia cadastros e o Worker bloqueia todas
+   as rotas autenticadas para não aceitar confirmação automática como clique
+   real do jogador. Para produção, configurar SMTP próprio; o SMTP padrão do
+   Supabase é restrito e não deve ser tratado como serviço de produção.
 4. Migrar a assinatura de JWT para **assimétrica**, em Settings → JWT Keys:
    **Migrate JWT secret** → **Rotate keys**. O projeto novo nasce em HS256
    (segredo compartilhado) e o Worker só aceita ES256, de propósito.
@@ -94,6 +99,34 @@ npm run dev
 Verificado nesta máquina: `/saude` responde 200, `/save` devolve 401 sem token
 e 401 com token inválido — a mesma resposta opaca nos dois casos, porque dizer
 qual foi ajuda quem testa um ataque mais do que ajuda um cliente correto.
+
+## Programa de indicações
+
+A migração `0022-indicacoes.sql` cria códigos, decisões únicas, comissões,
+carteiras financeiras, dados Pix cifrados, saques e marcos. O Worker calcula
+10% do dinheiro efetivamente pago, em centavos, e libera após sete dias. A
+carteira financeira é separada dos cristais; estes aparecem somente nos bônus
+de 10/25/50/75/100 indicados que chegam ao nível 25. Reembolsos são
+proporcionais e idempotentes.
+
+Para habilitar o cadastro Pix, configure um segredo aleatório de pelo menos 32
+caracteres com `wrangler secret put INDICACOES_PIX_SECRET`. A chave do jogador
+é cifrada por AES-GCM e só a fila administrativa autorizada a decifra. O fluxo
+de payout atual é manual: depois de realizar e conferir o Pix, o operador
+registra a referência para baixar a reserva. Não existe chamada automática de
+saída de dinheiro nesta versão.
+
+O programa permanece desligado por padrão com `INDICACOES_ATIVAS="0"` em
+`wrangler.toml`. A sequência de publicação é: aplicar a migração D1, publicar
+Worker e cliente compatíveis, revisar termos/privacidade, homologar e só então
+alterar a variável para `1`. A migração vem primeiro porque, mesmo com a flag
+desligada, novas contas são seladas sem indicação para impedir vínculo
+retroativo. Não aplicar a migração remota nesta etapa local.
+
+Cada solicitação usa somente saldo já liberado, deve ser de pelo menos
+**R$ 15,00** e abre uma janela móvel de sete dias completos. Durante esse
+período a conta não pode criar outro pedido, mesmo que receba novo saldo; a
+resposta da API informa quando a próxima solicitação estará disponível.
 
 ## No ar
 

@@ -39,7 +39,10 @@ describe('wiki oficial', () => {
       '/guia/inicio', '/guia/combate', '/guia/progressao', '/guia/equipamentos',
       '/sistemas/equipamentos', '/sistemas/fabricacao', '/sistemas/missoes',
       '/sistemas/provacao', '/sistemas/engenharia', '/guia/conta',
+      '/guia/indicacoes',
     ]) expect(wiki, rota).toContain(`'${rota}'`);
+    expect(wiki).toContain('Confirmação de e-mail obrigatória');
+    expect(wiki).toContain('qualquer outro recurso autenticado do jogo');
   });
 
   it('documenta o universo, os pilotos e a diplomacia', () => {

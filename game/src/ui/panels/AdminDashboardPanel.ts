@@ -1,4 +1,8 @@
-import { buscarPainelAdmin, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin, type PainelAdmin } from '@app/painel-admin';
+import {
+  alterarCodigoDeIndicacao, buscarPainelAdmin, buscarSaquesDeIndicacao,
+  decidirSaqueDeIndicacao, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin,
+  type PainelAdmin, type SaqueDeIndicacaoAdmin,
+} from '@app/painel-admin';
 import { HULL_BY_ID } from '@data/hulls';
 import { BASE_BY_ID, SLOT_BY_ID } from '@data/items';
 import { RARITIES } from '@data/balance/raridades';
@@ -32,6 +36,14 @@ export class AdminDashboardPanel implements Panel {
   private atualizando = false;
   private aba: 'visao' | 'pilotos' | 'atividade' | 'progressao' | 'economia' | 'frota' | 'missoes' | 'saude' = 'visao';
   private pilotoAberto: string | null = null;
+  private codigoIndicacao = '';
+  private motivoIndicacao = '';
+  private operandoIndicacao = false;
+  private retornoIndicacao = '';
+  private saquesIndicacao: SaqueDeIndicacaoAdmin[] | null | undefined;
+  private textosSaque = new Map<string, string>();
+  private operandoSaque: string | null = null;
+  private retornoSaque = '';
 
   render(_sim: Sim): HTMLElement {
     this.garantirDados();
@@ -139,6 +151,7 @@ export class AdminDashboardPanel implements Panel {
   }
 
   private economia(dados: PainelAdmin): HTMLElement {
+    this.garantirSaquesDeIndicacao();
     const recursos = dados.economia.recursos.map((r) => h('.admin-dado', {},
       h('span', { text: r.moeda.toUpperCase() }), h('strong', { text: fmt(r.quantia) }),
     ));
@@ -149,6 +162,13 @@ export class AdminDashboardPanel implements Panel {
       h('span', { text: m.moeda.toUpperCase() }), h('strong', { text: `+${fmt(m.entradas)} / −${fmt(m.saidas)}` }),
       h('small', { text: `${fmt(m.operacoes)} lançamentos` }),
     ));
+    const indicacoes = dados.economia.indicacoes;
+    const conversao = indicacoes.vinculados > 0
+      ? `${((indicacoes.compradores / indicacoes.vinculados) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+      : '0%';
+    const reais = (centavos: number): string => (centavos / 100).toLocaleString('pt-BR', {
+      style: 'currency', currency: 'BRL',
+    });
     return h('.admin-duas-colunas', {},
       h('.admin-dashboard-lista', {},
         h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'RECURSOS NO SERVIDOR' }), h('small', { text: 'Carteiras atuais de todos os pilotos.' }))),
@@ -162,7 +182,145 @@ export class AdminDashboardPanel implements Panel {
         h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'FLUXO ECONÔMICO' }), h('small', { text: 'Entradas, saídas e volume do livro-caixa.' }))),
         h('.admin-cartoes', {}, ...movimentos),
       ),
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'INDICAÇÕES' }), h('small', { text: 'Aquisição, comissão e exposição a reembolsos.' }))),
+        h('.admin-cartoes', {},
+          this.cartao('CONTAS VINCULADAS', fmt(indicacoes.vinculados)),
+          this.cartao('NOVOS VÍNCULOS · 24H', fmt(indicacoes.vinculados24h)),
+          this.cartao('COMPRADORES', fmt(indicacoes.compradores)),
+          this.cartao('CONVERSÃO', conversao),
+          this.cartao('RECEITA ATRIBUÍDA', reais(indicacoes.receitaCentavos)),
+          this.cartao('COMISSÃO PENDENTE', reais(indicacoes.pendentes)),
+          this.cartao('COMISSÃO LIBERADA', reais(indicacoes.liberados)),
+          this.cartao('COMISSÃO ESTORNADA', reais(indicacoes.revertidos)),
+          this.cartao('DÍVIDA DE ESTORNO', reais(indicacoes.divida)),
+          this.cartao('CÓDIGOS BLOQUEADOS', fmt(indicacoes.bloqueados)),
+          this.cartao('CÓDIGOS RECUSADOS', fmt(indicacoes.tentativasRecusadas)),
+          this.cartao('MAIOR CONCENTRAÇÃO', fmt(indicacoes.maiorConcentracaoCompras), 'compras de um indicador'),
+        ),
+        h('.admin-operacao-indicacao', {},
+          h('input.admin-filtro', {
+            value: this.codigoIndicacao, placeholder: 'Código de 10 caracteres',
+            'aria-label': 'Código de indicação', maxlength: '10',
+            oninput: (evento: Event) => {
+              this.codigoIndicacao = (evento.target as HTMLInputElement).value.toUpperCase();
+            },
+          }),
+          h('input.admin-filtro', {
+            value: this.motivoIndicacao, placeholder: 'Motivo auditável',
+            'aria-label': 'Motivo da alteração', maxlength: '160',
+            oninput: (evento: Event) => { this.motivoIndicacao = (evento.target as HTMLInputElement).value; },
+          }),
+          h('button.mini', {
+            text: this.operandoIndicacao ? 'AGUARDE…' : 'BLOQUEAR', disabled: this.operandoIndicacao,
+            onclick: () => { void this.operarIndicacao('bloquear'); },
+          }),
+          h('button.mini', {
+            text: 'REATIVAR', disabled: this.operandoIndicacao,
+            onclick: () => { void this.operarIndicacao('desbloquear'); },
+          }),
+          ...(this.retornoIndicacao ? [h('small', { text: this.retornoIndicacao })] : []),
+        ),
+      ),
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {},
+          h('span', { text: 'PAGAMENTOS PIX PENDENTES' }),
+          h('small', { text: 'Chaves abertas somente para a operação autorizada. Registre a referência depois de concluir o Pix.' }),
+        )),
+        this.filaDeSaques(reais),
+      ),
     );
+  }
+
+  private filaDeSaques(reais: (centavos: number) => string): HTMLElement {
+    if (this.saquesIndicacao === undefined) return h('.admin-vazio', { text: 'Carregando fila de pagamentos…' });
+    if (this.saquesIndicacao === null) return h('.admin-vazio', { text: 'Não foi possível carregar a fila Pix.' });
+    if (!this.saquesIndicacao.length) return h('.admin-vazio', { text: 'Nenhum pagamento Pix aguarda decisão.' });
+    return h('.admin-saques-indicacao', {},
+      ...this.saquesIndicacao.map((saque) => {
+        const ocupado = this.operandoSaque === saque.id;
+        return h('.admin-saque-indicacao', {},
+          h('.admin-saque-resumo', {},
+            h('span', { text: new Date(saque.solicitadoEm * 1000).toLocaleDateString('pt-BR') }),
+            h('strong', { text: reais(saque.centavos) }),
+            h('small', { text: `${saque.tipoPix.toUpperCase()} · ${saque.chavePix}` }),
+            ...(saque.dividaCentavos > 0 ? [h('em', { text: `ESTORNO PENDENTE · ${reais(saque.dividaCentavos)}` })] : []),
+          ),
+          h('input.admin-filtro', {
+            value: this.textosSaque.get(saque.id) ?? '',
+            placeholder: 'Referência do Pix ou motivo da recusa', maxlength: '160',
+            'aria-label': `Referência ou motivo do saque ${saque.id}`,
+            oninput: (evento: Event) => {
+              this.textosSaque.set(saque.id, (evento.target as HTMLInputElement).value);
+            },
+          }),
+          h('button.mini', {
+            text: ocupado ? 'AGUARDE…' : 'MARCAR PAGO',
+            disabled: Boolean(this.operandoSaque) || saque.dividaCentavos > 0,
+            onclick: () => { void this.operarSaque(saque.id, 'pagar'); },
+          }),
+          h('button.mini', {
+            text: 'RECUSAR', disabled: Boolean(this.operandoSaque),
+            onclick: () => { void this.operarSaque(saque.id, 'recusar'); },
+          }),
+        );
+      }),
+      ...(this.retornoSaque ? [h('small.admin-saque-retorno', { text: this.retornoSaque })] : []),
+    );
+  }
+
+  private garantirSaquesDeIndicacao(): void {
+    if (this.saquesIndicacao !== undefined) return;
+    void buscarSaquesDeIndicacao().then((saques) => {
+      this.saquesIndicacao = saques;
+      bus.emit('state:changed');
+    });
+  }
+
+  private async operarSaque(id: string, acao: 'pagar' | 'recusar'): Promise<void> {
+    if (this.operandoSaque) return;
+    const texto = (this.textosSaque.get(id) ?? '').trim();
+    if (texto.length < 3) {
+      this.retornoSaque = acao === 'pagar'
+        ? 'Informe a referência da transferência Pix.'
+        : 'Informe o motivo auditável da recusa.';
+      bus.emit('state:changed');
+      return;
+    }
+    this.operandoSaque = id;
+    this.retornoSaque = '';
+    bus.emit('state:changed');
+    const resultado = await decidirSaqueDeIndicacao(id, acao, texto);
+    this.operandoSaque = null;
+    this.retornoSaque = resultado.ok
+      ? acao === 'pagar' ? 'Pagamento registrado.' : 'Pedido recusado e saldo devolvido.'
+      : resultado.erro;
+    if (resultado.ok) {
+      this.textosSaque.delete(id);
+      this.saquesIndicacao = await buscarSaquesDeIndicacao();
+      this.estado = await buscarPainelAdmin();
+    }
+    bus.emit('state:changed');
+  }
+
+  private async operarIndicacao(acao: 'bloquear' | 'desbloquear'): Promise<void> {
+    if (this.operandoIndicacao) return;
+    this.operandoIndicacao = true;
+    this.retornoIndicacao = '';
+    bus.emit('state:changed');
+    const resultado = await alterarCodigoDeIndicacao(
+      this.codigoIndicacao.trim(), acao, this.motivoIndicacao.trim(),
+    );
+    this.operandoIndicacao = false;
+    this.retornoIndicacao = resultado.ok
+      ? `Código ${acao === 'bloquear' ? 'bloqueado' : 'reativado'} e ação registrada.`
+      : resultado.erro;
+    if (resultado.ok) {
+      this.estado = await buscarPainelAdmin();
+      this.codigoIndicacao = '';
+      this.motivoIndicacao = '';
+    }
+    bus.emit('state:changed');
   }
 
   private progressao(dados: PainelAdmin): HTMLElement {
@@ -228,6 +386,7 @@ export class AdminDashboardPanel implements Panel {
     if (this.atualizando) return;
     this.atualizando = true;
     if (this.estado.fase === 'nunca') this.estado = { fase: 'carregando' };
+    this.saquesIndicacao = undefined;
     void buscarPainelAdmin().then((estado) => {
       this.estado = estado;
       this.atualizando = false;

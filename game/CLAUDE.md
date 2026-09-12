@@ -25,6 +25,8 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/PLANO-MISSOES-NO-SERVIDOR.md`](docs/PLANO-MISSOES-NO-SERVIDOR.md) | O desenho das missões no D1 e os níveis de validação A/B/C |
 | [`docs/LOGIN-PROVEDORES.md`](docs/LOGIN-PROVEDORES.md) | Passo a passo para ligar Google e Facebook no Supabase |
 | [`docs/PLANO-TRADUCAO.md`](docs/PLANO-TRADUCAO.md) | O jogo em inglês: medida, arquitetura, quem faz o quê, fases e testes (11/09, não iniciado) |
+| [`docs/PLANO-INDICACOES.md`](docs/PLANO-INDICACOES.md) | Sistema de indicação: vínculo, 10%, pagamentos, fraude e estorno (12/09, implementado localmente; publicação pendente) |
+| [`docs/PLANO-MERCADO.md`](docs/PLANO-MERCADO.md) | Mercado de itens por cristal: custódia, compra atômica, fraude e por que não leilão (12/09, não iniciado) |
 
 Registros de momento, que valem como história e **não** como estado atual:
 [`FASE-0-AUDITORIA`](docs/FASE-0-AUDITORIA.md) ·

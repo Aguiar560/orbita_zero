@@ -25,10 +25,15 @@ import { RECEITAS, chanceDeSubir } from '@data/balance/fusao';
 import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 import { ALVO_DA_CAMPANHA, SETOR_FINAL_DA_CAMPANHA } from '@data/balance/cristal';
 import { PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
+import {
+  comissaoDeIndicacao, ESPERA_INDICACAO_SEGUNDOS, MARCOS_INDICACAO,
+  NIVEL_QUALIFICADOR_INDICACAO, PERCENTUAL_INDICACAO_BPS,
+  SAQUE_MINIMO_INDICACAO_CENTAVOS,
+} from '@data/balance/indicacoes';
 import { CHESTS } from '@data/chests';
 import { SHOP } from '@data/shop';
 import { MARCOS_DE_CRISTAL } from '@sim/marcos-de-cristal';
-import { VIP_COST_CRYSTALS, VIP_DURATION_DAYS } from '@sim/vip';
+import { CRYSTAL_PACKAGES, VIP_COST_CRYSTALS, VIP_DURATION_DAYS } from '@sim/vip';
 
 /** Os marcos de chefe, para a tabela do artigo de cristais. */
 const MARCOS_DE_CHEFE = MARCOS_DE_CRISTAL.filter((m) => m.tipo === 'chefe');
@@ -240,6 +245,44 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
       },
     ],
   },
+  '/guia/indicacoes': {
+    titulo: 'Indicações e convites',
+    resumo: 'Como vincular uma nova conta, acumular comissão em reais e avançar nas recompensas da rede.',
+    imagem: '/assets/landing/comunidade.png',
+    imagemAlt: 'Pilotos e comunidade do Órbita Zero',
+    leitura: '4 min',
+    secoes: [
+      {
+        titulo: 'Como convidar',
+        corpo: 'Abra o menu do perfil, copie seu link de convite e envie ao novo piloto. O link leva seu código. Antes de concluir o cadastro, a tela mostra o convite e permite removê-lo.',
+      },
+      {
+        titulo: 'Quando o vínculo é criado',
+        corpo: 'O vínculo é decidido na primeira entrada autenticada da conta. Ele é permanente, possui apenas um indicador e não pode ser acrescentado depois. Contas que já existiam antes do programa, autovínculo e contas de teste não são elegíveis.',
+        dica: 'Quem recebeu o link deve abri-lo antes de criar a conta. O código continua guardado durante a confirmação do e-mail ou o login com Google.',
+      },
+      {
+        titulo: 'Quanto o indicador recebe',
+        corpo: `O indicador direto recebe ${PERCENTUAL_INDICACAO_BPS / 100}% do dinheiro efetivamente pago e confirmado pelo provedor. A comissão é calculada em centavos, sem usar a quantidade de cristais do pacote. Exemplos atuais: ${CRYSTAL_PACKAGES.map((pacote) => `R$ ${(pacote.priceCents / 100).toFixed(2).replace('.', ',')} → R$ ${(comissaoDeIndicacao(pacote.priceCents) / 100).toFixed(2).replace('.', ',')}`).join(' · ')}.`,
+      },
+      {
+        titulo: 'Retenção e reembolsos',
+        corpo: `A comissão aparece em retenção e só entra no saldo disponível após ${ESPERA_INDICACAO_SEGUNDOS / 86_400} dias. Um reembolso parcial ou integral reduz a comissão na mesma proporção. Se o valor já tiver sido sacado, a diferença vira uma compensação financeira aplicada antes das próximas liberações. Cristais e outros recursos do jogo nunca são debitados por isso.`,
+      },
+      {
+        titulo: 'Retirada semanal por Pix',
+        corpo: `A Central separa valores em retenção, disponíveis, reservados e já pagos. Cadastre uma chave Pix válida e solicite entre R$ ${(SAQUE_MINIMO_INDICACAO_CENTAVOS / 100).toFixed(2).replace('.', ',')} e o saldo disponível. É aceita no máximo uma solicitação a cada sete dias; cada pedido é revisado e só aparece como pago depois da confirmação operacional do Pix.`,
+      },
+      {
+        titulo: `Recompensas por pilotos no nível ${NIVEL_QUALIFICADOR_INDICACAO}`,
+        corpo: `Além da comissão em dinheiro, há bônus únicos de progressão em cristais. Contam apenas contas diretamente vinculadas que realmente alcançaram o nível ${NIVEL_QUALIFICADOR_INDICACAO}: ${MARCOS_INDICACAO.map((marco) => `${marco.jogadores} pilotos = ${marco.cristais} cristais`).join(' · ')}. Se vários marcos forem atravessados de uma vez, todos os bônus ainda não recebidos são concedidos.`,
+      },
+      {
+        titulo: 'Privacidade e limites',
+        corpo: 'A comissão não forma níveis: somente o indicador direto recebe. O perfil mostra totais, nunca e-mail, apelido ou compras individuais dos indicados. A chave Pix é armazenada cifrada e exibida mascarada; somente a operação autorizada de pagamento pode acessar o valor completo.',
+      },
+    ],
+  },
   '/guia/conta': {
     titulo: 'Conta, privacidade e suporte',
     resumo: 'Login, apelido, recuperação, dados visíveis e como pedir ajuda.',
@@ -250,6 +293,11 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
       {
         titulo: 'Entrar não cria conta',
         corpo: 'Use Entrar quando a conta já existe. Use Criar conta para começar um cadastro. Contas sociais devem entrar novamente com o mesmo provedor; elas não recebem uma senha local automaticamente.',
+      },
+      {
+        titulo: 'Confirmação de e-mail obrigatória',
+        corpo: 'Ao criar uma conta com e-mail e senha, abra a mensagem enviada e confirme o endereço pelo link. Até essa confirmação, a conta não pode entrar, carregar ou salvar progresso, conversar, comprar, participar das indicações nem usar qualquer outro recurso autenticado do jogo.',
+        dica: 'Se a mensagem não aparecer, confira spam e lixo eletrônico. Um código de indicação recebido continua guardado enquanto você confirma o e-mail.',
       },
       {
         titulo: 'Uma sessão por vez',
@@ -292,7 +340,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
 };
 
 const NAV = [
-  ['COMECE AQUI', [['/guia/inicio', 'Primeiros passos'], ['/guia/combate', 'Combate e elementos'], ['/guia/progressao', 'Progressão'], ['/guia/cristais', 'Cristais e VIP']]],
+  ['COMECE AQUI', [['/guia/inicio', 'Primeiros passos'], ['/guia/combate', 'Combate e elementos'], ['/guia/progressao', 'Progressão'], ['/guia/cristais', 'Cristais e VIP'], ['/guia/indicacoes', 'Indicações']]],
   ['UNIVERSO', [['/universo/historia', 'História central'], ['/universo/personagens', 'Os quatro pilotos'], ['/universo/faccoes', 'Facções e diplomacia']]],
   ['SISTEMAS', [['/sistemas/fabricacao', 'Fabricação'], ['/sistemas/missoes', 'Missões'], ['/sistemas/equipamentos', 'Equipamentos'], ['/sistemas/provacao', 'Provação'], ['/sistemas/engenharia', 'Engenharia']]],
   ['SUPORTE', [['/guia/conta', 'Conta e privacidade']]],

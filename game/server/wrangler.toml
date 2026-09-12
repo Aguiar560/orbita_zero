@@ -11,6 +11,12 @@ SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
 # por build. Exige o PREFIXO do projeto: `https://*.vercel.app` deixaria
 # qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
 ORIGENS = "http://localhost:5180,https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
+# Ative para o primeiro grupo somente depois de aplicar 0022-indicacoes.sql e
+# publicar os termos do programa. Mesmo em `0`, a migração precisa existir:
+# novas contas são seladas sem indicação para não ganharem vínculo retroativo.
+INDICACOES_ATIVAS = "0"
+# `INDICACOES_PIX_SECRET` nunca entra aqui. Criar com pelo menos 32 caracteres:
+# `wrangler secret put INDICACOES_PIX_SECRET`.
 
 # O gatilho de cinco minutos faz DUAS coisas.
 #

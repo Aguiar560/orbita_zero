@@ -248,6 +248,41 @@ Dois cuidados que vieram de defeito:
   leu `sessaoGuardada()` a primeira vez, leu `null`. Sem escutar o aviso, entrar
   pelo Google deixava "Sem conta" escrito no topo até a próxima recarga.
 
+Quando a sessão está autenticada, o mesmo menu contém a seção **INDICAÇÕES**.
+Ela carrega sob demanda o código pessoal, contas vinculadas e o saldo disponível
+em reais. **Abrir central de indicações** mostra a tela dedicada: valores
+disponível, em retenção, reservado e pago; chave Pix mascarada; solicitação
+semanal com piso de R$ 15,00 já liberados; histórico; e a trilha de
+10/25/50/75/100 indicados no nível 25. Nenhum
+nome ou gasto individual aparece. O link usa `?ref=` e pode ser removido na tela
+de criação de conta antes da primeira entrada.
+
+Na aba **Economia** do Comando, administradores veem os agregados financeiros e
+podem bloquear ou reativar um código. A fila administrativa separada expõe a
+chave completa apenas ao operador autorizado que executará o Pix; marcar pago
+exige referência. Os controles não aparecem para jogadores comuns.
+
+## Entrada por convite
+
+`app/conta.ts` conserva um código válido no `localStorage` durante confirmação
+de e-mail e OAuth. `app/sessao-unica.ts` envia o código na primeira chamada de
+`POST /sessao`; a URL é limpa sem perder a atribuição. O servidor sela a decisão
+uma única vez, inclusive quando o jogador troca de dispositivo.
+
+## Confirmação obrigatória do e-mail
+
+O cadastro por e-mail e senha só cria a conta; ele não abre o jogo. O jogador
+precisa usar o link enviado pelo Supabase e depois entrar. Enquanto
+`email_confirmed_at` não estiver preenchido no perfil autoritativo do Auth, a
+tela de login não libera o boot e o Worker recusa todas as rotas autenticadas,
+incluindo save, compras, indicações, painel e emissão de ticket do chat.
+
+O cliente também consulta a configuração pública do Auth antes do cadastro. Se
+`mailer_autoconfirm` estiver ligado, novas contas ficam temporariamente
+bloqueadas: confirmação automática não satisfaz a regra de confirmação real.
+Falha ao consultar a configuração ou o perfil também fecha a porta, sem presumir
+que o e-mail está confirmado.
+
 ---
 
 ## Eventos — `id: 'eventos'`

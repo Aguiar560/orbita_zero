@@ -362,6 +362,30 @@
   padding: 42px 40px;
   animation: landing-modal-in .15s ease-out;
 }
+
+.login-indicacao {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(95, 216, 255, .3);
+  background: rgba(26, 116, 153, .12);
+  font-size: 11px;
+}
+.login-indicacao > span { color: var(--muted); letter-spacing: .12em; }
+.login-indicacao > strong { color: var(--accent); letter-spacing: .12em; }
+.login-indicacao > p { grid-column: 1 / -1; margin: 0; color: var(--text); }
+.login-indicacao > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
 @keyframes landing-modal-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 
 /* ── estreito ───────────────────────────────────────────────────────────── */

@@ -39,6 +39,7 @@ export const MOTIVOS = [
   'morte',    // multa cobrada ao perder a nave
   'semente',  // migração do save antigo para o servidor
   'marco',    // cristal de marco da campanha, creditado SÓ pelo servidor (ver marcos.ts)
+  'marco_indicacao', // bônus em cristais por indicados que chegaram ao nível exigido
 ] as const;
 export type Motivo = (typeof MOTIVOS)[number];
 
@@ -145,7 +146,8 @@ export function podeDebitar(saldo: number, quantia: number): boolean {
 export type RecusaDoCliente = 'motivo_so_do_servidor' | 'cristal_so_do_servidor';
 
 export function recusaDoCliente(l: Lancamento): RecusaDoCliente | null {
-  if (l.motivo === 'compra' || l.motivo === 'estorno' || l.motivo === 'marco') return 'motivo_so_do_servidor';
+  if (l.motivo === 'compra' || l.motivo === 'estorno' || l.motivo === 'marco'
+    || l.motivo === 'marco_indicacao') return 'motivo_so_do_servidor';
   if (l.moeda === 'cristal' && l.quantia > 0) return 'cristal_so_do_servidor';
   return null;
 }

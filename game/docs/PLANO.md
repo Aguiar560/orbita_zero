@@ -1563,3 +1563,31 @@ Oito regras que vieram de erro real, não de teoria.
 8. **Um comando ruim nunca derruba o lote.** Recusar o lote inteiro por causa de
    uma linha faz o cliente reenviá-lo para sempre, e o espelho dele nunca mais
    converge. Apare, conte o que faltou, e devolva o resto aplicado.
+
+---
+
+## Implementação do programa de indicações (12/09/2026)
+
+O programa financeiro foi implementado sem publicação remota: migração 0022,
+vínculo único, captura de `?ref=`, comissão de 10% dos centavos pagos, retenção
+de sete dias, estorno/dívida, carteira separada, chave Pix cifrada, solicitação
+de no mínimo R$ 15,00 a cada sete dias, fila operacional e tela de perfil. Os marcos de 10/25/50/75/100
+indicados no nível 25 pagam bônus únicos em cristais. `INDICACOES_ATIVAS`
+permanece `0` até migração, segredo, termos, privacidade, revisão contábil,
+antifraude e homologação. A feature permanece desligada em produção.
+
+## Confirmação de e-mail obrigatória (12/09/2026)
+
+O cadastro por e-mail/senha e todas as superfícies autenticadas foram fechados
+até a confirmação autoritativa do endereço no Supabase Auth. O Worker valida o
+JWT e consulta `/auth/v1/user`; cliente, API principal e chat falham fechados se
+o e-mail não estiver confirmado, se a verificação estiver indisponível ou se o
+projeto estiver com `mailer_autoconfirm` ligado. Wiki, telas e instruções de
+operação acompanham a regra.
+
+O projeto remoto foi conferido depois da configuração: provedor de e-mail e
+novos cadastros ativos, `mailer_autoconfirm: false` e contas anônimas
+desativadas. O domínio `auth.orbitazero.com.br` também foi verificado no
+provedor SMTP. Antes de publicar o bloqueio ainda é obrigatório validar uma
+entrega real, o link e o retorno, além de decidir como auditar contas criadas
+durante o período anterior de confirmação automática.
