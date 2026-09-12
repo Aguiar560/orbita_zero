@@ -1,5 +1,18 @@
-/** Uma aba sem pulso por três minutos deixa de bloquear uma nova entrada. */
-export const SESSAO_ATIVA_SEGUNDOS = 180;
+/**
+ * Uma aba sem pulso por seis minutos deixa de bloquear uma nova entrada.
+ *
+ * Eram três, com pulso de um minuto. O pulso subiu para 150s em 12/09/2026 para
+ * caber na cota de escrita do D1, e a janela subiu junto: ela precisa ser
+ * múltipla do pulso, não igual a ele. Com 360s a aba erra dois pulsos seguidos
+ * — rede ruim, temporizador estrangulado em segundo plano — e ainda assim
+ * continua dona da sessão.
+ *
+ * O custo de esticar é o outro lado: quem fecha a aba no grito (queda de
+ * energia, aba morta sem `pagehide`) espera até seis minutos para entrar de
+ * outro aparelho sem ver a pergunta. Quem fecha normalmente não espera nada —
+ * `encerrar` apaga a linha na saída.
+ */
+export const SESSAO_ATIVA_SEGUNDOS = 360;
 
 export const instanciaValida = (valor: unknown): valor is string =>
   typeof valor === 'string' && /^[A-Za-z0-9_-]{16,80}$/.test(valor);

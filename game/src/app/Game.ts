@@ -45,6 +45,24 @@ import { vigiarSessaoUnica } from './sessao-unica';
 const INTERVALO_DE_SUBIDA = 150;
 
 /**
+ * O mesmo relógio, com a aba ESCONDIDA.
+ *
+ * O ciclo lá embaixo dispara sete rotas, e cada uma gasta uma ficha em
+ * `limites` — uma escrita no D1 por rota, antes das da própria rota. Escondida,
+ * a aba fazia isso no mesmo ritmo de quem está olhando o jogo, e num idle ela
+ * passa a maior parte do dia assim: em 12/09/2026 foi o que levou a cota diária
+ * de escrita a estourar com vinte e uma contas ativas, derrubando a API inteira.
+ *
+ * Dez minutos não perdem nada. O progresso é função do TEMPO, as filas de saída
+ * moram no save local, e ao ESCONDER a aba o save sobe na hora — ver
+ * `onVisibility`. O que chega tarde é só a confirmação do servidor.
+ *
+ * `tickRecado`, logo abaixo, sempre soube disso e para de vez com a aba
+ * escondida. Este relógio é que não sabia.
+ */
+const INTERVALO_DE_SUBIDA_OCULTA = 600;
+
+/**
  * Quanto tempo a subida do save tem antes de a página trocar de versão.
  *
  * Meio segundo é o bastante para uma requisição sair pela rede e curto o
@@ -898,7 +916,10 @@ export class Game {
   private tickNuvem(dt: number): void {
     if (this.sim.laboratorio.active) return;
     this.relogioDaNuvem += dt;
-    if (this.relogioDaNuvem < INTERVALO_DE_SUBIDA) return;
+    const alvo = document.hidden ? INTERVALO_DE_SUBIDA_OCULTA : INTERVALO_DE_SUBIDA;
+    // Voltar para a aba pode deixar o relógio JÁ acima do alvo curto, e é o que
+    // se quer: quem volta a olhar o jogo sincroniza no quadro seguinte.
+    if (this.relogioDaNuvem < alvo) return;
     this.relogioDaNuvem = 0;
     // Sem `await`: a subida é de fundo e não pode segurar um quadro. Falha fica
     // registrada em `nuvem.ultimoErro` e a próxima tentativa vem sozinha.

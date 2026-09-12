@@ -42,6 +42,22 @@ interface Remoto {
 
 let sincronizado = false;
 
+/**
+ * O último mapa que o servidor já recebeu, como texto.
+ *
+ * Ela era a única das sete rotas do ciclo da nuvem sem saída antecipada: as
+ * outras seis param sozinhas quando não há nada a dizer, e esta mandava o mapa
+ * inteiro a cada 150 segundos mesmo sem um abate, um passo ou uma entrega no
+ * meio. Numa aba parada isso era uma requisição e duas escritas no D1 por
+ * ciclo para reafirmar o que o servidor já sabia.
+ *
+ * Comparar o texto do envio é o teste exato do que importa: a mescla do
+ * servidor é monotônica, então payload igual não pode produzir resposta
+ * diferente. Só o que se abre mão é de descobrir por aqui um progresso feito
+ * em OUTRO aparelho — e desde a sessão única não existem dois ao mesmo tempo.
+ */
+let ultimoEnvio = '';
+
 async function chamar(corpo?: unknown): Promise<Remoto | null> {
   const token = await tokenValido();
   if (!token) return null;
@@ -112,8 +128,16 @@ export async function sincronizarMissoes(sim: Sim): Promise<boolean> {
  * atuais ser só mais um envio, sem caminho especial de migração para manter.
  */
 export async function drenarMissoes(sim: Sim): Promise<void> {
-  const r = await chamar({ missoes: paraOServidor(sim) });
+  const missoes = paraOServidor(sim);
+  // Nada mudou desde o envio que o servidor confirmou: ver `ultimoEnvio`.
+  const corpo = JSON.stringify({ missoes });
+  if (sincronizado && corpo === ultimoEnvio) return;
+
+  const r = await chamar({ missoes });
   if (!r) return;
+  // Só depois da resposta. Marcar antes faria uma falha de rede passar por
+  // enviada, e o mapa ficaria parado até o próximo abate mexer nele.
+  ultimoEnvio = corpo;
   adotar(sim, r);
   // A entrega conferida pode ter sido um marco: o cristal da missão chega por
   // aqui, e não pelo `resgatarMissao` do cliente.
@@ -125,4 +149,6 @@ export const missoesProntas = (): boolean => sincronizado;
 /** Esquece o espelho ao trocar de conta. */
 export function esquecerMissoes(): void {
   sincronizado = false;
+  // Sem isto, a conta seguinte com o mesmo mapa de missões não enviaria nada.
+  ultimoEnvio = '';
 }
