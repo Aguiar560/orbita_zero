@@ -147,8 +147,11 @@ describe('o contexto do cliente é aparado', () => {
     // Alegar o setor 300 para simular recompensa de fim de jogo era a saída
     // óbvia. A recompensa por setor vai de 0,06 a 192.201 — três milhões de
     // vezes —, então este aparo vale mais que qualquer outro daqui.
-    const e = montarEstado(base({ melhorSetor: 40 }), { setor: 300 });
-    expect(e.run.sector).toBe(40);
+    // 37 e não 40: setor de chefe é recuado pela regra da chave, e o assunto
+    // deste teste é o aparo pelo melhor alcançado. O recuo do chefe tem
+    // auditoria própria em `chefe-so-com-chave`.
+    const e = montarEstado(base({ melhorSetor: 37 }), { setor: 300 });
+    expect(e.run.sector).toBe(37);
   });
 
   it('setor dentro da faixa é respeitado', () => {

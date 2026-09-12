@@ -1,3 +1,4 @@
+import { isBossSector } from '@data/bosses';
 import { HULL_BY_ID } from '@data/hulls';
 import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { nivelPorXpAcumulado } from '@sim/nivel';
@@ -152,7 +153,28 @@ export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): Ga
   // setor 300 para simular recompensa de fim de jogo era a saída óbvia, e esta
   // linha é a que a fecha.
   const setor = Math.floor(Number(ctx.setor) || 1);
-  estado.run.sector = Math.min(Math.max(1, setor), Math.max(1, dados.melhorSetor));
+  const aparado = Math.min(Math.max(1, setor), Math.max(1, dados.melhorSetor));
+
+  /**
+   * A AUSÊNCIA NÃO ENFRENTA CHEFE. Nunca.
+   *
+   * A chave de acesso mora no save, que é do cliente — o servidor não tem como
+   * conferir se ela foi gasta, e aceitar a palavra dele aqui seria aceitar
+   * `{setor: 10}` de um cliente modificado e simular o chefe sem chave
+   * nenhuma. Era a última porta aberta para "estar num setor de chefe sem a
+   * chave", e a única que não dava para fechar conferindo: dava para fechar
+   * decidindo.
+   *
+   * Recuar um setor é coerente com o que a ausência já é. Ela não solta item
+   * (ver `completeEncounter`) pelo mesmo motivo de fundo: o que exige ESTAR LÁ
+   * não acontece com a aba fechada, e enfrentar um chefe exige estar lá mais
+   * que qualquer outra coisa no jogo.
+   *
+   * O custo é de quem parou a nave em cima do chefe com a chave já gasta: a
+   * ausência dele rende como o setor anterior. É um setor de diferença, e do
+   * lado seguro.
+   */
+  estado.run.sector = isBossSector(aparado) ? Math.max(1, aparado - 1) : aparado;
   estado.run.wave = Math.max(1, Math.floor(Number(ctx.onda) || 1));
 
   const postura = ctx.postura;

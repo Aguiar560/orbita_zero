@@ -1,3 +1,6 @@
+import { bossForSector, isBossSector } from '@data/bosses';
+import { chaveDaGalaxia } from '@data/chaves-de-acesso';
+import { galaxyOfSector } from '@data/galaxies';
 import { Sim } from '@sim/index';
 import { sectorIlvl } from '@sim/progression';
 
@@ -105,7 +108,27 @@ export function medirGanho(setor: number, janela = 300, repeticoes = 3): GanhoDo
     // Os dois medidores discordarem foi o que denunciou o defeito. Vale a
     // lição: quando a régua nova contradiz a antiga, a régua nova é a
     // suspeita.
+    /**
+     * E o medidor PAGA A CHAVE quando o setor é de chefe.
+     *
+     * Desde 12/09 `jumpSector` não entra num setor de chefe sozinho: ele marca
+     * o acesso como pendente e espera a confirmação que consome a chave. Sem
+     * isto o medidor ficava no setor ANTERIOR com o rótulo do chefe — medido em
+     * 12/09, o setor 10 saía com 0,53 xp/s e ZERO mortes entre um 9 de 1,42 e
+     * um 11 de 4,23. Régua que mente é pior que régua que falta.
+     *
+     * Pagar a chave, e não isentar o medidor da regra, é o que mantém a medição
+     * em cima do jogo real. Inclusive no que vem depois: morrer no chefe custa
+     * a chave (`failEncounter`), e a nave volta ao setor anterior. A janela do
+     * setor de chefe é, de verdade, uma mistura dos dois — e é isso que o
+     * jogador vive.
+     */
+    if (isBossSector(setor)) {
+      const chave = chaveDaGalaxia(galaxyOfSector(setor));
+      estado.chavesAcesso[chave.id] = (estado.chavesAcesso[chave.id] ?? 0) + 1;
+    }
     sim.jumpSector(setor);
+    if (isBossSector(setor)) sim.prepararAcessoAoChefe(bossForSector(setor).id);
     const antes = {
       xp: estado.command.xp,
       sucata: estado.resources.sucata,

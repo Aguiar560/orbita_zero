@@ -1,3 +1,4 @@
+import { bossForSector } from '@data/bosses';
 import { describe, expect, it } from 'vitest';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
@@ -52,6 +53,10 @@ describe('o preço de um encontro', () => {
         const sim = new Sim(createState(SEMENTE));
         sim.state.run.sector = setor;
         sim.state.run.wave = onda;
+        // A chave já paga: o teste mede o PREÇO do encontro, e o setor 40 é de
+        // chefe. Sem isto `refreshEncounter` recua um setor e a comparação
+        // passaria a ser entre encontros diferentes.
+        sim.state.run.chaveAcessoConsumida = bossForSector(setor).id;
         sim.refreshEncounter();
 
         const e = sim.encounter;

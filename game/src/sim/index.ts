@@ -498,7 +498,40 @@ export class Sim {
   }
 
   /** Público para o modo de teste e para os testes automatizados. */
+  /**
+   * A invariante, conferida toda vez que o encontro é remontado.
+   *
+   * ## Por que existe uma terceira camada
+   *
+   * A primeira são as portas (`jumpSector`, `completeEncounter`), que barram a
+   * entrada. A segunda é `migrate`, que recusa um save que já esteja dentro.
+   * Esta é a do MEIO DA SESSÃO, e ela existe porque as duas primeiras protegem
+   * caminhos conhecidos — e a porta que machuca é sempre a que ninguém listou.
+   *
+   * Ela é barata e fica no lugar certo: mover a nave sem remontar o encontro
+   * não muda o jogo, então toda porta real passa por aqui. Uma porta nova que
+   * alguém escreva amanhã é recuada no mesmo instante, sem depender de quem a
+   * escreveu ter lembrado da chave.
+   *
+   * Não chama `refreshEncounter` de volta: quem a chamou está prestes a
+   * remontar o encontro com o setor já corrigido.
+   */
+  private garantirSetorComChave(): void {
+    const run = this.state.run;
+    if (!isBossSector(run.sector) || this.testMode || this.desafio) return;
+    if (run.chaveAcessoConsumida === bossForSector(run.sector).id) return;
+
+    // Voz, porque sintoma mudo é o que custa caro: se isto aparecer no console
+    // de alguém, existe uma porta que ninguém conhece.
+    console.warn(`[setor] recuado do ${run.sector}: chefe sem chave gasta`);
+    run.sector = Math.max(1, run.sector - 1);
+    run.wave = 1;
+    run.chaveAcessoConsumida = undefined;
+    this.pendingBossSector = undefined;
+  }
+
   refreshEncounter(): void {
+    this.garantirSetorComChave();
     this.encounterCache = null;
     const e = this.encounter;
     this.state.run.kind = e.kind;
@@ -1895,7 +1928,20 @@ export class Sim {
         const boss = bossForSector(proximo);
         bus.emit('boss:access-requested', { sector: proximo, galaxia: galaxyOfSector(proximo), bossId: boss.id });
       }
-      run.chaveAcessoConsumida = undefined;
+      /**
+       * A chave gasta some ao SAIR do setor, e não ao concluí-lo.
+       *
+       * Ela significa "paguei para estar NESTE setor". Apagá-la na conclusão
+       * fazia sentido enquanto concluir era sempre sair — mas não é: com
+       * "Repetir setor" ligado e no caminho offline a nave FICA. O resultado
+       * era a nave dentro do setor do chefe com o recibo rasgado, que é
+       * exatamente o estado que a regra da chave proíbe.
+       *
+       * Encontrado em 12/09 pela régua de balanceamento: `simular -- ganho`
+       * imprimiu "[setor] recuado do 10" três vezes, uma por amostra, e o
+       * número do setor 10 vinha metade medido no 9.
+       */
+      if (run.sector !== e.sector) run.chaveAcessoConsumida = undefined;
       run.falhasNoSetor = 0;
       // Depois de mover o ponteiro, e SEMPRE — mesmo repetindo o mesmo setor,
       // que é quando `run.sector` não muda e uma checagem preguiçosa por
