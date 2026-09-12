@@ -1,8 +1,8 @@
-# Sistema de indicações — levantamento e implementação local
+# Sistema de indicações — levantamento, implementação e operação
 
 **Data:** 12/09/2026
-**Estado:** implementado no working tree, sem commit, sem push, sem migração
-remota e com `INDICACOES_ATIVAS="0"`.
+**Estado:** implementado, versionado e público. Migração 0022 aplicada, segredo
+Pix configurado e `INDICACOES_ATIVAS="1"` desde 12/09/2026.
 
 ## Regra implementada
 
@@ -154,9 +154,9 @@ pessoais. Revisão jurídica e contábil continua requisito de lançamento.
 - [x] marcos usam nível do servidor e origem idempotente;
 - [x] contas antigas/teste e autovínculo são barrados;
 - [x] tela dedicada e Wiki acompanham a regra;
-- [x] flag permanece desligada;
-- [ ] aprovar os valores de 50/75/100 jogadores;
+- [x] flag ativada publicamente após migração, segredo e deploy intermediário;
+- [x] valores de 50/75/100 jogadores autorizados com a abertura pública;
 - [ ] aprovar termos, privacidade, contabilidade e antifraude;
 - [ ] contratar payout se o Pix for automatizado;
-- [ ] migração/homologação remotas;
-- [ ] commit e push somente após autorização explícita.
+- [x] migração remota, conferência do esquema e saúde do Worker;
+- [x] commit e push autorizados explicitamente.

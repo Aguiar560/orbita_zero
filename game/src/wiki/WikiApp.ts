@@ -253,6 +253,10 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
     leitura: '4 min',
     secoes: [
       {
+        titulo: 'Programa ativo',
+        corpo: 'O programa de indicações está aberto ao público. Novas contas podem entrar por um link válido, e compras confirmadas depois do vínculo já seguem as regras de comissão, retenção e saque descritas abaixo.',
+      },
+      {
         titulo: 'Como convidar',
         corpo: 'Abra o menu do perfil, copie seu link de convite e envie ao novo piloto. O link leva seu código. Antes de concluir o cadastro, a tela mostra o convite e permite removê-lo.',
       },

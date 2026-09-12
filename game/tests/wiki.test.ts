@@ -43,6 +43,7 @@ describe('wiki oficial', () => {
     ]) expect(wiki, rota).toContain(`'${rota}'`);
     expect(wiki).toContain('Confirmação de e-mail obrigatória');
     expect(wiki).toContain('qualquer outro recurso autenticado do jogo');
+    expect(wiki).toContain('O programa de indicações está aberto ao público');
   });
 
   it('documenta o universo, os pilotos e a diplomacia', () => {

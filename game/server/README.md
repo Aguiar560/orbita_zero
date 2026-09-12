@@ -116,12 +116,11 @@ de payout atual é manual: depois de realizar e conferir o Pix, o operador
 registra a referência para baixar a reserva. Não existe chamada automática de
 saída de dinheiro nesta versão.
 
-O programa permanece desligado por padrão com `INDICACOES_ATIVAS="0"` em
-`wrangler.toml`. A sequência de publicação é: aplicar a migração D1, publicar
-Worker e cliente compatíveis, revisar termos/privacidade, homologar e só então
-alterar a variável para `1`. A migração vem primeiro porque, mesmo com a flag
-desligada, novas contas são seladas sem indicação para impedir vínculo
-retroativo. Não aplicar a migração remota nesta etapa local.
+O programa está público com `INDICACOES_ATIVAS="1"` desde 12/09/2026. A
+migração 0022 foi aplicada antes do Worker, as contas existentes foram seladas
+sem indicação retroativa e o segredo `INDICACOES_PIX_SECRET` foi criado. Para
+interromper imediatamente novos vínculos, comissões e saques sem apagar o
+histórico, volte a variável para `0` e publique o Worker.
 
 Cada solicitação usa somente saldo já liberado, deve ser de pelo menos
 **R$ 15,00** e abre uma janela móvel de sete dias completos. Durante esse

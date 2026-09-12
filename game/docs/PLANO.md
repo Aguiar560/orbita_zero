@@ -1568,13 +1568,14 @@ Oito regras que vieram de erro real, não de teoria.
 
 ## Implementação do programa de indicações (12/09/2026)
 
-O programa financeiro foi implementado sem publicação remota: migração 0022,
+O programa financeiro foi implementado e publicado: migração 0022,
 vínculo único, captura de `?ref=`, comissão de 10% dos centavos pagos, retenção
 de sete dias, estorno/dívida, carteira separada, chave Pix cifrada, solicitação
 de no mínimo R$ 15,00 a cada sete dias, fila operacional e tela de perfil. Os marcos de 10/25/50/75/100
-indicados no nível 25 pagam bônus únicos em cristais. `INDICACOES_ATIVAS`
-permanece `0` até migração, segredo, termos, privacidade, revisão contábil,
-antifraude e homologação. A feature permanece desligada em produção.
+indicados no nível 25 pagam bônus únicos em cristais. Migração e segredo Pix
+foram conferidos antes da abertura; `INDICACOES_ATIVAS=1` desde 12/09/2026.
+Termos, privacidade, revisão contábil e antifraude permanecem como dívida
+operacional prioritária assumida na autorização da abertura pública.
 
 ## Confirmação de e-mail obrigatória (12/09/2026)
 
@@ -1588,6 +1589,6 @@ operação acompanham a regra.
 O projeto remoto foi conferido depois da configuração: provedor de e-mail e
 novos cadastros ativos, `mailer_autoconfirm: false` e contas anônimas
 desativadas. O domínio `auth.orbitazero.com.br` também foi verificado no
-provedor SMTP. Antes de publicar o bloqueio ainda é obrigatório validar uma
-entrega real, o link e o retorno, além de decidir como auditar contas criadas
+provedor SMTP. Após a publicação ainda é obrigatório validar uma entrega real,
+o link e o retorno, além de decidir como auditar contas criadas
 durante o período anterior de confirmação automática.
