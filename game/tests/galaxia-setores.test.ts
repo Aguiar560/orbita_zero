@@ -9,4 +9,9 @@ describe('setores no mapa da galáxia', () => {
     expect(painel).toContain('/assets/ui/provacao/icons/prv_icone_cadeado.png');
     expect(painel).toContain('Setor ${phase.sector} bloqueado. ${bloqueio}');
   });
+
+  it('deixa selecionar setor apenas nas fases comuns', () => {
+    expect(painel).toContain("!selected.isBoss ? h('.galaxy-command-detail-action'");
+    expect(painel).toContain("text: setorAtual ? 'SETOR ATUAL' : acessoLiberado ? 'ENTRAR NO SETOR' : 'SEM CHAVE'");
+  });
 });

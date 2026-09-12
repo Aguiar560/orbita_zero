@@ -449,10 +449,14 @@ começar** — e o jogador tinha de fechá-la para ver o que pediu.
 
 Ao selecionar um setor de chefe, a ficha mostra um cartão de acesso separado,
 fora do detalhe do setor, com a arte da chave, a quantidade no Armazém e a ação
-de entrada. A mesma barreira aparece ao concluir o setor anterior (9, 19, 29…):
+**Entrar no setor**. O botão comum **Selecionar setor** não existe no chefe e,
+nos demais setores, permanece dentro do próprio card. A mesma barreira aparece
+ao concluir o setor anterior (9, 19, 29…):
 o setor seguinte é liberado no mapa, mas a nave permanece no setor concluído até
 o jogador confirmar. A confirmação consome uma chave exclusiva da galáxia;
-cancelar mantém a nave onde está e não gasta nada.
+cancelar mantém a nave onde está e não gasta nada. A própria simulação bloqueia
+qualquer salto direto ao chefe, portanto um novo atalho de interface não pode
+contornar a confirmação por acidente.
 
 
 ---

@@ -745,9 +745,10 @@ export class Sim {
    * conquista.
    */
   recuarUmSetor(): boolean {
-    // Após concluir o setor anterior, a barreira mantém o ponteiro nele. Cancelar
-    // a entrada deve apenas fechar a oferta — nunca recuar mais um setor.
-    if (this.pendingBossSector !== undefined && this.pendingBossSector === this.state.run.sector + 1) {
+    // Uma entrada de chefe ainda não confirmada nunca moveu a nave. Cancelar
+    // deve apenas fechar a oferta, inclusive quando o chefe foi escolhido no
+    // mapa a partir de um setor distante.
+    if (this.pendingBossSector !== undefined) {
       this.pendingBossSector = undefined;
       this.touch();
       return true;
@@ -760,7 +761,18 @@ export class Sim {
 
   jumpSector(sector: number): void {
     const destino = Math.max(1, Math.floor(sector));
-    this.pendingBossSector = isBossSector(destino) && !this.testMode ? destino : undefined;
+    // Chefe nunca é um salto direto. Primeiro fica pendente e a UI pede a
+    // confirmação; só `prepararAcessoAoChefe` consome a chave e move a nave.
+    // Esta barreira mora na simulação para nenhum botão novo conseguir
+    // contorná-la por acidente.
+    if (isBossSector(destino) && !this.testMode) {
+      this.pendingBossSector = destino;
+      const boss = bossForSector(destino);
+      bus.emit('boss:access-requested', { sector: destino, galaxia: galaxyOfSector(destino), bossId: boss.id });
+      this.touch();
+      return;
+    }
+    this.pendingBossSector = undefined;
     this.state.run.sector = destino;
     this.state.run.wave = 1;
     // As quedas são DESTE setor, então trocar de setor zera a conta.
@@ -774,10 +786,6 @@ export class Sim {
     this.marcarSetor();
     this.state.universe.bestSector = Math.max(this.state.universe.bestSector, this.state.run.sector);
     this.state.universe.bestSectorEver = Math.max(this.state.universe.bestSectorEver, this.state.universe.bestSector);
-    if (isBossSector(this.state.run.sector) && !this.testMode) {
-      const boss = bossForSector(this.state.run.sector);
-      bus.emit('boss:access-requested', { sector: this.state.run.sector, galaxia: galaxyOfSector(this.state.run.sector), bossId: boss.id });
-    }
     this.refreshEncounter();
     this.touch();
   }

@@ -68,9 +68,9 @@ export class GalaxyPanel implements Panel {
     const selecionavel = best >= selected.sector;
     const chaveSelecionada = chaveDaGalaxia(this.viewing);
     const quantidadeChave = sim.quantidadeChaveDaGalaxia(this.viewing);
-    const acessoLiberado = !selected.isBoss || sim.temChaveDaGalaxia(this.viewing);
-    const preview = buildEncounter(sim.state, selected.sector, 1);
     const setorAtual = sim.state.run.sector === selected.sector;
+    const acessoLiberado = !selected.isBoss || setorAtual || sim.temChaveDaGalaxia(this.viewing);
+    const preview = buildEncounter(sim.state, selected.sector, 1);
     const setoresVencidos = clamp(best - info.firstSector + 1, 0, PHASES_PER_GALAXY);
     const ameaca = getElement(info.element);
     const cascoDaRegiao = HULLS
@@ -99,11 +99,15 @@ export class GalaxyPanel implements Panel {
     const cartaoDeAcesso = selected.isBoss ? h('.galaxy-command-access-card', { style: { '--key-cor': chaveSelecionada.cor } as Partial<CSSStyleDeclaration> },
       h('img', { src: `/assets/${chaveSelecionada.arte}`, alt: '', 'aria-hidden': 'true' }),
       h('.galaxy-command-access-copy', {},
-        h('small', { text: acessoLiberado ? 'CHAVE DE ACESSO' : 'CHAVE DE ACESSO REQUERIDA' }),
+        h('small', { text: setorAtual ? 'SETOR DE CHEFE ATIVO' : acessoLiberado ? 'CHAVE DE ACESSO' : 'CHAVE DE ACESSO REQUERIDA' }),
         h('strong', { text: `${chaveSelecionada.nome} · ${quantidadeChave} disponível` }),
-        h('span', { text: acessoLiberado ? 'Deseja entrar no setor do chefe?' : 'Conclua os setores anteriores para obter esta chave.' }),
+        h('span', { text: setorAtual ? 'A nave já está operando neste setor.' : acessoLiberado ? 'Deseja entrar no setor do chefe?' : 'Conclua os setores anteriores para obter esta chave.' }),
       ),
-      h('button.galaxy-command-access-button', { disabled: !acessoLiberado || !selecionavel, onclick: selecionarSetor, text: acessoLiberado ? 'ENTRAR NO SETOR' : 'SEM CHAVE' }),
+      h('button.galaxy-command-access-button', {
+        disabled: !acessoLiberado || !selecionavel || setorAtual,
+        onclick: selecionarSetor,
+        text: setorAtual ? 'SETOR ATUAL' : acessoLiberado ? 'ENTRAR NO SETOR' : 'SEM CHAVE',
+      }),
     ) : null;
 
     const colunaRegiao = h('.galaxy-command-col.galaxy-command-region', {},
@@ -200,7 +204,13 @@ export class GalaxyPanel implements Panel {
               ].map(([label, value]) => h('.galaxy-command-stat-row', {}, h('span', { text: label }), h('b', { text: value }))),
             ),
           ),
-          h('button.galaxy-command-select', { disabled: !selecionavel || !acessoLiberado, onclick: selecionarSetor, text: !acessoLiberado ? 'CHAVE NECESSÁRIA' : selecionavel ? (setorAtual ? 'SETOR ATUAL' : 'SELECIONAR SETOR') : 'SETOR BLOQUEADO' }),
+          !selected.isBoss ? h('.galaxy-command-detail-action', {},
+            h('button.galaxy-command-select', {
+              disabled: !selecionavel || setorAtual,
+              onclick: selecionarSetor,
+              text: selecionavel ? (setorAtual ? 'SETOR ATUAL' : 'SELECIONAR SETOR') : 'SETOR BLOQUEADO',
+            }),
+          ) : null,
         ),
       ),
       cartaoDeAcesso,

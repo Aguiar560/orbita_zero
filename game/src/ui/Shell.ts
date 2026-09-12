@@ -922,7 +922,7 @@ export class Shell {
     const quantidade = this.sim.quantidadeChaveDaGalaxia(galaxia);
     const modal = h('.modal-backdrop.boss-key-confirmacao', { role: 'presentation' });
     const fechar = (): void => modal.remove();
-    const voltar = h('button.btn', { text: 'VOLTAR AO SETOR ANTERIOR', onclick: () => { this.sim.recuarUmSetor(); fechar(); } });
+    const voltar = h('button.btn', { text: 'CANCELAR', onclick: () => { this.sim.recuarUmSetor(); fechar(); } });
     const usar = h('button.btn.primary.big', {
       disabled: quantidade <= 0,
       onclick: () => { if (this.sim.prepararAcessoAoChefe(bossId)) fechar(); },

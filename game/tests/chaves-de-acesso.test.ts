@@ -82,6 +82,28 @@ describe('chaves de acesso', () => {
     expect(sim.quantidadeChaveDaGalaxia(0)).toBe(0);
   });
 
+  it('não deixa o salto do mapa entrar no chefe antes da confirmação', () => {
+    const state = createState();
+    const chave = CHAVES_DE_ACESSO[0]!;
+    state.chavesAcesso[chave.id] = 1;
+    const sim = new Sim(state);
+
+    sim.jumpSector(10);
+    expect(sim.state.run.sector).toBe(1);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(1);
+
+    expect(sim.prepararAcessoAoChefe(chave.bossId)).toBe(true);
+    expect(sim.state.run.sector).toBe(10);
+    expect(sim.quantidadeChaveDaGalaxia(0)).toBe(0);
+  });
+
+  it('cancelar um chefe escolhido longe mantém o setor atual', () => {
+    const sim = new Sim(createState());
+    sim.jumpSector(10);
+    expect(sim.recuarUmSetor()).toBe(true);
+    expect(sim.state.run.sector).toBe(1);
+  });
+
   it('materializa a garantia como cápsula física no último abate', () => {
     const state = createState();
     const sim = new Sim(state);
