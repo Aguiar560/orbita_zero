@@ -118,6 +118,17 @@
 .admin-detalhe-titulo strong { color: #dffff6; font: 700 15px 'Chakra Petch', sans-serif; }
 .admin-detalhe-titulo span { color: #75959d; font: 10px 'Chakra Petch', sans-serif; }
 .admin-detalhe-linha { margin: 5px 4px 0; color: #8eabb1; font-size: 11px; overflow-wrap: anywhere; }
+.admin-equipamentos { margin-top: 11px; padding: 10px; border-top: 1px solid rgba(98, 218, 202, .2); background: rgba(2, 11, 17, .48); }
+.admin-equipamentos-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.admin-equipamentos-titulo strong { color: #8cefe0; font: 700 10px 'Chakra Petch', sans-serif; letter-spacing: .12em; }
+.admin-equipamentos-titulo span { color: #75959d; font: 10px 'Chakra Petch', sans-serif; }
+.admin-equipamento-lista { display: grid; gap: 5px; }
+.admin-equipamento { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 9px; border: 1px solid rgba(88, 181, 183, .2); background: rgba(5, 20, 27, .72); }
+.admin-equipamento-principal { display: grid; gap: 3px; min-width: 0; }
+.admin-equipamento-principal strong { overflow: hidden; color: #e5fff9; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-equipamento-principal span { color: #78969c; font: 10px 'Chakra Petch', sans-serif; letter-spacing: .04em; }
+.admin-equipamento-meta { display: flex; flex: 0 0 auto; align-items: baseline; gap: 9px; color: #a8c2c7; font: 10px 'Chakra Petch', sans-serif; white-space: nowrap; }
+.admin-equipamento-meta b { font-size: 11px; }
 
 @media (max-width: 980px) {
   .admin-kpis { grid-template-columns: repeat(4, minmax(110px, 1fr)); }
@@ -133,6 +144,8 @@
   .admin-filtro { width: 100%; box-sizing: border-box; }
   .admin-duas-colunas { grid-template-columns: 1fr; }
   .admin-tres-colunas { grid-template-columns: 1fr; }
+  .admin-equipamento { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .admin-equipamento-meta { flex-wrap: wrap; white-space: normal; }
 }
 
 * { box-sizing: border-box; }

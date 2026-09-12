@@ -1,8 +1,11 @@
 import { buscarPainelAdmin, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin, type PainelAdmin } from '@app/painel-admin';
 import { HULL_BY_ID } from '@data/hulls';
+import { BASE_BY_ID, SLOT_BY_ID } from '@data/items';
+import { RARITIES } from '@data/balance/raridades';
 import { bus } from '@app/Bus';
 import { fmt } from '@core/format';
 import type { Sim } from '@sim/index';
+import type { SlotId } from '@sim/types';
 import { h } from '../dom';
 import type { Panel } from './types';
 
@@ -266,6 +269,27 @@ export class AdminDashboardPanel implements Panel {
   private detalheDoPiloto(jogador: JogadorDoPainelAdmin): HTMLElement {
     const recursos = Object.entries(jogador.recursos).map(([id, valor]) => `${id}: ${fmt(valor)}`).join(' · ') || 'sem saldo';
     const materiais = Object.entries(jogador.materiais).map(([id, valor]) => `${id}: ${fmt(valor)}`).join(' · ') || 'sem materiais';
+    const equipamentos = jogador.equipamentos.length
+      ? jogador.equipamentos.map((item) => {
+        const base = BASE_BY_ID.get(item.baseId);
+        const slot = SLOT_BY_ID.get(item.slot as SlotId);
+        const raridade = RARITIES[item.raridade];
+        const nave = HULL_BY_ID.get(item.nave)?.name ?? item.nave.replaceAll('_', ' ');
+        const nome = item.nome === item.baseId ? (base?.name ?? item.baseId) : item.nome;
+        const extras = [item.elemento, item.conjunto].filter(Boolean).join(' · ');
+        return h('.admin-equipamento', {},
+          h('.admin-equipamento-principal', {},
+            h('strong', { text: nome }),
+            h('span', { text: `${slot?.short ?? item.slot} · ${nave}` }),
+          ),
+          h('.admin-equipamento-meta', {},
+            h('b', { text: raridade?.name ?? `Raridade ${item.raridade}`, style: { color: raridade?.color ?? '#cbd6df' } }),
+            h('span', { text: `nível ${item.nivel}` }),
+            ...(extras ? [h('span', { text: extras })] : []),
+          ),
+        );
+      })
+      : [h('.admin-vazio', { text: 'Nenhuma peça equipada.' })];
     return h('.admin-detalhe-piloto', {},
       h('.admin-detalhe-titulo', {}, h('strong', { text: jogador.apelido ?? 'Cadastro pendente' }), h('span', { text: `ID ${jogador.codigo}` })),
       h('.admin-cartoes', {},
@@ -282,6 +306,13 @@ export class AdminDashboardPanel implements Panel {
       ),
       h('p.admin-detalhe-linha', { text: `Recursos · ${recursos}` }),
       h('p.admin-detalhe-linha', { text: `Materiais · ${materiais}` }),
+      h('.admin-equipamentos', {},
+        h('.admin-equipamentos-titulo', {},
+          h('strong', { text: 'EQUIPAMENTOS EQUIPADOS' }),
+          h('span', { text: `${jogador.equipamentos.length} peças` }),
+        ),
+        h('.admin-equipamento-lista', {}, ...equipamentos),
+      ),
     );
   }
 

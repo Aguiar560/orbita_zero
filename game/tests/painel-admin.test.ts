@@ -29,6 +29,11 @@ describe('painel administrativo', () => {
           if (sql.includes('FROM transacoes')) return { results: [{ moeda: 'sucata', entradas: 40, saidas: 10, operacoes: 3 }] };
           if (sql.includes('WHERE casco_em_campo')) return { results: [{ casco: 'nucleo_vektor', total: 1 }] };
           if (sql.includes('json_extract')) return { results: [{ raridade: 2, total: 5, equipados: 2 }] };
+          if (sql.includes('WHERE nave IS NOT NULL')) return { results: [{
+            usuario: primeiro,
+            dados: JSON.stringify({ baseId: 'principal_2', rarity: 3, ilvl: 12, element: 'fogo', set: 'vanguarda' }),
+            nave: 'nucleo_vektor', slot: 'principal',
+          }] };
           if (sql.includes('SUM(CASE WHEN iniciada')) return { results: [{ iniciadas: 4, entregues: 2, em_andamento: 2 }] };
           if (sql.includes('ORDER BY total DESC LIMIT 12')) return { results: [{ missao: 'm1', total: 2 }] };
           if (sql.includes('SELECT casco, COUNT(*)')) return { results: [{ casco: 'nucleo_vektor', total: 3 }] };
@@ -48,6 +53,9 @@ describe('painel administrativo', () => {
     expect(painel.jogadores[1]).toMatchObject({
       codigo: '87654321', apelido: null, cascoEmCampo: 'nucleo_vektor', ultimaAtividade: 500,
     });
+    expect(painel.jogadores[0]?.equipamentos).toMatchObject([{
+      baseId: 'principal_2', nave: 'nucleo_vektor', slot: 'principal', raridade: 3, nivel: 12,
+    }]);
     expect(JSON.stringify(painel)).not.toContain('12345678-aaaa');
   });
 
@@ -55,6 +63,13 @@ describe('painel administrativo', () => {
     const painel = fonte('src/ui/panels/AdminDashboardPanel.ts');
     expect(painel).toContain('HULL_BY_ID.get(jogador.cascoEmCampo)?.name');
     expect(painel).not.toContain("cascoEmCampo ?? 'não definida'");
+  });
+
+  it('mostra peças equipadas por nave, slot e raridade no detalhe', () => {
+    const painel = fonte('src/ui/panels/AdminDashboardPanel.ts');
+    expect(painel).toContain('EQUIPAMENTOS EQUIPADOS');
+    expect(painel).toContain('RARITIES[item.raridade]');
+    expect(painel).toContain('SLOT_BY_ID.get(item.slot as SlotId)');
   });
 
   it('registra a nave inicial como casco em campo', () => {

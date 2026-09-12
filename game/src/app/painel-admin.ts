@@ -23,6 +23,18 @@ export interface JogadorDoPainelAdmin {
   medalhas: number;
   online: boolean;
   ultimaAtividade: number | null;
+  equipamentos: EquipamentoDoPainelAdmin[];
+}
+
+export interface EquipamentoDoPainelAdmin {
+  nome: string;
+  baseId: string;
+  nave: string;
+  slot: string;
+  raridade: number;
+  nivel: number;
+  elemento: string | null;
+  conjunto: string | null;
 }
 
 export interface PainelAdmin {

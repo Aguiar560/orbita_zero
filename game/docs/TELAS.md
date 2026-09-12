@@ -945,6 +945,12 @@ A escolha inicial de piloto também grava o casco concedido como nave em campo
 no mesmo lote que cria a frota. Assim contas novas entram no Comando já com a
 informação definida, enquanto o fallback mantém as contas antigas legíveis.
 
+Ao abrir um piloto, o detalhe também lista cada equipamento montado, agrupado
+por nave e slot, com nome da base (ou exclusivo), nível, elemento, conjunto e
+raridade. A lista vem da tabela de itens do servidor e só é entregue pela rota
+administrativa autorizada; a tela pública não recebe o save nem o inventário
+completo de outro jogador.
+
 ---
 
 ## Laboratório — `id: 'laboratorio'`

@@ -16,6 +16,17 @@ export const JANELA_ONLINE_SEGUNDOS = 300;
  */
 export const podeLerPainelAdmin = (usuario: string): boolean => ADMINS.includes(usuario);
 
+export interface EquipamentoDoPainelAdmin {
+  nome: string;
+  baseId: string;
+  nave: string;
+  slot: string;
+  raridade: number;
+  nivel: number;
+  elemento: string | null;
+  conjunto: string | null;
+}
+
 export interface JogadorDoPainelAdmin {
   /** Só os oito primeiros caracteres: serve para distinguir sem expor o UUID. */
   codigo: string;
@@ -41,6 +52,7 @@ export interface JogadorDoPainelAdmin {
   online: boolean;
   /** Epoch em segundos, ou null para conta ainda sem save. */
   ultimaAtividade: number | null;
+  equipamentos: EquipamentoDoPainelAdmin[];
 }
 
 export interface PainelAdmin {
@@ -117,6 +129,12 @@ interface RegistroDeItens extends RegistroBase {
   itens_equipados: number;
 }
 
+interface RegistroDeEquipamento extends RegistroBase {
+  dados: string;
+  nave: string | null;
+  slot: string | null;
+}
+
 interface RegistroDeRecurso extends RegistroBase {
   moeda: string;
   quantia: number;
@@ -152,6 +170,7 @@ interface AcumuladoDoJogador {
   itensEncontrados: number;
   bausAbertos: number;
   medalhas: number;
+  equipamentos: EquipamentoDoPainelAdmin[];
 }
 
 /**
@@ -165,7 +184,7 @@ interface AcumuladoDoJogador {
  */
 export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Promise<PainelAdmin> {
   const [
-    contas, apelidos, progressos, atividades, naves, itens, missoes, saldos,
+    contas, apelidos, progressos, atividades, naves, itens, equipamentos, missoes, saldos,
     frotaPorCasco, materiais, movimentos, emCampo, raridades, missoesGerais, missoesPopulares,
   ] = await Promise.all([
     env.DB.prepare('SELECT usuario, primeiro_em FROM contas').all<RegistroDeConta>(),
@@ -180,6 +199,12 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
         FROM itens
        GROUP BY usuario
     `).all<RegistroDeItens>(),
+    env.DB.prepare(`
+      SELECT usuario, dados, nave, slot
+        FROM itens
+       WHERE nave IS NOT NULL
+       ORDER BY usuario, nave, slot
+    `).all<RegistroDeEquipamento>(),
     env.DB.prepare(`
       SELECT usuario, COUNT(*) AS total
         FROM missoes
@@ -227,7 +252,7 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
         naves: 0, itensNaMochila: 0, itensEquipados: 0, missoesConcluidas: 0,
         tempoDeJogo: 0, recursos: {}, materiais: {}, primeiroAcesso: null,
         cascoEmCampo: null, cascoDoSave: null, abates: 0, chefesAbatidos: 0, mortes: 0,
-        itensEncontrados: 0, bausAbertos: 0, medalhas: 0,
+        itensEncontrados: 0, bausAbertos: 0, medalhas: 0, equipamentos: [],
       };
       porUsuario.set(usuario, jogador);
     }
@@ -268,6 +293,29 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
     const jogador = garantir(linha.usuario);
     jogador.itensNaMochila = Math.max(0, Number(linha.itens_mochila) || 0);
     jogador.itensEquipados = Math.max(0, Number(linha.itens_equipados) || 0);
+  }
+  for (const linha of equipamentos.results ?? []) {
+    if (!linha.nave) continue;
+    try {
+      const item = JSON.parse(linha.dados) as {
+        baseId?: unknown; rarity?: unknown; ilvl?: unknown;
+        element?: unknown; set?: unknown; exclusivo?: { nome?: unknown };
+      };
+      const baseId = typeof item.baseId === 'string' ? item.baseId : 'desconhecido';
+      const nomeExclusivo = typeof item.exclusivo?.nome === 'string' ? item.exclusivo.nome : null;
+      garantir(linha.usuario).equipamentos.push({
+        nome: nomeExclusivo ?? baseId,
+        baseId,
+        nave: linha.nave,
+        slot: linha.slot ?? 'desconhecido',
+        raridade: Math.max(0, Math.min(6, Math.trunc(Number(item.rarity) || 0))),
+        nivel: Math.max(0, Math.trunc(Number(item.ilvl) || 0)),
+        elemento: typeof item.element === 'string' ? item.element : null,
+        conjunto: typeof item.set === 'string' ? item.set : null,
+      });
+    } catch {
+      // Um item antigo inválido não pode impedir o restante do painel de abrir.
+    }
   }
   for (const linha of missoes.results ?? []) garantir(linha.usuario).missoesConcluidas = Math.max(0, Number(linha.total) || 0);
   for (const linha of saldos.results ?? []) {
@@ -312,6 +360,7 @@ export async function lerPainelAdmin(env: { DB: D1Database }, agora: number): Pr
       medalhas: linha.medalhas,
       online: (linha.ultimaAtividade ?? 0) > desdeOnline,
       ultimaAtividade: linha.ultimaAtividade,
+      equipamentos: linha.equipamentos,
     }))
     .sort((a, b) => (b.ultimaAtividade ?? 0) - (a.ultimaAtividade ?? 0) || a.codigo.localeCompare(b.codigo));
 
