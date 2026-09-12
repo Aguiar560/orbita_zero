@@ -2,6 +2,7 @@ import {
   NOME_DO_PROVEDOR, cadastrar, entrar, entrarComProvedor, recolherSessaoDaUrl,
   sair, sessaoGuardada, tokenValido, type Provedor, type Sessao,
 } from '@app/conta';
+import { reivindicarSessao } from '@app/sessao-unica';
 import { clear, h } from './dom';
 import { montarLanding } from './Landing';
 import '../styles/landing.css';
@@ -58,17 +59,83 @@ export class Login {
     recolherSessaoDaUrl();
 
     const guardada = sessaoGuardada();
-    if (guardada && (await tokenValido())) return sessaoGuardada()!;
-    // Sessão que existia mas não renova é sessão morta: limpar aqui evita a
-    // tela abrir já com um estado de "logado" que o servidor não reconhece.
-    if (guardada) sair();
+    if (guardada) {
+      if (await tokenValido()) {
+        if (await this.autorizarSessao(host)) {
+          this.root.remove();
+          return sessaoGuardada()!;
+        }
+      } else {
+        // Sessão que existia mas não renova é sessão morta. Uma sessão apenas
+        // CONFLITANTE não é apagada: em duas abas do mesmo navegador isso
+        // também desconectaria a aba antiga que o jogador decidiu preservar.
+        sair();
+      }
+    }
 
     return new Promise((resolve) => {
-      this.render((sessao) => {
+      const concluir = async (sessao: Sessao): Promise<void> => {
+        this.ocupado = true;
+        if (!await this.autorizarSessao(host)) {
+          this.ocupado = false;
+          this.render((s) => { void concluir(s); });
+          return;
+        }
         this.root.remove();
         resolve(sessao);
-      });
+      };
+      this.render((sessao) => { void concluir(sessao); });
       host.append(this.root);
+    });
+  }
+
+  /** Confere a sessão antes de deixar qualquer save ou tela do jogo abrir. */
+  private async autorizarSessao(host: HTMLElement): Promise<boolean> {
+    const primeira = await reivindicarSessao(false);
+    if (primeira.estado === 'ativa') return true;
+    if (primeira.estado !== 'conflito') {
+      this.recado = 'Não foi possível verificar a sessão ativa. Tente novamente.';
+      return false;
+    }
+
+    if (!await this.perguntarSeSubstitui(host)) {
+      this.recado = 'Entrada cancelada. A outra sessão continua ativa.';
+      return false;
+    }
+    const forçada = await reivindicarSessao(true);
+    if (forçada.estado === 'ativa') return true;
+    this.recado = 'Não foi possível encerrar a sessão anterior. Tente novamente.';
+    return false;
+  }
+
+  private perguntarSeSubstitui(host: HTMLElement): Promise<boolean> {
+    if (!this.root.isConnected) host.append(this.root);
+    return new Promise((resolve) => {
+      let decidiu = false;
+      const escolher = (valor: boolean): void => {
+        if (decidiu) return;
+        decidiu = true;
+        resolve(valor);
+      };
+      clear(this.root).append(
+        h('.login-fundo'),
+        h('section.login-modal-camada', {
+          role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sessão já ativa',
+        },
+        h('.login-caixa', {},
+          h('span.login-etiqueta', { text: 'SESSÃO JÁ ATIVA' }),
+          h('h1.login-titulo', { text: 'Esta conta já está aberta' }),
+          h('p.login-sub', {
+            text: 'Existe uma sessão ativa em outro navegador, dispositivo ou aba. Deseja entrar aqui mesmo? Ao continuar, o local anterior será desconectado.',
+          }),
+          h('button.login-enviar', {
+            type: 'button', text: 'ENTRAR MESMO ASSIM', onclick: () => escolher(true),
+          }),
+          h('button.login-pular', {
+            type: 'button', text: 'CANCELAR', onclick: () => escolher(false),
+          }),
+        )),
+      );
     });
   }
 

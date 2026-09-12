@@ -1,7 +1,7 @@
 import { Loop } from './Loop';
 import { assets } from '@render/Assets';
 import { Surface } from '@render/Surface';
-import { h } from '@ui/dom';
+import { clear, h } from '@ui/dom';
 import { registerClips } from '@data/clips';
 import { ALL_ENEMIES } from '@data/enemies';
 import { Sim } from '@sim/index';
@@ -33,6 +33,7 @@ import { devoRecarregar, marcarTentativa, vigiarVersao } from './versao';
 import { buscarRecados, marcarRecadosLidos } from './recados';
 import { mostrarRecado } from '@ui/RecadoDoComando';
 import { mostrarAvisoDeVersao } from '@ui/AvisoDeVersao';
+import { vigiarSessaoUnica } from './sessao-unica';
 
 /**
  * Segundos entre tentativas de subir o save.
@@ -138,6 +139,8 @@ export class Game {
   private versaoNova: string | null = null;
   /** Trava: dois gatilhos podem pedir a recarga no mesmo instante. */
   private recarregando = false;
+  private pararVigiaSessao: () => void = () => {};
+  private sessaoEncerrada = false;
 
   /**
    * A trilha de fundo.
@@ -404,7 +407,37 @@ export class Game {
     // boot. Uma rede lenta não pode atrasar o início do jogo por causa dele.
     void this.entregarRecados();
 
+    this.pararVigiaSessao = vigiarSessaoUnica(() => this.aoSessaoSubstituida());
     this.loop.start();
+  }
+
+  /** Interrompe de verdade a instância que perdeu a posse da conta. */
+  private aoSessaoSubstituida(): void {
+    if (this.sessaoEncerrada) return;
+    this.sessaoEncerrada = true;
+    this.pararVigiaSessao();
+    this.sim.save();
+    this.loop.stop();
+    this.musica.pausar();
+
+    clear(this.rootEl).append(
+      h('.login-tela.landing-tela', {},
+        h('.login-fundo'),
+        h('section.login-modal-camada', {
+          role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sessão encerrada',
+        },
+        h('.login-caixa', {},
+          h('span.login-etiqueta', { text: 'SESSÃO ENCERRADA' }),
+          h('h1.login-titulo', { text: 'A conta foi aberta em outro lugar' }),
+          h('p.login-sub', {
+            text: 'Esta sessão foi desconectada para proteger seu progresso. Se quiser voltar a jogar aqui, entre novamente e confirme a substituição.',
+          }),
+          h('button.login-enviar', {
+            type: 'button', text: 'ENTRAR NOVAMENTE', onclick: () => location.reload(),
+          }),
+        )),
+      ),
+    );
   }
 
   /**

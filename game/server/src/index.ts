@@ -41,6 +41,9 @@ import { CABECALHO_DE_RECUSA, contarRecusas, lerRecusas } from './recusa-no-corp
 import { lerPainelAdmin, podeLerPainelAdmin } from './painel-admin';
 import { concederVipDeTeste } from './vip-de-teste';
 import {
+  encerrarSessao, instanciaValida, pulsarSessao, reivindicarSessao, verificarSessao,
+} from './sessao-unica';
+import {
   MISSOES_MAX, confiancaDerivada, linhaSa, mesclarMissao, podeEntregar,
   type LinhaDeMissao,
 } from './missoes';
@@ -261,7 +264,7 @@ function cabecalhosDeOrigem(origem: string): Record<string, string> {
   return {
     'access-control-allow-origin': origem,
     'access-control-allow-headers': 'authorization, content-type',
-    'access-control-allow-methods': 'GET, PUT, OPTIONS',
+    'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
     'vary': 'origin',
   };
 }
@@ -720,6 +723,34 @@ async function rotear(req: Request, env: Env): Promise<Response> {
 
     const usuario = await usuarioDoToken(req.headers.get('authorization'), env.SUPABASE_URL);
     if (!usuario) return json({ erro: 'nao_autenticado' }, 401, origem);
+
+    if (url.pathname === '/sessao') {
+      const agora = Math.floor(Date.now() / 1000);
+      if (req.method === 'GET') {
+        const instancia = url.searchParams.get('instancia');
+        if (!instanciaValida(instancia)) return json({ erro: 'instancia_invalida' }, 400, origem);
+        return json(await verificarSessao(env, usuario.id, instancia, agora), 200, origem);
+      }
+      if (req.method === 'POST') {
+        const bruto = await req.text();
+        if (bruto.length > 512) return json({ erro: 'corpo_grande_demais' }, 413, origem);
+        let corpo: { instancia?: unknown; acao?: unknown; forcar?: unknown };
+        try { corpo = JSON.parse(bruto) as typeof corpo; }
+        catch { return json({ erro: 'json_invalido' }, 400, origem); }
+        if (!instanciaValida(corpo.instancia)) return json({ erro: 'instancia_invalida' }, 400, origem);
+        if (corpo.acao === 'reivindicar') {
+          return json(await reivindicarSessao(env, usuario.id, corpo.instancia, corpo.forcar === true, agora), 200, origem);
+        }
+        if (corpo.acao === 'pulsar') {
+          return json(await pulsarSessao(env, usuario.id, corpo.instancia, agora), 200, origem);
+        }
+        if (corpo.acao === 'encerrar') {
+          await encerrarSessao(env, usuario.id, corpo.instancia);
+          return json({ estado: 'livre' }, 200, origem);
+        }
+        return json({ erro: 'acao_invalida' }, 400, origem);
+      }
+    }
 
     if (url.pathname === '/save') {
       if (req.method === 'GET') return baixarSave(env, usuario.id, origem);

@@ -252,6 +252,11 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
         corpo: 'Use Entrar quando a conta já existe. Use Criar conta para começar um cadastro. Contas sociais devem entrar novamente com o mesmo provedor; elas não recebem uma senha local automaticamente.',
       },
       {
+        titulo: 'Uma sessão por vez',
+        corpo: 'A mesma conta pode ficar aberta em apenas um lugar por vez. Ao entrar em outro navegador, dispositivo ou aba, o jogo avisa que já existe uma sessão ativa. Confirme “Entrar mesmo assim” para assumir a conta e encerrar o local anterior; cancelar mantém a sessão antiga funcionando.',
+        dica: 'Se o navegador fechar sem aviso, a sessão abandonada é liberada automaticamente depois de alguns minutos.',
+      },
+      {
         titulo: 'Apelido obrigatório',
         corpo: 'Todo novo piloto escolhe um apelido antes de entrar no jogo. Ele aparece no perfil, ranking e recursos sociais; e-mail, identificadores técnicos e detalhes de sessão permanecem ocultos para proteger jogadores e streamers.',
       },

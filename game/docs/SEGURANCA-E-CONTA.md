@@ -24,6 +24,13 @@ e o tipo de `Login.mostrar()` é a regra: ele resolve com a sessão, nunca com
 `null`. Duas portas hoje: e-mail/senha e **Google** (Supabase OAuth em pop-up).
 `Entrar` e `Criar conta` são caminhos separados na capa.
 
+**Sessão única.** Depois do login, a aba reivindica uma instância própria no
+D1. Se outra aba, navegador ou dispositivo já estiver ativo, a nova entrada
+para e pergunta antes de assumir. Confirmar atualiza a instância no servidor;
+o local antigo detecta a substituição pelo pulso e é encerrado, sem apagar o
+token compartilhado do navegador. Um registro sem pulso por três minutos deixa
+de bloquear a entrada, cobrindo encerramentos abruptos.
+
 **Ritmo.** Dois baldes de fichas por natureza: `sincronia` (20 s, 12) para o que
 o jogo faz sozinho e `acao` (20 s, 5) para o que o jogador clica, mais `marcas`
 e `apelido`. Ver `server/src/ritmo.ts`.
