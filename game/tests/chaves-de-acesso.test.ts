@@ -97,6 +97,92 @@ describe('chaves de acesso', () => {
     expect(sim.quantidadeChaveDaGalaxia(0)).toBe(0);
   });
 
+  /**
+   * "Se não tem chave não pode nem entrar no setor" — regra do Rafael, 12/09.
+   *
+   * O relato foi de entrar no 10, 20 e 30 sem chave e travar só na porta do
+   * chefe. Medidas as seis portas, as do jogo estavam fechadas e as do MODO DE
+   * TESTE entravam — e a barreira da cena não isentava o modo de teste, então
+   * quem entrava por ali ficava preso: sem chave para gastar e sem volta.
+   *
+   * Estes testes guardam as duas metades: a regra num lugar só, e a rede
+   * embaixo dela em `migrate`, para um save que já esteja dentro não continuar
+   * dentro.
+   */
+  it('nenhuma porta do jogo entra no setor do chefe sem a chave', () => {
+    const entrou = (preparar: (sim: Sim) => void): number => {
+      const state = createState();
+      state.universe.bestSector = 40;
+      const sim = new Sim(state);
+      preparar(sim);
+      return sim.state.run.sector;
+    };
+
+    // Avanço natural: conclui o 9 e para, esperando a confirmação.
+    expect(entrou((sim) => {
+      sim.jumpSector(9);
+      sim.state.run.wave = WAVES_PER_SECTOR + 1;
+      sim.completeEncounter();
+    })).toBe(9);
+
+    // Com "Repetir setor" ligado o ponteiro nem tenta andar.
+    expect(entrou((sim) => {
+      sim.jumpSector(9);
+      sim.state.settings.repetirSetor = true;
+      sim.state.run.wave = WAVES_PER_SECTOR + 1;
+      sim.completeEncounter();
+    })).toBe(9);
+
+    // Salto do mapa e recuo para cima de um setor de chefe.
+    expect(entrou((sim) => sim.jumpSector(20))).toBe(1);
+    expect(entrou((sim) => { sim.jumpSector(11); sim.recuarUmSetor(); })).toBe(11);
+  });
+
+  it('e um save que JÁ esteja dentro é recuado ao entrar no jogo', () => {
+    const state = createState();
+    state.run.sector = 10;
+    state.run.wave = 3;
+    state.universe.bestSector = 12;
+
+    const migrado = migrate({ ...state, version: SAVE_VERSION });
+    expect(migrado?.run.sector, 'continuou preso na porta do chefe').toBe(9);
+    expect(migrado?.run.wave).toBe(1);
+    // O que ele conquistou não se perde: o setor volta a ser escolhível assim
+    // que a chave aparecer.
+    expect(migrado?.universe.bestSector).toBe(12);
+  });
+
+  it('mas quem GASTOU a chave continua no setor depois de recarregar', () => {
+    const state = createState();
+    state.run.sector = 10;
+    state.run.wave = 4;
+    state.run.chaveAcessoConsumida = BOSSES[0]!.id;
+
+    expect(migrate({ ...state, version: SAVE_VERSION })?.run.sector,
+      'a recarga expulsou quem pagou a entrada').toBe(10);
+  });
+
+  it('e o modo de teste entra e LUTA, em vez de travar na porta', () => {
+    // O defeito relatado: o `Sim` isentava o modo de teste e a cena não.
+    const state = createState();
+    state.settings.testMode = true;
+    state.run.sector = 10;
+    expect(migrate({ ...state, version: SAVE_VERSION })?.run.sector).toBe(10);
+
+    const sim = new Sim(createState());
+    sim.setTestMode(true);
+    sim.jumpSector(10);
+    expect(sim.state.run.sector).toBe(10);
+    expect(sim.acessoAoChefeLiberado(BOSSES[0]!.id), 'entrou e ficou preso na porta').toBe(true);
+  });
+
+  it('e a cena pergunta ao Sim, em vez de reescrever a regra', async () => {
+    // Duas condições escritas à mão discordam — foi o que aconteceu aqui.
+    const cena = await readFile(new URL('../src/modes/vertical/VerticalMode.ts', import.meta.url), 'utf8');
+    expect(cena).toContain('!this.sim.acessoAoChefeLiberado(e.boss.id)');
+    expect(cena).not.toContain('run.chaveAcessoConsumida !== e.boss.id');
+  });
+
   it('cancelar um chefe escolhido longe mantém o setor atual', () => {
     const sim = new Sim(createState());
     sim.jumpSector(10);

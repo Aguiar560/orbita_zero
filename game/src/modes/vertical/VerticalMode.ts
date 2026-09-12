@@ -498,7 +498,7 @@ export class VerticalMode {
     this.chefeBloqueado = false;
     // A chave só é consumida depois da confirmação explícita do jogador no
     // cartão de acesso. Enquanto isso o encontro fica parado na barreira.
-    if (e.kind === 'chefe' && e.boss && this.sim.state.run.chaveAcessoConsumida !== e.boss.id) {
+    if (e.kind === 'chefe' && e.boss && !this.sim.acessoAoChefeLiberado(e.boss.id)) {
       this.chefeBloqueado = true;
       this.enemies.clear();
       this.bullets.clear();

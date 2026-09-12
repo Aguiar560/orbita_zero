@@ -1716,10 +1716,26 @@ export class Sim {
   }
 
   /** Cobra uma chave uma vez por tentativa de chefe, inclusive após uma derrota. */
-  prepararAcessoAoChefe(bossId: string): boolean {
+  /**
+   * Esta conta pode ESTAR no setor deste chefe?
+   *
+   * Um lugar só para a pergunta, porque ela é feita de dois lados: aqui, antes
+   * de mover a nave, e na cena, antes de montar o encontro. Enquanto eram duas
+   * condições escritas à mão, elas discordavam — a do `Sim` isentava o modo de
+   * teste e a da cena não, e o resultado era entrar no setor 10 e ficar preso
+   * na porta do chefe, sem chave para gastar e sem caminho de volta.
+   *
+   * A Provação e o modo de teste passam porque neles não existe chave a
+   * consumir: o primeiro é um desafio fechado, o segundo é bancada.
+   */
+  acessoAoChefeLiberado(bossId: string): boolean {
     if (this.desafio || this.testMode) return true;
+    return this.state.run.chaveAcessoConsumida === bossId;
+  }
+
+  prepararAcessoAoChefe(bossId: string): boolean {
+    if (this.acessoAoChefeLiberado(bossId)) return true;
     const run = this.state.run;
-    if (run.chaveAcessoConsumida === bossId) return true;
     const chave = [...CHAVE_POR_ID.values()].find((item) => item.bossId === bossId);
     if (!chave || this.quantidadeChaveDaGalaxia(chave.galaxia) <= 0) {
       toast('Chave de acesso necessária para iniciar este chefe.', 'bad');

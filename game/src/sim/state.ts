@@ -8,6 +8,7 @@ import { WAVES_PER_SECTOR } from './progression';
 import { CARGA_INICIAL, CONCESSAO_POR_ID, CONCESSOES, PECAS_RETIDAS_MAX } from '@data/balance/capacidade';
 import { RECURSO_POR_ID } from '@data/recursos';
 import { CHAVE_POR_ID, CHAVES_DE_ACESSO } from '@data/chaves-de-acesso';
+import { bossForSector, isBossSector } from '@data/bosses';
 import { limiteDeMissoes } from './vip';
 
 /**
@@ -464,8 +465,45 @@ export function migrate(raw: unknown): GameState | null {
   state.command.allocated = state.command.allocated.filter((id) => typeof id === 'string');
   state.run.sector = Math.max(1, Math.floor(state.run.sector));
   state.run.wave = Math.min(WAVES_PER_SECTOR + 1, Math.max(1, Math.floor(state.run.wave)));
+
+  /**
+   * O recorde é fechado ANTES do recuo abaixo, e essa ordem é a regra.
+   *
+   * Quem alcançou o setor do chefe alcançou — a falta da chave adia a entrada,
+   * não apaga a conquista. Recuar primeiro faria o `bestSector` cair junto e o
+   * setor sumir do mapa, que é punir duas vezes pela mesma coisa.
+   */
   state.universe.bestSector = Math.max(state.universe.bestSector, state.run.sector);
   state.universe.bestSectorEver = Math.max(state.universe.bestSectorEver, state.universe.bestSector);
+
+  /**
+   * Estar num setor de chefe SEM ter gasto a chave é estado inválido.
+   *
+   * As portas do jogo já barram a entrada — `jumpSector` segura o salto do mapa
+   * e `completeEncounter` segura o avanço natural, os dois pedindo a
+   * confirmação que consome a chave. Medido em 12/09/2026: das seis portas
+   * testadas, só as do modo de teste entram.
+   *
+   * Isto aqui é a rede embaixo delas, e existe porque a regra é "não pode NEM
+   * ENTRAR": barrar só na porta do chefe deixaria o jogador dentro do setor,
+   * preso, sem chave para gastar e sem caminho de volta. Um save antigo, um
+   * `localStorage` editado à mão ou uma porta nova que alguém escreva sem
+   * lembrar da chave cairiam exatamente nesse buraco.
+   *
+   * `migrate` é o lugar porque TODO estado entra por aqui: o save local, o da
+   * nuvem (`nuvem.ts`), o importado e o da conta sem login. Uma checagem no
+   * boot cobriria só o primeiro.
+   *
+   * A saída é recuar um setor — não apagar nada. O que o jogador conquistou
+   * continua em `bestSector`, e o setor do chefe volta a ser escolhível assim
+   * que ele tiver a chave.
+   */
+  if (isBossSector(state.run.sector) && !state.settings.testMode
+    && state.run.chaveAcessoConsumida !== bossForSector(state.run.sector).id) {
+    state.run.sector = Math.max(1, state.run.sector - 1);
+    state.run.wave = 1;
+    state.run.chaveAcessoConsumida = undefined;
+  }
   if (state.settings.autoDispose !== 'desmontar' && state.settings.autoDispose !== 'vender') {
     state.settings.autoDispose = 'desmontar';
   }

@@ -57,14 +57,17 @@ describe('o save local, por conta', () => {
      * então a segunda pessoa a jogar apagava a partida da primeira sem que
      * ninguém percebesse — não havia nem conflito visível, só perda.
      */
+    // 41 e não 40: setor de chefe sem a chave gasta é estado inválido desde
+    // 12/09 e `migrate` recua um setor. O assunto aqui é outro — que o save de
+    // uma conta não pisa no da outra —, e o número só precisa ser distinguível.
     usarSlot('ana');
-    saveToStorage(partida(40, 300));
+    saveToStorage(partida(41, 300));
 
     usarSlot('bruno');
     saveToStorage(partida(2, 5));
 
     usarSlot('ana');
-    expect(loadFromStorage()?.state.run.sector).toBe(40);
+    expect(loadFromStorage()?.state.run.sector).toBe(41);
 
     usarSlot('bruno');
     expect(loadFromStorage()?.state.run.sector).toBe(2);
