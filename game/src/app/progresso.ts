@@ -157,7 +157,24 @@ function adotar(sim: Sim, r: Remoto): void {
     nave.nivel = v.nivel;
     nave.xp = v.resto;
   }
-  sim.state.armazem = { ...r.materiais };
+  /**
+   * O armazém do servidor, com a FILA DAQUI por cima.
+   *
+   * Escrever `{ ...r.materiais }` puro era o defeito de 12/09/2026: o que o
+   * jogador acabou de desmanchar ainda não chegou ao servidor, e a resposta —
+   * que descreve um instante ANTERIOR ao desmanche — apagava o ganho.
+   *
+   * Somar a fila restante é o mesmo raciocínio de `comAsFilasDaqui` no save:
+   * o que está na fila, por construção, ainda não foi aplicado em lugar nenhum,
+   * então reaplicá-lo sobre o que voltou não conta nada duas vezes.
+   */
+  const armazem: Record<string, number> = { ...r.materiais };
+  for (const [id, d] of Object.entries(sim.state.materiaisPendentes)) {
+    const n = (armazem[id] ?? 0) + d;
+    if (n > 0) armazem[id] = n;
+    else delete armazem[id];
+  }
+  sim.state.armazem = armazem;
 
   /**
    * O casco em campo volta do servidor, que agora é quem o guarda.
@@ -321,10 +338,14 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
      * descobre uma divergência antes de ela virar XP perdido de alguém.
      */
     encontros: { ...s.encontros },
-    // Materiais ainda não têm marco: eles são gravados como ABSOLUTO pelo
-    // caminho antigo e a conversão para delta entra junto do Armazém no
-    // servidor. Enviar zero é honesto — não muda nada — até lá.
-    materiais: {},
+    /**
+     * O que o Armazém ganhou e gastou desde a última confirmação.
+     *
+     * Isto era `{}` — e era por isso que material desmanchado sumia. A rota do
+     * servidor sempre aplicou `quantia = MAX(0, quantia + d)`; faltava alguém
+     * mandar o `d`. Ver `materiaisPendentes` em `sim/types.ts`.
+     */
+    materiais: { ...s.materiaisPendentes },
   };
 
   const r = await chamar(corpo);
@@ -345,6 +366,20 @@ export async function drenarProgresso(sim: Sim, escolha?: string): Promise<void>
     const atual = s.encontros[chave] ?? 0;
     if (atual > enviado) s.encontros[chave] = atual - enviado;
     else delete s.encontros[chave];
+  }
+
+  /**
+   * O material declarado sai da fila SÓ depois da confirmação, e por CHAVE.
+   *
+   * Mesma regra dos encontros acima, e pelo mesmo motivo: entre montar o corpo
+   * e receber a resposta o jogador continuou desmanchando, e um `= {}` apagaria
+   * o que entrou nesse meio. Subtrair o que foi ENVIADO deixa o resto na fila
+   * para a próxima drenagem — e é o que `adotar`, logo abaixo, soma de volta.
+   */
+  for (const [id, enviado] of Object.entries(corpo.materiais)) {
+    const resto = (s.materiaisPendentes[id] ?? 0) - enviado;
+    if (resto === 0) delete s.materiaisPendentes[id];
+    else s.materiaisPendentes[id] = resto;
   }
 
   // `adotar` move o marco junto. O marco só anda quando o servidor confirma:

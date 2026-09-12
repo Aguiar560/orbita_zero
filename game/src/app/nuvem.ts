@@ -370,11 +370,27 @@ export async function reconciliar(local: GameState): Promise<Reconciliacao> {
  * perdido": destes campos, `pendentes` e `comandosDeItem` eram os únicos
  * arrancados que ninguém devolvia.
  */
+function somarFilasDeMaterial(
+  a: Record<string, number>, b: Record<string, number>,
+): Record<string, number> {
+  const fora: Record<string, number> = { ...a };
+  for (const [id, n] of Object.entries(b)) {
+    const soma = (fora[id] ?? 0) + n;
+    if (soma === 0) delete fora[id];
+    else fora[id] = soma;
+  }
+  return fora;
+}
+
 export function comAsFilasDaqui(daNuvem: GameState, local: GameState): GameState {
   return {
     ...daNuvem,
     pendentes: [...local.pendentes, ...daNuvem.pendentes],
     comandosDeItem: [...local.comandosDeItem, ...daNuvem.comandosDeItem],
+    // A do Armazém é mapa e não lista, então some por chave. `daNuvem` chega
+    // sempre vazia — `semODinheiro` a arranca —, e somar mesmo assim é o que
+    // mantém esta função correta no dia em que isso deixar de ser verdade.
+    materiaisPendentes: somarFilasDeMaterial(local.materiaisPendentes, daNuvem.materiaisPendentes),
   };
 }
 
@@ -387,6 +403,10 @@ function semODinheiro(estado: GameState): GameState {
     resources: { sucata: 0, nucleo: 0, cristal: 0 },
     vip: { expiresAt: 0 },
     pendentes: [],
+    // Fila de saída do Armazém: mesmo motivo de `pendentes`. Subi-la faria o
+    // outro aparelho baixar um desmanche que ESTE ainda vai declarar, e o
+    // material entraria duas vezes.
+    materiaisPendentes: {},
     // O inventário mora na tabela `itens` desde a Fase 3b. Mesmo motivo do
     // dinheiro: duas verdades no mesmo servidor, e a segunda escrita pelo
     // cliente, é o buraco que estas fases existem para fechar.

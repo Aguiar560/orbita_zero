@@ -2421,6 +2421,10 @@ export class Sim {
     const cabe = Math.max(0, Math.min(quantidade, PILHA_MAX - atual));
     if (cabe <= 0) return 0;
     this.state.armazem[id] = atual + cabe;
+    // `cabe`, e não `quantidade`: o que não entrou por causa de `PILHA_MAX`
+    // não pode ser declarado ao servidor, senão o espelho volta maior que o
+    // armazém que o jogador viu.
+    this.anotarMaterial(id, cabe);
     this.registrar({ tipo: 'recurso', recurso: id, quantidade: cabe });
     this.touch();
     return cabe;
@@ -2450,8 +2454,28 @@ export class Sim {
     const resto = atual - quantidade;
     if (resto > 0) this.state.armazem[id] = resto;
     else delete this.state.armazem[id];
+    this.anotarMaterial(id, -quantidade);
     this.touch();
     return true;
+  }
+
+  /**
+   * Anota na fila de saída do Armazém. Ver `materiaisPendentes` em `types.ts`.
+   *
+   * Soma na chave em vez de empilhar lançamento: dez desmanches seguidos são um
+   * número só no fio, e o que o servidor precisa saber é o SALDO da mudança —
+   * ganhar 40 e gastar 30 é a mesma coisa que ganhar 10, e mandar as duas
+   * pontas só dobraria a chance de uma se perder no caminho.
+   *
+   * A chave morre quando zera. Uma chave em zero subiria em toda drenagem para
+   * não mudar nada, e o bloco de limpeza teria de aprender a diferença entre
+   * "nada a dizer" e "ainda não confirmado".
+   */
+  private anotarMaterial(id: string, delta: number): void {
+    const fila = this.state.materiaisPendentes;
+    const novo = (fila[id] ?? 0) + Math.trunc(delta);
+    if (novo === 0) delete fila[id];
+    else fila[id] = novo;
   }
 
 

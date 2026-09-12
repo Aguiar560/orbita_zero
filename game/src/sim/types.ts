@@ -608,6 +608,42 @@ export interface GameState {
   pendentes: MovimentoPendente[];
 
   /**
+   * Material ganho e gasto que o servidor ainda não confirmou.
+   *
+   * ## O defeito que esta fila conserta
+   *
+   * O Armazém virou espelho do servidor na Fase 4: `adotar` faz
+   * `state.armazem = { ...r.materiais }` a cada drenagem de progresso. O que
+   * faltava era o caminho de VOLTA — `drenarProgresso` mandava
+   * `materiais: {}` sempre, e o save da nuvem arranca `armazem` de
+   * propósito. Desmanchar creditava só a memória desta aba, e a resposta
+   * seguinte do servidor escrevia por cima.
+   *
+   * Medido em 12/09/2026 no D1: a tabela `materiais` tinha DOZE linhas no jogo
+   * inteiro, quase todas `ferrita`, porque a única rota que gravava material
+   * era `/ausencia` — a simulação do servidor. Tudo que se desmanchava
+   * acordado sumia em até um ciclo de sincronia.
+   *
+   * ## Por que uma fila, e não mandar o armazém inteiro
+   *
+   * Mandar o total faria duas abas disputarem o mesmo número, e a última a
+   * falar venceria — o mesmo motivo de XP e encontros subirem como delta. A
+   * rota do servidor já esperava por isto: ela aplica
+   * `quantia = MAX(0, quantia + d)` desde que nasceu.
+   *
+   * ## O sinal importa
+   *
+   * Gasto entra NEGATIVO. Enfileirar só o ganho seria pior que o defeito
+   * original: a fabricação cobra material só no cliente, e o servidor
+   * devolveria o gasto na adoção seguinte — material infinito por engano.
+   *
+   * É fila de SAÍDA, como `pendentes`: não sobe no save (ver `semODinheiro`),
+   * sobrevive à recarga pelo `localStorage` e só é esvaziada quando o
+   * servidor confirma.
+   */
+  materiaisPendentes: Record<string, number>;
+
+  /**
    * Mudanças de inventário ainda não confirmadas.
    *
    * ⚠️ `inventory`, `naves` e `fleet` são ESPELHO desde a Fase 3b do Passo 9.

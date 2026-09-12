@@ -117,6 +117,7 @@ export function createState(
     shop: {},
     vip: { expiresAt: 0 },
     pendentes: [],
+    materiaisPendentes: {},
     comandosDeItem: [],
     pecasRetidas: 0,
     servicos: {},
@@ -262,6 +263,9 @@ export function migrate(raw: unknown): GameState | null {
     shop: { ...data.shop },
     vip: { ...fresh.vip, ...(data.vip ?? {}) },
     pendentes: Array.isArray(data.pendentes) ? data.pendentes : [],
+    materiaisPendentes: typeof data.materiaisPendentes === 'object' && data.materiaisPendentes
+      ? { ...data.materiaisPendentes as Record<string, number> }
+      : {},
     comandosDeItem: Array.isArray(data.comandosDeItem) ? data.comandosDeItem : [],
     // Teto de 20: é uma PROMESSA de peça do pote, e um save editado com mil
     // viraria mil coletas. Vinte cobre dois chefes seguidos com o baú cheio.
@@ -354,6 +358,14 @@ export function migrate(raw: unknown): GameState | null {
   // painel não saberia desenhá-lo e a capacidade contaria um tipo fantasma.
   state.armazem = Object.fromEntries(
     Object.entries(state.armazem ?? {}).filter(([id, n]) => RECURSO_POR_ID.has(id) && n > 0),
+  );
+  // A fila de saída passa pelo mesmo filtro de catálogo, com UMA diferença: o
+  // negativo é válido aqui. Ele é o gasto que o servidor ainda não descontou, e
+  // descartá-lo devolveria ao jogador o material que a fabricação já consumiu.
+  state.materiaisPendentes = Object.fromEntries(
+    Object.entries(state.materiaisPendentes ?? {})
+      .filter(([id, n]) => RECURSO_POR_ID.has(id) && Number.isFinite(n) && n !== 0)
+      .map(([id, n]) => [id, Math.trunc(n)]),
   );
   state.chavesAcesso = Object.fromEntries(
     Object.entries(state.chavesAcesso ?? {})
