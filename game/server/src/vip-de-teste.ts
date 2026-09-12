@@ -1,6 +1,6 @@
 /** Interruptor único para retirar a recompensa quando o período de teste acabar. */
 export const VIP_TESTE_NIVEL_25_ATIVO = true;
-export const NIVEL_DA_RECOMPENSA_VIP = 25;
+export { NIVEL_DA_RECOMPENSA_VIP } from '@data/balance/vip-de-teste';
 
 /**
  * A promoção tem VAGAS, e elas são o produto — não um detalhe de implementação.
@@ -21,10 +21,16 @@ export const NIVEL_DA_RECOMPENSA_VIP = 25;
  * como pedido. Elas recebem o carimbo pela migração `0024` e `bonus_dias = 0`:
  * ocupam vaga e não ganham nada de novo, porque já tinham.
  */
-export const VAGAS_DA_RECOMPENSA_VIP = 40;
-export const VAGAS_DE_30_DIAS = 10;
-export const DIAS_DA_PRIMEIRA_FAIXA = 30;
-export const DIAS_DA_SEGUNDA_FAIXA = 7;
+export {
+  DIAS_DA_PRIMEIRA_FAIXA, DIAS_DA_SEGUNDA_FAIXA,
+  VAGAS_DA_RECOMPENSA_VIP, VAGAS_DE_30_DIAS,
+} from '@data/balance/vip-de-teste';
+
+import {
+  DIAS_DA_PRIMEIRA_FAIXA as DIAS_1, DIAS_DA_SEGUNDA_FAIXA as DIAS_2,
+  NIVEL_DA_RECOMPENSA_VIP as NIVEL, VAGAS_DA_RECOMPENSA_VIP as VAGAS,
+  VAGAS_DE_30_DIAS as VAGAS_1,
+} from '@data/balance/vip-de-teste';
 
 const SEGUNDOS_POR_DIA = 24 * 60 * 60;
 
@@ -43,15 +49,15 @@ const SEGUNDOS_POR_DIA = 24 * 60 * 60;
  * no dia em que alguém muda de faixa à mão.
  */
 export const MENSAGENS_DA_RECOMPENSA_VIP: Record<number, string> = {
-  [DIAS_DA_PRIMEIRA_FAIXA]:
+  [DIAS_1]:
     'Obrigado por ajudar a testar o Órbita Zero! Você chegou à patente 25 e está entre os 10 primeiros pilotos a conseguir — a recompensa é um Passe VIP de 30 dias. O seu tempo em jogo é o que está deixando o jogo melhor.',
-  [DIAS_DA_SEGUNDA_FAIXA]:
+  [DIAS_2]:
     'Obrigado por ajudar a testar o Órbita Zero! Você chegou à patente 25 e recebeu um Passe VIP de 7 dias. O seu tempo em jogo é o que está deixando o jogo melhor.',
 };
 
 export const CHAVES_DO_RECADO_VIP: Record<number, string> = {
-  [DIAS_DA_PRIMEIRA_FAIXA]: 'vip_teste_nivel_25',
-  [DIAS_DA_SEGUNDA_FAIXA]: 'vip_teste_nivel_25_7d',
+  [DIAS_1]: 'vip_teste_nivel_25',
+  [DIAS_2]: 'vip_teste_nivel_25_7d',
 };
 
 interface LinhaDeBonus {
@@ -88,7 +94,7 @@ interface LinhaDeBonus {
 export async function concederVipDeTeste(
   env: { DB: D1Database }, usuario: string, nivel: number, agora: number,
 ): Promise<number> {
-  if (!VIP_TESTE_NIVEL_25_ATIVO || nivel < NIVEL_DA_RECOMPENSA_VIP) return 0;
+  if (!VIP_TESTE_NIVEL_25_ATIVO || nivel < NIVEL) return 0;
 
   await env.DB.prepare(`
     INSERT OR IGNORE INTO assinaturas (usuario, expira_em, bonus_nivel_25_em, bonus_dias)
@@ -109,13 +115,13 @@ export async function concederVipDeTeste(
        AND (SELECT COUNT(*) FROM assinaturas WHERE bonus_nivel_25_em > 0) < ?8
   `).bind(
     agora,
-    VAGAS_DE_30_DIAS,
-    DIAS_DA_PRIMEIRA_FAIXA * SEGUNDOS_POR_DIA,
-    DIAS_DA_SEGUNDA_FAIXA * SEGUNDOS_POR_DIA,
-    DIAS_DA_PRIMEIRA_FAIXA,
-    DIAS_DA_SEGUNDA_FAIXA,
+    VAGAS_1,
+    DIAS_1 * SEGUNDOS_POR_DIA,
+    DIAS_2 * SEGUNDOS_POR_DIA,
+    DIAS_1,
+    DIAS_2,
     usuario,
-    VAGAS_DA_RECOMPENSA_VIP,
+    VAGAS,
   ).run();
 
   /**

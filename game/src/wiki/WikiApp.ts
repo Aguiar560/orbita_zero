@@ -21,6 +21,10 @@ import { ESPECIAL_POR_ID } from '@data/provacao-especiais';
 import { RARITIES, rarityInfo } from '@data/rarity';
 import { FAMILIA_LABEL, RECURSOS, RECURSO_POR_ID } from '@data/recursos';
 import { SCREEN_UNLOCKS } from '@data/screen-unlocks';
+import {
+  DIAS_DA_PRIMEIRA_FAIXA, DIAS_DA_SEGUNDA_FAIXA, NIVEL_DA_RECOMPENSA_VIP,
+  VAGAS_DA_RECOMPENSA_VIP, VAGAS_DE_30_DIAS,
+} from '@data/balance/vip-de-teste';
 import { RECEITAS, chanceDeSubir } from '@data/balance/fusao';
 import { OPERACOES_DE_MODULACAO } from '@data/balance/modulacao';
 import { ALVO_DA_CAMPANHA, SETOR_FINAL_DA_CAMPANHA } from '@data/balance/cristal';
@@ -220,7 +224,7 @@ const ARTIGOS: Readonly<Record<string, Artigo>> = {
     secoes: [
       {
         titulo: 'O que é o cristal',
-        corpo: `O cristal é a moeda especial do Órbita Zero. Ele paga o passe VIP (${VIP_COST_CRYSTALS} cristais por ${VIP_DURATION_DAYS} dias), as cápsulas da Câmara de Aquisição (${CHESTS.filter((c) => c.buy > 0).map((c) => `${c.name.replace('Cápsula de ', '')} ${c.buy}`).join(' · ')}) e serviços da Central: ${SHOP.filter((s) => s.currency === 'cristal').map((s) => `${s.name} ${s.cost}`).join(' · ')}. Pode ser comprado em pacotes na Loja. Durante o período de testes, toda conta recebe uma única cortesia de ${VIP_DURATION_DAYS} dias ao alcançar o nível 25 de comando; se já houver um passe ativo, os dias são somados.`,
+        corpo: `O cristal é a moeda especial do Órbita Zero. Ele paga o passe VIP (${VIP_COST_CRYSTALS} cristais por ${VIP_DURATION_DAYS} dias), as cápsulas da Câmara de Aquisição (${CHESTS.filter((c) => c.buy > 0).map((c) => `${c.name.replace('Cápsula de ', '')} ${c.buy}`).join(' · ')}) e serviços da Central: ${SHOP.filter((s) => s.currency === 'cristal').map((s) => `${s.name} ${s.cost}`).join(' · ')}. Pode ser comprado em pacotes na Loja. Durante o período de testes, as ${VAGAS_DA_RECOMPENSA_VIP} primeiras contas a alcançar a patente ${NIVEL_DA_RECOMPENSA_VIP} ganham um passe de cortesia: ${DIAS_DA_PRIMEIRA_FAIXA} dias para as ${VAGAS_DE_30_DIAS} primeiras e ${DIAS_DA_SEGUNDA_FAIXA} dias para as seguintes. É uma vez por conta, e se já houver um passe ativo os dias são somados.`,
       },
       {
         titulo: 'Como ganhar jogando',
