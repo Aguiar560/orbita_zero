@@ -302,6 +302,32 @@ export interface RunState {
    */
   escudoFracao?: number;
   /**
+   * Setor concluído esperando a cena devolver a nave inteira.
+   *
+   * ## Por que uma marca, e não "o número do setor mudou"
+   *
+   * A regra é de 09/09/2026: fechar o setor devolve vida e escudo cheios, e
+   * ela mora no `sim` porque o caminho offline precisa da mesma. A cena,
+   * porém, decidia quando aplicá-la comparando o número do setor encenado com
+   * o do encontro — e o número NÃO muda em dois caminhos comuns:
+   *
+   * - **"Repetir setor" ligado**: o ponteiro fica onde está de propósito.
+   * - **Próximo é setor de chefe**: o ponteiro espera a chave de acesso.
+   *
+   * Nesses dois, a cena nunca recarregava a vida, e `guardarVida` — que roda
+   * todo quadro — escrevia a vida machucada por cima do `1` que o `sim` tinha
+   * acabado de gravar. A cura acontecia no save e era desfeita antes de chegar
+   * à tela. Medido em 12/09/2026, nos três caminhos.
+   *
+   * O comentário de `marcarSetor` já avisava desta armadilha para o resumo da
+   * incursão: "uma checagem preguiçosa por número não perceberia que uma
+   * incursão nova começou". A cura era essa checagem preguiçosa.
+   *
+   * A marca sobrevive à recarga porque mora no `run`, que é save: fechar a
+   * aba no painel de conclusão não custa a cura.
+   */
+  curaPendente?: boolean;
+  /**
    * Mortes seguidas neste setor, para a DECISÃO do jogador simulado.
    *
    * Só o caminho abstrato usa. Não é mecânica de jogo — ao vivo não existe

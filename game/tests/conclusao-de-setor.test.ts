@@ -154,3 +154,114 @@ describe('a pausa de conclusão', () => {
     expect(s).toContain('PRÓXIMA ONDA');
   });
 });
+
+/**
+ * Setor concluído devolve a nave inteira. SEMPRE.
+ *
+ * Regra pedida pelo Rafael em 09/09/2026 — o descanso é a recompensa de fechar
+ * o setor, e é o que dá sentido a "aguentar até o fim" em vez de "morrer de
+ * propósito para renascer inteiro" — e reafirmada em 12/09: *independente se
+ * foi repetido, chefe ou qualquer coisa*.
+ *
+ * ## O que estava quebrado
+ *
+ * `completeEncounter` sempre gravou `vidaFracao = 1`. Quem aplica isso na nave
+ * em cena é o `VerticalMode`, e o gatilho dele era comparar o NÚMERO do setor
+ * encenado com o do encontro. O número não muda em dois caminhos comuns:
+ *
+ * | caminho | setor 4 -> ? | curou? |
+ * |---|---|---|
+ * | avanço normal | 5 | sim |
+ * | "Repetir setor" ligado | 4 | **não** |
+ * | próximo é setor de chefe | 4 (espera a chave) | **não** |
+ *
+ * Nos dois de baixo a cena não recarregava a nave, e `guardarVida` — que roda
+ * todo quadro — escrevia a vida machucada por cima do `1`. A cura acontecia no
+ * save e era desfeita antes de chegar à tela.
+ */
+describe('a conclusão de setor devolve a nave inteira', () => {
+  const arranhada = (sim: Sim): void => {
+    sim.state.run.wave = WAVES_PER_SECTOR + 1;
+    sim.state.run.vidaFracao = 0.32;
+    sim.state.run.escudoFracao = 0;
+    sim.refreshEncounter();
+  };
+
+  it('no avanço normal', () => {
+    const sim = new Sim(createState(41));
+    sim.jumpSector(4);
+    arranhada(sim);
+    sim.completeEncounter();
+
+    expect(sim.state.run.sector, 'o ponteiro não andou').toBe(5);
+    expect(sim.state.run.vidaFracao).toBe(1);
+    expect(sim.state.run.escudoFracao).toBe(1);
+    expect(sim.state.run.curaPendente, 'a cena não foi avisada de que precisa curar').toBe(true);
+  });
+
+  it('com "Repetir setor" ligado, em que o ponteiro NÃO anda', () => {
+    const sim = new Sim(createState(42));
+    sim.jumpSector(4);
+    sim.state.settings.repetirSetor = true;
+    arranhada(sim);
+    sim.completeEncounter();
+
+    expect(sim.state.run.sector, 'repetir setor deixou de repetir').toBe(4);
+    expect(sim.state.run.vidaFracao).toBe(1);
+    expect(sim.state.run.curaPendente, 'a incursão nova começaria com a vida da anterior').toBe(true);
+  });
+
+  it('e entrando em setor de chefe, com o ponteiro parado na chave', () => {
+    // O caso mais caro dos três: era justamente a luta em que a nave mais
+    // precisa da vida cheia que a recebia pela metade.
+    const sim = new Sim(createState(43));
+    sim.jumpSector(9);
+    arranhada(sim);
+    sim.completeEncounter();
+
+    expect(sim.state.run.sector, 'passou do chefe sem a chave').toBe(9);
+    expect(sim.state.run.vidaFracao).toBe(1);
+    expect(sim.state.run.curaPendente).toBe(true);
+  });
+
+  it('e o caminho offline levanta a mesma marca', () => {
+    // Sem isto, voltar de horas fora entregaria a nave como ela ficou.
+    const sim = new Sim(createState(44));
+    sim.jumpSector(4);
+    arranhada(sim);
+    sim.completeEncounter(true);
+
+    expect(sim.state.run.vidaFracao).toBe(1);
+    expect(sim.state.run.curaPendente).toBe(true);
+  });
+});
+
+describe('e a cena obedece à marca, não ao número do setor', () => {
+  // Lido do fonte porque a regra mora na cena, e a suíte não tem DOM nem
+  // canvas — mesma técnica de `vitoria-conclui-na-hora`.
+  const cena = fonte('modes/vertical/VerticalMode.ts');
+
+  it('a marca é consumida, e a cura não depende de `setorMudou`', () => {
+    expect(cena).toContain('if (run.curaPendente) {');
+    expect(cena, 'a cura voltou a depender do número do setor')
+      .not.toContain('if (setorMudou) this.retomarVidaGuardada();');
+  });
+
+  it('e as frações são REGRAVADAS, sem confiar no que está no save', () => {
+    /**
+     * `guardarVida` roda todo quadro. Se algum quadro tiver escrito a vida
+     * machucada por cima do `1` antes de a cena montar o encontro, confiar no
+     * save devolveria a nave arranhada — que era exatamente o defeito.
+     */
+    const bloco = cena.slice(cena.indexOf('if (run.curaPendente) {'));
+    expect(bloco.slice(0, 220)).toContain('run.vidaFracao = 1;');
+    expect(bloco.slice(0, 220)).toContain('run.escudoFracao = 1;');
+  });
+
+  it('e isso acontece ANTES da barreira do chefe', () => {
+    // Sair antes da cura deixaria a nave arranhada na tela enquanto o cartão
+    // de acesso espera, e a cura seria aplicada tarde — ou nunca.
+    expect(cena.indexOf('if (run.curaPendente) {'))
+      .toBeLessThan(cena.indexOf("this.setBanner('CHAVE DE ACESSO NECESSÁRIA')"));
+  });
+});

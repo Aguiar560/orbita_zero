@@ -1841,6 +1841,16 @@ export class Sim {
        */
       run.vidaFracao = 1;
       run.escudoFracao = 1;
+      /**
+       * E a cena tem de OBEDECER, mesmo quando o setor não muda de número.
+       *
+       * Gravar `1` aqui não basta: com "Repetir setor" ligado, ou esperando a
+       * chave do chefe, o ponteiro fica parado, a cena não recarrega a nave e
+       * `guardarVida` devolve a vida machucada ao save no quadro seguinte.
+       * A marca é o que torna a cura um FATO a ser consumido, e não uma
+       * conclusão a ser adivinhada pelo número do setor.
+       */
+      run.curaPendente = true;
 
       // O setor seguinte libera de qualquer forma: quem venceu conquistou o
       // acesso, mesmo que escolha ficar. É `bestSector` que abre o setor no mapa,

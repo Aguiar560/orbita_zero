@@ -460,11 +460,38 @@ export class VerticalMode {
     const key = `${this.sim.state.universe.index}:${e.sector}:${e.wave}`;
     if (!force && key === this.encounterKey) return;
 
-    // Setor novo devolve a nave inteira: `completeEncounter` gravou 1 nas
-    // frações, e é só aplicá-las. A cena não decide a regra — ela obedece ao
-    // save, que é o mesmo que o caminho offline usa.
     const setorMudou = this.setorEncenado !== e.sector;
     this.setorEncenado = e.sector;
+
+    /**
+     * Setor concluído devolve a nave inteira. SEMPRE.
+     *
+     * A cena obedece ao save — ela não decide a regra, que mora em
+     * `completeEncounter` porque o caminho offline precisa da mesma. O que ela
+     * decide é QUANDO aplicar, e isso era `setorMudou`: uma comparação de
+     * número que não percebe o setor repetido nem a espera pela chave do chefe.
+     * Nesses dois, `guardarVida` sobrescrevia a cura no quadro seguinte.
+     *
+     * Regravar as frações aqui, em vez de confiar nas que estão no save, é o
+     * que fecha essa janela: se algum quadro já tiver escrito a vida machucada
+     * por cima, este bloco a desfaz.
+     *
+     * Fica ANTES da barreira do chefe de propósito. Sair antes daqui deixaria a
+     * nave arranhada na tela enquanto o cartão de acesso espera — e a cura
+     * acabaria aplicada tarde, ou não aplicada.
+     */
+    const run = this.sim.state.run;
+    if (run.curaPendente) {
+      run.curaPendente = undefined;
+      run.vidaFracao = 1;
+      run.escudoFracao = 1;
+      this.retomarVidaGuardada();
+    } else if (setorMudou) {
+      // Setor trocado sem conclusão — recuo, salto do modo de teste, chefe
+      // confirmado. Aqui a cena só se alinha ao save: os atributos mudaram de
+      // escala e o `hp` precisa ser recalculado, sem curar nada.
+      this.retomarVidaGuardada();
+    }
 
     this.encounterKey = key;
     this.cleared = false;
@@ -483,7 +510,6 @@ export class VerticalMode {
     this.enemies.clear();
     this.dangerZones.length = 0;
     this.ai.reset();
-    if (setorMudou) this.retomarVidaGuardada();
 
     if (e.kind === 'chefe' && e.boss) {
       this.setBanner(e.boss.name.toUpperCase());
