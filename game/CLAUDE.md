@@ -156,6 +156,23 @@ Então `tools/typecheck-testes.mjs` trava o CRESCIMENTO e não o estado: teste
 novo com erro de tipo quebra, os 64 antigos esperam a vez. Ao baixar o número,
 baixe o `LIMITE` junto. Em zero, vira portão e o script some.
 
+### Commit que não muda o jogo não constrói
+
+O carimbo de versão é o SHA do commit, então TODO push gerava um `versao.json`
+novo — e quem estava com a aba aberta via o aviso de "saiu versão nova", mesmo
+quando não tinha saído nada. Em 13/09 foram sete commits e cinco deles não
+tocaram um byte do cliente. Aviso que mente vira aviso ignorado, e este é o
+único jeito de alcançar quem joga há horas com o pacote velho.
+
+O `ignoreCommand` do `vercel.json` corta isso, e a regra é por EXCLUSÃO:
+constrói por padrão, e só pula quando TODA a mudança caiu em `docs/`,
+`server/`, `tests/`, `tools/`, `.github/`, um `.gitignore` ou um `.md`.
+Construir à toa custa um minuto; pular errado esconde uma correção de quem
+precisa dela — então o erro tem lado certo.
+
+Os pathspecs usam `:(top)` porque existem dois `vercel.json`, um na raiz e um
+em `game/`, e a linha está nos dois.
+
 ## Arquitetura
 
 ```
