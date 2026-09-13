@@ -140,3 +140,36 @@ describe('a trava: nenhuma escrita nova de item passa despercebida', () => {
       .toContain('vipExpiraEm: carteira.vipExpiraEm');
   });
 });
+
+describe('a fila de itens vai ANTES do lote novo', () => {
+  /**
+   * A terceira causa do mesmo sintoma, e a que explicava o "sempre ao concluir
+   * o setor": `sector:advanced` disparava `garantirLote` solto, e o pedido do
+   * lote ultrapassava a fila do setor que acabou. O servidor via setor
+   * diferente, rolava SEMENTE NOVA, e a fila chegava depois com os `uid` do
+   * pote antigo — nenhum descarte casava, e ele gravava tudo.
+   *
+   * Medido em 12/09/2026: seis peças `_0` gravadas no mesmo segundo, nenhuma
+   * na lista de descarte que o cliente tinha mandado.
+   */
+  it('a virada de setor e o ciclo da nuvem passam pelo mesmo lugar', () => {
+    const game = readFileSync('src/app/Game.ts', 'utf8');
+
+    expect(game).toContain('private async trocarDeLote(');
+    // E o lote não é mais pedido solto em nenhum dos dois gatilhos.
+    expect(game, 'a virada de setor voltou a pedir o lote sem esvaziar a fila')
+      .not.toContain("bus.on('sector:advanced', ({ sector }) => { void garantirLote(");
+    expect(game.match(/void garantirLote\(/g) ?? [], 'sobrou um pedido de lote solto')
+      .toHaveLength(0);
+  });
+
+  it('e a ordem dentro dele é drenar, depois pedir', () => {
+    const game = readFileSync('src/app/Game.ts', 'utf8');
+    const corpo = game.slice(game.indexOf('private async trocarDeLote('));
+    const drenar = corpo.indexOf('await drenarInventario(');
+    const lote = corpo.indexOf('await garantirLote(');
+
+    expect(drenar).toBeGreaterThan(-1);
+    expect(lote, 'pediu o lote antes de esvaziar a fila').toBeGreaterThan(drenar);
+  });
+});

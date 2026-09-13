@@ -261,7 +261,7 @@ export class Game {
     // o relógio de 150 s da nuvem: o setor cai a cada ~3 min, e quem avança
     // rápido secaria o pote antes do próximo ciclo. Pedir duas vezes o mesmo
     // setor é barato — o servidor devolve o mesmo lote.
-    bus.on('sector:advanced', ({ sector }) => { void garantirLote(this.sim, sector); });
+    bus.on('sector:advanced', ({ sector }) => { void this.trocarDeLote(sector); });
 
     this.layout();
 
@@ -718,6 +718,35 @@ export class Game {
    * dispositivo. Se o daqui está mais adiantado, sobe de novo — agora com a
    * versão certa, então passa.
    */
+  /**
+   * Esvazia a fila de itens ANTES de pedir o lote novo. A ordem é a regra.
+   *
+   * ## O defeito que isto conserta
+   *
+   * Os dois disparavam soltos (`void`), e na virada de setor o pedido do lote
+   * chegava primeiro. O servidor vê setor diferente, rola uma SEMENTE NOVA —
+   * e a fila do setor que acabou chega depois, com `coletar: N` e os `uid` do
+   * pote ANTIGO. O servidor deriva N peças da semente nova, nenhum `uid` casa
+   * com os descartes, e ele grava TODAS.
+   *
+   * Era isso que punha peça Comum na carga de quem tem o corte em "abaixo de
+   * Raro" — relatado em 12/09/2026, sempre "ao concluir o setor", sempre em
+   * lote e no mesmo segundo. Medido na conta: seis peças `_0` gravadas de uma
+   * vez, nenhuma delas na lista de descarte que o cliente tinha mandado.
+   *
+   * Esperar a fila é barato: ela é uma requisição que já ia acontecer no
+   * mesmo ciclo. O que muda é só quem chega primeiro.
+   *
+   * ## Por que não bastou consertar o descarte
+   *
+   * Porque o descarte estava certo desde a correção anterior: ele SAÍA do
+   * cliente. O que se perdia era o casamento entre o `uid` que ele nomeia e a
+   * peça que o servidor deriva — e semente nova desfaz esse casamento inteiro.
+   */
+  private async trocarDeLote(setor: number): Promise<void> {
+    await drenarInventario(this.sim);
+    await garantirLote(this.sim, setor);
+  }
   private async subirTratandoConflito(saindo = false): Promise<void> {
     const r = await subirSave(this.sim.state, saindo);
     if (r.fase !== 'conflito') return;
@@ -939,12 +968,9 @@ export class Game {
     // que a fila acumulou desde a última drenagem. Um ciclo só mantém as duas
     // coisas coerentes e cabe na cota de escrita do D1.
     void drenarCarteira(this.sim);
-    // O lote acompanha o setor, e o setor muda no mesmo evento que enche a
-    // carteira. Pedir aqui cobre o caso comum sem um relógio próprio.
-    void garantirLote(this.sim, this.sim.state.run.sector);
-    // O inventário anda no mesmo relógio: coletar, descartar e equipar
-    // acontecem no mesmo evento que enche a carteira — o setor caiu.
-    void drenarInventario(this.sim);
+    // O lote e o inventário andam JUNTOS e NESTA ordem — ver `trocarDeLote`.
+    // Soltos, o pedido do lote novo ultrapassava a fila do setor que acabou.
+    void this.trocarDeLote(this.sim.state.run.sector);
     // XP, Matriz e setor no mesmo relógio: o ganho é contínuo, mas mandá-lo
     // no ritmo do setor basta — o delta acumula sozinho até o próximo ciclo.
     void drenarProgresso(this.sim);
