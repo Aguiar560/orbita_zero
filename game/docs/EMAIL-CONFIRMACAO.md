@@ -7,22 +7,35 @@ mensagem chega com a cara do Supabase e **o jogador não reconhece de quem é**.
 
 ## O que muda onde, e o que cada coisa custa
 
-| o quê | onde | custo |
+| o quê | onde | depende de |
 |---|---|---|
-| Assunto e corpo | Dashboard → Authentication → Emails → Templates → *Confirm signup* | zero, imediato |
-| Remetente (`De`) | Dashboard → Authentication → Emails → **SMTP Settings** | exige provedor + DNS |
-| Destino do link | Dashboard → Authentication → **URL Configuration** (Site URL) | zero |
+| Assunto e corpo | Dashboard → Authentication → Emails → Templates → *Confirm signup* | **SMTP próprio** |
+| Remetente (`De`) | Dashboard → Authentication → Emails → **SMTP Settings** | **SMTP próprio** |
+| Destino do link | Dashboard → Authentication → **URL Configuration** (Site URL) | nada |
 
-O **assunto e o corpo** resolvem o reconhecimento: quem abre vê Órbita Zero,
-mesmo que a linha `De` ainda diga `Supabase Auth <noreply@mail.app.supabase.io>`.
-É o passo que não depende de mais ninguém.
+## Os três viram UM: sem SMTP próprio, nada de template
 
-O **remetente** é o que fecha o buraco de vez, e ele não muda por template: o
-SMTP compartilhado do Supabase tem remetente fixo. Trocar exige SMTP próprio
-(Resend, Brevo, Postmark, SendGrid, SES) com `orbitazero.com.br` verificado por
-SPF e DKIM.
+O painel diz com todas as letras: *"Set up custom SMTP to edit templates —
+emails will be sent using the default templates"*. Enquanto o projeto usa o SMTP
+compartilhado do Supabase, **assunto e corpo ficam travados** no texto padrão em
+inglês. Não é possível separar "trocar o texto" de "trocar o remetente": é a
+mesma configuração.
 
-> **O alerta que vale mais que a estética:** o SMTP embutido do Supabase é para
+Isso não custa dinheiro ao Supabase — SMTP próprio existe no plano gratuito. O
+que ele exige é um provedor de e-mail transacional, e os principais têm faixa
+gratuita que cobre com folga o volume de um alfa: Resend (~3.000/mês), Brevo
+(~300/dia), Mailjet (~6.000/mês). Confirme o número na página de cada um antes
+de decidir — essas faixas mudam.
+
+O caminho, na ordem:
+
+1. Conta no provedor e **domínio `orbitazero.com.br` verificado** — dois ou três
+   registros DNS (SPF e DKIM).
+2. **SMTP Settings** no Supabase: host, porta, usuário, senha, mais *Sender
+   name* (`Órbita Zero`) e *Sender email*.
+3. Os templates destravam, e o corpo abaixo entra.
+
+> **E o alerta que transforma isto de estética em operação:** o SMTP embutido do Supabase é para
 > desenvolvimento e limita os envios por hora. Com a confirmação de e-mail
 > obrigatória, ele é a peça que silenciosamente para de entregar — e o sintoma
 > chega como "criei a conta e o e-mail não veio", indistinguível de defeito
