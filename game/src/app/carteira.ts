@@ -4,7 +4,7 @@ import type { MovimentoPendente, ResourceId } from '@sim/types';
 
 import { tokenValido } from './conta';
 import { relatarFalha, relatarSucesso } from './recusa';
-import { bus } from './Bus';
+import { bus, toast } from './Bus';
 
 /**
  * O espelho local dos saldos e do passe, que moram no servidor.
@@ -199,7 +199,7 @@ export async function drenarCarteira(sim: Sim): Promise<void> {
   if (fila.length || !carteiraPronta()) {
     const enviando = fila.splice(0, fila.length);
     if (!enviando.length) {
-      if (!(await sincronizar())) return;
+      await sincronizar();
     } else {
       const lotes = lotesParaEnvio(enviando);
       for (let i = 0; i < lotes.length; i++) {
@@ -207,12 +207,65 @@ export async function drenarCarteira(sim: Sim): Promise<void> {
         // Volta ao INÍCIO da fila só o que NÃO foi: os lotes anteriores já
         // entraram no livro, e devolvê-los creditaria duas vezes.
         fila.unshift(...(lotes.slice(i).flat() as MovimentoPendente[]));
-        return;
+        /**
+         * `break`, e não `return`. Foi um `return`, e custou caro.
+         *
+         * Sair daqui pulava o `espelharNoSim` lá embaixo — contra o que o
+         * comentário no alto desta função promete desde sempre. E o espelho é
+         * a ÚNICA fonte de `state.vip.expiresAt`: o passe não mora no save,
+         * por desenho (`semODinheiro`). Então um envio recusado deixava o
+         * jogo inteiro rodando com `vipAtivo === false`.
+         *
+         * O estrago não é o saldo na tela. É o DESCARTE AUTOMÁTICO, que é
+         * benefício de VIP: `descarteAutomaticoPega` devolvia false para tudo,
+         * e o jogador com o corte em "abaixo de Raro" voltava a receber peça
+         * Comum a sessão inteira, sem nada avisar.
+         *
+         * Medido em 13/09/2026 na conta do Rafael: 14 peças gravadas no mesmo
+         * segundo, 13 delas abaixo do corte, todas deriváveis do lote do
+         * servidor — ou seja, o cliente coletou e não mandou descartar. As
+         * duas únicas entradas de `descarteAutomaticoPega` são a raridade e o
+         * passe; a raridade conferia.
+         */
+        break;
       }
     }
   }
 
+  /**
+   * Se o envio falhou, o espelho pode continuar vazio — e vazio não é zero.
+   *
+   * No boot com fila cheia esta função nunca chamava `sincronizar()`: ia
+   * direto para `movimentar`, e se ele falhasse ninguém jamais preenchia o
+   * espelho naquela sessão. Uma leitura simples resolve, e ela é barata porque
+   * só acontece quando ainda não se sabe.
+   */
+  if (!carteiraPronta()) await sincronizar();
+
+  /**
+   * Continuar sem saber é continuar com as automações do passe DESLIGADAS, e
+   * isso não pode ser silencioso — é a regra do projeto para falha de servidor.
+   */
+  if (!carteiraPronta()) {
+    avisarCarteiraDesconhecida();
+  } else {
+    carteiraJaAvisada = false;
+  }
+
   espelharNoSim(sim);
+}
+
+/** Uma vez por sessão: repetir a cada ciclo viraria ruído e ninguém leria. */
+let carteiraJaAvisada = false;
+
+function avisarCarteiraDesconhecida(): void {
+  if (carteiraJaAvisada) return;
+  carteiraJaAvisada = true;
+  console.warn(
+    '[carteira] não deu para ler o saldo e o passe. Enquanto isso o jogo roda'
+    + ' como conta SEM VIP — o descarte automático não vai consumir nada.',
+  );
+  toast('Sem contato com o servidor: o descarte automático está pausado.', 'bad');
 }
 
 /** O teto de itens por lote da rota `/carteira`. Espelha `movimentar` no Worker. */
