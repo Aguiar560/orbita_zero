@@ -20,6 +20,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { Sim } from '@sim/index';
+import { rolarDoCursor } from '../server/src/lote';
 
 import { montarEstado, type DadosDoServidor } from '../server/src/estado';
 import { HULLS } from '@data/hulls';
@@ -209,5 +211,36 @@ describe('a ausência respeita o descarte automático', () => {
     expect(montarEstado(base({}), { autoSalvage: -5 }).settings.autoSalvage).toBe(0);
     expect(montarEstado(base({}), { autoDispose: 'queimar' }).settings.autoDispose)
       .toBe('desmontar');
+  });
+});
+
+describe('e a ausência não devolve o que o corte manda descartar', () => {
+  it('a simulação inteira, com passe e corte, não guarda nada abaixo do corte', () => {
+    /**
+     * A prova de ponta a ponta do conserto de 12/09/2026: não basta
+     * `montarEstado` preencher os campos — a simulação precisa REALMENTE
+     * consumir as peças, porque é o inventário dela que a rota grava.
+     */
+    const agora = Math.floor(Date.now() / 1000);
+    const estado = montarEstado(
+      base({ vipExpiraEm: agora + 86_400, melhorSetor: 20 }),
+      { setor: 8, onda: 1, autoSalvage: 3, autoDispose: 'desmontar' },
+    );
+
+    expect(estado.vip.expiresAt).toBeGreaterThan(Date.now());
+    expect(estado.settings.autoSalvage).toBe(3);
+
+    const sim = new Sim(estado);
+    // O pote precisa existir: sem ele a coleta vira dívida e nada cai.
+    sim.receberLote(rolarDoCursor(4242, 8, 0, 0, { onda: 0, elite: 0, chefe: 0 }));
+
+    let colhidos = 0;
+    for (let i = 0; i < 300; i++) {
+      for (const item of sim.rollDrops('onda', undefined, 0)) { colhidos++; sim.acquire(item); }
+    }
+
+    expect(colhidos, 'o pote não rendeu nada — o teste mediria o vazio').toBeGreaterThan(0);
+    expect(sim.state.inventory.filter((i) => i.rarity < 3),
+      'a ausência guardou peça abaixo do corte').toHaveLength(0);
   });
 });
