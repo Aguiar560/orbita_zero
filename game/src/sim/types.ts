@@ -431,7 +431,6 @@ export interface Settings {
    */
   repetirSetor: boolean;
   /** Auto-equipar quando o item novo for melhor pela pontuação. */
-  autoEquip: boolean;
   /** Auto-descartar itens abaixo desta raridade. */
   autoSalvage: Rarity;
   /** Destino do descarte automático e da substituição com inventário cheio. */

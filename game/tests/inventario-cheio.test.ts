@@ -35,7 +35,6 @@ function lotado(semente: number): Sim {
   sim.jumpSector(3);
   sim.state.inventory = Array.from({ length: sim.cargoSlots }, (_, i) => peca(`cheio${i}`, 5));
   sim.state.settings.autoSalvage = 0;
-  sim.state.settings.autoEquip = false;
   const ruim = (tag: string) => Array.from({ length: 40 }, (_, i) => peca(`${tag}${i}`, 0));
   sim.receberLote({ onda: ruim('o'), elite: ruim('e'), chefe: ruim('c') } as never);
   return sim;
@@ -72,7 +71,7 @@ describe('Inventário cheio', () => {
      *
      * Era ganho de poder, e por isso passou despercebida — mas descartava uma
      * peça do jogador, irreversível, sem ele pedir e com dois segundos de aviso
-     * no meio de uma onda. `autoSalvage` e `autoEquip` também descartam e
+     * no meio de uma onda. `autoSalvage` também descarta e
      * continuam existindo: a diferença é que são interruptores que ele LIGOU.
      *
      * Cheio é cheio, melhor ou pior.

@@ -1025,7 +1025,7 @@ a primeira coisa que alguém encontra.
 
 | Aba | O quê |
 |---|---|
-| **Jogabilidade** | piloto idle/manual · bolha de escudo · repetir fase · auto-equipar · descarte automático e destino · teto offline |
+| **Jogabilidade** | piloto idle/manual · bolha de escudo · repetir fase · descarte automático e destino (VIP) · teto offline |
 | **Vídeo** | reduzir efeitos · tremor de tela · números de dano · alto contraste · nota sobre enquadramento |
 | **Áudio** | volume geral, música e efeitos · silenciar — **todos inertes**, ver abaixo |
 | **Dados** | resumo da partida · exportar/importar · apagar progresso |

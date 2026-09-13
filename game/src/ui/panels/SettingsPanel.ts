@@ -149,8 +149,6 @@ export class SettingsPanel implements Panel {
       toggle('Números de dano', s.showDamageNumbers, (v) => { s.showDamageNumbers = v; sim.touch(); }),
 
       h('h3.section', { text: 'Automação' }),
-      toggle('Equipar o melhor', vip && s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); },
-        vip ? 'Compara cada novo item com o equipamento atual' : 'Benefício VIP', !vip),
       // O corte por raridade virou benefício VIP em 12/09/2026, junto da venda:
       // "auto desmontar e auto vender apenas VIP pode ter". Desabilitado, e não
       // escondido — automação que some sem explicação parece defeito.

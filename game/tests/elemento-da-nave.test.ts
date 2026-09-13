@@ -120,7 +120,6 @@ describe('equipar respeita a regra', () => {
     // Sem isto a automação montaria o que a mão não consegue, e o jogador
     // descobriria a restrição pela contradição entre as duas.
     const sim = new Sim(createState(11, 'piloto_sora'));
-    sim.state.settings.autoEquip = true;
     sim.acquire(peca('fogo'));
     expect(sim.state.naves.baluarte_glacial?.equipped.principal).toBeUndefined();
   });

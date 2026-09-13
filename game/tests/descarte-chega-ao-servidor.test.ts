@@ -29,7 +29,6 @@ function simComPote(semente: number, setor = 3) {
   const sim = new Sim(estado);
   sim.jumpSector(setor);
   estado.vip.expiresAt = Date.now() + 86_400_000;
-  estado.settings.autoEquip = false;
   estado.settings.autoSalvage = CORTE;
   estado.comandosDeItem.length = 0;
 

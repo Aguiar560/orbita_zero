@@ -151,7 +151,6 @@ describe('raridade alta é mais elemental, não menos', () => {
 describe('a carga começa pequena e cresce por conquista', () => {
   it('avisa a interface assim que a peça entra no inventário', () => {
     const sim = new Sim(createState(88));
-    sim.state.settings.autoEquip = false;
     sim.state.settings.autoSalvage = 0;
     const peca = rollItem(new Rng(88), 1, 0, 0);
     let visivelAoNotificar = false;

@@ -101,7 +101,6 @@ describe('o descarte automático avisa o servidor, e mostra o que rendeu', () =>
    */
   const comVipEComCorte = (sim: Sim): void => {
     sim.state.vip.expiresAt = Date.now() + 86_400_000;
-    sim.state.settings.autoEquip = false;
     sim.state.settings.autoSalvage = 3 as Rarity;
   };
 

@@ -159,7 +159,6 @@ export function createState(
       dicaDeEscudoVista: false,
       speed: 1,
       repetirSetor: false,
-      autoEquip: false,
       autoSalvage: 0,
       autoDispose: 'desmontar',
       showDamageNumbers: true,
@@ -533,7 +532,7 @@ export function migrate(raw: unknown): GameState | null {
   state.settings.guiasVistos = Array.isArray(state.settings.guiasVistos)
     ? state.settings.guiasVistos.filter((s): s is string => typeof s === 'string')
     : [];
-  for (const key of ['testMode', 'guiaVisto', 'dicaDeEscudoVista', 'repetirSetor', 'autoEquip', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
+  for (const key of ['testMode', 'guiaVisto', 'dicaDeEscudoVista', 'repetirSetor', 'showDamageNumbers', 'reduceEffects', 'highContrast', 'muted', 'mostrarEscudo', 'tremorDeTela', 'mostrarFps'] as const) {
     state.settings[key] = Boolean(state.settings[key]);
   }
   // Volume fora de 0..1 não é só feio: quando o áudio existir, um multiplicador

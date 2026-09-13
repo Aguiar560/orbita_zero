@@ -70,7 +70,6 @@ describe('dica da bolha de escudo', () => {
     // estivesse depois desse desvio, quem joga com automação ligada — que é o
     // padrão de um idle — nunca veria a dica.
     const st = createState(7);
-    st.settings.autoEquip = true;
     const sim = new Sim(st);
     sim.acquire(peca('escudo'));
     expect(disparos, 'auto-equipar não pode engolir o aviso').toBe(1);

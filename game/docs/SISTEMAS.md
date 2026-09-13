@@ -716,7 +716,7 @@ Verificado no jogo: trocar de raio para gelo custou 30 cristais e deixou as
 
 #### A recusa mora no modelo, e a régua obedece
 
-Anatomia, inventário e auto-equipar são três caminhos até `equip`, que passou a
+Anatomia e inventário são os dois caminhos até `equip` — o auto-equipar foi removido em 12/09/2026, ver `acquire` —, que passou a
 devolver `boolean`. Uma regra escrita em cada um seria a mesma regra três
 vezes, com duas chances de divergir.
 
@@ -957,7 +957,7 @@ marcos creditados pelo servidor: ver *O cristal ganho em jogo*, no mesmo §12.
 O gate aparece em três lugares e nos três ele é **visível, não silencioso**: o
 botão PILOTAR fica desabilitado com o motivo no `title`, Ajustes desenha a
 opção apagada com a nota do benefício, e o guia troca a redação do passo dos
-modos. Automação é diferente: `autoEquip` e `autoDispose` continuam GRAVADOS
+modos. Automação é diferente: `autoDispose` continua GRAVADO
 como o jogador os deixou, e só param de surtir efeito — assim o passe expirado
 não apaga a preferência, e renová-lo devolve o comportamento anterior sem
 reconfiguração.

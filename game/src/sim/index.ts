@@ -2744,19 +2744,23 @@ export class Sim {
     // o desfaca no passo seguinte, e a missao de coleta conta o que caiu.
     this.registrar({ tipo: 'item', raridade: item.rarity, slot: item.slot, elemento: item.element ?? 'padrao' });
 
-    // O auto-equipar passa pela MESMA regra. Sem isto, a automação montaria
-    // o que a mão não consegue montar — e o jogador descobriria a restrição
-    // pela contradição entre as duas.
-    if (this.vipAtivo && this.state.settings.autoEquip && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) {
-      // Auto-equipar mira a nave EM CAMPO: o item acabou de cair na incursão
-      // dela, e mandá-lo para uma nave guardada seria decidir pelo jogador.
-      const previous = this.equipamentoDe()[item.slot];
-      this.equipamentoDe()[item.slot] = item;
-      this.touch();
-      if (previous) this.stash(previous);
-      bus.emit('loot:dropped', { item });
-      return;
-    }
+    /**
+     * O AUTO-EQUIPAR foi removido em 12/09/2026, e a razão vale ficar escrita.
+     *
+     * Ele equipava a peça melhor e mandava a antiga para a carga com
+     * `stash(previous)` — direto, sem passar pelo descarte automático. A peça
+     * que SAI do slot não é drop, então ninguém pensou nela: era equipamento do
+     * jogador, e devolvê-lo à mochila parecia óbvio.
+     *
+     * O resultado é que a única automação que ENCHIA a carga era imune à única
+     * que a esvazia. Quem tinha o corte em "abaixo de Raro" via peça Comum
+     * aparecer sozinha — eram as peças iniciais (`blindagem_0`, `escudo_0`,
+     * `reator_0`) sendo trocadas por drops melhores e caindo na mochila.
+     *
+     * A decisão foi tirar a funcionalidade, não remendá-la: equipar é escolha,
+     * e uma automação que escolhe por você e ainda entope a carga com o que
+     * tirou custa mais do que entrega.
+     */
 
     if (this.descarteAutomaticoPega(item)) {
       this.descartarAutomaticamente(item);
@@ -2810,10 +2814,9 @@ export class Sim {
   }
 
   ocupaEspaco(item: Item): boolean {
-    if (this.descarteAutomaticoPega(item)) return false;
-    if (this.vipAtivo && this.state.settings.autoEquip
-      && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) return false;
-    return true;
+    // Só o descarte automático consome peça antes de ela ocupar lugar. O
+    // auto-equipar também consumia, e saiu em 12/09/2026 — ver `acquire`.
+    return !this.descarteAutomaticoPega(item);
   }
 
   seriaPerdidoPorFalta(item: Item): boolean {
@@ -2827,7 +2830,7 @@ export class Sim {
      * do jogador, de forma irreversível, sem ele pedir e com dois segundos de
      * aviso no meio de uma onda.
      *
-     * `autoSalvage` e `autoEquip` também descartam, e continuam existindo: a
+     * `autoSalvage` também descarta, e continua existindo: a
      * diferença é que são interruptores que o jogador LIGOU. Automação pedida
      * é serviço; automação embutida é surpresa.
      */

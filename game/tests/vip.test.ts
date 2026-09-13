@@ -67,28 +67,31 @@ describe('Passe VIP', () => {
     expect(missoesRastreadas(sim.state, sim.alcanceLiberado)).toHaveLength(5);
   });
 
-  it('reserva auto-equipar e TODO o descarte automático ao VIP', () => {
+  it('reserva TODO o descarte automático ao VIP', () => {
     /**
      * A venda automática já era VIP; o DESMANCHE por raridade era de todos, e
      * passou a ser VIP em 12/09/2026 — "auto desmontar e auto vender apenas VIP
      * pode ter". Medido no dia: 5 contas tinham corte ligado, 3 delas VIP.
+     *
+     * O AUTO-EQUIPAR saiu do jogo no mesmo dia, e por isso não está mais aqui:
+     * ele mandava a peça trocada para a carga sem passar pelo corte, e era a
+     * única automação que enchia a mochila sendo imune à que a esvazia.
      */
-    const comum = new Sim(createState(204));
-    comum.state.settings.autoEquip = true;
-    comum.acquire(item('comum'));
-    expect(comum.state.naves[comum.state.hull]?.equipped.principal).toBeUndefined();
-    expect(comum.state.inventory.map((i) => i.uid)).toContain('comum');
+    const semAutomacao = new Sim(createState(204));
+    semAutomacao.acquire(item('comum'));
+    expect(semAutomacao.state.naves[semAutomacao.state.hull]?.equipped.principal,
+      'alguma automação voltou a equipar sozinha').toBeUndefined();
+    expect(semAutomacao.state.inventory.map((i) => i.uid)).toContain('comum');
 
-    const vip = new Sim(createState(205));
-    vip.state.vip.expiresAt = Date.now() + 60_000;
-    vip.state.settings.autoEquip = true;
-    vip.acquire(item('vip-equip'));
-    expect(vip.state.naves[vip.state.hull]?.equipped.principal?.uid).toBe('vip-equip');
+    const comPasse = new Sim(createState(205));
+    comPasse.state.vip.expiresAt = Date.now() + 60_000;
+    comPasse.acquire(item('vip-equip'));
+    expect(comPasse.state.naves[comPasse.state.hull]?.equipped.principal,
+      'o passe voltou a equipar sozinho').toBeUndefined();
 
     // Sem passe, NENHUM dos dois destinos acontece: a peça vai inteira para a
     // carga. Antes ela virava material, porque desmontar era de graça.
     const semPasse = new Sim(createState(206));
-    semPasse.state.settings.autoEquip = false;
     semPasse.state.settings.autoSalvage = 2;
     semPasse.state.settings.autoDispose = 'vender';
     semPasse.acquire(item('sem-vip'));
@@ -97,7 +100,6 @@ describe('Passe VIP', () => {
     expect(semPasse.state.inventory.map((i) => i.uid)).toContain('sem-vip');
 
     const semPasseDesmontando = new Sim(createState(208));
-    semPasseDesmontando.state.settings.autoEquip = false;
     semPasseDesmontando.state.settings.autoSalvage = 2;
     semPasseDesmontando.state.settings.autoDispose = 'desmontar';
     semPasseDesmontando.acquire(item('sem-vip-desmontar'));
@@ -106,7 +108,6 @@ describe('Passe VIP', () => {
 
     const comVenda = new Sim(createState(207));
     comVenda.state.vip.expiresAt = Date.now() + 60_000;
-    comVenda.state.settings.autoEquip = false;
     comVenda.state.settings.autoSalvage = 2;
     comVenda.state.settings.autoDispose = 'vender';
     comVenda.acquire(item('com-vip'));
