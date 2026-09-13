@@ -17,7 +17,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p server",
     "test": "vitest run",
     "test:watch": "vitest",
     "simular": "node tools/run-ts.mjs tools/simular.ts",

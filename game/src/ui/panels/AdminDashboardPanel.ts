@@ -1,6 +1,8 @@
 import {
   alterarCodigoDeIndicacao, buscarPainelAdmin, buscarSaquesDeIndicacao,
-  decidirSaqueDeIndicacao, type EstadoDoPainelAdmin, type JogadorDoPainelAdmin,
+  decidirSaqueDeIndicacao, type AfiliadoDoPainelAdmin, type SaqueDoPainelAdmin,
+  type EstadoDoPainelAdmin,
+  type JogadorDoPainelAdmin,
   type PainelAdmin, type SaqueDeIndicacaoAdmin,
 } from '@app/painel-admin';
 import { HULL_BY_ID } from '@data/hulls';
@@ -34,7 +36,7 @@ export class AdminDashboardPanel implements Panel {
   private estado: EstadoDoPainelAdmin = { fase: 'nunca' };
   private filtro = '';
   private atualizando = false;
-  private aba: 'visao' | 'pilotos' | 'atividade' | 'progressao' | 'economia' | 'frota' | 'missoes' | 'saude' = 'visao';
+  private aba: 'visao' | 'pilotos' | 'atividade' | 'progressao' | 'economia' | 'afiliados' | 'frota' | 'missoes' | 'saude' = 'visao';
   private pilotoAberto: string | null = null;
   /**
    * A receita nasce OCULTA a cada abertura do painel, e de propósito.
@@ -97,7 +99,8 @@ export class AdminDashboardPanel implements Panel {
       ),
       h('.admin-abas', {}, ...[
         ['visao', 'VISÃO GERAL'], ['pilotos', 'PILOTOS'], ['atividade', 'ATIVIDADE'],
-        ['progressao', 'PROGRESSÃO'], ['economia', 'ECONOMIA'], ['frota', 'FROTA E ITENS'],
+        ['progressao', 'PROGRESSÃO'], ['economia', 'ECONOMIA'], ['afiliados', 'AFILIADOS'],
+        ['frota', 'FROTA E ITENS'],
         ['missoes', 'MISSÕES'], ['saude', 'SAÚDE'],
       ].map(([id, nome]) => h(`button.admin-aba${this.aba === id ? '.ativa' : ''}`, {
         text: nome, onclick: () => { this.aba = id as typeof this.aba; bus.emit('state:changed'); },
@@ -107,6 +110,7 @@ export class AdminDashboardPanel implements Panel {
       ...(this.aba === 'atividade' ? [this.atividadeGeral(dados)] : []),
       ...(this.aba === 'progressao' ? [this.progressao(dados)] : []),
       ...(this.aba === 'economia' ? [this.economia(dados)] : []),
+      ...(this.aba === 'afiliados' ? [this.afiliados(dados)] : []),
       ...(this.aba === 'frota' ? [this.frota(dados)] : []),
       ...(this.aba === 'missoes' ? [this.missoes(dados)] : []),
       ...(this.aba === 'saude' ? [this.saude(dados)] : []),
@@ -430,6 +434,122 @@ export class AdminDashboardPanel implements Panel {
     );
   }
 
+  /**
+   * O programa de afiliados inteiro, numa aba.
+   *
+   * Ele vivia como um bloco de números agregados dentro de ECONOMIA, e
+   * agregado não responde o que se pergunta sobre um programa de afiliados:
+   * QUEM traz gente, quanto CADA UM tem a receber, e o que está esperando
+   * pagamento.
+   *
+   * A ordem das três seções é a ordem da urgência: primeiro o dinheiro que
+   * alguém está esperando, depois quem traz, e por último o retrato geral.
+   */
+  private afiliados(dados: PainelAdmin): HTMLElement {
+    const ind = dados.economia.indicacoes;
+    const reais = (centavos: number): string => (centavos / 100).toLocaleString('pt-BR', {
+      style: 'currency', currency: 'BRL',
+    });
+    const conversao = (a: AfiliadoDoPainelAdmin): string => (a.vinculados
+      ? `${Math.round((a.compradores / a.vinculados) * 100)}%`
+      : '—');
+
+    const fila = ind.saques.map((saque: SaqueDoPainelAdmin) => h('.admin-linha.admin-saque', { role: 'row' },
+      h('.admin-piloto', {},
+        h('strong', { text: saque.apelido ?? 'Piloto sem apelido' }),
+        h('small', { text: `ID · ${saque.codigo} · ${saque.janela}` }),
+      ),
+      h('strong', { text: reais(saque.centavos) }),
+      h('span', { text: saque.chaveMascarada }),
+      h('span.admin-status', { text: saque.estado.replaceAll('_', ' ').toUpperCase() }),
+      h('span.admin-atividade', { text: this.atividade(saque.solicitadoEm, dados.geradoEm) }),
+    ));
+
+    return h('.admin-duas-colunas', {},
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {},
+          h('span', { text: 'SAQUES NA FILA' }),
+          h('small', {
+            text: fila.length
+              ? 'Dinheiro pedido e ainda não pago. Do mais antigo para o mais novo.'
+              : 'Nada pendente de pagamento.',
+          }),
+        )),
+        ...(fila.length
+          ? [h('.admin-lista-tabela', { role: 'table', 'aria-label': 'Saques pendentes' },
+            h('.admin-linha.admin-cabecalho.admin-saque', { role: 'row' },
+              h('span', { text: 'AFILIADO' }), h('span', { text: 'VALOR' }),
+              h('span', { text: 'CHAVE PIX' }), h('span', { text: 'ESTADO' }),
+              h('span', { text: 'PEDIDO' }),
+            ),
+            ...fila,
+          )]
+          : [h('.admin-vazio', { text: 'Nenhum saque esperando.' })]),
+      ),
+
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {},
+          h('span', { text: 'AFILIADOS' }),
+          h('small', { text: 'Do que mais trouxe para o que menos. Quem tem código entra, mesmo com zero.' }),
+        )),
+        h('.admin-lista-tabela', { role: 'table', 'aria-label': 'Afiliados' },
+          h('.admin-linha.admin-cabecalho.admin-afiliado', { role: 'row' },
+            h('span', { text: 'AFILIADO' }), h('span', { text: 'CÓDIGO' }),
+            h('span', { text: 'VÍNCULOS' }), h('span', { text: 'COMPRARAM' }),
+            h('span', { text: 'CONVERSÃO' }), h('span', { text: 'COMISSÃO' }),
+            h('span', { text: 'A RECEBER' }), h('span', { text: 'DISPONÍVEL' }),
+            h('span', { text: 'DÍVIDA' }), h('span', { text: 'ÚLTIMO VÍNCULO' }),
+          ),
+          ...(ind.afiliados.length
+            ? ind.afiliados.map((a) => h(`.admin-linha.admin-afiliado${a.ativo ? '' : '.bloqueado'}`, { role: 'row' },
+              h('.admin-piloto', {},
+                h('.admin-piloto-nome', {},
+                  h('strong', { text: a.apelido ?? 'Piloto sem apelido' }),
+                  ...(a.ativo ? [] : [h('span.admin-vip.admin-bloqueado', { text: 'BLOQUEADO' })]),
+                ),
+                h('small', { text: `ID · ${a.codigo}` }),
+              ),
+              h('span.admin-codigo', { text: a.codigoIndicacao ?? '—' }),
+              h('strong', { text: fmt(a.vinculados) }),
+              h('span', { text: fmt(a.compradores) }),
+              h('span', { text: conversao(a) }),
+              h('span', { text: reais(a.comissaoCentavos) }),
+              h('span', { text: reais(a.pendenteCentavos) }),
+              h('strong', { text: reais(a.disponivelCentavos) }),
+              // Dívida é o que já foi sacado e o reembolso tirou de volta.
+              // Zero é o normal; diferente de zero é conversa.
+              h(`span${a.dividaCentavos > 0 ? '.admin-divida' : ''}`, { text: reais(a.dividaCentavos) }),
+              h('span.admin-atividade', {
+                text: a.ultimoVinculo ? this.atividade(a.ultimoVinculo, dados.geradoEm) : '—',
+              }),
+            ))
+            : [h('.admin-vazio', { text: 'Nenhum código de indicação criado ainda.' })]),
+        ),
+      ),
+
+      h('.admin-dashboard-lista.admin-coluna-inteira', {},
+        h('.admin-lista-topo', {}, h('.admin-lista-texto', {},
+          h('span', { text: 'O PROGRAMA' }),
+          h('small', { text: 'Aquisição, comissão e exposição a reembolsos.' }),
+        )),
+        h('.admin-cartoes', {},
+          this.cartao('CONTAS VINCULADAS', fmt(ind.vinculados)),
+          this.cartao('NOVOS VÍNCULOS · 24H', fmt(ind.vinculados24h)),
+          this.cartao('COMPRADORES', fmt(ind.compradores)),
+          this.cartao('RECEITA ATRIBUÍDA', reais(ind.receitaCentavos)),
+          this.cartao('COMISSÃO PENDENTE', reais(ind.pendentes)),
+          this.cartao('COMISSÃO LIBERADA', reais(ind.liberados)),
+          this.cartao('COMISSÃO ESTORNADA', reais(ind.revertidos)),
+          this.cartao('DÍVIDA DE ESTORNO', reais(ind.divida)),
+          this.cartao('CÓDIGOS BLOQUEADOS', fmt(ind.bloqueados)),
+          this.cartao('CÓDIGOS RECUSADOS', fmt(ind.tentativasRecusadas)),
+          // Concentração é o sinal de fraude mais barato daqui: muitas
+          // compras de poucas contas é o padrão de quem indica a si mesmo.
+          this.cartao('MAIOR CONCENTRAÇÃO', fmt(ind.maiorConcentracaoCompras), 'compras de um indicador'),
+        ),
+      ),
+    );
+  }
   private cartao(rotulo: string, valor: string, detalhe?: string): HTMLElement {
     return h('.admin-dado', {}, h('span', { text: rotulo }), h('strong', { text: valor }), ...(detalhe ? [h('small', { text: detalhe })] : []));
   }

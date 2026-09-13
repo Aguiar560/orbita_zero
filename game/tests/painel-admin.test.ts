@@ -37,6 +37,19 @@ describe('painel administrativo', () => {
           // Receita: uma paga, uma reembolsada e tres cobrancas abertas. Os tres
           // estados juntos sao o que separa "entrou" de "vai entrar" e de
           // "entrou e voltou".
+          if (sql.includes('FROM codigos_indicacao')) return { results: [
+            { usuario: primeiro, apelido: 'Vetor', codigo: 'ABC1234567', ativo: 1,
+              vinculados: 4, compradores: 1, comissao: 499, pendente: 499, liberado: 0,
+              revertido: 0, disponivel: 0, reservado: 0, divida: 0, ultimo_vinculo: 950 },
+            { usuario: segundo, apelido: null, codigo: 'XYZ7654321', ativo: 0,
+              vinculados: 0, compradores: 0, comissao: 0, pendente: 0, liberado: 0,
+              revertido: 0, disponivel: 0, reservado: 0, divida: 250, ultimo_vinculo: null },
+          ] };
+          if (sql.includes('FROM saques_indicacao')) return { results: [{
+            id: 'saq-1', usuario: primeiro, apelido: 'Vetor', centavos: 5_000,
+            estado: 'solicitado', chave_pix_mascarada: 'vet***@mail', solicitado_em: 800,
+            janela_semana: '2026-W37',
+          }] };
           if (sql.includes('FROM compras')) return { results: [{
             bruto: 4_990, reembolsado: 490, compras: 2, compradores: 2,
             centavos_24h: 4_990, centavos_7d: 4_990, pendentes: 3,
@@ -80,6 +93,31 @@ describe('painel administrativo', () => {
       baseId: 'principal_2', nave: 'nucleo_vektor', slot: 'principal', raridade: 3, nivel: 12,
     }]);
     expect(JSON.stringify(painel)).not.toContain('12345678-aaaa');
+  });
+
+  it('lista os afiliados e a fila de saque, do que mais trouxe ao que menos', async () => {
+    /**
+     * Agregado nao responde o que se pergunta sobre um programa de afiliados:
+     * QUEM traz gente, quanto CADA UM tem a receber, e o que espera pagamento.
+     * Pedido em 12/09/2026 — 'um controle total'.
+     */
+    const painel = await lerPainelAdmin(
+      { DB: bancoDeExemplo() as never, INDICACOES_ATIVAS: '1' }, 1_000,
+    );
+    const ind = painel.economia.indicacoes;
+
+    expect(ind.afiliados).toHaveLength(2);
+    expect(ind.afiliados[0]).toMatchObject({
+      apelido: 'Vetor', codigoIndicacao: 'ABC1234567', ativo: true,
+      vinculados: 4, compradores: 1, comissaoCentavos: 499, pendenteCentavos: 499,
+    });
+    // Codigo bloqueado continua na lista: some da lista e some do radar.
+    expect(ind.afiliados[1]).toMatchObject({ ativo: false, dividaCentavos: 250 });
+    // E o UUID nao vaza: so os oito primeiros, como no resto do painel.
+    expect(JSON.stringify(ind.afiliados)).not.toContain('12345678-aaaa');
+
+    expect(ind.saques).toHaveLength(1);
+    expect(ind.saques[0]).toMatchObject({ centavos: 5_000, estado: 'solicitado' });
   });
 
   it('mostra o dinheiro que entrou, e nao so o que gera comissao', async () => {

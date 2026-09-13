@@ -41,6 +41,34 @@ export interface EquipamentoDoPainelAdmin {
   conjunto: string | null;
 }
 
+export interface AfiliadoDoPainelAdmin {
+  codigo: string;
+  apelido: string | null;
+  codigoIndicacao: string | null;
+  ativo: boolean;
+  vinculados: number;
+  compradores: number;
+  comissaoCentavos: number;
+  pendenteCentavos: number;
+  liberadoCentavos: number;
+  revertidoCentavos: number;
+  disponivelCentavos: number;
+  reservadoCentavos: number;
+  dividaCentavos: number;
+  ultimoVinculo: number | null;
+}
+
+export interface SaqueDoPainelAdmin {
+  id: string;
+  codigo: string;
+  apelido: string | null;
+  centavos: number;
+  estado: string;
+  chaveMascarada: string;
+  solicitadoEm: number;
+  janela: string;
+}
+
 export interface PainelAdmin {
   geradoEm: number;
   janelaOnlineSegundos: number;
@@ -87,6 +115,8 @@ export interface PainelAdmin {
       pendentes: number; liberados: number; revertidos: number; divida: number;
       bloqueados: number; tentativasRecusadas: number;
       vinculados24h: number; maiorConcentracaoCompras: number;
+      afiliados: AfiliadoDoPainelAdmin[];
+      saques: SaqueDoPainelAdmin[];
     };
   };
   frota: {

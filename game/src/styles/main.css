@@ -133,6 +133,13 @@
 .inv-destino-switch:not(.vender) span:first-child,
 .inv-destino-switch.vender span:last-child { color: var(--accent); }
 .inv-destino-switch.bloqueada { cursor: not-allowed; }
+/* A aba de afiliados: duas tabelas com colunas proprias. */
+.admin-linha.admin-afiliado { grid-template-columns: 1.6fr .9fr .6fr .7fr .7fr .9fr .9fr .9fr .8fr 1fr; }
+.admin-linha.admin-saque { grid-template-columns: 1.6fr .9fr 1.2fr .9fr 1fr; }
+.admin-linha.admin-afiliado.bloqueado { opacity: .6; }
+.admin-codigo { font-family: ui-monospace, monospace; letter-spacing: .06em; color: #a9eaff; }
+.admin-divida { color: #ffa8b8; }
+.admin-vip.admin-bloqueado { border-color: rgba(255, 93, 122, .55); background: rgba(255, 93, 122, .12); color: #ffa8b8; }
 /* Sem transição para quem pediu menos movimento: a pastilha salta de lado. */
 @media (prefers-reduced-motion: reduce) {
   .inv-destino-switch::before { transition: none; }

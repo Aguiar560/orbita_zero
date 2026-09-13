@@ -67,6 +67,42 @@ export interface JogadorDoPainelAdmin {
   equipamentos: EquipamentoDoPainelAdmin[];
 }
 
+/**
+ * Um afiliado, com tudo o que decide uma conversa sobre ele.
+ *
+ * Os três blocos de dinheiro respondem perguntas diferentes e não se somam:
+ * `comissao` é o que ele GEROU, `disponivel` é o que ele pode sacar agora, e
+ * `divida` é o que ele já sacou e o reembolso tirou de volta.
+ */
+export interface AfiliadoDoPainelAdmin {
+  codigo: string;
+  apelido: string | null;
+  /** O código que ele distribui. É por ele que o suporte acha a conta. */
+  codigoIndicacao: string | null;
+  ativo: boolean;
+  vinculados: number;
+  compradores: number;
+  comissaoCentavos: number;
+  pendenteCentavos: number;
+  liberadoCentavos: number;
+  revertidoCentavos: number;
+  disponivelCentavos: number;
+  reservadoCentavos: number;
+  dividaCentavos: number;
+  ultimoVinculo: number | null;
+}
+
+export interface SaqueDoPainelAdmin {
+  id: string;
+  codigo: string;
+  apelido: string | null;
+  centavos: number;
+  estado: string;
+  chaveMascarada: string;
+  solicitadoEm: number;
+  janela: string;
+}
+
 export interface PainelAdmin {
   geradoEm: number;
   janelaOnlineSegundos: number;
@@ -129,6 +165,10 @@ export interface PainelAdmin {
       pendentes: number; liberados: number; revertidos: number; divida: number;
       bloqueados: number; tentativasRecusadas: number;
       vinculados24h: number; maiorConcentracaoCompras: number;
+      /** Um por INDICADOR, do que mais trouxe para o que menos. */
+      afiliados: AfiliadoDoPainelAdmin[];
+      /** Dinheiro pedido e ainda não pago. É fila de operação, não relatório. */
+      saques: SaqueDoPainelAdmin[];
     };
   };
   frota: {
@@ -202,6 +242,19 @@ interface RegistroDeMovimento { moeda: string; entradas: number; saidas: number;
 interface RegistroDeRaridade { raridade: number; total: number; equipados: number; }
 interface RegistroDeMissaoGeral { iniciadas: number; entregues: number; em_andamento: number; }
 interface RegistroDeMissaoPopular { missao: string; total: number; }
+interface RegistroDeAfiliado extends RegistroBase {
+  apelido: string | null; codigo: string | null; ativo: number;
+  vinculados: number; compradores: number;
+  comissao: number; pendente: number; liberado: number; revertido: number;
+  disponivel: number; reservado: number; divida: number;
+  ultimo_vinculo: number | null;
+}
+
+interface RegistroDeSaque {
+  id: string; usuario: string; apelido: string | null; centavos: number;
+  estado: string; chave_pix_mascarada: string; solicitado_em: number; janela_semana: string;
+}
+
 interface RegistroDeReceita {
   bruto: number; reembolsado: number; compras: number; compradores: number;
   centavos_24h: number; centavos_7d: number; pendentes: number;
@@ -270,10 +323,14 @@ function montarReceita(linha: RegistroDeReceita | undefined): PainelAdmin['econo
 }
 
 export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: string }, agora: number): Promise<PainelAdmin> {
+  // Uma leitura da chave, usada pelas tres consultas do programa: o painel
+  // inteiro nao pode custar nada enquanto o programa estiver desligado.
+  const indicacoesAtivas = ['1', 'true', 'on']
+    .includes((env.INDICACOES_ATIVAS ?? '').trim().toLowerCase());
   const [
     contas, apelidos, progressos, atividades, naves, itens, equipamentos, missoes, saldos,
     frotaPorCasco, materiais, movimentos, emCampo, raridades, missoesGerais, missoesPopulares,
-    indicacoes, assinaturas, receita,
+    indicacoes, assinaturas, receita, afiliados, saques,
   ] = await Promise.all([
     env.DB.prepare('SELECT usuario, primeiro_em FROM contas').all<RegistroDeConta>(),
     env.DB.prepare('SELECT usuario, apelido FROM apelidos').all<RegistroDeApelido>(),
@@ -329,7 +386,7 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
       SELECT missao, COUNT(*) AS total FROM missoes
        WHERE entregue_em IS NOT NULL GROUP BY missao ORDER BY total DESC LIMIT 12
     `).all<RegistroDeMissaoPopular>(),
-    (['1', 'true', 'on'].includes((env.INDICACOES_ATIVAS ?? '').trim().toLowerCase())
+    (indicacoesAtivas
       ? env.DB.prepare(`
       SELECT
         (SELECT COUNT(*) FROM decisoes_indicacao WHERE estado = 'vinculada') AS vinculados,
@@ -374,6 +431,56 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
         COUNT(CASE WHEN estado = 'pendente' THEN 1 END) AS pendentes
       FROM compras
     `).bind(agora - 86_400, agora - 604_800).all<RegistroDeReceita>(),
+    /**
+     * O ranking de afiliados. Parte de `codigos_indicacao` e não de
+     * `decisoes_indicacao`: quem tem código É afiliado, mesmo com zero
+     * vínculos — e é justamente o zero que responde "o programa está pegando?".
+     *
+     * As somas vêm por subconsulta em vez de `GROUP BY` com três junções: com
+     * junções, uma conta com cinco vínculos e três recompensas multiplicaria
+     * as linhas e inflaria toda soma da mesma linha.
+     */
+    (indicacoesAtivas
+      ? env.DB.prepare(`
+        SELECT c.usuario, ap.apelido, c.codigo, c.ativo,
+          (SELECT COUNT(*) FROM decisoes_indicacao d
+            WHERE d.indicador = c.usuario AND d.estado = 'vinculada') AS vinculados,
+          (SELECT COUNT(DISTINCT r.indicado) FROM recompensas_indicacao r
+            WHERE r.indicador = c.usuario) AS compradores,
+          (SELECT COALESCE(SUM(r.comissao_centavos), 0) FROM recompensas_indicacao r
+            WHERE r.indicador = c.usuario) AS comissao,
+          (SELECT COALESCE(SUM(CASE WHEN r.estado = 'pendente'
+                THEN MAX(0, r.comissao_centavos - r.revertidos_centavos) ELSE 0 END), 0)
+            FROM recompensas_indicacao r WHERE r.indicador = c.usuario) AS pendente,
+          (SELECT COALESCE(SUM(r.liberados_centavos), 0) FROM recompensas_indicacao r
+            WHERE r.indicador = c.usuario) AS liberado,
+          (SELECT COALESCE(SUM(r.revertidos_centavos), 0) FROM recompensas_indicacao r
+            WHERE r.indicador = c.usuario) AS revertido,
+          (SELECT MAX(d.decidida_em) FROM decisoes_indicacao d
+            WHERE d.indicador = c.usuario AND d.estado = 'vinculada') AS ultimo_vinculo,
+          COALESCE(w.disponivel_centavos, 0) AS disponivel,
+          COALESCE(w.reservado_centavos, 0) AS reservado,
+          COALESCE(w.divida_centavos, 0) AS divida
+        FROM codigos_indicacao c
+        LEFT JOIN apelidos ap ON ap.usuario = c.usuario
+        LEFT JOIN carteiras_indicacao w ON w.usuario = c.usuario
+        ORDER BY vinculados DESC, comissao DESC
+        LIMIT 60
+      `).all<RegistroDeAfiliado>()
+      : Promise.resolve({ results: [] as RegistroDeAfiliado[] })),
+    // A fila de saque: só o que ainda não foi pago. Pago vira histórico, e
+    // histórico não é o que alguém abre o painel para resolver.
+    (indicacoesAtivas
+      ? env.DB.prepare(`
+        SELECT s.id, s.usuario, ap.apelido, s.centavos, s.estado,
+               s.chave_pix_mascarada, s.solicitado_em, s.janela_semana
+          FROM saques_indicacao s
+          LEFT JOIN apelidos ap ON ap.usuario = s.usuario
+         WHERE s.estado IN ('solicitado', 'em_analise', 'aprovado')
+         ORDER BY s.solicitado_em ASC
+         LIMIT 40
+      `).all<RegistroDeSaque>()
+      : Promise.resolve({ results: [] as RegistroDeSaque[] })),
   ]);
 
   const porUsuario = new Map<string, AcumuladoDoJogador>();
@@ -592,6 +699,32 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
         tentativasRecusadas: Number(indicaçãoGeral?.tentativas_recusadas) || 0,
         vinculados24h: Number(indicaçãoGeral?.vinculados_24h) || 0,
         maiorConcentracaoCompras: Number(indicaçãoGeral?.maior_concentracao_compras) || 0,
+        afiliados: (afiliados.results ?? []).map((linha) => ({
+          codigo: linha.usuario.slice(0, 8),
+          apelido: linha.apelido,
+          codigoIndicacao: linha.codigo,
+          ativo: Number(linha.ativo) === 1,
+          vinculados: Number(linha.vinculados) || 0,
+          compradores: Number(linha.compradores) || 0,
+          comissaoCentavos: Number(linha.comissao) || 0,
+          pendenteCentavos: Number(linha.pendente) || 0,
+          liberadoCentavos: Number(linha.liberado) || 0,
+          revertidoCentavos: Number(linha.revertido) || 0,
+          disponivelCentavos: Number(linha.disponivel) || 0,
+          reservadoCentavos: Number(linha.reservado) || 0,
+          dividaCentavos: Number(linha.divida) || 0,
+          ultimoVinculo: Number(linha.ultimo_vinculo) || null,
+        })),
+        saques: (saques.results ?? []).map((linha) => ({
+          id: linha.id,
+          codigo: linha.usuario.slice(0, 8),
+          apelido: linha.apelido,
+          centavos: Number(linha.centavos) || 0,
+          estado: linha.estado,
+          chaveMascarada: linha.chave_pix_mascarada,
+          solicitadoEm: Number(linha.solicitado_em) || 0,
+          janela: linha.janela_semana,
+        })),
       },
     },
     frota: {
