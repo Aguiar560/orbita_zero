@@ -2349,9 +2349,19 @@ export class Sim {
   private tirarDoPote(kind: TipoDeDrop): Item | null {
     const item = this.pote?.[kind].shift();
     if (item) {
-      // O comando diz o TIPO, nunca o item: o servidor deriva qual é pela
-      // semente e pelo cursor. É o que impede inventar uma peça.
-      this.state.comandosDeItem.push({ tipo: 'coletar', pote: kind });
+      /**
+       * A coleta NÃO é declarada aqui. Ver `declararColeta`.
+       *
+       * Ela era, e isso criava um transitório visível: o comando saía quando a
+       * CÁPSULA NASCIA, mas o destino da peça só é decidido quando a nave a
+       * alcança. Uma sincronia caindo nesse meio mandava `coletar` sem o
+       * `descartar` que viria depois — o servidor gravava a peça, e ela
+       * aparecia na carga do jogador até o ciclo seguinte apagá-la.
+       *
+       * Relatado em 12/09/2026 como peça abaixo do corte que "aparece e some
+       * sozinha". Aqui a peça só é anotada; quem declara é o final dela.
+       */
+      this.poteDaCapsula.set(item.uid, kind);
       return item;
     }
     // Teto na dívida: um cliente offline por horas acumularia milhares de
@@ -2650,6 +2660,34 @@ export class Sim {
   // antes de gastar uma requisição.
 
   /**
+   * De qual pote saiu cada peça que ainda está no ar.
+   *
+   * O cursor do lote precisa andar pelo NÚMERO de peças tiradas, e o servidor
+   * deriva quais são pela semente — então a declaração diz só o tipo do pote.
+   * Guardar o tipo por `uid` é o que permite declarar no FINAL da cápsula, e
+   * não no começo.
+   */
+  private readonly poteDaCapsula = new Map<string, TipoDeDrop>();
+
+  /**
+   * Declara a coleta agora que o destino da peça é conhecido.
+   *
+   * Chamado nos dois finais possíveis: `acquire` (a nave alcançou) e
+   * `perderItemNaoColetado` (a cápsula morreu). Nos dois o cursor anda igual —
+   * a peça saiu do pote de qualquer jeito —, mas o lote que vai para o servidor
+   * fica sempre COMPLETO: coleta e destino no mesmo pacote.
+   *
+   * Peça que não veio do pote (baú, fusão, dívida já paga) não tem entrada no
+   * mapa e não declara nada, que é o certo: o servidor não a derivaria.
+   */
+  private declararColeta(item: Item): void {
+    const kind = this.poteDaCapsula.get(item.uid);
+    if (!kind) return;
+    this.poteDaCapsula.delete(item.uid);
+    this.state.comandosDeItem.push({ tipo: 'coletar', pote: kind });
+  }
+
+  /**
    * A cápsula morreu sem ser coletada. O servidor PRECISA saber.
    *
    * ## O buraco que isto fecha
@@ -2674,11 +2712,17 @@ export class Sim {
    * CONTAR isso ao servidor.
    */
   perderItemNaoColetado(item: Item): void {
+    // A coleta e o descarte saem JUNTOS: o servidor vê a peça nascer e morrer
+    // no mesmo lote e nem chega a gravar a linha.
+    this.declararColeta(item);
     this.state.comandosDeItem.push({ tipo: 'descartar', uid: item.uid });
   }
 
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
+    // O destino desta peça está prestes a ser decidido: é a hora de declarar a
+    // coleta, e não quando a cápsula nasceu. Ver `declararColeta`.
+    this.declararColeta(item);
     this.state.stats.itemsFound++;
 
     /**

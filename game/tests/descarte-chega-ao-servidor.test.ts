@@ -230,3 +230,51 @@ describe('slot morto nao e capsula', () => {
     expect(cena).toContain('if (item.alive && item.item) this.sim.perderItemNaoColetado(item.item);');
   });
 });
+
+describe('a coleta e declarada no FINAL da capsula, nao no comeco', () => {
+  /**
+   * O transitório que fazia a peça "aparecer e sumir sozinha", achado em
+   * 12/09/2026 depois de o Rafael notar que os itens mudavam sem ele fazer
+   * nada e sumiam ao concluir o setor.
+   *
+   * O `coletar` saía quando a CÁPSULA NASCIA, mas o destino da peça só é
+   * decidido quando a nave a alcança. Uma sincronia caindo no meio mandava
+   * `coletar` sem o `descartar` que viria depois: o servidor gravava a peça e
+   * ela ficava na carga até o ciclo seguinte apagá-la.
+   *
+   * Agora os dois saem juntos, sempre — e o servidor nem chega a gravar a
+   * linha, porque vê a peça nascer e morrer no mesmo lote.
+   */
+  it('tirar do pote nao declara nada por si', () => {
+    const { sim, estado } = simComPote(909);
+    estado.comandosDeItem.length = 0;
+
+    const caiu: unknown[] = [];
+    for (let i = 0; i < 300 && !caiu.length; i++) caiu.push(...sim.rollDrops('onda', undefined, 0));
+
+    expect(caiu.length, 'o pote nao rendeu — o teste mediria o vazio').toBeGreaterThan(0);
+    expect(estado.comandosDeItem, 'a coleta foi declarada antes de a peça resolver')
+      .toHaveLength(0);
+  });
+
+  it('e os dois finais declaram a coleta junto do destino', () => {
+    const { sim, estado } = simComPote(910);
+
+    // Final 1: a nave alcança.
+    estado.comandosDeItem.length = 0;
+    const colhidos: never[] = [];
+    for (let i = 0; i < 300 && !colhidos.length; i++) colhidos.push(...sim.rollDrops('onda', undefined, 0) as never[]);
+    for (const item of colhidos) sim.acquire(item);
+    const coletas = estado.comandosDeItem.filter((c) => c.tipo === 'coletar').length;
+    expect(coletas, 'a coleta não foi declarada ao alcançar').toBe(colhidos.length);
+
+    // Final 2: a cápsula morre no caminho.
+    estado.comandosDeItem.length = 0;
+    const perdidos: never[] = [];
+    for (let i = 0; i < 300 && !perdidos.length; i++) perdidos.push(...sim.rollDrops('onda', undefined, 0) as never[]);
+    for (const item of perdidos) sim.perderItemNaoColetado(item);
+    const ambos = estado.comandosDeItem;
+    expect(ambos.filter((c) => c.tipo === 'coletar')).toHaveLength(perdidos.length);
+    expect(ambos.filter((c) => c.tipo === 'descartar')).toHaveLength(perdidos.length);
+  });
+});
