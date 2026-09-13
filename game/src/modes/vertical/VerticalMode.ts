@@ -1744,7 +1744,9 @@ export class VerticalMode {
     if (!p && garantida) {
       let abriuVaga = false;
       this.pickups.each((item) => {
-        if (abriuVaga || item.chaveGarantida) return;
+        // Mesma guarda: sacrificar um slot morto declararia perdida uma peça
+        // que já está na carga. Ver o laço de `updatePickups`.
+        if (!item.alive || abriuVaga || item.chaveGarantida) return;
         item.alive = false;
         // A cápsula sacrificada pela chave também some do servidor.
         if (item.item) this.sim.perderItemNaoColetado(item.item);
@@ -2204,6 +2206,16 @@ export class VerticalMode {
     const p = this.player;
 
     this.pickups.each((item) => {
+      /**
+       * Slot MORTO não é cápsula.
+       *
+       * `Pool.each` percorre de 0 até o cursor — os slots já apagados neste
+       * mesmo quadro entram no laço, e o `item` deles ainda aponta para a peça
+       * até o slot ser reaproveitado. Sem esta guarda, uma peça que a nave
+       * acabou de COLETAR era declarada perdida logo em seguida, e o servidor
+       * a apagava: a carga do jogador aparecia cheia na tela e vazia no D1.
+       */
+      if (!item.alive) return;
       item.time += dt;
       // Ímã: a partir de certa distância o item vem sozinho, o que evita que a
       // IA abandone o combate para buscar drops longe.
@@ -3584,8 +3596,11 @@ export class VerticalMode {
     this.audio.dispose();
     this.bullets.clear();
     this.enemies.clear();
-    // O que estava no ar não vai ser coletado por ninguém.
-    this.pickups.each((item) => { if (item.item) this.sim.perderItemNaoColetado(item.item); });
+    // O que estava NO AR não vai ser coletado por ninguém — e só o que está no
+    // ar: slot morto é peça já coletada, e declará-la perdida a apagaria.
+    this.pickups.each((item) => {
+      if (item.alive && item.item) this.sim.perderItemNaoColetado(item.item);
+    });
     this.pickups.clear();
     this.particles.clear();
     window.removeEventListener('keydown', this.onKeyDown);

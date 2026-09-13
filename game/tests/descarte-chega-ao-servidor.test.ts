@@ -207,3 +207,26 @@ describe('a capsula que nao foi coletada some do servidor tambem', () => {
     expect(cena).toContain('if (item.item) this.sim.perderItemNaoColetado(item.item);');
   });
 });
+
+describe('slot morto nao e capsula', () => {
+  /**
+   * O erro que EU introduzi ao consertar a cápsula perdida, em 12/09/2026.
+   *
+   * `Pool.each` percorre de 0 até o cursor — os slots já apagados no mesmo
+   * quadro entram no laço, e o `item` deles ainda aponta para a peça até o slot
+   * ser reaproveitado. Sem guarda, a peça que a nave acabou de COLETAR era
+   * declarada perdida logo em seguida, e o servidor a apagava.
+   *
+   * O sintoma foi o contrário do anterior e por isso denunciou: a carga cheia
+   * na tela e VAZIA no D1 — zero itens no servidor com seis na tela.
+   */
+  it('os três laços sobre cápsulas ignoram slot morto', () => {
+    const cena = readFileSync('src/modes/vertical/VerticalMode.ts', 'utf8');
+
+    // O laço de atualização e o do sacrifício pela chave, com a guarda no topo.
+    expect((cena.match(/if \(!item\.alive/g) ?? []).length,
+      'um laço voltou a tratar slot morto como cápsula viva').toBe(2);
+    // E o de desmontar a cena, que declara perda só do que está no ar.
+    expect(cena).toContain('if (item.alive && item.item) this.sim.perderItemNaoColetado(item.item);');
+  });
+});
