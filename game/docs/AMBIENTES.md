@@ -1,9 +1,8 @@
 # Ambientes — produção, staging e local
 
-> **Estado:** staging no ar desde 13/09/2026, com o `ORIGENS` da produção já
-> fechado e as duas instalações marcadas. **Falta uma coisa:** o `VITE_CHAT_URL`
-> na Vercel está valendo para todos os ambientes, então a preview entra no chat
-> de PRODUÇÃO. Ver "O que falta".
+> **Estado:** separação completa e medida em 13/09/2026 — API, banco, CORS,
+> segredos e chat. A única coisa compartilhada é o Supabase, e é de propósito
+> (ver abaixo).
 
 ## O problema que isto resolve
 
@@ -124,30 +123,41 @@ Aplica `schema.sql` e todas as migrações em ordem, depois grava o marcador.
 `schema.sql` sozinho **não** é o esquema: ele tem três tabelas e o resto do
 banco nasceu nas migrações `0002..NNNN`.
 
+## O chat também está separado, e por dois motivos
+
+Registrado porque eu cheguei a escrever aqui que ele era um furo, e não era.
+
+O Worker `orbita-zero-chat` tem o banco de produção ligado nele — só para
+`SELECT apelido FROM apelidos`, mas ligado. Se uma preview alcançasse esse
+Worker, um jogador de teste entraria no chat real. Duas travas independentes
+impedem isso, e nenhuma das duas foi feita para isso — as duas já estavam lá:
+
+1. **`VITE_CHAT_URL` tem escopo Production na Vercel**, então o pacote da
+   preview nasce sem a URL e o chat fica em "Comunicações em preparação".
+2. **O `ORIGENS` do chat nunca teve `localhost` nem preview** — só os três
+   domínios do site (`wrangler.chat.toml`, linha 7). Mesmo que a URL vazasse
+   para uma preview, o Worker recusaria a origem.
+
+O erro que me levou a escrever o contrário: eu abri o `wrangler.chat.toml`,
+li o bloco `[[d1_databases]]` que confirmava minha hipótese, e parei antes da
+linha `ORIGENS`, seis linhas acima. Depois supus o escopo da variável na Vercel
+em vez de perguntar. Duas suposições apresentadas como achado.
+
 ## O que falta
-
-**O chat ainda é compartilhado.** `VITE_CHAT_URL` está definida na Vercel para
-todos os ambientes, então a preview carrega a mesma URL da produção — e o
-`orbita-zero-chat` lê a tabela `apelidos` do banco de PRODUÇÃO
-(`wrangler.chat.toml`). Um jogador de teste entra no chat real, conversando com
-jogadores reais, e a mensagem fica gravada.
-
-Não corrompe dado de jogo (o chat só faz `SELECT` na produção), mas não é
-separado. A correção é uma linha na Vercel: mudar o escopo de `VITE_CHAT_URL`
-para **Production apenas**. Um Worker de chat para o staging só vale a pena se
-um dia for preciso testar o próprio chat.
 
 **Os dois projetos Vercel.** `orbita_zero` e `orbita-zero` constroem os dois a
 cada push, e as variáveis de ambiente foram postas em um só. Conferir qual está
-sobrando.
+sobrando — o que sobra continua construindo sem as variáveis.
 
 ## O que já foi feito
 
 - `ORIGENS` da produção fechado (13/09) — só o site entra.
 - Migração `0028` aplicada nos dois bancos, então `/saude` responde o nome
   real de cada um.
-- Variáveis de preview ligadas na Vercel com escopo **Preview**, confirmado
-  pelo pacote de produção: ele foi construído com `VITE_API_URL` ausente.
+- Variáveis de preview ligadas na Vercel com escopo **Preview**, conferido de
+  duas formas: o pacote de produção foi construído com `VITE_API_URL` ausente
+  (`a(void 0, …)` dentro do arquivo publicado), e a preview mostra a faixa azul
+  apontando para o staging.
 
 ## O que o staging deliberadamente não tem
 
