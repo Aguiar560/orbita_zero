@@ -69,7 +69,8 @@ Se mexeu em arte: `npm run assets; npm run dev`.
 | `npm run dev` | Vite em `localhost:5180` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | assets + typecheck + build |
-| `npm test` | suíte do Vitest (1.586 testes em 153 arquivos, 09/09/2026) |
+| `npm test` | suíte do Vitest (1.821 testes em 176 arquivos, **tudo verde** em 13/09/2026) |
+| `npm run typecheck:testes` | catraca de tipos sobre `tests/` — ver abaixo |
 | `npm run simular -- curva 1 300` | dificuldade × poder, setor a setor |
 | `npm run simular -- ganho 1 300 5` | ganho por segundo, setores limpos e mortes — mede o que o jogador REALMENTE recebe |
 | `npm run simular -- drops 200000` | distribuição real de raridade |
@@ -121,6 +122,39 @@ gravar nada. `--pendentes` lista o que já foi mandado e quem leu.
 Um gatilho de tempo manda o resumo a cada cinco minutos quando há
 `ALERTA_WEBHOOK` configurado (`wrangler secret put`). Ver a seção 12 do
 `SISTEMAS.md`.
+
+## A integração contínua
+
+`.github/workflows/ci.yml`, na raiz do repositório. Roda em **todo push e todo
+pull request**, em cerca de 70 segundos, com cinco passos:
+
+1. `npm run typecheck` — tipos do jogo e do Worker;
+2. `npm test` — a suíte inteira;
+3. `npm run build` — o cliente;
+4. `wrangler deploy --dry-run` — o Worker monta e o `wrangler.toml` é válido.
+   É o único passo que olha para a configuração: binding errado quebra ali, e
+   não em produção;
+5. `npm run typecheck:testes` — a catraca.
+
+Existe porque nada disso rodava sozinho: a suíte passava quando alguém lembrava
+de digitar `npm test`, e o Worker publicava **sem verificação de tipos** —
+`wrangler deploy` usa esbuild, que não confere tipo nenhum. Só o cliente tinha
+portão, e por acaso, porque `npm run build` chama o `tsc` antes do Vite.
+
+### A catraca sobre `tests/`
+
+`tests/` não é coberto por `tsconfig.json` nem pelo do servidor, e nunca foi.
+O custo apareceu em 12/09/2026: ao remover o campo `autoEquip` do estado, sete
+arquivos de teste continuaram citando um campo que não existe mais e **nada
+acusou** — atribuir propriedade inexistente é erro de tipo, não de execução, e a
+suíte seguia verde guardando uma regra já removida.
+
+`tsconfig.tests.json` cobre a lacuna e encontrou **64 erros** de uma vez.
+Transformar isso em portão deixaria o CI vermelho desde o primeiro dia, e CI
+sempre vermelho ensina a ignorar CI — o mesmo argumento do alerta de recusas.
+Então `tools/typecheck-testes.mjs` trava o CRESCIMENTO e não o estado: teste
+novo com erro de tipo quebra, os 64 antigos esperam a vez. Ao baixar o número,
+baixe o `LIMITE` junto. Em zero, vira portão e o script some.
 
 ## Arquitetura
 
