@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+import { bus } from '@app/Bus';
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
 import type { Item, Rarity } from '@sim/types';
@@ -84,5 +85,62 @@ describe('o descarte automático é do Passe', () => {
     const inventario = readFileSync('src/ui/panels/InventoryPanel.ts', 'utf8');
     expect(inventario).toContain('s.autoSalvage = Number(');
     expect(inventario).toContain("s.autoDispose = vendendo ? 'desmontar' : 'vender';");
+  });
+});
+
+describe('o descarte automático avisa o servidor, e mostra o que rendeu', () => {
+  /**
+   * O defeito de 12/09/2026: "terminei o setor e mesmo com o descarte
+   * automático abaixo de raro apareceu esses itens".
+   *
+   * A peça É declarada como coletada — `tirarDoPote` enfileira um `coletar`,
+   * porque o cursor do lote andou. Sem um `descartar` junto, o servidor criava
+   * a linha e a sincronização seguinte devolvia a peça que a automação tinha
+   * acabado de consumir. E como o crédito acontecia do mesmo jeito, o jogador
+   * ficava com a sucata E com o item.
+   */
+  const comVipEComCorte = (sim: Sim): void => {
+    sim.state.vip.expiresAt = Date.now() + 86_400_000;
+    sim.state.settings.autoEquip = false;
+    sim.state.settings.autoSalvage = 3 as Rarity;
+  };
+
+  it('enfileira o descarte, para o item não voltar na sincronização', () => {
+    const sim = new Sim(createState(21));
+    comVipEComCorte(sim);
+    sim.state.comandosDeItem.length = 0;
+
+    sim.acquire(peca(1));
+
+    const descartes = sim.state.comandosDeItem.filter((c) => c.tipo === 'descartar');
+    expect(descartes, 'o servidor não soube que a peça morreu').toHaveLength(1);
+    expect(descartes[0]).toMatchObject({ uid: 'x1' });
+    expect(sim.state.inventory, 'a peça ficou na carga').toHaveLength(0);
+  });
+
+  it('e diz quanto rendeu, para o canto da tela somar', () => {
+    const sim = new Sim(createState(22));
+    comVipEComCorte(sim);
+    sim.state.settings.autoDispose = 'vender';
+
+    const rendeu: { sucata: number; materiais: Record<string, number> }[] = [];
+    const solta = bus.on('descarte:automatico', (e) => rendeu.push(e));
+    try { sim.acquire(peca(1)); } finally { solta(); }
+
+    expect(rendeu).toHaveLength(1);
+    expect(rendeu[0]!.sucata, 'vendeu sem dizer quanto').toBeGreaterThan(0);
+  });
+
+  it('e o desmanche diz o material, não a sucata', () => {
+    const sim = new Sim(createState(23));
+    comVipEComCorte(sim);
+    sim.state.settings.autoDispose = 'desmontar';
+
+    const rendeu: { sucata: number; materiais: Record<string, number> }[] = [];
+    const solta = bus.on('descarte:automatico', (e) => rendeu.push(e));
+    try { sim.acquire(peca(1)); } finally { solta(); }
+
+    expect(rendeu[0]!.sucata).toBe(0);
+    expect(Object.keys(rendeu[0]!.materiais).length).toBeGreaterThan(0);
   });
 });

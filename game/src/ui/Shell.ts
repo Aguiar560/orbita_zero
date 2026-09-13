@@ -110,6 +110,11 @@ export class Shell {
   private panelTimer = 0;
   private dirty = true;
   /** Some com o "Inventario Cheio" quando o jogo para de tentar. */
+  /** Acumulado do descarte automático, até a chuva de peças parar. */
+  private descarteSucata = 0;
+  private descarteMateriais: Record<string, number> = {};
+  private descartePecas = 0;
+  private relogioDoDescarte = 0;
   private relogioDoInventarioCheio = 0;
   /** Camada do painel em tela cheia, quando há um aberto. */
   private camadaHost: HTMLElement | null = null;
@@ -517,6 +522,7 @@ export class Shell {
       `Chave da Galáxia ${galaxia + 1} ${garantida ? 'garantida' : 'encontrada'} · guardada no Armazém`, 'good', 'ui/icon_star',
     ));
     bus.on('chefe:pecasRetidas', ({ retidas }) => this.mostrarPecasRetidas(retidas));
+    bus.on('descarte:automatico', (rendeu) => this.somarNoDescarte(rendeu));
     // Peças guardadas numa sessão anterior: o save lembra, e a tela precisa
     // dizer logo ao abrir — senão o jogador libera espaço sem saber por quê.
     if (this.sim.state.pecasRetidas > 0) setTimeout(() => this.mostrarPecasRetidas(this.sim.state.pecasRetidas), 0);
@@ -993,6 +999,59 @@ export class Shell {
    * o relógio REARMADO: a mensagem some quando o jogo para de tentar, e não N
    * segundos depois da primeira peça.
    */
+  /**
+   * O que o descarte automático rendeu, somado no canto inferior direito.
+   *
+   * ## Por que soma em vez de avisar peça a peça
+   *
+   * Um setor fechado derruba dezenas de peças, e a automação consome quase
+   * todas. Um cartão por peça seria estrobo — a mesma armadilha que o aviso
+   * de Inventário cheio já tinha aprendido. Aqui o elemento é REAPROVEITADO,
+   * o total CRESCE enquanto a chuva dura, e o relógio é REARMADO a cada
+   * peça: a mensagem some quando o jogo para de render, não N segundos
+   * depois da primeira.
+   *
+   * ## Por que o canto, e não um toast
+   *
+   * Toast é para o que pede leitura; isto é contabilidade de fundo. No canto
+   * ele fica onde o olho encontra quando procura, e fora do caminho quando
+   * não procura — inclusive durante o combate, que é quando ele aparece.
+   */
+  private somarNoDescarte(rendeu: { sucata: number; materiais: Record<string, number> }): void {
+    this.descarteSucata += rendeu.sucata;
+    for (const [id, n] of Object.entries(rendeu.materiais)) {
+      this.descarteMateriais[id] = (this.descarteMateriais[id] ?? 0) + n;
+    }
+    this.descartePecas++;
+
+    let aviso = this.root.querySelector<HTMLElement>('.descarte-rendeu');
+    if (!aviso) {
+      aviso = h('.descarte-rendeu', { role: 'status', 'aria-live': 'polite' });
+      this.root.append(aviso);
+    }
+
+    const partes = [
+      ...(this.descarteSucata > 0 ? [`+${fmt(this.descarteSucata)} sucata`] : []),
+      ...Object.entries(this.descarteMateriais)
+        .map(([id, n]) => `+${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id.replaceAll('_', ' ')}`),
+    ];
+    clear(aviso).append(
+      h('span.descarte-rendeu-rotulo', {
+        text: this.descartePecas === 1
+          ? '1 peça processada'
+          : `${this.descartePecas} peças processadas`,
+      }),
+      ...partes.map((texto) => h('strong', { text: texto })),
+    );
+
+    window.clearTimeout(this.relogioDoDescarte);
+    this.relogioDoDescarte = window.setTimeout(() => {
+      aviso?.remove();
+      this.descarteSucata = 0;
+      this.descarteMateriais = {};
+      this.descartePecas = 0;
+    }, 3200);
+  }
   private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada'): void {
     const texto = 'Inventario Cheio';
 

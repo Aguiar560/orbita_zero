@@ -2921,11 +2921,33 @@ export class Sim {
 
   /** Item ainda fora do inventário: desmancha, e o material sempre cabe. */
   private descartarAutomaticamente(item: Item): void {
+    /**
+     * O SERVIDOR precisa saber que esta peça morreu.
+     *
+     * Ela foi declarada como coletada — `tirarDoPote` enfileira um `coletar`,
+     * porque o cursor do lote andou —, então o servidor a cria. Sem o
+     * `descartar` aqui, a sincronização seguinte trazia de volta o item que a
+     * automação acabou de consumir: o jogador via peça Comum reaparecer na
+     * carga com o corte em "abaixo de Raro" ligado, e recebia a sucata da venda
+     * DE BRINDE, porque o crédito abaixo acontecia do mesmo jeito.
+     *
+     * Relatado em 12/09/2026. Todo outro caminho que tira peça da carga já
+     * enfileirava o comando; este era o único que não.
+     *
+     * No servidor os dois comandos se anulam sem custo: coletar e descartar no
+     * MESMO lote nem chegam a virar linha — ver `nascidosEMortos`.
+     */
+    this.state.comandosDeItem.push({ tipo: 'descartar', uid: item.uid });
+
     if (this.vipAtivo && this.state.settings.autoDispose === 'vender') {
-      this.grant('sucata', valorDeVenda(item));
+      const sucata = valorDeVenda(item);
+      this.grant('sucata', sucata);
+      bus.emit('descarte:automatico', { sucata, materiais: {} });
       return;
     }
-    this.guardarRetorno(retornoDeDesmanche(item));
+    const retorno = retornoDeDesmanche(item);
+    this.guardarRetorno(retorno);
+    bus.emit('descarte:automatico', { sucata: 0, materiais: { ...retorno.materiais } });
   }
 
   toggleFavorite(uid: string): void {

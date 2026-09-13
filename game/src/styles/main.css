@@ -9244,6 +9244,30 @@ select option:disabled { color: #667991; }
  * O núcleo quase branco e as sucessivas sombras vermelhas reproduzem a luz de
  * um tubo de neon: perto da lâmpada a luz estoura, e o vermelho aparece no halo
  * que se espalha pelo cenário. */
+/**
+ * O que o descarte automatico rendeu, no canto inferior direito.
+ *
+ * `fixed` pelo mesmo motivo da `.inventario-cheio`: "no canto da tela" nao pode
+ * depender de qual ancestral por acaso esta posicionado.
+ *
+ * `pointer-events: none` porque ele aparece durante o combate e some sozinho —
+ * nao ha nada para clicar, e um retangulo invisivel sobre a cena roubaria o
+ * toque de quem joga no celular.
+ */
+.descarte-rendeu {
+  position: fixed; right: 14px; bottom: 14px; z-index: 40;
+  display: grid; gap: 2px; justify-items: end;
+  padding: 8px 11px; border-radius: 8px; pointer-events: none;
+  border: 1px solid rgba(93, 195, 245, .28);
+  background: rgba(4, 12, 22, .86);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+  font: 700 11px/1.35 'Chakra Petch', sans-serif;
+  animation: descarte-entra .18s ease-out;
+}
+.descarte-rendeu-rotulo { color: #7d919f; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.descarte-rendeu strong { color: #a9eaff; }
+@keyframes descarte-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .descarte-rendeu { animation: none; } }
 .inventario-cheio {
   --aviso-rgb: 255, 42, 26;
   /* `fixed` e nao `absolute`: "no meio da tela" nao pode depender de qual

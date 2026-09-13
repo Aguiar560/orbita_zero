@@ -135,6 +135,14 @@ export interface GameEvents {
    * silêncio anterior tratava os três como o mesmo nada.
    */
   'inventario:cheio': { motivo: 'nao-coletado' | 'descartada' };
+  /**
+   * O que o descarte automático rendeu — uma peça por vez.
+   *
+   * Quem escuta ACUMULA e mostra o total, em vez de um aviso por peça: num
+   * setor fechado caem dezenas, e um cartão por item viraria estrobo. É a mesma
+   * lição de `inventario:cheio`, que também dispara em rajada.
+   */
+  'descarte:automatico': { sucata: number; materiais: Record<string, number> };
 
   /** Caiu a primeira peça de escudo: oferece desligar a bolha. */
   'dica:escudo': void;
