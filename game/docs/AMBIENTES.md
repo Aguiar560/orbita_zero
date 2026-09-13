@@ -143,17 +143,14 @@ li o bloco `[[d1_databases]]` que confirmava minha hipótese, e parei antes da
 linha `ORIGENS`, seis linhas acima. Depois supus o escopo da variável na Vercel
 em vez de perguntar. Duas suposições apresentadas como achado.
 
-## O que falta
-
-**Os dois projetos Vercel.** `orbita_zero` e `orbita-zero` constroem os dois a
-cada push, e as variáveis de ambiente foram postas em um só. Conferir qual está
-sobrando — o que sobra continua construindo sem as variáveis.
-
 ## O que já foi feito
 
 - `ORIGENS` da produção fechado (13/09) — só o site entra.
 - Migração `0028` aplicada nos dois bancos, então `/saude` responde o nome
   real de cada um.
+- O projeto Vercel duplicado (`orbita_zero`) foi apagado em 13/09. Sobrou só
+  `orbita-zero`, que é o dono do domínio e o único que constrói — antes os dois
+  construíam a cada push e só um tinha as variáveis.
 - Variáveis de preview ligadas na Vercel com escopo **Preview**, conferido de
   duas formas: o pacote de produção foi construído com `VITE_API_URL` ausente
   (`a(void 0, …)` dentro do arquivo publicado), e a preview mostra a faixa azul
