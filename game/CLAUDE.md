@@ -24,6 +24,7 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/ECONOMIA-DOS-RECURSOS.md`](docs/ECONOMIA-DOS-RECURSOS.md) | Os 49 recursos sem uso, os sumidouros propostos e a cadência de eventos (07/09) |
 | [`docs/PLANO-MISSOES-NO-SERVIDOR.md`](docs/PLANO-MISSOES-NO-SERVIDOR.md) | O desenho das missões no D1 e os níveis de validação A/B/C |
 | [`docs/LOGIN-PROVEDORES.md`](docs/LOGIN-PROVEDORES.md) | Passo a passo para ligar Google e Facebook no Supabase |
+| [`docs/EMAIL-CONFIRMACAO.md`](docs/EMAIL-CONFIRMACAO.md) | O e-mail de confirmação: template pronto, remetente próprio e o limite do SMTP compartilhado (12/09) |
 | [`docs/PLANO-TRADUCAO.md`](docs/PLANO-TRADUCAO.md) | O jogo em inglês: medida, arquitetura, quem faz o quê, fases e testes (11/09, não iniciado) |
 | [`docs/PLANO-INDICACOES.md`](docs/PLANO-INDICACOES.md) | Sistema de indicação: vínculo, 10%, pagamentos, fraude e estorno (12/09, implementado localmente; publicação pendente) |
 | [`docs/PLANO-MERCADO.md`](docs/PLANO-MERCADO.md) | Mercado de itens por cristal: custódia, compra atômica, fraude e por que não leilão (12/09, não iniciado) |
