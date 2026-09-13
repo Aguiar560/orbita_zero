@@ -97,6 +97,30 @@ export interface PainelAdmin {
     vipVagasTotais: number;
   };
   economia: {
+    /**
+     * O dinheiro que ENTROU, e não o que gera comissão.
+     *
+     * O bloco de indicações responde "quanto veio de quem foi indicado" — que é
+     * uma fatia, e em 12/09/2026 era zero enquanto a primeira venda de verdade
+     * já tinha acontecido. Receita é a pergunta de cima, e faltava.
+     *
+     * Tudo em CENTAVOS, inteiro. Dinheiro em ponto flutuante acumula erro, e a
+     * regra já vale no livro-caixa desde a migração 0005.
+     */
+    receita: {
+      /** Soma das compras pagas, líquida dos reembolsos. */
+      liquidoCentavos: number;
+      brutoCentavos: number;
+      reembolsadoCentavos: number;
+      compras: number;
+      compradores: number;
+      ticketMedioCentavos: number;
+      /** Janelas móveis, para saber se a receita está viva ou é histórico. */
+      centavos24h: number;
+      centavos7d: number;
+      /** Cobranças abertas agora. Não é receita — é intenção. */
+      pendentes: number;
+    };
     recursos: RecursoTotal[];
     materiais: { material: string; quantia: number }[];
     movimentacao: { moeda: string; entradas: number; saidas: number; operacoes: number }[];
@@ -178,6 +202,11 @@ interface RegistroDeMovimento { moeda: string; entradas: number; saidas: number;
 interface RegistroDeRaridade { raridade: number; total: number; equipados: number; }
 interface RegistroDeMissaoGeral { iniciadas: number; entregues: number; em_andamento: number; }
 interface RegistroDeMissaoPopular { missao: string; total: number; }
+interface RegistroDeReceita {
+  bruto: number; reembolsado: number; compras: number; compradores: number;
+  centavos_24h: number; centavos_7d: number; pendentes: number;
+}
+
 interface RegistroDeIndicacoes {
   vinculados: number; compradores: number; receita_centavos: number;
   pendentes: number; liberados: number; revertidos: number; divida: number;
@@ -220,11 +249,31 @@ interface AcumuladoDoJogador {
  * união é expandida por subconsultas correlacionadas. Contas antigas que só
  * possuem um save continuam entrando no retrato.
  */
+/** O bloco de receita, com o líquido derivado em vez de guardado. */
+function montarReceita(linha: RegistroDeReceita | undefined): PainelAdmin['economia']['receita'] {
+  const bruto = Number(linha?.bruto) || 0;
+  const reembolsado = Number(linha?.reembolsado) || 0;
+  const compras = Number(linha?.compras) || 0;
+  return {
+    brutoCentavos: bruto,
+    reembolsadoCentavos: reembolsado,
+    liquidoCentavos: bruto - reembolsado,
+    compras,
+    compradores: Number(linha?.compradores) || 0,
+    // Do BRUTO: o ticket é o tamanho da compra que foi feita, e um reembolso
+    // não muda o tamanho dela — muda quanto sobrou.
+    ticketMedioCentavos: compras ? Math.round(bruto / compras) : 0,
+    centavos24h: Number(linha?.centavos_24h) || 0,
+    centavos7d: Number(linha?.centavos_7d) || 0,
+    pendentes: Number(linha?.pendentes) || 0,
+  };
+}
+
 export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: string }, agora: number): Promise<PainelAdmin> {
   const [
     contas, apelidos, progressos, atividades, naves, itens, equipamentos, missoes, saldos,
     frotaPorCasco, materiais, movimentos, emCampo, raridades, missoesGerais, missoesPopulares,
-    indicacoes, assinaturas,
+    indicacoes, assinaturas, receita,
   ] = await Promise.all([
     env.DB.prepare('SELECT usuario, primeiro_em FROM contas').all<RegistroDeConta>(),
     env.DB.prepare('SELECT usuario, apelido FROM apelidos').all<RegistroDeApelido>(),
@@ -306,6 +355,25 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
     // assinou —, então ela responde as duas perguntas de uma vez.
     env.DB.prepare('SELECT usuario, expira_em, bonus_dias FROM assinaturas')
       .all<RegistroDeAssinatura>(),
+    /**
+     * Uma varredura só de `compras`, com os estados separados por `CASE`.
+     *
+     * `paga` e `reembolsada` são estados finais diferentes, e somar os dois
+     * daria um número que não é receita nem de longe. `pendente` entra
+     * separada porque é intenção, não dinheiro: uma cobrança Pix aberta vira
+     * receita ou vira nada.
+     */
+    env.DB.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN estado = 'paga' THEN centavos ELSE 0 END), 0) AS bruto,
+        COALESCE(SUM(CASE WHEN estado = 'reembolsada' THEN centavos ELSE 0 END), 0) AS reembolsado,
+        COUNT(CASE WHEN estado = 'paga' THEN 1 END) AS compras,
+        COUNT(DISTINCT CASE WHEN estado = 'paga' THEN usuario END) AS compradores,
+        COALESCE(SUM(CASE WHEN estado = 'paga' AND paga_em > ?1 THEN centavos ELSE 0 END), 0) AS centavos_24h,
+        COALESCE(SUM(CASE WHEN estado = 'paga' AND paga_em > ?2 THEN centavos ELSE 0 END), 0) AS centavos_7d,
+        COUNT(CASE WHEN estado = 'pendente' THEN 1 END) AS pendentes
+      FROM compras
+    `).bind(agora - 86_400, agora - 604_800).all<RegistroDeReceita>(),
   ]);
 
   const porUsuario = new Map<string, AcumuladoDoJogador>();
@@ -505,6 +573,7 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
   return {
     geradoEm: agora, janelaOnlineSegundos: JANELA_ONLINE_SEGUNDOS, resumo, jogadores,
     economia: {
+      receita: montarReceita(receita.results?.[0]),
       recursos: [...recursos].map(([moeda, quantia]) => ({ moeda, quantia })),
       materiais: [...materiaisTotais].map(([material, quantia]) => ({ material, quantia })).sort((a, b) => b.quantia - a.quantia),
       movimentacao: (movimentos.results ?? []).map((linha) => ({

@@ -15,8 +15,16 @@ describe('painel administrativo', () => {
   const segundo = '87654321-aaaa-bbbb-cccc-123456789abc';
 
   const bancoDeExemplo = () => ({
-      prepare: (sql: string) => ({
-        all: async () => {
+    // `bind` devolve a mesma resposta: aqui a consulta e escolhida pelo TEXTO do
+    // SQL, e os parametros nao mudam nenhum dos casos montados abaixo.
+    prepare: (sql: string) => ({
+      bind: (..._valores: unknown[]) => ({ all: async () => resposta(sql) }),
+      all: async () => resposta(sql),
+    }),
+  });
+
+  function resposta(sql: string): { results: unknown[] } {
+        {
           if (sql === 'SELECT usuario, primeiro_em FROM contas') return { results: [{ usuario: primeiro, primeiro_em: 900 }, { usuario: segundo, primeiro_em: 900 }] };
           if (sql.includes('FROM apelidos')) return { results: [{ usuario: primeiro, apelido: 'Vetor' }] };
           if (sql.includes('FROM progresso')) return { results: [{ usuario: primeiro, xp: 0, melhor_setor: 12, casco_em_campo: 'nucleo_vektor' }, { usuario: segundo, xp: 0, melhor_setor: 2, casco_em_campo: '' }] };
@@ -26,6 +34,13 @@ describe('painel administrativo', () => {
           ] };
           if (sql.includes('FROM saldos')) return { results: [{ usuario: primeiro, moeda: 'sucata', quantia: 25 }, { usuario: segundo, moeda: 'cristal', quantia: 3 }] };
           if (sql.includes('FROM materiais')) return { results: [{ usuario: primeiro, material: 'ferro', quantia: 7 }] };
+          // Receita: uma paga, uma reembolsada e tres cobrancas abertas. Os tres
+          // estados juntos sao o que separa "entrou" de "vai entrar" e de
+          // "entrou e voltou".
+          if (sql.includes('FROM compras')) return { results: [{
+            bruto: 4_990, reembolsado: 490, compras: 2, compradores: 2,
+            centavos_24h: 4_990, centavos_7d: 4_990, pendentes: 3,
+          }] };
           // O passe: um ativo (vence depois de `agora`) e um vencido. A linha
           // sobrevive ao vencimento de propósito — é o histórico de quem já
           // assinou —, e é isso que separa "nunca teve" de "teve e perdeu".
@@ -47,9 +62,8 @@ describe('painel administrativo', () => {
           if (sql.includes('FROM frota')) return { results: [{ usuario: primeiro, total: 3 }, { usuario: segundo, total: 1 }] };
           if (sql.includes('FROM itens')) return { results: [{ usuario: primeiro, itens_mochila: 8, itens_equipados: 10 }, { usuario: segundo, itens_mochila: 1, itens_equipados: 0 }] };
           return { results: [{ usuario: primeiro, total: 4 }] };
-        },
-      }),
-  });
+    }
+  }
 
   it('consolida a telemetria sem expor e-mail ou save bruto', async () => {
     const painel = await lerPainelAdmin({ DB: bancoDeExemplo() as never }, 1_000);
@@ -66,6 +80,24 @@ describe('painel administrativo', () => {
       baseId: 'principal_2', nave: 'nucleo_vektor', slot: 'principal', raridade: 3, nivel: 12,
     }]);
     expect(JSON.stringify(painel)).not.toContain('12345678-aaaa');
+  });
+
+  it('mostra o dinheiro que entrou, e nao so o que gera comissao', async () => {
+    /**
+     * Pedido em 12/09/2026, depois de o painel de indicacoes mostrar R$ 0,00
+     * com a primeira venda de verdade do jogo ja feita — o comprador nao veio
+     * de indicacao, entao o numero estava certo e era a pergunta errada.
+     */
+    const painel = await lerPainelAdmin({ DB: bancoDeExemplo() as never }, 1_000);
+    const receita = painel.economia.receita;
+
+    expect(receita.brutoCentavos).toBe(4_990);
+    expect(receita.reembolsadoCentavos).toBe(490);
+    expect(receita.liquidoCentavos, 'o reembolso nao saiu do total').toBe(4_500);
+    // Do BRUTO: o reembolso muda quanto sobrou, nao o tamanho da compra feita.
+    expect(receita.ticketMedioCentavos).toBe(2_495);
+    expect(receita.compras).toBe(2);
+    expect(receita.pendentes, 'cobranca aberta virou receita').toBe(3);
   });
 
   it('separa quem é VIP, quem foi, e quantas vagas da cortesia restam', async () => {

@@ -36,6 +36,15 @@ export class AdminDashboardPanel implements Panel {
   private atualizando = false;
   private aba: 'visao' | 'pilotos' | 'atividade' | 'progressao' | 'economia' | 'frota' | 'missoes' | 'saude' = 'visao';
   private pilotoAberto: string | null = null;
+  /**
+   * A receita nasce OCULTA a cada abertura do painel, e de propósito.
+   *
+   * É o único número aqui que não se quer numa gravação de tela ou num
+   * compartilhamento em chamada. Guardar a escolha faria o painel abrir
+   * revelado justamente na vez em que alguém está olhando junto — o padrão
+   * seguro tem de ser o que acontece sem ninguém decidir nada.
+   */
+  private receitaVisivel = false;
   private codigoIndicacao = '';
   private motivoIndicacao = '';
   private operandoIndicacao = false;
@@ -187,6 +196,7 @@ export class AdminDashboardPanel implements Panel {
         h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'FLUXO ECONÔMICO' }), h('small', { text: 'Entradas, saídas e volume do livro-caixa.' }))),
         h('.admin-cartoes', {}, ...movimentos),
       ),
+      this.receita(dados.economia.receita, reais),
       h('.admin-dashboard-lista.admin-coluna-inteira', {},
         h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: 'INDICAÇÕES' }), h('small', { text: 'Aquisição, comissão e exposição a reembolsos.' }))),
         h('.admin-cartoes', {},
@@ -377,6 +387,47 @@ export class AdminDashboardPanel implements Panel {
 
   private grupo(titulo: string, subtitulo: string, conteudo: HTMLElement[]): HTMLElement {
     return h('.admin-dashboard-lista', {}, h('.admin-lista-topo', {}, h('.admin-lista-texto', {}, h('span', { text: titulo }), h('small', { text: subtitulo }))), h('.admin-cartoes', {}, ...conteudo));
+  }
+
+  /**
+   * O dinheiro que entrou — o número que faltava ao lado do de comissão.
+   *
+   * O bloco de indicações responde "quanto veio de quem foi indicado", que é
+   * uma fatia: em 12/09/2026 ele mostrava zero enquanto a primeira venda de
+   * verdade já tinha acontecido, porque o comprador não veio de indicação.
+   */
+  private receita(
+    receita: PainelAdmin['economia']['receita'],
+    reais: (centavos: number) => string,
+  ): HTMLElement {
+    const oculto = '•••••';
+    const valor = (centavos: number): string => (this.receitaVisivel ? reais(centavos) : oculto);
+    return h('.admin-dashboard-lista.admin-coluna-inteira', {},
+      h('.admin-lista-topo', {},
+        h('.admin-lista-texto', {},
+          h('span', { text: 'RECEITA' }),
+          h('small', { text: 'Dinheiro de verdade que entrou, líquido de reembolsos.' }),
+        ),
+        h('button.btn.admin-olho', {
+          type: 'button',
+          'aria-pressed': String(this.receitaVisivel),
+          onclick: () => { this.receitaVisivel = !this.receitaVisivel; bus.emit('state:changed'); },
+        }, h('span', { text: this.receitaVisivel ? 'OCULTAR' : 'VISUALIZAR' })),
+      ),
+      h('.admin-cartoes', {},
+        this.cartao('TOTAL LÍQUIDO', valor(receita.liquidoCentavos)),
+        this.cartao('BRUTO', valor(receita.brutoCentavos)),
+        this.cartao('REEMBOLSADO', valor(receita.reembolsadoCentavos)),
+        this.cartao('ÚLTIMAS 24H', valor(receita.centavos24h)),
+        this.cartao('ÚLTIMOS 7D', valor(receita.centavos7d)),
+        this.cartao('TICKET MÉDIO', valor(receita.ticketMedioCentavos)),
+        // Contagem não é dinheiro: fica à vista mesmo com o valor oculto, e é
+        // o que diz se a receita parada é falta de venda ou falta de gente.
+        this.cartao('COMPRAS PAGAS', fmt(receita.compras)),
+        this.cartao('COMPRADORES', fmt(receita.compradores)),
+        this.cartao('COBRANÇAS ABERTAS', fmt(receita.pendentes), 'intenção, não receita'),
+      ),
+    );
   }
 
   private cartao(rotulo: string, valor: string, detalhe?: string): HTMLElement {

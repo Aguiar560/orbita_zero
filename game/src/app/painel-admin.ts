@@ -68,6 +68,17 @@ export interface PainelAdmin {
     vipVagasTotais: number;
   };
   economia: {
+    receita: {
+      liquidoCentavos: number;
+      brutoCentavos: number;
+      reembolsadoCentavos: number;
+      compras: number;
+      compradores: number;
+      ticketMedioCentavos: number;
+      centavos24h: number;
+      centavos7d: number;
+      pendentes: number;
+    };
     recursos: { moeda: string; quantia: number }[];
     materiais: { material: string; quantia: number }[];
     movimentacao: { moeda: string; entradas: number; saidas: number; operacoes: number }[];
