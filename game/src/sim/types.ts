@@ -592,7 +592,24 @@ export interface GameState {
   armazem: Record<string, number>;
 
   /** Estoque de chaves especiais, indexado pelo id da própria galáxia. */
+  /**
+   * ⚠️ ESPELHO da tabela `chaves` no D1 desde 12/09/2026.
+   *
+   * Escrever aqui muda o que se vê e nada mais — a sincronização seguinte traz
+   * o estoque do servidor por cima. Quem debita é ele, junto com a abertura do
+   * acesso ao chefe, numa transação só.
+   */
   chavesAcesso: Record<string, number>;
+
+  /**
+   * Chave que caiu e o servidor ainda não confirmou.
+   *
+   * Fila de SAÍDA, como `pendentes` e `materiaisPendentes`: não sobe no save,
+   * sobrevive à recarga pelo `localStorage` e só esvazia quando o servidor
+   * confirma. Só GANHO entra aqui — gasto não é declaração do cliente, é pedido
+   * ao servidor (ver `app/chaves.ts`).
+   */
+  chavesPendentes: Record<string, number>;
   /** Galáxias que já receberam a garantia do primeiro setor pré-chefe. */
   chavesAcessoGarantidas: number[];
 

@@ -64,7 +64,10 @@ describe('a trava: nenhuma escrita nova em run.sector passa despercebida', () =>
   const PERMITIDO: Record<string, number> = {
     // `jumpSector` (barrado), `prepararAcessoAoChefe` (consome a chave),
     // `completeEncounter` (barrado) e `garantirSetorComChave` (a rede).
-    'src/sim/index.ts': 4,
+    // Subiu para 5 em 12/09 com `entrarNoChefe`, que aplica a entrada DEPOIS
+    // de o servidor cobrar a chave. A trava acusou a linha nova, que e o que
+    // ela existe para fazer.
+    'src/sim/index.ts': 5,
     // O aparo de sanidade e o recuo do save inválido.
     'src/sim/state.ts': 2,
     // A ausência, que nunca simula chefe.

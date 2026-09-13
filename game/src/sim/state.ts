@@ -113,6 +113,7 @@ export function createState(
     cargaLiberada: [],
     armazem: {},
     chavesAcesso: {},
+    chavesPendentes: {},
     chavesAcessoGarantidas: [],
 
     shop: {},
@@ -367,6 +368,11 @@ export function migrate(raw: unknown): GameState | null {
     Object.entries(state.materiaisPendentes ?? {})
       .filter(([id, n]) => RECURSO_POR_ID.has(id) && Number.isFinite(n) && n !== 0)
       .map(([id, n]) => [id, Math.trunc(n)]),
+  );
+  state.chavesPendentes = Object.fromEntries(
+    Object.entries(state.chavesPendentes ?? {})
+      .filter(([id, n]) => CHAVE_POR_ID.has(id) && Number.isFinite(n) && n > 0)
+      .map(([id, n]) => [id, Math.min(999, Math.floor(n))]),
   );
   state.chavesAcesso = Object.fromEntries(
     Object.entries(state.chavesAcesso ?? {})

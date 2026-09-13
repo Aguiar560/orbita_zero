@@ -391,6 +391,7 @@ export function comAsFilasDaqui(daNuvem: GameState, local: GameState): GameState
     // sempre vazia — `semODinheiro` a arranca —, e somar mesmo assim é o que
     // mantém esta função correta no dia em que isso deixar de ser verdade.
     materiaisPendentes: somarFilasDeMaterial(local.materiaisPendentes, daNuvem.materiaisPendentes),
+    chavesPendentes: somarFilasDeMaterial(local.chavesPendentes, daNuvem.chavesPendentes),
   };
 }
 
@@ -407,6 +408,11 @@ function semODinheiro(estado: GameState): GameState {
     // outro aparelho baixar um desmanche que ESTE ainda vai declarar, e o
     // material entraria duas vezes.
     materiaisPendentes: {},
+    // As chaves moram na tabela `chaves` desde 12/09/2026, pelo mesmo motivo do
+    // item e do dinheiro: duas verdades no mesmo servidor, e a segunda escrita
+    // pelo cliente, é o buraco que estas fases existem para fechar.
+    chavesAcesso: {},
+    chavesPendentes: {},
     // O inventário mora na tabela `itens` desde a Fase 3b. Mesmo motivo do
     // dinheiro: duas verdades no mesmo servidor, e a segunda escrita pelo
     // cliente, é o buraco que estas fases existem para fechar.

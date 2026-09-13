@@ -16,6 +16,7 @@ import { getHull } from '@data/hulls';
 import { RECURSO_POR_ID, iconeDeRecurso } from '@data/recursos';
 import { NODE_BY_ID } from '@data/tree';
 import { balancoDaAusencia } from '@sim/balanco-da-ausencia';
+import { consumirChaveNoServidor } from '@app/chaves';
 import { screenUnlockFor, type ScreenUnlock } from '@data/screen-unlocks';
 import { temTutorial } from '@data/tutoriais';
 import type { Panel } from './panels/types';
@@ -926,10 +927,34 @@ export class Shell {
     const modal = h('.modal-backdrop.boss-key-confirmacao', { role: 'presentation' });
     const fechar = (): void => modal.remove();
     const voltar = h('button.btn', { text: 'CANCELAR', onclick: () => { this.sim.recuarUmSetor(); fechar(); } });
+    /**
+     * Quem cobra a chave é o SERVIDOR, e a nave só entra depois da confirmação.
+     *
+     * Desde 12/09/2026 a chave mora na tabela `chaves` do D1. Entrar era, até
+     * então, palavra do cliente: debitar aqui e mover a nave em seguida deixava
+     * a entrada no chefe a um `localStorage` de distância.
+     *
+     * O botão trava enquanto espera. Sem isso, dois cliques viram duas chaves
+     * gastas — e a segunda não compra nada, porque o acesso já estava aberto.
+     */
+    let pedindo = false;
     const usar = h('button.btn.primary.big', {
       disabled: quantidade <= 0,
-      onclick: () => { if (this.sim.prepararAcessoAoChefe(bossId)) fechar(); },
-    }, h('span', { text: 'USAR CHAVE E ENTRAR' }));
+      onclick: () => {
+        if (pedindo) return;
+        pedindo = true;
+        usar.setAttribute('disabled', '');
+        void (async () => {
+          if (await consumirChaveNoServidor(this.sim, chave.id, bossId)) {
+            this.sim.entrarNoChefe(bossId);
+            fechar();
+            return;
+          }
+          pedindo = false;
+          usar.removeAttribute('disabled');
+        })();
+      },
+    }, h('span', { text: 'USAR CHAVE E ENTRAR' })) as HTMLButtonElement;
     modal.append(h('.modal.boss-key-confirmacao-cartao', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'boss-key-confirmacao-titulo' },
       h('span.boss-key-confirmacao-kicker', { text: `GALÁXIA ${String(galaxia + 1).padStart(2, '0')} · SETOR ${sector}` }),
       h('h2#boss-key-confirmacao-titulo', { text: 'Acesso ao chefe' }),

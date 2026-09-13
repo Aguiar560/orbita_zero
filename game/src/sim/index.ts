@@ -1732,7 +1732,13 @@ export class Sim {
     const chave = CHAVE_POR_ID.get(id);
     if (!chave) return false;
     const jaGarantida = garantida && this.state.chavesAcessoGarantidas.includes(chave.galaxia);
-    if (!jaGarantida) this.state.chavesAcesso[id] = Math.min(999, (this.state.chavesAcesso[id] ?? 0) + 1);
+    if (!jaGarantida) {
+      this.state.chavesAcesso[id] = Math.min(999, (this.state.chavesAcesso[id] ?? 0) + 1);
+      // E a fila de saída, porque o dono da chave é o servidor desde 12/09. O
+      // espelho acima é o que a tela mostra no mesmo quadro em que a cápsula é
+      // coletada; a fila é o que faz isso virar verdade.
+      this.state.chavesPendentes[id] = (this.state.chavesPendentes[id] ?? 0) + 1;
+    }
     if (garantida) {
       this.pendingGuaranteedKeys.delete(chave.galaxia);
       if (!this.state.chavesAcessoGarantidas.includes(chave.galaxia)) this.state.chavesAcessoGarantidas.push(chave.galaxia);
@@ -1764,6 +1770,36 @@ export class Sim {
   acessoAoChefeLiberado(bossId: string): boolean {
     if (this.desafio || this.testMode) return true;
     return this.state.run.chaveAcessoConsumida === bossId;
+  }
+
+  /**
+   * Aplica a entrada DEPOIS que o servidor cobrou a chave.
+   *
+   * Separado de `prepararAcessoAoChefe` em 12/09/2026, quando a chave virou
+   * estado do D1: quem debita é o servidor, numa transação só com a abertura do
+   * acesso, e o cliente só APLICA o que ele confirmou. Debitar dos dois lados
+   * cobraria duas vezes de quem tem uma chave só.
+   */
+  entrarNoChefe(bossId: string): void {
+    const run = this.state.run;
+    run.chaveAcessoConsumida = bossId;
+    if (this.pendingBossSector !== undefined && bossForSector(this.pendingBossSector).id === bossId) {
+      run.sector = this.pendingBossSector;
+      run.wave = 1;
+      run.falhasNoSetor = 0;
+      this.pendingBossSector = undefined;
+      this.marcarSetor();
+      this.refreshEncounter();
+      bus.emit('sector:advanced', { universe: this.state.universe.index, sector: run.sector });
+    }
+    this.touch();
+  }
+
+  /** Só pergunta. O gasto é do servidor — ver `app/chaves.ts`. */
+  podeEntrarNoChefe(bossId: string): boolean {
+    if (this.acessoAoChefeLiberado(bossId)) return true;
+    const chave = [...CHAVE_POR_ID.values()].find((item) => item.bossId === bossId);
+    return !!chave && this.quantidadeChaveDaGalaxia(chave.galaxia) > 0;
   }
 
   prepararAcessoAoChefe(bossId: string): boolean {

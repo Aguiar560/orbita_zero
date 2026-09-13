@@ -27,6 +27,7 @@ import { drenarCarteira, espelharNoSim, sincronizar as sincronizarCarteira } fro
 import { garantirLote } from './lote';
 import { drenarInventario, sincronizarFrota } from './inventario';
 import { adotarAusencia, drenarProgresso, sincronizarProgresso } from './progresso';
+import { drenarChaves, sincronizarChaves } from './chaves';
 import { drenarMissoes, sincronizarMissoes } from './missoes';
 import { creditarAusencia } from './ausencia';
 import { devoRecarregar, marcarTentativa, vigiarVersao } from './versao';
@@ -326,6 +327,9 @@ export class Game {
     // pela conferencia dele, e a mescla monotonica soma o que duas maquinas
     // avancaram em vez de uma vencer.
     await sincronizarMissoes(this.sim);
+    // E as chaves, que sairam do save em 12/09: sem isto o Armazem abriria
+    // vazio e o cartao do chefe diria que ninguem tem chave nenhuma.
+    await sincronizarChaves(this.sim);
 
     // O modo de teste é ferramenta de admin, e o interruptor some para quem não
     // é. Desligar aqui, e não só esconder, é o que tira do modo quem já entrou
@@ -947,6 +951,10 @@ export class Game {
     // As missoes andam no mesmo relogio: o progresso delas vem de abate e de
     // setor concluido, que e o mesmo evento que enche a carteira.
     void drenarMissoes(this.sim);
+    // As chaves andam no mesmo relógio: elas caem de abate, que é o mesmo
+    // evento que enche a carteira. Um relógio próprio dobraria a requisição
+    // sem dobrar a informação.
+    void drenarChaves(this.sim);
   }
 
   private readonly draw = (_alpha: number, dt: number): void => {
