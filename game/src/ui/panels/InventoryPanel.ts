@@ -514,21 +514,36 @@ export class InventoryPanel implements Panel {
 
     const AVISO_VIP = 'Somente Passe VIP pode acionar o descarte automático.';
 
-    const destino = (valor: 'desmontar' | 'vender', rotulo: string): HTMLElement => h(
-      `button.mini${(vendendo ? 'vender' : 'desmontar') === valor ? '.ativa' : ''}${vip ? '' : '.bloqueada'}`,
+    /**
+     * UM alternador, e não dois botões.
+     *
+     * Dois botões gastavam a largura de duas palavras para dizer uma escolha
+     * entre duas — e numa barra de 378px essa largura é o recurso escasso. O
+     * alternador ocupa o espaço de um, mostra os dois rótulos e diz qual vale
+     * pela posição: esquerda desmonta, direita vende.
+     *
+     * É um `button` e não dois `radio`: a escolha tem exatamente duas opções e
+     * nenhuma delas é "nada", então clicar TROCA — não há estado a escolher,
+     * só um lado para o qual ir. O nome acessível carrega o valor atual, que é
+     * o que o leitor de tela precisa e a posição não conta.
+     */
+    const alternador = h(
+      `button.inv-destino-switch${vendendo ? '.vender' : ''}${vip ? '' : '.bloqueada'}`,
       {
-        text: rotulo,
-        title: vip
-          ? `Peça abaixo do corte vira ${valor === 'vender' ? 'sucata na hora' : 'material de fabricação'}.`
-          : AVISO_VIP,
+        type: 'button',
         disabled: !vip,
-        'aria-pressed': String((vendendo ? 'vender' : 'desmontar') === valor),
+        title: vip
+          ? `Peça abaixo do corte vira ${vendendo ? 'sucata na hora' : 'material de fabricação'}. Clique para alternar.`
+          : AVISO_VIP,
+        'aria-label': `Destino do descarte: ${vendendo ? 'Vender' : 'Desmontar'}. Clique para alternar.`,
         onclick: () => {
           if (!vip) return;
-          s.autoDispose = valor;
+          s.autoDispose = vendendo ? 'desmontar' : 'vender';
           sim.touch();
         },
       },
+      h('span', { text: 'Desmontar' }),
+      h('span', { text: 'Vender' }),
     );
 
     return h(`.toolbar.inv-auto-toolbar${vip ? '' : '.bloqueada'}`, {
@@ -553,13 +568,7 @@ export class InventoryPanel implements Panel {
           value: String(r.id), text: `Abaixo de ${r.name}`, selected: s.autoSalvage === r.id,
         })),
       ),
-      // Os dois juntos, num grupo: `.toolbar` é `space-between`, e soltos eles
-      // iam para pontas opostas da barra — duas coisas distantes não se leem
-      // como UMA escolha entre duas, que é o que elas são.
-      h('.inv-auto-destino', { role: 'group', 'aria-label': 'Destino do descarte' },
-        destino('desmontar', 'Desmontar'),
-        destino('vender', 'Vender'),
-      ),
+      alternador,
     );
   }
 

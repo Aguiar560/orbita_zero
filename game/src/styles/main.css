@@ -106,7 +106,37 @@
 /* À esquerda, e não espalhado: `.toolbar` é `space-between`, e com três filhos
    o rótulo, o seletor e os botões iam parar em três cantos da barra. */
 .inv-auto-toolbar { align-items: center; justify-content: flex-start; gap: 8px; }
-.inv-auto-destino { display: flex; gap: 6px; }
+/**
+ * O alternador do destino: um controle no lugar de dois botões.
+ *
+ * A pastilha corre para o lado escolhido — esquerda desmonta, direita vende —,
+ * e é a POSIÇÃO que responde "qual está valendo" sem gastar uma palavra a mais
+ * numa barra de 378px.
+ */
+.inv-destino-switch {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr;
+  padding: 2px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(10, 16, 30, .7); cursor: pointer;
+  font: 700 9px/1 'Chakra Petch', sans-serif; letter-spacing: .08em;
+}
+.inv-destino-switch::before {
+  content: ''; position: absolute; inset: 2px 50% 2px 2px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: 1px solid var(--accent);
+  transition: transform .18s ease;
+}
+.inv-destino-switch.vender::before { transform: translateX(100%); }
+.inv-destino-switch span {
+  position: relative; z-index: 1; padding: 5px 11px; text-align: center;
+  color: #7d919f; text-transform: uppercase; transition: color .18s;
+}
+.inv-destino-switch:not(.vender) span:first-child,
+.inv-destino-switch.vender span:last-child { color: var(--accent); }
+.inv-destino-switch.bloqueada { cursor: not-allowed; }
+/* Sem transição para quem pediu menos movimento: a pastilha salta de lado. */
+@media (prefers-reduced-motion: reduce) {
+  .inv-destino-switch::before { transition: none; }
+}
 .inv-auto-toolbar.bloqueada { opacity: .55; }
 .inv-auto-toolbar.bloqueada .select, .inv-auto-toolbar .mini.bloqueada { cursor: not-allowed; }
 .admin-olho[aria-pressed="true"] { border-color: rgba(93, 195, 245, .5); color: #a9eaff; }

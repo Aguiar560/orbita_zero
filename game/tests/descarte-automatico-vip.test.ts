@@ -56,6 +56,16 @@ describe('o descarte automático é do Passe', () => {
     expect(sim.descarteAutomaticoPega(peca(0))).toBe(false);
   });
 
+  it('o destino é UM alternador, e o nome acessível carrega o valor', () => {
+    // Dois botões gastavam a largura de duas palavras para dizer uma escolha
+    // entre duas. A posição responde qual vale; o leitor de tela, que não vê
+    // posição, precisa do valor no nome.
+    const inventario = readFileSync('src/ui/panels/InventoryPanel.ts', 'utf8');
+    expect(inventario).toContain('inv-destino-switch');
+    expect(inventario).toContain('Destino do descarte: ');
+    expect(inventario).not.toContain("destino('vender', 'Vender')");
+  });
+
   it('as duas telas desabilitam e explicam, em vez de esconder', () => {
     // Automação que some sem explicação parece defeito; a que se vê bloqueada
     // explica e convida. Lido do fonte: a suíte não tem DOM.
@@ -73,6 +83,6 @@ describe('o descarte automático é do Passe', () => {
     // divergiria no primeiro dia em que alguém mudasse um só deles.
     const inventario = readFileSync('src/ui/panels/InventoryPanel.ts', 'utf8');
     expect(inventario).toContain('s.autoSalvage = Number(');
-    expect(inventario).toContain('s.autoDispose = valor;');
+    expect(inventario).toContain("s.autoDispose = vendendo ? 'desmontar' : 'vender';");
   });
 });
