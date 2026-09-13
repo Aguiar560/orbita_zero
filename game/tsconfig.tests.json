@@ -1,0 +1,25 @@
+{
+  // Os TESTES também são código, e até 13/09/2026 nenhum `tsc` olhava para eles.
+  //
+  // O custo apareceu no mesmo dia: ao remover o campo `autoEquip` do estado,
+  // sete arquivos de teste continuaram citando um campo que não existe mais e
+  // nada acusou. Eles passavam — atribuir propriedade inexistente em objeto
+  // tipado é erro de tipo, não de execução —, então a suíte seguia verde
+  // guardando uma regra que já tinha ido embora. Foi preciso lembrar de limpar.
+  //
+  // Um arquivo separado, e não `tests` dentro do `tsconfig.json`, por um motivo
+  // concreto: os testes importam de `server/src` (o mesmo `rolarDoCursor` do
+  // Worker, para provar que cliente e servidor derivam o mesmo item), e isso
+  // exige os tipos do Cloudflare ao lado dos do navegador. Misturar os dois no
+  // config do jogo poria `D1Database` ao alcance de `src/`, que é exatamente o
+  // que a regra de camada não quer.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node", "@cloudflare/workers-types"],
+    // Teste declara variável para documentar o caso e às vezes não a usa.
+    // Cobrar isso aqui viraria ruído sem defeito atrás.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["tests"]
+}

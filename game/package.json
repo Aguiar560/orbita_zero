@@ -18,6 +18,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p server",
+    "typecheck:testes": "node tools/typecheck-testes.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "simular": "node tools/run-ts.mjs tools/simular.ts",
@@ -27,6 +28,8 @@
     "recursos": "node tools/run-ts.mjs tools/levantar-recursos.ts"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/node": "^22.20.2",
     "sharp": "^0.35.4",
     "typescript": "^5.9.3",
     "vite": "^8.2.1",

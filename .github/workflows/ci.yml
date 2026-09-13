@@ -1,0 +1,86 @@
+# Integração contínua do Órbita Zero.
+#
+# ## Por que isto existe
+#
+# O repositório tinha 176 arquivos de teste e nada que os rodasse. A suíte
+# passava quando alguém lembrava de digitar `npm test`, o que na prática queria
+# dizer: quando eu lembrava. E o Worker publicava SEM verificação de tipos —
+# `wrangler deploy` usa esbuild, que não confere tipo nenhum —, então só o
+# cliente tinha portão, por acaso, porque `npm run build` chama o `tsc` antes
+# do Vite.
+#
+# Os quatro passos abaixo são exatamente o que já se podia rodar à mão e não se
+# rodava. Nenhum deles é novo; o que é novo é não depender de memória.
+#
+# ## Por que roda em toda branch, e não só em pull request
+#
+# Porque aqui não se abre pull request: o trabalho vai para `main` direto ou por
+# branch curta. Um portão que só funciona em PR seria um portão desligado.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Uma execução por branch. Um push em cima do anterior cancela o que estava
+# rodando, porque o resultado do commit velho não interessa mais a ninguém.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: game
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Igual ao `engines` do `package.json`. Divergir aqui faria o CI
+          # aprovar código que a Vercel recusa.
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            game/package-lock.json
+            game/server/package-lock.json
+
+      - name: Instalar (jogo)
+        run: npm ci
+
+      - name: Instalar (Worker)
+        run: npm ci
+        working-directory: game/server
+
+      # ── os quatro portões ──────────────────────────────────────────────────
+
+      - name: Tipos do jogo e do Worker
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      # A Vercel também constrói o cliente, mas só depois do push e só na
+      # branch que ela acompanha. Aqui o erro aparece junto dos outros.
+      - name: Build do cliente
+        run: npm run build
+
+      # O equivalente do build para o Worker: monta o bundle e valida a
+      # configuração sem publicar nada. É o único passo que olha para o
+      # `wrangler.toml` — um binding errado quebra aqui, não em produção.
+      - name: Worker monta e a configuração é válida
+        run: npx wrangler deploy --dry-run --outdir .wrangler/ci
+        working-directory: game/server
+
+      # ── a catraca ──────────────────────────────────────────────────────────
+      #
+      # `tests/` tem 64 erros de tipo herdados. Este passo não cobra que eles
+      # sumam; cobra que não apareçam mais. Ver `tools/typecheck-testes.mjs`.
+      - name: Tipos dos testes não pioraram
+        run: npm run typecheck:testes

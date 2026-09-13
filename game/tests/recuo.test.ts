@@ -18,6 +18,18 @@
  *
  * Então o que estes testes protegem é uma coisa e o contrário dela: que o aviso
  * apareça, e que o estado NÃO mude sem alguém pedir.
+ *
+ * ## Por que nenhum destes testes usa setor de chefe
+ *
+ * Eles usavam — 10, 20 e 30 — e passaram a falhar em 12/09/2026, quando a
+ * chave de acesso virou regra. Duas mudanças se somam ali: `jumpSector` não
+ * entra num chefe (deixa a entrada pendente e espera a confirmação), e
+ * `failEncounter` LIMPA `chaveAcessoConsumida`, então a primeira morte já
+ * empurra a nave para fora do setor do chefe.
+ *
+ * Quer dizer que "cair três vezes seguidas no mesmo lugar" é impossível num
+ * chefe por desenho: a queda tira você de lá. A parede é um fenômeno de setor
+ * NORMAL, e é lá que ela tem que ser medida. Os números viraram 9, 19 e 29.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -44,15 +56,15 @@ describe('o jogo AVISA depois de três quedas', () => {
     // Uma queda é azar — a rolagem do encontro varia. Avisar na primeira seria
     // barulho sobre uma morte que o jogador já ia superar.
     const sim = new Sim(createState(1));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     expect(avisos(() => matar(sim, 2))).toEqual([]);
   });
 
   it('a terceira avisa, com o setor e a contagem', () => {
     const sim = new Sim(createState(2));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     const vistos = avisos(() => matar(sim, 3));
-    expect(vistos).toEqual([{ setor: 10, quedas: 3 }]);
+    expect(vistos).toEqual([{ setor: 9, quedas: 3 }]);
   });
 
   it('não avisa no setor 1, onde não há para onde recuar', () => {
@@ -65,7 +77,7 @@ describe('o jogo AVISA depois de três quedas', () => {
     // Reoferecer a cada três quedas viraria uma janela piscando durante a noite
     // inteira, e a segunda oferta não traz informação nova nenhuma.
     const sim = new Sim(createState(4));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     expect(avisos(() => matar(sim, 12))).toHaveLength(1);
   });
 
@@ -73,7 +85,7 @@ describe('o jogo AVISA depois de três quedas', () => {
     // Aí a situação mudou de verdade: é outro lugar, e o jogador pode não saber
     // que este também está acima do poder da nave.
     const sim = new Sim(createState(5));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     matar(sim, 3);
     sim.jumpSector(11);
     expect(avisos(() => matar(sim, 3))).toEqual([{ setor: 11, quedas: 3 }]);
@@ -85,9 +97,9 @@ describe('o jogo NÃO recua sozinho', () => {
     // É o teste central deste arquivo. A versão anterior recuava aqui, e o
     // jogador voltava para encontrar a nave num setor que ele não escolheu.
     const sim = new Sim(createState(6));
-    sim.jumpSector(20);
+    sim.jumpSector(19);
     matar(sim, 12);
-    expect(sim.state.run.sector).toBe(20);
+    expect(sim.state.run.sector).toBe(19);
   });
 
   it('nem pelo caminho abstrato, com a aba fechada', () => {
@@ -107,10 +119,10 @@ describe('o jogo NÃO recua sozinho', () => {
 describe('quando o jogador PEDE para recuar', () => {
   it('desce um setor e zera o contador de quedas', () => {
     const sim = new Sim(createState(8));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     matar(sim, 3);
     expect(sim.recuarUmSetor()).toBe(true);
-    expect(sim.state.run.sector).toBe(9);
+    expect(sim.state.run.sector).toBe(8);
     expect(sim.state.run.falhasNoSetor).toBe(0);
   });
 
@@ -125,16 +137,16 @@ describe('quando o jogador PEDE para recuar', () => {
     // `bestSector` é o que abre a fase no mapa. Recuar move o ponteiro, não
     // desfaz conquista — senão morrer três vezes custaria conteúdo.
     const sim = new Sim(createState(10));
-    sim.jumpSector(30);
+    sim.jumpSector(29);
     const antes = sim.state.universe.bestSector;
     sim.recuarUmSetor();
     expect(sim.state.universe.bestSector).toBe(antes);
-    expect(sim.state.universe.bestSectorEver).toBeGreaterThanOrEqual(30);
+    expect(sim.state.universe.bestSectorEver).toBeGreaterThanOrEqual(29);
   });
 
   it('não des-limpa o que já foi limpo', () => {
     const sim = new Sim(createState(11));
-    sim.jumpSector(10);
+    sim.jumpSector(9);
     sim.state.run.cleared = 7;
     sim.recuarUmSetor();
     expect(sim.state.run.cleared).toBe(7);

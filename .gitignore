@@ -20,6 +20,12 @@
 !/vercel.json
 !/.claude/
 !/game/
+# A integração contínua. Tem que morar na RAIZ do repositório — o GitHub só
+# procura workflows em `.github/workflows/`, e um arquivo em `game/.github/`
+# seria ignorado em silêncio, que é a pior forma de descobrir que o CI nunca
+# rodou. A lista branca acima o excluía por omissão; liberá-lo aqui é o "ato
+# deliberado" que este arquivo existe para exigir.
+!/.github/
 
 # Dentro de `game/` valem as regras do próprio `game/.gitignore`, que já exclui
 # node_modules, dist, .snapshots, .assets e public/assets — tudo gerado.

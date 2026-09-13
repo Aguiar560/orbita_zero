@@ -13,6 +13,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { bossForSector } from '@data/bosses';
 
 import { describe, expect, it } from 'vitest';
 
@@ -229,7 +230,11 @@ describe('as peças do chefe esperam espaço', () => {
 
   it('o aviso antes da luta sabe quantas peças o chefe pode soltar', () => {
     const sim = new Sim(createState(36));
+    // Chefe exige os DOIS passos: `jumpSector` só deixa a entrada pendente, e
+    // quem move a nave é `entrarNoChefe` — o caminho que o jogo usa depois de
+    // o servidor cobrar a chave. Só com `jumpSector` isto media uma elite.
     sim.jumpSector(10);
+    sim.entrarNoChefe(bossForSector(10).id);
     sim.state.run.wave = 7;
     sim.refreshEncounter();
     expect(sim.encounter.kind).toBe('chefe');

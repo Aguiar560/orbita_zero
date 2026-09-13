@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bossForSector } from '@data/bosses';
 
 import { Sim } from '@sim/index';
 import { createState } from '@sim/state';
@@ -68,7 +69,11 @@ describe('o orçamento da campanha', () => {
 describe('nada repetível paga cristal no cliente', () => {
   it('o abate de chefe não põe cristal na carga nem no saldo', () => {
     const sim = new Sim(createState(41));
+    // Chefe exige os DOIS passos: `jumpSector` só deixa a entrada pendente, e
+    // quem move a nave é `entrarNoChefe` — o caminho que o jogo usa depois de
+    // o servidor cobrar a chave. Só com `jumpSector` isto media uma elite.
     sim.jumpSector(100);
+    sim.entrarNoChefe(bossForSector(100).id);
     for (let i = 0; i < 5; i++) {
       sim.state.run.wave = WAVES_PER_SECTOR + 1;
       sim.refreshEncounter();
