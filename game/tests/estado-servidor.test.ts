@@ -177,3 +177,37 @@ describe('o contexto do cliente é aparado', () => {
     expect(e.naves[e.hull]).toBeDefined();
   });
 });
+
+describe('a ausência respeita o descarte automático', () => {
+  /**
+   * O defeito de 12/09/2026: o jogador voltava com a carga cheia de Comum e o
+   * corte em "abaixo de Raro" ligado. `montarEstado` nunca preenchia `vip` nem
+   * as preferências de descarte, então a simulação do servidor rodava como
+   * conta SEM passe e com o corte desligado — e GRAVAVA as peças que a
+   * automação teria consumido.
+   *
+   * Medido na conta do Rafael: três peças Comum gravadas no mesmo segundo,
+   * sem ele ter aberto baú nenhum.
+   */
+  it('o passe vem do SERVIDOR, e em milissegundos', () => {
+    const agora = Math.floor(Date.now() / 1000);
+    const e = montarEstado(base({ vipExpiraEm: agora + 86_400 }), {});
+
+    expect(e.vip.expiresAt, 'o passe não chegou à simulação')
+      .toBe((agora + 86_400) * 1000);
+    // E sem assinatura, zero — nunca um valor herdado do cliente.
+    expect(montarEstado(base({}), {}).vip.expiresAt).toBe(0);
+  });
+
+  it('e o corte vem do cliente, aparado no catálogo', () => {
+    // Preferência, não poder: mentir aqui só destrói o próprio loot.
+    expect(montarEstado(base({}), { autoSalvage: 3, autoDispose: 'vender' }).settings)
+      .toMatchObject({ autoSalvage: 3, autoDispose: 'vender' });
+
+    // Fora da faixa é aparado, e um destino inventado não passa.
+    expect(montarEstado(base({}), { autoSalvage: 99 }).settings.autoSalvage).toBe(6);
+    expect(montarEstado(base({}), { autoSalvage: -5 }).settings.autoSalvage).toBe(0);
+    expect(montarEstado(base({}), { autoDispose: 'queimar' }).settings.autoDispose)
+      .toBe('desmontar');
+  });
+});

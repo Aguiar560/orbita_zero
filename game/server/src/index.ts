@@ -3722,6 +3722,9 @@ async function creditarAusencia(req: Request, env: Env, id: string, origem: stri
       // ausencia de quem nao informou nada caia no primeiro casco da frota --
       // quase sempre o do piloto, e nao a nave que o jogador deixou voando.
       cascoEmCampo: prog.cascoEmCampo,
+      // O passe: `carteiraDe` ja o traz, e sem ele a ausencia simulava como
+      // conta sem VIP — gravando o que o descarte automatico teria consumido.
+      vipExpiraEm: carteira.vipExpiraEm,
     },
     ctx,
     lote?.semente ?? novaSemente(),

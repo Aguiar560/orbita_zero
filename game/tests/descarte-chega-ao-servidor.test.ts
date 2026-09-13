@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { Sim } from '@sim/index';
@@ -98,5 +99,44 @@ describe('o que o cliente descarta, o servidor não guarda', () => {
     const descartar = Array.from({ length: 60 }, (_, i) => `x${i}`);
 
     expect(vagasNaMochila(mochila, descartar, 70), 'o descarte gastou vaga').toBe(68);
+  });
+});
+
+describe('a trava: nenhuma escrita nova de item passa despercebida', () => {
+  /**
+   * A auditoria que fecha o assunto, feita em 12/09/2026 depois de o defeito
+   * ser consertado DUAS vezes em lugares diferentes: primeiro a coleta das
+   * ondas, que não avisava o servidor do descarte; depois a ausência, que
+   * simulava sem passe e sem corte e gravava o que a automação teria comido.
+   *
+   * Consertar caminho por caminho até não sobrar nenhum é o que se fez. Esta
+   * trava é para o PRÓXIMO caminho: qualquer escrita nova em `itens` quebra o
+   * build até alguém dizer se ela respeita o descarte automático.
+   */
+  const PERMITIDO: Record<string, number> = {
+    // A coleta das ondas (respeita `descartar`), a fusão (item único, pedido
+    // pelo jogador) e a ausência (simula com o passe e o corte reais).
+    'server/src/index.ts': 3,
+  };
+
+  it('só as três escritas auditadas criam item', () => {
+    const fonte = readFileSync('server/src/index.ts', 'utf8');
+    const escritas = (fonte.match(/INSERT (?:OR IGNORE )?INTO itens\b/g) ?? []).length;
+
+    expect({ 'server/src/index.ts': escritas },
+      'apareceu (ou sumiu) uma escrita de item fora da lista auditada')
+      .toEqual(PERMITIDO);
+  });
+
+  it('e a ausência simula com o passe e o corte do jogador', () => {
+    // Era o buraco: `montarEstado` não preenchia `vip` nem `autoSalvage`, então
+    // a simulação rodava como conta sem passe e com o corte desligado.
+    const estado = readFileSync('server/src/estado.ts', 'utf8');
+    expect(estado).toContain('estado.vip.expiresAt =');
+    expect(estado).toContain('estado.settings.autoSalvage =');
+
+    const rota = readFileSync('server/src/index.ts', 'utf8');
+    expect(rota, 'a rota tem o passe em mãos e não o passava')
+      .toContain('vipExpiraEm: carteira.vipExpiraEm');
   });
 });

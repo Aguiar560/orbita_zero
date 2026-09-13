@@ -47,6 +47,15 @@ export interface DadosDoServidor {
   cascoEmCampo?: string;
   /** A semente do universo do jogador. Zero = o servidor ainda não a conhece. */
   semente?: number;
+  /**
+   * Expiração do passe VIP, em segundos. É do SERVIDOR, nunca do cliente.
+   *
+   * Sem ela a simulação da ausência rodava sempre sem passe — e com o descarte
+   * automático sendo benefício VIP desde 12/09/2026, isso significava gerar e
+   * GRAVAR as peças que a automação deveria ter consumido. O jogador voltava de
+   * horas fora com a carga cheia de Comum e o corte "abaixo de Raro" ligado.
+   */
+  vipExpiraEm?: number;
   itens: { item: Item; nave: string | null; slot: string | null }[];
 }
 
@@ -56,6 +65,16 @@ export interface ContextoDoCliente {
   setor?: number;
   onda?: number;
   postura?: string;
+  /**
+   * As preferências de descarte automático, como `postura`: PREFERÊNCIA, não
+   * poder. O cliente as declara porque elas moram no save e o servidor não as
+   * tem — e mentir aqui só destrói o próprio loot, que não é ataque nenhum.
+   *
+   * Quem decide se a automação PODE rodar continua sendo o servidor, pelo
+   * `vipExpiraEm` que ele mesmo leu de `assinaturas`.
+   */
+  autoSalvage?: number;
+  autoDispose?: string;
 }
 
 export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): GameState {
@@ -176,6 +195,16 @@ export function montarEstado(dados: DadosDoServidor, ctx: ContextoDoCliente): Ga
    */
   estado.run.sector = isBossSector(aparado) ? Math.max(1, aparado - 1) : aparado;
   estado.run.wave = Math.max(1, Math.floor(Number(ctx.onda) || 1));
+
+  // O passe, do servidor. Em milissegundos porque é assim que `vipAtivo` lê.
+  estado.vip.expiresAt = Math.max(0, Math.floor(Number(dados.vipExpiraEm) || 0)) * 1000;
+
+  // O corte, do cliente, aparado no catálogo de raridades que o jogo conhece.
+  const corte = Math.floor(Number(ctx.autoSalvage) || 0);
+  estado.settings.autoSalvage = Math.max(0, Math.min(6, corte)) as GameState['settings']['autoSalvage'];
+  if (ctx.autoDispose === 'vender' || ctx.autoDispose === 'desmontar') {
+    estado.settings.autoDispose = ctx.autoDispose;
+  }
 
   const postura = ctx.postura;
   if (postura === 'agressivo' || postura === 'evasivo' || postura === 'equilibrado') {

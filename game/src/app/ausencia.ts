@@ -79,6 +79,11 @@ export async function creditarAusencia(sim: Sim): Promise<RelatorioDeAusencia | 
       body: JSON.stringify({
         hull: sim.state.hull,
         setor: sim.state.run.sector,
+        // O descarte automático vale offline também: sem declarar o corte, a
+        // simulação do servidor guarda tudo e o jogador volta com a carga
+        // cheia do que ele mandou descartar.
+        autoSalvage: sim.state.settings.autoSalvage,
+        autoDispose: sim.state.settings.autoDispose,
         onda: sim.state.run.wave,
         postura: sim.state.settings.pilot,
         /**
