@@ -119,6 +119,11 @@ export class AdminDashboardPanel implements Panel {
           ['TEMPO MÉDIO', this.tempo(dados.resumo.tempoMedio)],
           ['NOVOS · 7D', dados.resumo.novos7d],
           ['ATIVOS · 30D', dados.resumo.ativos30d],
+          ['VIPS ATIVOS', dados.resumo.vips],
+          // Já teve e não tem mais. Sem este número, uma queda em "VIPS ATIVOS"
+          // não tem explicação — pode ser churn ou pode ser conta apagada.
+          ['VIP VENCIDO', dados.resumo.vipsExpirados],
+          ['VAGAS DA CORTESIA', `${dados.resumo.vipVagasUsadas} / ${dados.resumo.vipVagasTotais}`],
         ].map(([rotulo, valor]) => h('.admin-kpi', {},
           h('span', { text: String(rotulo) }), h('strong', { text: typeof valor === 'string' ? valor : fmt(Number(valor)) }),
         )),
@@ -402,6 +407,12 @@ export class AdminDashboardPanel implements Panel {
       || (jogador.apelido ?? '').toLocaleLowerCase('pt-BR').includes(termo));
   }
 
+  /** Quanto falta do passe, para o `title` do selo. */
+  private vencimento(expiraEm: number, agora: number): string {
+    const dias = Math.ceil((expiraEm - agora) / 86_400);
+    return dias <= 1 ? 'Passe vence hoje' : `Passe vence em ${dias} dias`;
+  }
+
   private linha(jogador: JogadorDoPainelAdmin, agora: number): HTMLElement {
     return h(`.admin-linha${jogador.online ? '.online' : ''}`, {
       role: 'row', tabindex: '0', onclick: () => {
@@ -410,8 +421,14 @@ export class AdminDashboardPanel implements Panel {
       },
     },
       h('.admin-piloto', {},
-        h('strong', { text: jogador.apelido ?? 'Piloto sem apelido' }),
-        h('small', { text: `ID · ${jogador.codigo}` }),
+        h('.admin-piloto-nome', {},
+          h('strong', { text: jogador.apelido ?? 'Piloto sem apelido' }),
+          // O selo fica ao lado do NOME, e não numa coluna nova: a tabela tem
+          // dez colunas em grade fixa, e uma décima primeira quebraria o
+          // alinhamento em tela estreita para caber um dado de duas letras.
+          ...(jogador.vip ? [h('span.admin-vip', { text: 'VIP', title: this.vencimento(jogador.vipExpiraEm, agora) })] : []),
+        ),
+        h('small', { text: `ID · ${jogador.codigo}${jogador.vip || !jogador.vipExpiraEm ? '' : ' · VIP vencido'}` }),
       ),
       h('span.admin-status', { text: jogador.online ? 'ONLINE' : 'OFFLINE' }),
       h('strong', { text: String(jogador.nivel) }),

@@ -11,10 +11,10 @@ describe('painel administrativo', () => {
     expect(podeLerPainelAdmin('piloto-comum')).toBe(false);
   });
 
-  it('consolida a telemetria sem expor e-mail ou save bruto', async () => {
-    const primeiro = '12345678-aaaa-bbbb-cccc-123456789abc';
-    const segundo = '87654321-aaaa-bbbb-cccc-123456789abc';
-    const db = {
+  const primeiro = '12345678-aaaa-bbbb-cccc-123456789abc';
+  const segundo = '87654321-aaaa-bbbb-cccc-123456789abc';
+
+  const bancoDeExemplo = () => ({
       prepare: (sql: string) => ({
         all: async () => {
           if (sql === 'SELECT usuario, primeiro_em FROM contas') return { results: [{ usuario: primeiro, primeiro_em: 900 }, { usuario: segundo, primeiro_em: 900 }] };
@@ -26,6 +26,13 @@ describe('painel administrativo', () => {
           ] };
           if (sql.includes('FROM saldos')) return { results: [{ usuario: primeiro, moeda: 'sucata', quantia: 25 }, { usuario: segundo, moeda: 'cristal', quantia: 3 }] };
           if (sql.includes('FROM materiais')) return { results: [{ usuario: primeiro, material: 'ferro', quantia: 7 }] };
+          // O passe: um ativo (vence depois de `agora`) e um vencido. A linha
+          // sobrevive ao vencimento de propósito — é o histórico de quem já
+          // assinou —, e é isso que separa "nunca teve" de "teve e perdeu".
+          if (sql.includes('FROM assinaturas')) return { results: [
+            { usuario: primeiro, expira_em: 5_000, bonus_dias: 30 },
+            { usuario: segundo, expira_em: 800, bonus_dias: 0 },
+          ] };
           if (sql.includes('FROM transacoes')) return { results: [{ moeda: 'sucata', entradas: 40, saidas: 10, operacoes: 3 }] };
           if (sql.includes('WHERE casco_em_campo')) return { results: [{ casco: 'nucleo_vektor', total: 1 }] };
           if (sql.includes('json_extract')) return { results: [{ raridade: 2, total: 5, equipados: 2 }] };
@@ -42,8 +49,10 @@ describe('painel administrativo', () => {
           return { results: [{ usuario: primeiro, total: 4 }] };
         },
       }),
-    };
-    const painel = await lerPainelAdmin({ DB: db as never }, 1_000);
+  });
+
+  it('consolida a telemetria sem expor e-mail ou save bruto', async () => {
+    const painel = await lerPainelAdmin({ DB: bancoDeExemplo() as never }, 1_000);
 
     expect(painel.resumo.jogadores).toBe(2);
     expect(painel.resumo.online).toBe(1);
@@ -57,6 +66,28 @@ describe('painel administrativo', () => {
       baseId: 'principal_2', nave: 'nucleo_vektor', slot: 'principal', raridade: 3, nivel: 12,
     }]);
     expect(JSON.stringify(painel)).not.toContain('12345678-aaaa');
+  });
+
+  it('separa quem é VIP, quem foi, e quantas vagas da cortesia restam', async () => {
+    /**
+     * Pedido do Rafael em 12/09/2026: "no painel de comando mostrar quem é VIP e
+     * quem não é, quantos VIPs totais na visão geral".
+     *
+     * O painel responde três perguntas, e não uma: quem tem passe agora, quem
+     * já teve e deixou de ter — sem isso uma queda no total não tem explicação —
+     * e quantas das 40 vagas da promoção do nível 25 já foram tomadas.
+     */
+    const painel = await lerPainelAdmin({ DB: bancoDeExemplo() as never }, 1_000);
+
+    expect(painel.resumo.vips, 'contou quem já venceu como ativo').toBe(1);
+    expect(painel.resumo.vipsExpirados).toBe(1);
+    expect(painel.resumo.vipVagasUsadas).toBe(2);
+    expect(painel.resumo.vipVagasTotais).toBe(40);
+
+    const [comPasse, semPasse] = painel.jogadores;
+    expect(comPasse).toMatchObject({ vip: true, vipExpiraEm: 5_000, vipCortesiaDias: 30 });
+    expect(semPasse, 'o passe vencido virou "não é VIP" sem deixar rastro')
+      .toMatchObject({ vip: false, vipExpiraEm: 800 });
   });
 
   it('mostra o nome público do casco no detalhe do piloto', () => {

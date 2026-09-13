@@ -22,6 +22,10 @@ export interface JogadorDoPainelAdmin {
   bausAbertos: number;
   medalhas: number;
   online: boolean;
+  /** Passe ativo agora. `vipExpiraEm` fica com o vencimento de quem já teve. */
+  vip: boolean;
+  vipExpiraEm: number;
+  vipCortesiaDias: number;
   ultimaAtividade: number | null;
   equipamentos: EquipamentoDoPainelAdmin[];
 }
@@ -58,6 +62,10 @@ export interface PainelAdmin {
     novos7d: number;
     ativos30d: number;
     cadastrosPendentes: number;
+    vips: number;
+    vipsExpirados: number;
+    vipVagasUsadas: number;
+    vipVagasTotais: number;
   };
   economia: {
     recursos: { moeda: string; quantia: number }[];

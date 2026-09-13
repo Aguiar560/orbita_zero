@@ -96,6 +96,15 @@
 .admin-piloto { display: grid; gap: 3px; padding: 0 9px; }
 .admin-piloto strong { color: #e8fffb; font-size: 12px; }
 .admin-piloto small { color: #74909a; font: 10px 'Chakra Petch', sans-serif; letter-spacing: .05em; }
+/* O selo VIP fica na mesma linha do nome: a tabela de pilotos tem dez colunas
+   em grade fixa, e uma coluna nova quebraria o alinhamento em tela estreita. */
+.admin-piloto-nome { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.admin-piloto-nome strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-vip {
+  flex: none; padding: 1px 5px; border-radius: 3px;
+  border: 1px solid rgba(255, 206, 84, .55); background: rgba(255, 206, 84, .12);
+  color: #ffce54; font: 9px/1.4 'Chakra Petch', sans-serif; letter-spacing: .1em;
+}
 .admin-status { color: #83979d !important; font: 700 9px/1 'Chakra Petch', sans-serif !important; letter-spacing: .08em; }
 .admin-linha.online .admin-status { color: #72f0b2 !important; }
 .admin-linha.online .admin-piloto strong { color: #a7ffdb; }

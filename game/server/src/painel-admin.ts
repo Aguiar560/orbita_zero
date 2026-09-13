@@ -1,3 +1,4 @@
+import { VAGAS_DA_RECOMPENSA_VIP } from '@data/balance/vip-de-teste';
 import { ADMINS } from '@data/servidor';
 import { HULL_BY_ID } from '@data/hulls';
 import { nivelDoPiloto } from './progresso';
@@ -50,6 +51,17 @@ export interface JogadorDoPainelAdmin {
   bausAbertos: number;
   medalhas: number;
   online: boolean;
+  /**
+   * Passe ativo AGORA. `vipExpiraEm` é zero para quem nunca teve.
+   *
+   * Os dois juntos, e não só o booleano: "não é VIP" e "foi VIP até terça"
+   * são situações diferentes para quem opera o jogo, e a segunda é a que vira
+   * conversa.
+   */
+  vip: boolean;
+  vipExpiraEm: number;
+  /** Ocupa uma das vagas da promoção do nível 25, e com quantos dias. */
+  vipCortesiaDias: number;
   /** Epoch em segundos, ou null para conta ainda sem save. */
   ultimaAtividade: number | null;
   equipamentos: EquipamentoDoPainelAdmin[];
@@ -76,6 +88,13 @@ export interface PainelAdmin {
     novos7d: number;
     ativos30d: number;
     cadastrosPendentes: number;
+    /** Passes ativos agora. */
+    vips: number;
+    /** Contas que já tiveram passe e não têm mais — o churn do VIP. */
+    vipsExpirados: number;
+    /** Vagas da promoção do nível 25 já tomadas, do total. */
+    vipVagasUsadas: number;
+    vipVagasTotais: number;
   };
   economia: {
     recursos: RecursoTotal[];
@@ -110,6 +129,11 @@ interface RegistroBase {
 }
 
 interface RegistroDeConta extends RegistroBase { primeiro_em: number; }
+
+interface RegistroDeAssinatura extends RegistroBase {
+  expira_em: number;
+  bonus_dias: number;
+}
 
 interface RegistroDeApelido extends RegistroBase {
   apelido: string;
@@ -174,6 +198,8 @@ interface AcumuladoDoJogador {
   recursos: Record<string, number>;
   materiais: Record<string, number>;
   primeiroAcesso: number | null;
+  vipExpiraEm: number;
+  vipCortesiaDias: number;
   cascoEmCampo: string | null;
   cascoDoSave: string | null;
   abates: number;
@@ -198,7 +224,7 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
   const [
     contas, apelidos, progressos, atividades, naves, itens, equipamentos, missoes, saldos,
     frotaPorCasco, materiais, movimentos, emCampo, raridades, missoesGerais, missoesPopulares,
-    indicacoes,
+    indicacoes, assinaturas,
   ] = await Promise.all([
     env.DB.prepare('SELECT usuario, primeiro_em FROM contas').all<RegistroDeConta>(),
     env.DB.prepare('SELECT usuario, apelido FROM apelidos').all<RegistroDeApelido>(),
@@ -276,6 +302,10 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
         )) AS maior_concentracao_compras
     `).bind(agora - 86_400).all<RegistroDeIndicacoes>()
       : Promise.resolve({ results: [] as RegistroDeIndicacoes[] })),
+    // A linha existe mesmo depois de o passe vencer — é o histórico de quem já
+    // assinou —, então ela responde as duas perguntas de uma vez.
+    env.DB.prepare('SELECT usuario, expira_em, bonus_dias FROM assinaturas')
+      .all<RegistroDeAssinatura>(),
   ]);
 
   const porUsuario = new Map<string, AcumuladoDoJogador>();
@@ -288,6 +318,7 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
         tempoDeJogo: 0, recursos: {}, materiais: {}, primeiroAcesso: null,
         cascoEmCampo: null, cascoDoSave: null, abates: 0, chefesAbatidos: 0, mortes: 0,
         itensEncontrados: 0, bausAbertos: 0, medalhas: 0, equipamentos: [],
+        vipExpiraEm: 0, vipCortesiaDias: 0,
       };
       porUsuario.set(usuario, jogador);
     }
@@ -297,6 +328,11 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
 
   for (const linha of contas.results ?? []) garantir(linha.usuario).primeiroAcesso = Number(linha.primeiro_em) || null;
   for (const linha of apelidos.results ?? []) garantir(linha.usuario).apelido = linha.apelido;
+  for (const linha of assinaturas.results ?? []) {
+    const jogador = garantir(linha.usuario);
+    jogador.vipExpiraEm = Number(linha.expira_em) || 0;
+    jogador.vipCortesiaDias = Number(linha.bonus_dias) || 0;
+  }
   for (const linha of progressos.results ?? []) {
     const jogador = garantir(linha.usuario);
     jogador.xp = Number(linha.xp) || 0;
@@ -394,6 +430,9 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
       bausAbertos: linha.bausAbertos,
       medalhas: linha.medalhas,
       online: (linha.ultimaAtividade ?? 0) > desdeOnline,
+      vip: linha.vipExpiraEm > agora,
+      vipExpiraEm: linha.vipExpiraEm,
+      vipCortesiaDias: linha.vipCortesiaDias,
       ultimaAtividade: linha.ultimaAtividade,
       equipamentos: linha.equipamentos,
     }))
@@ -416,12 +455,18 @@ export async function lerPainelAdmin(env: { DB: D1Database; INDICACOES_ATIVAS?: 
     total.novos7d += Number((jogador.primeiroAcesso ?? 0) > agora - 604_800);
     total.ativos30d += Number((jogador.ultimaAtividade ?? 0) > agora - 2_592_000);
     total.cadastrosPendentes += Number(!jogador.apelido);
+    total.vips += Number(jogador.vip);
+    // Já teve e não tem mais. É o churn do passe, e é a pergunta que vem logo
+    // depois de "quantos VIPs" — sem ela, uma queda no total não tem explicação.
+    total.vipsExpirados += Number(!jogador.vip && jogador.vipExpiraEm > 0);
+    total.vipVagasUsadas += Number(jogador.vipCortesiaDias > 0 || jogador.vipExpiraEm > 0);
     return total;
   }, {
     jogadores: 0, online: 0, ativos24h: 0, ativos7d: 0, nivelMedio: 0,
     maiorNivel: 0, maiorSetor: 0, naves: 0, itensNaMochila: 0,
     itensEquipados: 0, missoesConcluidas: 0, tempoDeJogo: 0, tempoMedio: 0,
     novos24h: 0, novos7d: 0, ativos30d: 0, cadastrosPendentes: 0,
+    vips: 0, vipsExpirados: 0, vipVagasUsadas: 0, vipVagasTotais: VAGAS_DA_RECOMPENSA_VIP,
   });
 
   if (resumo.jogadores) {
