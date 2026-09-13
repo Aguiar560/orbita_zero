@@ -1,7 +1,9 @@
 # Ambientes — produção, staging e local
 
-> **Estado:** staging no ar desde 13/09/2026. Falta ligar as variáveis na
-> Vercel (passo 3) e fechar o `ORIGENS` da produção (passo 4).
+> **Estado:** staging no ar desde 13/09/2026, com o `ORIGENS` da produção já
+> fechado e as duas instalações marcadas. **Falta uma coisa:** o `VITE_CHAT_URL`
+> na Vercel está valendo para todos os ambientes, então a preview entra no chat
+> de PRODUÇÃO. Ver "O que falta".
 
 ## O problema que isto resolve
 
@@ -63,6 +65,25 @@ variável. É o que pega o erro que nenhuma outra coisa pega: um `database_id`
 copiado errado faz o Worker se anunciar como staging **enquanto escreve na
 produção**. A produção responde `sem marcador` até receber a migração `0028`.
 
+## Quem pode falar com quem
+
+Medido em 13/09/2026, com o cabeçalho `Origin` em cada combinação:
+
+| origem | → produção | → staging |
+|---|---|---|
+| `https://www.orbitazero.com.br` | **aceita** | recusa |
+| `https://orbitazero.com.br` | **aceita** | recusa |
+| `https://orbita-zero.vercel.app` | **aceita** | recusa |
+| `http://localhost:5180` | recusa | **aceita** |
+| `orbita-zero-git-*.vercel.app` | recusa | **aceita** |
+| qualquer outro site | recusa | recusa |
+
+A diagonal é o ponto: nenhuma origem alcança as duas.
+
+Vale saber o limite disto: **CORS é trava de navegador.** Um `curl` ignora a
+lista inteira, e quem autoriza de verdade é o token. Isto fecha o caminho do
+ACIDENTE — que é o que vinha custando caro —, não o de um atacante.
+
 ## Rodar local contra o staging
 
 ```bash
@@ -104,30 +125,28 @@ banco nasceu nas migrações `0002..NNNN`.
 
 ## O que falta
 
-**3. Ligar as variáveis na Vercel.** Em *Settings → Environment Variables*, com
-escopo **Preview** e **somente Preview**:
+**O chat ainda é compartilhado.** `VITE_CHAT_URL` está definida na Vercel para
+todos os ambientes, então a preview carrega a mesma URL da produção — e o
+`orbita-zero-chat` lê a tabela `apelidos` do banco de PRODUÇÃO
+(`wrangler.chat.toml`). Um jogador de teste entra no chat real, conversando com
+jogadores reais, e a mensagem fica gravada.
 
-```
-VITE_API_URL   https://orbita-zero-api-staging.orbitazero.workers.dev
-VITE_AMBIENTE  staging
-```
+Não corrompe dado de jogo (o chat só faz `SELECT` na produção), mas não é
+separado. A correção é uma linha na Vercel: mudar o escopo de `VITE_CHAT_URL`
+para **Production apenas**. Um Worker de chat para o staging só vale a pena se
+um dia for preciso testar o próprio chat.
 
-⚠️ Marcar *Production* nessas variáveis apontaria o jogo dos jogadores para o
-banco sintético. O escopo é a parte que importa.
+**Os dois projetos Vercel.** `orbita_zero` e `orbita-zero` constroem os dois a
+cada push, e as variáveis de ambiente foram postas em um só. Conferir qual está
+sobrando.
 
-**4. Fechar o `ORIGENS` da produção.** Depois do passo 3, tirar
-`https://orbita-zero-*.vercel.app` do `[vars]` de produção em `wrangler.toml` e
-publicar. Enquanto essa entrada existir, uma preview ainda consegue escrever no
-banco dos jogadores.
+## O que já foi feito
 
-**5. Marcar a produção.** Aplicar a `0028` lá, no próximo deploy do Worker:
-
-```bash
-cd server; npx wrangler d1 execute orbita-zero --remote --file=migrations/0028-marcador-de-instalacao.sql
-```
-
-Sem ela o `/saude` da produção responde `sem marcador`, o que já distingue as
-duas — mas a resposta fica melhor quando cada banco diz o próprio nome.
+- `ORIGENS` da produção fechado (13/09) — só o site entra.
+- Migração `0028` aplicada nos dois bancos, então `/saude` responde o nome
+  real de cada um.
+- Variáveis de preview ligadas na Vercel com escopo **Preview**, confirmado
+  pelo pacote de produção: ele foi construído com `VITE_API_URL` ausente.
 
 ## O que o staging deliberadamente não tem
 

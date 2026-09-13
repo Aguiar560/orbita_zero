@@ -11,10 +11,28 @@ compatibility_date = "2026-08-01"
 # olhar quando estiver em dúvida sobre qual dos dois está editando.
 AMBIENTE = "producao"
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
-# O quinto e o padrao dos deploys de PREVIEW da Vercel, que ganham um host
-# por build. Exige o PREFIXO do projeto: `https://*.vercel.app` deixaria
-# qualquer site daquele dominio falar com esta API. Ver `casaComPadrao`.
-ORIGENS = "http://localhost:5180,https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app,https://orbita-zero-*.vercel.app"
+# SÓ o site. Nada de `localhost` e nada de preview — e isso é a metade da
+# separação que não depende do cliente estar certo.
+#
+# Até 13/09/2026 esta lista tinha `http://localhost:5180` e
+# `https://orbita-zero-*.vercel.app`, e por um bom motivo: eram os únicos
+# jeitos de testar, e testar exigia falar com este banco porque não havia
+# outro. Agora há — o staging — e as duas entradas viraram só risco.
+#
+# A diferença que elas apagavam: "o cliente não aponta para a produção" depende
+# do código estar certo, do `.env.local` estar certo e do escopo da variável na
+# Vercel estar certo. "A produção não aceita esses sites" não depende de nada
+# disso. A primeira frase já falhou no mesmo dia — a variável do chat estava no
+# escopo errado.
+#
+# O limite disto, porque vale estar escrito: CORS é trava de NAVEGADOR. Um
+# `curl` ignora a lista inteira, e quem autoriza de verdade é o token. Isto
+# fecha o caminho do acidente, não o de um atacante — e acidente é o que vem
+# custando caro.
+#
+# Para depurar contra dados reais no navegador é preciso recolocar a origem
+# aqui e publicar. De propósito: com as mãos, sabendo o que está fazendo.
+ORIGENS = "https://orbitazero.com.br,https://www.orbitazero.com.br,https://orbita-zero.vercel.app"
 # Programa público desde 12/09/2026, depois da migração 0022, criação do segredo
 # Pix e publicação intermediária com a flag fechada. Para interromper novos
 # vínculos, comissões e saques sem apagar histórico, voltar para "0" e publicar.

@@ -97,6 +97,24 @@ describe('as duas instalações não se cruzam', () => {
     expect(origens).toContain('localhost');
   });
 
+  it('e nem `localhost` nem preview podem falar com a produção', () => {
+    /**
+     * A metade da separação que NÃO depende do cliente estar certo.
+     *
+     * As duas entradas estiveram nesta lista por um bom motivo — eram o único
+     * jeito de testar antes de existir o staging — e a tentação de recolocar
+     * "só para depurar uma coisa" é exatamente como elas voltariam. Depurar
+     * contra dados reais continua possível; só não pode ser por esquecimento.
+     */
+    const origens = /ORIGENS = "([^"]*)"/.exec(producao)?.[1] ?? '';
+    expect(origens, 'localhost voltou a poder escrever no banco dos jogadores')
+      .not.toContain('localhost');
+    expect(origens, 'as previews voltaram a poder escrever no banco dos jogadores')
+      .not.toContain('orbita-zero-*');
+    // O site continua entrando, senão a trava teria quebrado o jogo.
+    expect(origens).toContain('https://www.orbitazero.com.br');
+  });
+
   it('o staging não move dinheiro', () => {
     expect(staging).toContain('INDICACOES_ATIVAS = "0"');
   });
