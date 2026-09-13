@@ -63,7 +63,8 @@ curl -s https://orbita-zero-api-staging.orbitazero.workers.dev/saude
 `banco` vem de uma consulta ao próprio banco (tabela `instalacao`), não de uma
 variável. É o que pega o erro que nenhuma outra coisa pega: um `database_id`
 copiado errado faz o Worker se anunciar como staging **enquanto escreve na
-produção**. A produção responde `sem marcador` até receber a migração `0028`.
+produção**. Os dois bancos já receberam a migração `0028`, então cada um diz o
+próprio nome; `sem marcador` passou a ser sinal de banco que ninguém preparou.
 
 ## Quem pode falar com quem
 
