@@ -1,4 +1,4 @@
-import { API_URL } from '@data/servidor';
+import { API_URL } from '@app/api';
 
 import { adotarCarteira, type EstadoDaCarteira } from './carteira';
 import { tokenValido } from './conta';

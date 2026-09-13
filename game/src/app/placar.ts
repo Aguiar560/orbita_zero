@@ -1,4 +1,4 @@
-import { API_URL } from '@data/servidor';
+import { API_URL } from '@app/api';
 import { marcaDoJogador, navesClassificaveis, PLACARES, type PlacarId } from '@sim/ranking';
 import type { GameState } from '@sim/types';
 import { tokenValido } from './conta';

@@ -1,4 +1,4 @@
-import { API_URL } from '@data/servidor';
+import { API_URL } from '@app/api';
 import type { Sim } from '@sim/index';
 import type { MovimentoPendente, ResourceId } from '@sim/types';
 

@@ -10,7 +10,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:local": "wrangler d1 execute orbita-zero --local --file=schema.sql",
-    "db:remoto": "wrangler d1 execute orbita-zero --remote --file=schema.sql"
+    "db:remoto": "wrangler d1 execute orbita-zero --remote --file=schema.sql",
+    "deploy:staging": "wrangler deploy --env staging",
+    "staging:criar": "node tools/criar-staging.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260827.1",

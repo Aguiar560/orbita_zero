@@ -18,3 +18,10 @@ server/.dev.vars
 # servi-los e o Rafael clicar — e FORA do git para nao subirem num deploy
 # antes de ele escolher um modelo.
 public/mockups/
+
+# A escolha de ambiente é de cada máquina: `.env.example` mostra o formato e
+# `.env.local` guarda o destino real. Versionar o segundo faria o destino de
+# um virar o destino de todos — e um `.env.local` apontando para produção
+# transformaria qualquer teste local em escrita no banco dos jogadores.
+.env.local
+.env.*.local

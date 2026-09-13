@@ -21,8 +21,77 @@ export const SUPABASE_URL = 'https://vzsiorkeykcbcpmismyy.supabase.co';
 /** Chave `anon`. Pública por desenho — ver acima. */
 export const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c2lvcmtleWtjYmNwbWlzbXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MzEyODIsImV4cCI6MjEwMzQwNzI4Mn0.YUikvadmt2V2UcbMH51f65OV8HZ-iM2CBEM60vF7qiw';
 
-/** A API do jogo, no Cloudflare Workers. */
-export const API_URL = 'https://orbita-zero-api.orbitazero.workers.dev';
+/**
+ * ## Onde o jogo fala com a API
+ *
+ * Este endereço era uma CONSTANTE apontando para a produção, e isso significava
+ * uma coisa que não estava escrita em lugar nenhum: **abrir o jogo em
+ * `localhost` não isolava nada.** Uma conta autenticada num servidor de
+ * desenvolvimento escrevia no mesmo D1 dos jogadores — o mesmo save, o mesmo
+ * inventário, a mesma carteira. Todo teste local até 13/09/2026 foi um teste em
+ * produção sem ninguém ter decidido isso.
+ *
+ * A regra agora tem três degraus, nesta ordem:
+ *
+ * 1. **`VITE_API_URL` declarada** vence sempre, em qualquer lugar. É como a
+ *    preview da Vercel aponta para o staging e como o sandbox aponta para um
+ *    Worker local.
+ * 2. **Host local sem a variável** → FECHA. Nunca cai para produção.
+ * 3. **Qualquer outro host** → produção.
+ *
+ * ## Por que o degrau 2 fecha em vez de adivinhar
+ *
+ * Porque o erro que ele evita é silencioso e irreversível. Um `fetch` que sobe
+ * save errado não avisa ninguém: o dado do jogador já foi sobrescrito quando
+ * alguém percebe. Recusar a falar é a única resposta que não destrói nada — e
+ * quem está desenvolvendo descobre na primeira tentativa, não na segunda
+ * semana.
+ */
+export type OrigemDaApi = 'variavel' | 'producao' | 'fechado';
+
+const API_PRODUCAO = 'https://orbita-zero-api.orbitazero.workers.dev';
+
+/**
+ * Fechado é `127.0.0.1` numa porta que nada escuta.
+ *
+ * As alternativas erram de formas conhecidas. String vazia viraria caminho
+ * RELATIVO: o `fetch` bateria no servidor de dev, voltaria 404, e o cliente —
+ * que engole erro de rede por desenho — mostraria isso como perda de dado. Um
+ * domínio inexistente custaria espera de DNS em toda chamada e o erro chegaria
+ * disfarçado de "rede instável". A porta 1 do loopback recusa na hora, sem
+ * rede, com `ECONNREFUSED` legível no console, e não alcança produção nem por
+ * engano — que é a única parte inegociável.
+ */
+const API_FECHADA = 'http://127.0.0.1:1';
+
+const HOSTS_LOCAIS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+
+/**
+ * A decisão, pura, para o teste poder exercê-la sem navegador e sem build.
+ *
+ * `host` é `null` quando não existe `location` — Node, testes, ferramentas.
+ * Isso conta como local: fora do navegador ninguém deveria estar falando com a
+ * produção por causa de uma constante esquecida.
+ */
+export function decidirApi(
+  declarada: string | undefined,
+  host: string | null,
+): { url: string; origem: OrigemDaApi } {
+  const limpa = declarada?.trim().replace(/\/+$/, '');
+  if (limpa) return { url: limpa, origem: 'variavel' };
+  if (host === null || HOSTS_LOCAIS.has(host)) return { url: API_FECHADA, origem: 'fechado' };
+  return { url: API_PRODUCAO, origem: 'producao' };
+}
+
+/**
+ * Quem AVALIA a regra é `@app/api`, e a separação não é estilo.
+ *
+ * Este arquivo é compilado duas vezes: pelo cliente e pelo Worker, que importa
+ * `ADMINS` e `SUPABASE_URL` daqui. No Worker não existe `import.meta.env` nem
+ * `location` — ler qualquer um dos dois aqui quebra o `tsc` do servidor, que
+ * foi exatamente o que aconteceu na primeira tentativa. A função acima é pura e
+ * compila nos dois; a leitura do ambiente é do cliente e mora com o cliente.
+ */
 
 /**
  * Contas com acesso administrativo: modo de teste e Laboratório.

@@ -1,8 +1,18 @@
+import { anunciarAmbiente } from './app/ambiente';
 import { navegadorForaDoPortugues } from './ui/idioma';
 
 const rootEncontrado = document.getElementById('app');
 if (!rootEncontrado) throw new Error('#app não encontrado');
 const root: HTMLElement = rootEncontrado;
+
+/**
+ * Antes de tudo, inclusive da wiki e do popup de login.
+ *
+ * Se o boot falhar, a faixa precisa estar na tela assim mesmo — é justamente
+ * quando saber em qual ambiente se está vale mais. Ela não depende do jogo, só
+ * do `document`.
+ */
+anunciarAmbiente();
 
 async function iniciar(): Promise<void> {
   // Quem chega com o navegador fora do português lê um aviso, em inglês, de

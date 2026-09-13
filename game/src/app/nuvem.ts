@@ -1,4 +1,4 @@
-import { API_URL } from '@data/servidor';
+import { API_URL } from '@app/api';
 import { SAVE_VERSION, lerSaveSemConta, migrate } from '@sim/state';
 import type { GameState } from '@sim/types';
 import { tokenValido } from './conta';

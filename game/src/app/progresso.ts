@@ -1,4 +1,4 @@
-import { API_URL } from '@data/servidor';
+import { API_URL } from '@app/api';
 import type { Sim } from '@sim/index';
 import { curvaXpNave, curvaXpPersonagem } from '@data/balance/curvas';
 import { nivelPorXpAcumulado, xpAcumuladoDe } from '@sim/nivel';

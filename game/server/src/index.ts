@@ -89,6 +89,20 @@ import { cifrarChavePix, decifrarChavePix, mascararChavePix, normalizarChavePix 
 
 export interface Env {
   DB: D1Database;
+  /**
+   * Qual instalação é esta: `producao` (padrão), `staging` ou `local`.
+   *
+   * Não muda comportamento de regra — muda o que `/saude` CONFESSA. A pergunta
+   * "eu estou falando com o staging ou com a produção?" precisa ter resposta a
+   * um `curl` de distância, porque a resposta errada é invisível: as duas APIs
+   * respondem igual, e a diferença só aparece depois que o dado foi escrito no
+   * lugar errado.
+   *
+   * Ausente quer dizer produção. É o único valor que não precisa ser declarado,
+   * e isso é de propósito: esquecer a variável não pode transformar a produção
+   * em outra coisa.
+   */
+  AMBIENTE?: string;
   /** `https://<ref>.supabase.co`. Não é segredo — é o endereço do JWKS. */
   SUPABASE_URL: string;
   /** Origens que podem chamar esta API, separadas por vírgula. */
@@ -1167,6 +1181,35 @@ async function anotarExcecaoDeAuditoria(
     .catch(() => { /* nem isto pode estourar: seria trocar cegueira por queda */ });
 }
 
+/**
+ * Qual banco está realmente ligado, perguntando AO BANCO.
+ *
+ * A variável `AMBIENTE` diz o que alguém escreveu no `wrangler.toml`; esta
+ * função diz o que o binding `DB` alcança de verdade. A diferença entre as duas
+ * é exatamente o erro que se quer pegar — um `database_id` copiado errado faz
+ * o Worker se anunciar como staging enquanto escreve na produção, e nenhuma
+ * resposta de API revela isso sozinha.
+ *
+ * `sem marcador` é a resposta da produção hoje, porque a tabela só foi criada
+ * no staging. Isso já serve: ver `sem marcador` onde se esperava staging é o
+ * aviso de que se está falando com o banco dos jogadores.
+ */
+async function nomeDoBanco(env: Env): Promise<string> {
+  try {
+    const linha = await env.DB
+      .prepare("SELECT valor FROM instalacao WHERE chave = 'banco'")
+      .first<{ valor: string }>();
+    return linha?.valor ?? 'sem marcador';
+  } catch {
+    // Engolir aqui é deliberado, e é o único `catch` do arquivo que pode ser:
+    // a tabela `instalacao` ainda NÃO existe na produção (só o staging recebeu
+    // a `0028`), então a exceção é o estado normal de lá. Contá-la encheria o
+    // livro de recusas com a única coisa que não é defeito. E a resposta
+    // continua honesta: `sem marcador` é exatamente o que se sabe.
+    return 'sem marcador';
+  }
+}
+
 async function rotear(req: Request, env: Env): Promise<Response> {
     const origem = origemPermitida(req, env);
     const url = new URL(req.url);
@@ -1179,7 +1222,23 @@ async function rotear(req: Request, env: Env): Promise<Response> {
     // infraestrutura subiu, e exigir login para isso faria depurar um deploy
     // depender de o login já funcionar.
     if (url.pathname === '/saude') {
-      return json({ ok: true, agora: new Date().toISOString() }, 200, origem);
+      /**
+       * O ambiente e o BANCO vão na resposta.
+       *
+       * O nome do banco é a única prova que não depende de confiança: duas
+       * instalações com a mesma configuração e o mesmo código se distinguem
+       * exatamente por onde escrevem. Sem isto, "o staging está separado" é
+       * uma afirmação; com isto, é um `curl`.
+       *
+       * Nada aqui é sigiloso — nome de binding e de banco não dão acesso a
+       * nada, e quem tem acesso ao banco tem por credencial da conta.
+       */
+      return json({
+        ok: true,
+        agora: new Date().toISOString(),
+        ambiente: env.AMBIENTE ?? 'producao',
+        banco: await nomeDoBanco(env),
+      }, 200, origem);
     }
 
     /**

@@ -17,6 +17,7 @@ progressão de longo prazo por itens, naves, Matriz e elementos.
 | [`docs/PLANO.md`](docs/PLANO.md) | **Para onde vamos.** Passos ordenados, critérios de aceite, decisões pendentes |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Histórico do que foi feito, com a medição de cada etapa |
 | [`docs/ESPECIFICACAO-MESTRE.md`](docs/ESPECIFICACAO-MESTRE.md) | Fonte de verdade de design |
+| [`docs/AMBIENTES.md`](docs/AMBIENTES.md) | **Produção, staging e local:** como o cliente decide o destino, como conferir, o que falta ligar (13/09) |
 | [`docs/SEGURANCA-E-CONTA.md`](docs/SEGURANCA-E-CONTA.md) | Auditoria de segurança e a arquitetura de login/servidor |
 | [`docs/CHAT-OPERACAO.md`](docs/CHAT-OPERACAO.md) | O chat em produção: Worker próprio, moderação, retenção |
 | [`docs/PLANO-CHAT.md`](docs/PLANO-CHAT.md) | O desenho do chat e o que falta nele |
@@ -51,6 +52,12 @@ IA lê para não reinventar o que já existe.
 cd D:\bbb\game; npm run dev
 ```
 
+⚠️ **Sem `.env.local`, o jogo local não sincroniza — e isso é de propósito.**
+Até 13/09/2026 `localhost` escrevia no banco dos jogadores. Agora ele FECHA a
+API e mostra uma faixa vermelha. Escolha o destino uma vez:
+`cp .env.example .env.local` (aponta para o staging). Ver
+[`docs/AMBIENTES.md`](docs/AMBIENTES.md).
+
 ⚠️ O terminal é **PowerShell 5.1**, que **não aceita `&&`** — use `;`.
 Se mexeu em arte: `npm run assets; npm run dev`.
 
@@ -82,6 +89,13 @@ cd D:\bbb\game\server; npm run deploy
 
 **Migração primeiro, deploy depois — sempre.** Publicar código que lê coluna
 inexistente derruba a rota, e o cliente disfarça a falha como perda de dado.
+
+**Existe um staging desde 13/09/2026** — mesmo código, banco próprio
+(`orbita-zero-staging`), dados sintéticos. Publicar nele é
+`npm run deploy:staging`, e recriar o banco do zero é `npm run staging:criar`.
+Qual instalação responde é `curl .../saude`, que devolve `ambiente` e `banco` —
+e o `banco` vem de uma consulta ao próprio banco, não de uma variável, porque é
+isso que pega `database_id` copiado errado.
 
 `npx wrangler d1 execute orbita-zero --remote --command "SELECT …"` lê a
 produção — use antes de teorizar. `d1_migrations` NÃO registra o que subiu por
@@ -132,7 +146,11 @@ Regras de camada, em ordem de importância:
    balanceamento sem abrir o navegador.
 2. `ui/` não decide regra de jogo. Se um painel precisa calcular algo, o cálculo
    mora em `sim/`.
-3. `data/` é tabela, não lógica. Fórmula fica em `sim/`.
+3. `data/` é tabela, não lógica. Fórmula fica em `sim/`. **E `data/` é
+   compilado pelo Worker também** — nada de `import.meta.env`, `location` ou
+   qualquer global do navegador ali, senão o `tsc` do servidor quebra. Regra
+   pura em `data/`, leitura do ambiente em `app/` (ver `decidirApi` e
+   `@app/api`).
 4. Aliases: `@core @render @sim @data @ui @modes @app`.
 
 ## Restrições que não se negociam

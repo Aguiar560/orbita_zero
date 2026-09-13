@@ -6,6 +6,10 @@ compatibility_date = "2026-08-01"
 # e o segundo é o endereço público do JWKS. Segredo mesmo não existe neste
 # Worker, e essa é a vantagem de verificar o token com chave pública.
 [vars]
+# Ausente seria "producao" do mesmo jeito (ver `Env.AMBIENTE`), mas declarar
+# torna a diferença visível ao lado do bloco do staging — que é onde alguém vai
+# olhar quando estiver em dúvida sobre qual dos dois está editando.
+AMBIENTE = "producao"
 SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
 # O quinto e o padrao dos deploys de PREVIEW da Vercel, que ganham um host
 # por build. Exige o PREFIXO do projeto: `https://*.vercel.app` deixaria
@@ -39,3 +43,59 @@ crons = ["*/5 * * * *"]
 binding = "DB"
 database_name = "orbita-zero"
 database_id = "12e2e0fd-80ed-4962-8f31-deaaa00ee06a"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGING — a mesma API, outro banco
+#
+# ## Por que isto existe
+#
+# Até 13/09/2026 havia uma instalação só, e ela era a produção. Testar uma
+# mudança significava publicá-la para os jogadores e olhar; `localhost` não
+# isolava nada, porque o cliente tinha o endereço da produção fixo no código.
+# Todo defeito das últimas semanas foi descoberto por um jogador.
+#
+# Aqui roda o MESMO código do Worker, contra um D1 próprio com dados
+# sintéticos. O cliente chega pela preview da Vercel, que aponta para cá por
+# variável de ambiente.
+#
+# ## O que NÃO é herdado, e por que isso é a parte importante
+#
+# `vars`, `d1_databases` e `triggers` não descem do bloco de cima: um ambiente
+# nomeado precisa declarar os seus. Isso é exatamente o que se quer — um
+# esquecimento aqui faz o deploy FALHAR por falta de binding, em vez de fazer o
+# staging escrever silenciosamente no banco dos jogadores. Errar para o lado
+# barulhento é o desenho.
+#
+# O nome do Worker vira `orbita-zero-api-staging` sozinho (nome + ambiente), e
+# com ele o host `orbita-zero-api-staging.orbitazero.workers.dev`.
+#
+#   cd D:\bbb\game\server; npm run deploy:staging
+# ─────────────────────────────────────────────────────────────────────────────
+
+[env.staging.vars]
+AMBIENTE = "staging"
+# O MESMO projeto Supabase da produção, de propósito: o que se está separando é
+# o dado do JOGO, não a identidade. Um Supabase próprio obrigaria a criar conta
+# de novo a cada teste e tiraria do staging justamente o que ele precisa provar
+# — que o login, a confirmação de e-mail e o token funcionam. Nenhum dado de
+# jogo sai do Supabase; ele só diz quem é a pessoa.
+SUPABASE_URL = "https://vzsiorkeykcbcpmismyy.supabase.co"
+# As previews da Vercel e o desenvolvimento local. O domínio de produção fica
+# FORA: um cliente servido em orbitazero.com.br não tem motivo para falar com o
+# staging, e deixar a porta aberta seria um jeito de misturar os dois sem
+# perceber.
+ORIGENS = "http://localhost:5180,http://127.0.0.1:5180,https://orbita-zero-*.vercel.app"
+# Dinheiro de verdade não passa por aqui. O programa de indicação move saldo e
+# gera saque; no staging ele fica desligado e o segredo Pix nunca é criado.
+INDICACOES_ATIVAS = "0"
+
+# Sem gatilho de tempo. O cron da produção faz duas coisas — avisar das recusas
+# e varrer cobranças Pix pendentes — e nenhuma das duas faz sentido num banco
+# sintético. Um alerta vindo do staging só ensinaria a ignorar alerta.
+[env.staging.triggers]
+crons = []
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "orbita-zero-staging"
+database_id = "2b1c70a1-60f7-49e6-ab3a-3868dbd3a0ce"
