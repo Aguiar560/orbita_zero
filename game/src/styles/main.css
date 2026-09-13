@@ -101,6 +101,11 @@
 .admin-piloto-nome { display: flex; align-items: center; gap: 6px; min-width: 0; }
 /* O botao de revelar a receita fica no topo do bloco, alinhado ao titulo. */
 .admin-olho { flex: none; align-self: center; padding: 5px 12px; font-size: 10px; letter-spacing: .12em; }
+/* Descarte automatico sem Passe: visivel e inerte. Esconder faria a automacao
+   sumir sem explicacao, que parece defeito; bloqueada, ela explica e convida. */
+.inv-auto-toolbar { align-items: center; gap: 8px; }
+.inv-auto-toolbar.bloqueada { opacity: .55; }
+.inv-auto-toolbar.bloqueada .select, .inv-auto-toolbar .mini.bloqueada { cursor: not-allowed; }
 .admin-olho[aria-pressed="true"] { border-color: rgba(93, 195, 245, .5); color: #a9eaff; }
 .admin-piloto-nome strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-vip {

@@ -67,7 +67,12 @@ describe('Passe VIP', () => {
     expect(missoesRastreadas(sim.state, sim.alcanceLiberado)).toHaveLength(5);
   });
 
-  it('reserva auto-equipar e venda automática ao VIP', () => {
+  it('reserva auto-equipar e TODO o descarte automático ao VIP', () => {
+    /**
+     * A venda automática já era VIP; o DESMANCHE por raridade era de todos, e
+     * passou a ser VIP em 12/09/2026 — "auto desmontar e auto vender apenas VIP
+     * pode ter". Medido no dia: 5 contas tinham corte ligado, 3 delas VIP.
+     */
     const comum = new Sim(createState(204));
     comum.state.settings.autoEquip = true;
     comum.acquire(item('comum'));
@@ -80,13 +85,24 @@ describe('Passe VIP', () => {
     vip.acquire(item('vip-equip'));
     expect(vip.state.naves[vip.state.hull]?.equipped.principal?.uid).toBe('vip-equip');
 
-    const semVenda = new Sim(createState(206));
-    semVenda.state.settings.autoEquip = false;
-    semVenda.state.settings.autoSalvage = 2;
-    semVenda.state.settings.autoDispose = 'vender';
-    semVenda.acquire(item('sem-vip'));
-    expect(semVenda.state.resources.sucata).toBe(0);
-    expect(Object.keys(semVenda.state.armazem).length).toBeGreaterThan(0);
+    // Sem passe, NENHUM dos dois destinos acontece: a peça vai inteira para a
+    // carga. Antes ela virava material, porque desmontar era de graça.
+    const semPasse = new Sim(createState(206));
+    semPasse.state.settings.autoEquip = false;
+    semPasse.state.settings.autoSalvage = 2;
+    semPasse.state.settings.autoDispose = 'vender';
+    semPasse.acquire(item('sem-vip'));
+    expect(semPasse.state.resources.sucata).toBe(0);
+    expect(semPasse.state.armazem, 'desmontou sem passe').toEqual({});
+    expect(semPasse.state.inventory.map((i) => i.uid)).toContain('sem-vip');
+
+    const semPasseDesmontando = new Sim(createState(208));
+    semPasseDesmontando.state.settings.autoEquip = false;
+    semPasseDesmontando.state.settings.autoSalvage = 2;
+    semPasseDesmontando.state.settings.autoDispose = 'desmontar';
+    semPasseDesmontando.acquire(item('sem-vip-desmontar'));
+    expect(semPasseDesmontando.state.armazem).toEqual({});
+    expect(semPasseDesmontando.state.inventory.map((i) => i.uid)).toContain('sem-vip-desmontar');
 
     const comVenda = new Sim(createState(207));
     comVenda.state.vip.expiresAt = Date.now() + 60_000;

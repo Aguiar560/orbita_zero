@@ -88,6 +88,10 @@ describe('Inventário cheio', () => {
     // `autoSalvage` é automação PEDIDA: ali a peça é consumida e paga em sucata.
     // Confundir isso com "não coube" desligaria o desmanche automático.
     const sim = lotado(14);
+    // Benefício VIP desde 12/09/2026: sem o passe o desmanche não pega, e o
+    // que este teste guarda é o desmanche PEDIDO não ser confundido com
+    // "não coube".
+    sim.state.vip.expiresAt = Date.now() + 60_000;
     sim.state.settings.autoSalvage = 5;
     expect(sim.rollDrops('chefe').length).toBeGreaterThan(0);
   });

@@ -2686,7 +2686,7 @@ export class Sim {
       return;
     }
 
-    if (item.rarity < this.state.settings.autoSalvage) {
+    if (this.descarteAutomaticoPega(item)) {
       this.descartarAutomaticamente(item);
       return;
     }
@@ -2720,8 +2720,25 @@ export class Sim {
    * por raridade (`autoSalvage`) ou auto-equipar. É a pergunta que a conta de
    * espaço livre precisa — uma peça que vira material não ocupa lugar.
    */
+  /**
+   * O descarte automático consome esta peça?
+   *
+   * Um lugar só para a pergunta, porque ela é feita de dois — aqui e na conta
+   * de espaço livre —, e as duas precisam concordar: uma peça que some não pode
+   * ocupar lugar, e uma que ocupa lugar não pode sumir.
+   *
+   * **É benefício VIP inteiro desde 12/09/2026**, desmontar e vender. Antes, o
+   * corte por raridade era de todos e só a VENDA era VIP. Medido no dia da
+   * mudança: 5 contas tinham corte ligado, 3 delas VIP — então duas perderam a
+   * automação, e é por isso que a tela precisa DIZER que é VIP em vez de só
+   * parar de funcionar.
+   */
+  descarteAutomaticoPega(item: Item): boolean {
+    return this.vipAtivo && item.rarity < this.state.settings.autoSalvage;
+  }
+
   ocupaEspaco(item: Item): boolean {
-    if (item.rarity < this.state.settings.autoSalvage) return false;
+    if (this.descarteAutomaticoPega(item)) return false;
     if (this.vipAtivo && this.state.settings.autoEquip
       && podeEquipar(this.state, item) && scoreItem(this.state, item) > 0) return false;
     return true;

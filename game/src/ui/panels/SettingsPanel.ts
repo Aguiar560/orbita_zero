@@ -151,10 +151,21 @@ export class SettingsPanel implements Panel {
       h('h3.section', { text: 'Automação' }),
       toggle('Equipar o melhor', vip && s.autoEquip, (v) => { s.autoEquip = v; sim.touch(); },
         vip ? 'Compara cada novo item com o equipamento atual' : 'Benefício VIP', !vip),
-      h('.setting', {},
-        h('.setting-text', {}, h('strong', { text: 'Descartar abaixo de' })),
+      // O corte por raridade virou benefício VIP em 12/09/2026, junto da venda:
+      // "auto desmontar e auto vender apenas VIP pode ter". Desabilitado, e não
+      // escondido — automação que some sem explicação parece defeito.
+      h('.setting', { ...(vip ? {} : { title: 'Somente Passe VIP pode acionar o descarte automático.' }) },
+        h('.setting-text', {},
+          h('strong', { text: 'Descartar abaixo de' }),
+          ...(vip ? [] : [h('small', { text: 'Benefício VIP' })]),
+        ),
         h('select.select', {
-          onchange: (e: Event) => { s.autoSalvage = Number((e.target as HTMLSelectElement).value) as Rarity; sim.touch(); },
+          disabled: !vip,
+          onchange: (e: Event) => {
+            if (!vip) return;
+            s.autoSalvage = Number((e.target as HTMLSelectElement).value) as Rarity;
+            sim.touch();
+          },
         },
           h('option', { value: '0', text: 'Nada', selected: s.autoSalvage === 0 }),
           ...RARITIES.slice(1).map((r) => h('option', { value: String(r.id), text: r.name, selected: s.autoSalvage === r.id })),
@@ -167,7 +178,8 @@ export class SettingsPanel implements Panel {
         if (v === 'vender' && !vip) return;
         s.autoDispose = v as typeof s.autoDispose;
         sim.touch();
-      }, vip ? '' : 'Venda automática por raridade é um benefício VIP', vip ? [] : ['vender']),
+      }, vip ? '' : 'Somente Passe VIP pode acionar o descarte automático',
+      vip ? [] : ['vender', 'desmontar']),
 
       h('h3.section', { text: 'Offline' }),
       linha('Teto de progresso', duration(sim.offlineCap)),

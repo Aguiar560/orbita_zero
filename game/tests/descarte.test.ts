@@ -159,6 +159,9 @@ describe('descarte em lote e automático', () => {
     expect(vender.state.armazem).toEqual({});
 
     const desmontar = new Sim(createState(107));
+    // O descarte automático virou benefício VIP em 12/09/2026 — desmontar e
+    // vender. Sem o passe a automação não pega, e o teste mede outra coisa.
+    desmontar.state.vip.expiresAt = Date.now() + 60_000;
     desmontar.state.settings.autoEquip = false;
     desmontar.state.settings.autoSalvage = 2;
     desmontar.state.settings.autoDispose = 'desmontar';
@@ -177,6 +180,9 @@ describe('descarte em lote e automático', () => {
      * em `autoDispose` é o que acontece. Só que agora acontece SEMPRE.
      */
     const sim = new Sim(createState(109));
+    // O descarte automático virou benefício VIP em 12/09/2026 — desmontar e
+    // vender. Sem o passe a automação não pega, e o teste mede outra coisa.
+    sim.state.vip.expiresAt = Date.now() + 60_000;
     sim.state.settings.autoEquip = false;
     sim.state.settings.autoSalvage = 2;
     sim.state.settings.autoDispose = 'desmontar';

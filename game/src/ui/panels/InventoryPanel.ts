@@ -234,6 +234,7 @@ export class InventoryPanel implements Panel {
             h('strong.tiny', { text: `${sim.state.inventory.length} / ${sim.cargoSlots}` }),
           ),
         ),
+        this.automacao(sim),
       ),
 
       this.botaoSelecionarTodos(sim, items),
@@ -485,6 +486,75 @@ export class InventoryPanel implements Panel {
         title: 'Seleciona somente os itens exibidos pelos filtros atuais. Itens favoritos permanecem protegidos.',
         onclick: () => this.alternarTodosVisiveis(sim, selecionaveis, todosVisiveisSelecionados),
       }),
+    );
+  }
+
+  /**
+   * O descarte automático, na tela onde a decisão acontece.
+   *
+   * Os dois controles já existiam — em **Configurações**, três telas longe da
+   * carga que eles esvaziam. Pedido do Rafael em 12/09/2026: eles moram aqui.
+   *
+   * Não é duplicata: os dois lugares escrevem o MESMO `settings`, e o de
+   * Configurações continua valendo para quem for procurar lá. Um segundo estado
+   * é que seria duplicata.
+   *
+   * ## Tudo aqui é VIP, e a tela DIZ isso
+   *
+   * Desmontar e vender automaticamente são benefício do Passe desde
+   * 12/09/2026. Sem passe, os controles ficam desabilitados e explicam o
+   * motivo ao passar o mouse — e não escondidos: automação que some sem
+   * explicação parece defeito, e a que se vê bloqueada é a que faz alguém
+   * querer o passe.
+   */
+  private automacao(sim: Sim): HTMLElement {
+    const s = sim.state.settings;
+    const vip = sim.vipAtivo;
+    const vendendo = vip && s.autoDispose === 'vender';
+
+    const AVISO_VIP = 'Somente Passe VIP pode acionar o descarte automático.';
+
+    const destino = (valor: 'desmontar' | 'vender', rotulo: string): HTMLElement => h(
+      `button.mini${(vendendo ? 'vender' : 'desmontar') === valor ? '.ativa' : ''}${vip ? '' : '.bloqueada'}`,
+      {
+        text: rotulo,
+        title: vip
+          ? `Peça abaixo do corte vira ${valor === 'vender' ? 'sucata na hora' : 'material de fabricação'}.`
+          : AVISO_VIP,
+        disabled: !vip,
+        'aria-pressed': String((vendendo ? 'vender' : 'desmontar') === valor),
+        onclick: () => {
+          if (!vip) return;
+          s.autoDispose = valor;
+          sim.touch();
+        },
+      },
+    );
+
+    return h(`.toolbar.inv-auto-toolbar${vip ? '' : '.bloqueada'}`, {
+      // O `title` no bloco inteiro, e não só nos controles: o ponteiro passa
+      // pelo rótulo antes de chegar no seletor, e é ali que a pergunta nasce.
+      ...(vip ? {} : { title: AVISO_VIP }),
+    },
+      h('span.muted.tiny', { text: vip ? 'DESCARTE AUTOMÁTICO' : 'DESCARTE AUTOMÁTICO · VIP' }),
+      h('select.select', {
+        'aria-label': 'Descartar peças abaixo desta raridade',
+        title: vip
+          ? 'Peça que cair abaixo deste corte não chega a ocupar espaço na carga. Favoritos nunca entram.'
+          : AVISO_VIP,
+        disabled: !vip,
+        onchange: (e: Event) => {
+          s.autoSalvage = Number((e.target as HTMLSelectElement).value) as Rarity;
+          sim.touch();
+        },
+      },
+        h('option', { value: '0', text: 'Desligado', selected: s.autoSalvage === 0 }),
+        ...RARITIES.slice(1).map((r) => h('option', {
+          value: String(r.id), text: `Abaixo de ${r.name}`, selected: s.autoSalvage === r.id,
+        })),
+      ),
+      destino('desmontar', 'Desmontar'),
+      destino('vender', 'Vender'),
     );
   }
 
