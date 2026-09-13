@@ -2649,6 +2649,34 @@ export class Sim {
   // ela só DIZ o que falta, e é o que o painel usa para desabilitar o botão
   // antes de gastar uma requisição.
 
+  /**
+   * A cápsula morreu sem ser coletada. O servidor PRECISA saber.
+   *
+   * ## O buraco que isto fecha
+   *
+   * O item é declarado ao servidor no instante em que a cápsula NASCE —
+   * `tirarDoPote` empurra o `coletar` porque o cursor do lote andou. Mas
+   * quem decide o destino dele é `acquire`, e `acquire` só roda se a nave
+   * ALCANÇAR a cápsula.
+   *
+   * Entre um e outro existem quatro finais em que a peça se perde: cair
+   * fora da tela, o pool de cápsulas estar cheio, ser sacrificada para
+   * abrir vaga à chave garantida, e a cena ser desmontada. Nos quatro, o
+   * servidor ficava com um item que o jogador nunca teve — e, como o
+   * `acquire` não rodou, o descarte automático também não.
+   *
+   * Era isto que punha peça Comum na carga de quem tem o corte em "abaixo
+   * de Raro": elas apareciam logo depois de "SETOR CONCLUÍDO" porque é
+   * quando as cápsulas que sobraram na tela terminam de cair.
+   *
+   * Não é perda nova: a peça não coletada já era perdida por desenho — "só
+   * entra no inventário se a IA alcançar a cápsula". O que faltava era
+   * CONTAR isso ao servidor.
+   */
+  perderItemNaoColetado(item: Item): void {
+    this.state.comandosDeItem.push({ tipo: 'descartar', uid: item.uid });
+  }
+
   /** Entrada única de itens novos: aplica auto-desmanche e auto-equipar. */
   acquire(item: Item): void {
     this.state.stats.itemsFound++;

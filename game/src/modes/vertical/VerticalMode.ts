@@ -1716,9 +1716,15 @@ export class VerticalMode {
 
   private spawnLoot(x: number, y: number, item: Item): void {
     // A última vaga é reservada para a chave obrigatória do setor 9/19/29….
-    if (this.pickups.size >= this.pickups.capacity - 1) return;
+    if (this.pickups.size >= this.pickups.capacity - 1) {
+      this.sim.perderItemNaoColetado(item);
+      return;
+    }
     const p = this.pickups.spawn();
-    if (!p) return;
+    if (!p) {
+      this.sim.perderItemNaoColetado(item);
+      return;
+    }
     p.kind = 'item';
     p.item = item;
     p.icon = item.icon;
@@ -1740,6 +1746,8 @@ export class VerticalMode {
       this.pickups.each((item) => {
         if (abriuVaga || item.chaveGarantida) return;
         item.alive = false;
+        // A cápsula sacrificada pela chave também some do servidor.
+        if (item.item) this.sim.perderItemNaoColetado(item.item);
         abriuVaga = true;
       });
       if (abriuVaga) {
@@ -2221,6 +2229,9 @@ export class VerticalMode {
 
       if (item.y > VIEW.h + 60) {
         item.alive = false;
+        // Saiu pela borda de baixo sem a nave alcançar: perdida, e o servidor
+        // precisa saber — ela já foi declarada quando a cápsula nasceu.
+        if (item.item) this.sim.perderItemNaoColetado(item.item);
         return;
       }
       if (p.alive && d < p.radius + 22) {
@@ -3573,6 +3584,8 @@ export class VerticalMode {
     this.audio.dispose();
     this.bullets.clear();
     this.enemies.clear();
+    // O que estava no ar não vai ser coletado por ninguém.
+    this.pickups.each((item) => { if (item.item) this.sim.perderItemNaoColetado(item.item); });
     this.pickups.clear();
     this.particles.clear();
     window.removeEventListener('keydown', this.onKeyDown);

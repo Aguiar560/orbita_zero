@@ -173,3 +173,37 @@ describe('a fila de itens vai ANTES do lote novo', () => {
     expect(lote, 'pediu o lote antes de esvaziar a fila').toBeGreaterThan(drenar);
   });
 });
+
+describe('a capsula que nao foi coletada some do servidor tambem', () => {
+  /**
+   * A raiz, achada em 12/09/2026 com a pista do Rafael: "aparece a mensagem de
+   * setor concluído e logo em seguida já aparecem os itens, pode ser os itens
+   * que sobram na tela".
+   *
+   * O item é declarado ao servidor quando a CÁPSULA NASCE — `tirarDoPote`
+   * empurra o `coletar` porque o cursor andou. Quem decide o destino é
+   * `acquire`, e ele só roda se a nave alcançar a cápsula. Entre um e outro há
+   * quatro finais em que a peça se perde, e em todos o servidor ficava com um
+   * item que o jogador nunca teve — sem passar pelo descarte automático.
+   */
+  it('o Sim sabe declarar a peça perdida', () => {
+    const sim = new Sim(createState(31));
+    sim.state.comandosDeItem.length = 0;
+
+    sim.perderItemNaoColetado({ uid: 'perdida-1' } as never);
+
+    expect(sim.state.comandosDeItem).toEqual([{ tipo: 'descartar', uid: 'perdida-1' }]);
+  });
+
+  it('e a cena avisa nos QUATRO finais em que a cápsula morre sem coleta', () => {
+    // Lido do fonte: a cena precisa de canvas e a suíte não tem. O que se
+    // guarda aqui é que nenhum dos caminhos volte a ficar mudo.
+    const cena = readFileSync('src/modes/vertical/VerticalMode.ts', 'utf8');
+    const avisos = (cena.match(/perderItemNaoColetado\(/g) ?? []).length;
+
+    expect(avisos, 'um final de cápsula voltou a ficar mudo').toBe(5);
+    // O da borda de baixo é o que mais acontece, e o que o jogador vê: são as
+    // cápsulas que continuam caindo depois do painel de setor concluído.
+    expect(cena).toContain('if (item.item) this.sim.perderItemNaoColetado(item.item);');
+  });
+});
