@@ -103,7 +103,10 @@
 .admin-olho { flex: none; align-self: center; padding: 5px 12px; font-size: 10px; letter-spacing: .12em; }
 /* Descarte automatico sem Passe: visivel e inerte. Esconder faria a automacao
    sumir sem explicacao, que parece defeito; bloqueada, ela explica e convida. */
-.inv-auto-toolbar { align-items: center; gap: 8px; }
+/* À esquerda, e não espalhado: `.toolbar` é `space-between`, e com três filhos
+   o rótulo, o seletor e os botões iam parar em três cantos da barra. */
+.inv-auto-toolbar { align-items: center; justify-content: flex-start; gap: 8px; }
+.inv-auto-destino { display: flex; gap: 6px; }
 .inv-auto-toolbar.bloqueada { opacity: .55; }
 .inv-auto-toolbar.bloqueada .select, .inv-auto-toolbar .mini.bloqueada { cursor: not-allowed; }
 .admin-olho[aria-pressed="true"] { border-color: rgba(93, 195, 245, .5); color: #a9eaff; }
@@ -1172,6 +1175,21 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
 .panel-host { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 14px; scrollbar-width: thin; }
 /* A matriz precisa da altura toda do painel; os outros painéis rolam normalmente. */
 .panel-host:has(.tree-root) { overflow: hidden; }
+/**
+ * O Inventário também não rola — quem rola é a GRADE, dentro dele.
+ *
+ * A coluna da direita rolando é o defeito: o console de triagem (contagem,
+ * raridades, filtros, descarte automático) sai da tela junto com as peças, e
+ * quem está garimpando perde justamente os controles que está usando. Foi o que
+ * apareceu em 12/09/2026 ao pôr o descarte automático aqui — a barra nova
+ * empurrou o painel para além da altura disponível.
+ *
+ * Consertar encolhendo a barra seria consertar até a próxima barra. Com a
+ * rolagem por dentro, o console e as ações em lote ficam sempre à vista, e a
+ * grade absorve qualquer conteúdo novo — hoje e no dia em que a capacidade
+ * chegar a 70 peças.
+ */
+.panel-host:has(.inv-body) { overflow: hidden; }
 .panel-host > .panel-body, .panel-host > .tree-root { flex: 1; min-height: 0; }
 .panel-host::-webkit-scrollbar { width: 9px; }
 .panel-host::-webkit-scrollbar-thumb { background: rgba(120, 160, 220, 0.22); border-radius: 9px; }
@@ -1220,6 +1238,20 @@ html[data-contrast='high'] .modal { background-color: #080e1a !important; }
   background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line);
 }
 .mini:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+/**
+ * O botão ESCOLHIDO precisa se ver.
+ *
+ * `.mini.ativa` era usado em dois lugares — o destino do descarte e o filtro de
+ * favoritos — e não tinha estilo nenhum: o selecionado ficava idêntico ao não
+ * selecionado, e a única forma de saber qual valia era clicar e observar o
+ * jogo. Relatado em 12/09/2026 como "mas como escolhe entre vender ou
+ * desmontar".
+ */
+.mini.ativa {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
 .mini.danger { color: #ffa8b8; border-color: rgba(255, 93, 122, 0.32); }
 
 .chip {
@@ -1307,7 +1339,7 @@ select option:disabled { color: #667991; }
 .pilot.active { border-color: var(--accent); background: rgba(79, 195, 255, 0.1); }
 
 /* ── painel: inventário (grade 7×10) ─────────────────────────────────────── */
-.inv-body { position: relative; gap: 8px; }
+.inv-body { position: relative; gap: 8px; min-height: 0; }
 .inv-wrap { position: relative; }
 /* As colunas vêm do JS: a grade nasce 5 × 3 e cresce até 7 × 10 conforme o
    jogador libera espaço (§28). Fixar 7 aqui faria os 15 espaços iniciais
@@ -9110,6 +9142,9 @@ select option:disabled { color: #667991; }
 
 /* A grade passa a parecer um rack de armazenamento, não uma tabela. */
 .inv-wrap {
+  /* O filho que estica e rola: o console fica fixo em cima e a barra de lote
+     fixa embaixo, que é o que faz a coluna inteira não precisar rolar. */
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
   padding: 7px; border: 1px solid rgba(78, 170, 207, .2);
   background:
     linear-gradient(90deg, rgba(58, 177, 219, .025) 1px, transparent 1px) 0 0 / 52px 100%,

@@ -553,8 +553,13 @@ export class InventoryPanel implements Panel {
           value: String(r.id), text: `Abaixo de ${r.name}`, selected: s.autoSalvage === r.id,
         })),
       ),
-      destino('desmontar', 'Desmontar'),
-      destino('vender', 'Vender'),
+      // Os dois juntos, num grupo: `.toolbar` é `space-between`, e soltos eles
+      // iam para pontas opostas da barra — duas coisas distantes não se leem
+      // como UMA escolha entre duas, que é o que elas são.
+      h('.inv-auto-destino', { role: 'group', 'aria-label': 'Destino do descarte' },
+        destino('desmontar', 'Desmontar'),
+        destino('vender', 'Vender'),
+      ),
     );
   }
 
