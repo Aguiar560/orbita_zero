@@ -56,7 +56,12 @@ import { buildItemCard } from '../ItemCard';
 import { encerrarSelecao, mirandoAlvo } from '../selecao';
 import type { Panel } from './types';
 
-function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string {
+/**
+ * O resumo "12 Ferrita + 3 Titânio", exportado porque o descarte AUTOMÁTICO
+ * fala a mesma frase que o manual — a peça sumiu do mesmo jeito, e duas
+ * redações para o mesmo fato fazem o jogador achar que são coisas diferentes.
+ */
+export function resumoDeMateriais(materiais: Readonly<Record<string, number>>): string {
   return Object.entries(materiais)
     .filter(([, n]) => n > 0)
     .map(([id, n]) => `${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id}`)

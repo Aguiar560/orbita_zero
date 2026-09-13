@@ -22,7 +22,7 @@ import { temTutorial } from '@data/tutoriais';
 import type { Panel } from './panels/types';
 import { GalaxyPanel } from './panels/GalaxyPanel';
 import { ShopPanel } from './panels/ShopPanel';
-import { InventoryPanel } from './panels/InventoryPanel';
+import { InventoryPanel, resumoDeMateriais } from './panels/InventoryPanel';
 import { ArmazemPanel } from './panels/ArmazemPanel';
 import { FabricacaoPanel } from './panels/FabricacaoPanel';
 import { AffixCraftPanel } from './panels/AffixCraftPanel';
@@ -523,6 +523,8 @@ export class Shell {
     ));
     bus.on('chefe:pecasRetidas', ({ retidas }) => this.mostrarPecasRetidas(retidas));
     bus.on('descarte:automatico', (rendeu) => this.somarNoDescarte(rendeu));
+    // A onda caiu: é a hora em que o jogador olha para a tela.
+    bus.on('wave:cleared', () => this.contarDescarte());
     // Peças guardadas numa sessão anterior: o save lembra, e a tela precisa
     // dizer logo ao abrir — senão o jogador libera espaço sem saber por quê.
     if (this.sim.state.pecasRetidas > 0) setTimeout(() => this.mostrarPecasRetidas(this.sim.state.pecasRetidas), 0);
@@ -1000,22 +1002,24 @@ export class Shell {
    * segundos depois da primeira peça.
    */
   /**
-   * O que o descarte automático rendeu, somado no canto inferior direito.
+   * O que o descarte automático rendeu, na MESMA frase do descarte manual.
    *
-   * ## Por que soma em vez de avisar peça a peça
+   * ## Por que a mesma frase
    *
-   * Um setor fechado derruba dezenas de peças, e a automação consome quase
-   * todas. Um cartão por peça seria estrobo — a mesma armadilha que o aviso
-   * de Inventário cheio já tinha aprendido. Aqui o elemento é REAPROVEITADO,
-   * o total CRESCE enquanto a chuva dura, e o relógio é REARMADO a cada
-   * peça: a mensagem some quando o jogo para de render, não N segundos
-   * depois da primeira.
+   * A peça sumiu do mesmo jeito e rendeu a mesma coisa; duas redações para o
+   * mesmo fato fazem o jogador achar que são dois sistemas. O texto e o
+   * ícone saem de onde o Inventário já os usa — "12 itens vendidos · +340
+   * sucata" e "12 itens desmontados · 80 Ferrita + 12 Titânio".
    *
-   * ## Por que o canto, e não um toast
+   * ## Por que no fim da onda, e não a cada peça
    *
-   * Toast é para o que pede leitura; isto é contabilidade de fundo. No canto
-   * ele fica onde o olho encontra quando procura, e fora do caminho quando
-   * não procura — inclusive durante o combate, que é quando ele aparece.
+   * Uma onda derruba dezenas, e um toast por peça viraria carrossel — a
+   * pilha de toasts tem teto e o resto se perderia. Acumular e falar uma vez
+   * quando a onda cai é o ritmo em que o jogador olha, e é o que ele pediu:
+   * "no final da onda ou quando morrer tudo de uma vez".
+   *
+   * O relógio de segurança existe para o caso de a onda não cair tão cedo —
+   * morte, troca de setor, aba escondida. Sem ele o acumulado ficaria preso.
    */
   private somarNoDescarte(rendeu: { sucata: number; materiais: Record<string, number> }): void {
     this.descarteSucata += rendeu.sucata;
@@ -1024,33 +1028,31 @@ export class Shell {
     }
     this.descartePecas++;
 
-    let aviso = this.root.querySelector<HTMLElement>('.descarte-rendeu');
-    if (!aviso) {
-      aviso = h('.descarte-rendeu', { role: 'status', 'aria-live': 'polite' });
-      this.root.append(aviso);
-    }
-
-    const partes = [
-      ...(this.descarteSucata > 0 ? [`+${fmt(this.descarteSucata)} sucata`] : []),
-      ...Object.entries(this.descarteMateriais)
-        .map(([id, n]) => `+${fmt(n)} ${RECURSO_POR_ID.get(id)?.nome ?? id.replaceAll('_', ' ')}`),
-    ];
-    clear(aviso).append(
-      h('span.descarte-rendeu-rotulo', {
-        text: this.descartePecas === 1
-          ? '1 peça processada'
-          : `${this.descartePecas} peças processadas`,
-      }),
-      ...partes.map((texto) => h('strong', { text: texto })),
-    );
-
     window.clearTimeout(this.relogioDoDescarte);
-    this.relogioDoDescarte = window.setTimeout(() => {
-      aviso?.remove();
-      this.descarteSucata = 0;
-      this.descarteMateriais = {};
-      this.descartePecas = 0;
-    }, 3200);
+    this.relogioDoDescarte = window.setTimeout(() => this.contarDescarte(), 12_000);
+  }
+
+  /** Fala o acumulado e zera. Chamado no fim da onda e pelo relógio. */
+  private contarDescarte(): void {
+    const pecas = this.descartePecas;
+    if (pecas <= 0) return;
+    const sucata = this.descarteSucata;
+    const materiais = this.descarteMateriais;
+    this.descartePecas = 0;
+    this.descarteSucata = 0;
+    this.descarteMateriais = {};
+    window.clearTimeout(this.relogioDoDescarte);
+
+    const plural = pecas === 1 ? 'item' : 'itens';
+    if (sucata > 0) {
+      this.pushToast(`${pecas} ${plural} vendido${pecas === 1 ? '' : 's'} · +${fmt(sucata)} sucata`, 'good', 'ui/icon_coin');
+      return;
+    }
+    const resumo = resumoDeMateriais(materiais);
+    this.pushToast(
+      `${pecas} ${plural} desmontado${pecas === 1 ? '' : 's'}${resumo ? ` · ${resumo}` : ''}`,
+      'good', 'recurso/ferrita',
+    );
   }
   private avisarInventarioCheio(motivo: 'nao-coletado' | 'descartada'): void {
     const texto = 'Inventario Cheio';

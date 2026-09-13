@@ -144,3 +144,28 @@ describe('o descarte automático avisa o servidor, e mostra o que rendeu', () =>
     expect(Object.keys(rendeu[0]!.materiais).length).toBeGreaterThan(0);
   });
 });
+
+describe('a mensagem do descarte automatico e a mesma do manual', () => {
+  it('fala no fim da onda, com o texto e o icone que o Inventario ja usa', () => {
+    /**
+     * Pedido em 12/09/2026: "a mensagem de descarte das pecas tem que ser igual
+     * a mensagem de quando o player descarta manualmente, pode ser no final da
+     * onda ou quando morrer tudo de uma vez".
+     *
+     * Duas redacoes para o mesmo fato fazem o jogador achar que sao dois
+     * sistemas. Lido do fonte: a suite nao tem DOM.
+     */
+    const shell = readFileSync('src/ui/Shell.ts', 'utf8');
+    const inventario = readFileSync('src/ui/panels/InventoryPanel.ts', 'utf8');
+
+    for (const trecho of ['vendido', 'sucata', 'desmontado', 'ui/icon_coin', 'recurso/ferrita']) {
+      expect(shell, `a frase do automatico perdeu ${trecho}`).toContain(trecho);
+      expect(inventario, `a frase do manual perdeu ${trecho}`).toContain(trecho);
+    }
+    // O resumo de materiais e o MESMO codigo, e nao uma copia.
+    expect(inventario).toContain('export function resumoDeMateriais');
+    expect(shell).toContain('resumoDeMateriais(materiais)');
+    // E o gatilho e a queda da onda.
+    expect(shell).toContain("bus.on('wave:cleared', () => this.contarDescarte())");
+  });
+});
