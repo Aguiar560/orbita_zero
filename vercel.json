@@ -3,6 +3,7 @@
   "framework": "vite",
   "installCommand": "npm --prefix game ci",
   "buildCommand": "npm --prefix game run build",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':(top)' ':(top,exclude)game/docs' ':(top,exclude)game/server' ':(top,exclude)game/tests' ':(top,exclude)game/tools' ':(top,exclude).github' ':(top,exclude,glob)**/.gitignore' ':(top,exclude,glob)**/*.md'",
   "outputDirectory": "game/dist",
   "rewrites": [
     { "source": "/wiki", "destination": "/index.html" },
